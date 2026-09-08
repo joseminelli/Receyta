@@ -70,6 +70,11 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+  # Testes de banco: `flutter test` não carrega plugins nativos, então
+  # `test/flutter_test_config.dart` aponta o loader do sqlite3 para uma lib do
+  # sistema. Ver drift.simonbinder.eu/docs/testing.
+  sqlite3: ^2.4.0
+
   # Code generation
   build_runner: ^2.4.0
   freezed: ^2.5.0

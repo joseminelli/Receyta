@@ -104,9 +104,10 @@ class _SplashState extends State<Splash> with TickerProviderStateMixin {
         animation: Listenable.merge([_intro, _outro]),
         builder: (context, _) {
           // O "relógio" do shader vem do progresso da própria animação — fluxo
-          // durante a intro, um empurrão na outro, e congela no fim (a splash
-          // já saiu de cena). Nada de loop infinito — os testes assentam.
-          final time = _intro.value * 6.0 + _outro.value * 3.0;
+          // lento durante a intro, um empurrão leve na outro, e congela no fim
+          // (a splash já saiu de cena). Nada de loop infinito — os testes
+          // assentam. Mantenha estes fatores baixos: o fundo é tom sobre tom.
+          final time = _intro.value * 3.5 + _outro.value * 1.8;
           return Stack(
             fit: StackFit.expand,
             children: [
