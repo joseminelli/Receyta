@@ -1,19 +1,12 @@
 import 'package:drift/drift.dart';
 
-/// Schema v1 do banco local (§6 do plano).
-///
-/// Definição em Dart puro — sem arquivos `.drift`. Índices, FTS5 e triggers
-/// entram como SQL cru no `onCreate` de [AppDatabase]. Todas as tabelas
-/// sincronizáveis já nascem com `updated_at` para não doer quando o sync chegar.
-///
-/// IDs são sempre `TEXT`: UUID para linhas criadas pelo usuário, slug
-/// determinístico para linhas de seed (ver `seed_data.dart`).
+/// Schema v1 do banco local (§6 do plano). Definição em Dart puro; índices,
+/// FTS5 e triggers entram como SQL no `onCreate` de `AppDatabase`. IDs são
+/// sempre `TEXT`: UUID para linhas do usuário, slug para linhas de seed.
 
 @DataClassName('Folder')
 class Folders extends Table {
   TextColumn get id => text()();
-
-  /// Subpasta: aponta para outra pasta. `NULL` = raiz.
   TextColumn get parentId =>
       text().nullable().customConstraint('NULL REFERENCES folders (id)')();
   TextColumn get name => text()();
@@ -29,9 +22,8 @@ class Folders extends Table {
 @DataClassName('Recipe')
 class Recipes extends Table {
   TextColumn get id => text()();
-  TextColumn get folderId => text()
-      .nullable()
-      .references(Folders, #id, onDelete: KeyAction.setNull)();
+  TextColumn get folderId =>
+      text().nullable().references(Folders, #id, onDelete: KeyAction.setNull)();
   TextColumn get name => text()();
   TextColumn get about => text().nullable()();
   IntColumn get prepMinutes => integer().nullable()();
@@ -64,8 +56,6 @@ class Categories extends Table {
 class Ingredients extends Table {
   TextColumn get id => text()();
   TextColumn get displayName => text()();
-
-  /// Chave canônica do §8.2 (minúsculo, sem acento, sem qualificador, singular).
   TextColumn get normalizedKey => text().unique()();
   TextColumn get categoryId => text()
       .nullable()
@@ -76,7 +66,7 @@ class Ingredients extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Grafias alternativas confirmadas pelo usuário (§8.2, passo 3).
+/// Grafias alternativas de um ingrediente, confirmadas pelo usuário (§8.2).
 @DataClassName('IngredientAlias')
 class IngredientAliases extends Table {
   TextColumn get id => text()();
@@ -88,29 +78,25 @@ class IngredientAliases extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Unidades de medida em pt-BR. Seed em `seed_data.dart`.
+/// Unidades de medida em pt-BR. `kind`: mass | volume | count | subjective.
+/// `baseUnitId`/`factorToBase` só existem em massa e volume. Seed em
+/// `seed_data.dart`.
 @DataClassName('Unit')
 class Units extends Table {
   TextColumn get id => text()();
   TextColumn get code => text().unique()();
   TextColumn get displayName => text()();
   TextColumn get plural => text()();
-
-  /// `mass` | `volume` | `count` | `subjective`.
   TextColumn get kind => text()();
-
-  /// Unidade-base da mesma família (`g` para massa, `ml` para volume).
-  /// `NULL` para as próprias bases e para `count`/`subjective`.
   TextColumn get baseUnitId =>
       text().nullable().customConstraint('NULL REFERENCES units (id)')();
-
-  /// Fator de conversão para [baseUnitId]. `NULL` quando não há base.
   RealColumn get factorToBase => real().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+/// `rawText` é a fonte de verdade se o parsing falhar (§8.1).
 @DataClassName('RecipeIngredient')
 class RecipeIngredients extends Table {
   TextColumn get id => text()();
@@ -122,8 +108,6 @@ class RecipeIngredients extends Table {
   TextColumn get unitId =>
       text().nullable().references(Units, #id, onDelete: KeyAction.setNull)();
   TextColumn get qualifier => text().nullable()();
-
-  /// Linha original digitada — fonte de verdade se o parsing falhar (§8.1).
   TextColumn get rawText => text()();
   TextColumn get groupLabel => text().nullable()();
   IntColumn get position => integer().withDefault(const Constant(0))();
@@ -132,14 +116,13 @@ class RecipeIngredients extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Getter `instruction`, não `text` — este colide com o construtor de coluna
+/// do drift e quebra o codegen.
 @DataClassName('RecipeStep')
 class RecipeSteps extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId =>
       text().references(Recipes, #id, onDelete: KeyAction.cascade)();
-
-  /// Texto do passo. (Getter `instruction` e não `text` — este último colide
-  /// com o construtor de coluna do drift e quebra o codegen.)
   TextColumn get instruction => text()();
   TextColumn get groupLabel => text().nullable()();
   IntColumn get position => integer().withDefault(const Constant(0))();
@@ -173,11 +156,7 @@ class MealPlanEntries extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId =>
       text().references(Recipes, #id, onDelete: KeyAction.cascade)();
-
-  /// Dia planejado (a hora é ignorada).
   DateTimeColumn get date => dateTime()();
-
-  /// `breakfast` | `lunch` | `dinner` | `snack`.
   TextColumn get mealType => text()();
   IntColumn get servingsOverride => integer().nullable()();
   TextColumn get note => text().nullable()();
@@ -193,8 +172,6 @@ class MealPlanEntries extends Table {
 class ShoppingLists extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
-
-  /// `active` | `archived`.
   TextColumn get status => text().withDefault(const Constant('active'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -203,6 +180,7 @@ class ShoppingLists extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// `manualName` guarda item avulso, sem ingrediente do catálogo (§RF-05.6).
 @DataClassName('ShoppingListItem')
 class ShoppingListItems extends Table {
   TextColumn get id => text()();
@@ -211,8 +189,6 @@ class ShoppingListItems extends Table {
   TextColumn get ingredientId => text()
       .nullable()
       .references(Ingredients, #id, onDelete: KeyAction.setNull)();
-
-  /// Item avulso, sem ingrediente do catálogo (§RF-05.6).
   TextColumn get manualName => text().nullable()();
   RealColumn get quantity => real().nullable()();
   TextColumn get unitId =>
@@ -240,18 +216,13 @@ class ShoppingItemSources extends Table {
   Set<Column> get primaryKey => {itemId, recipeId};
 }
 
-/// Vocabulário do normalizador de ingredientes (§8.2).
-///
-/// Extensão deliberada do modelo do §6: o parser/normalizer (Dart puro, sem
-/// Drift — §5) lê estas linhas via repositório e recebe as listas por
-/// parâmetro, então o engine continua testável isoladamente.
+/// Vocabulário do normalizador de ingredientes (§8.2). Extensão do modelo do
+/// §6. `kind`: stopword | qualifier. O engine (Dart puro, §5) lê via
+/// repositório e recebe as listas por parâmetro.
 @DataClassName('NormalizerTerm')
 class NormalizerTerms extends Table {
   TextColumn get id => text()();
   TextColumn get term => text().unique()();
-
-  /// `stopword` (conectivo/ruído, some no nome) | `qualifier` (estado/preparo,
-  /// vira o campo `qualifier` de `recipe_ingredients`).
   TextColumn get kind => text()();
 
   @override

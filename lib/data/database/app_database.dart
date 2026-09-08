@@ -6,7 +6,6 @@ import 'tables.dart';
 
 part 'app_database.g.dart';
 
-/// Índices do §6. `IF NOT EXISTS` mantém o `onCreate` reexecutável em teste.
 const List<String> _indexStatements = [
   'CREATE INDEX IF NOT EXISTS idx_recipes_folder_id ON recipes (folder_id)',
   'CREATE INDEX IF NOT EXISTS idx_recipes_name ON recipes (name)',
@@ -20,7 +19,7 @@ const List<String> _indexStatements = [
       'ON ingredient_aliases (normalized_alias)',
 ];
 
-/// Busca textual do §6: FTS5 externo sobre `recipes`, mantido por triggers.
+/// FTS5 externo sobre `recipes` (§6), mantido em sincronia por triggers.
 const List<String> _ftsStatements = [
   'CREATE VIRTUAL TABLE recipes_fts USING fts5 '
       "(name, about, notes, content='recipes', content_rowid='rowid')",
@@ -71,6 +70,8 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
+  /// `onUpgrade` fica vazio até o A8 gerar os passos versionados a partir do
+  /// schema dump; v1 é o baseline.
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -83,19 +84,14 @@ class AppDatabase extends _$AppDatabase {
           }
           await _seed();
         },
-        onUpgrade: (m, from, to) async {
-          // A8: passos versionados (stepByStep a partir do schema dump) +
-          // teste de migração v1→v2. v1 é o baseline — nada a migrar ainda.
-        },
+        onUpgrade: (m, from, to) async {},
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },
       );
 
   /// Semeia unidades, categorias e o vocabulário do normalizador (§6).
-  ///
-  /// Idempotente: IDs são slugs determinísticos e a inserção é `insertOrIgnore`,
-  /// então reexecutar (num upgrade futuro, ou num teste) não duplica nada.
+  /// Idempotente: IDs determinísticos + `insertOrIgnore`.
   Future<void> _seed() async {
     await batch((b) {
       b.insertAll(
@@ -141,13 +137,12 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  /// Força a abertura preguiçosa do banco, rodando migração e seed. É o que a
-  /// splash aguarda (`appBootstrapProvider` → `lib/bootstrap.dart`).
+  /// Força a abertura preguiçosa do banco, rodando migração e seed. É o que
+  /// `appBootstrapProvider` aguarda antes de liberar a home.
   Future<void> ensureReady() async {
     await customSelect('SELECT 1').get();
   }
 
-  /// Reexecuta o seed com `insertOrIgnore`. Existe para o teste de
-  /// idempotência; o app não precisa chamar.
+  /// Reexecuta o seed. Existe para o teste de idempotência.
   Future<void> reseed() => _seed();
 }

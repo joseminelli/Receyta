@@ -18,10 +18,8 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    // Não lança e resolve.
     await container.read(appBootstrapProvider.future);
 
-    // O seed do §6 rodou como parte da abertura.
     final units =
         await db.customSelect('SELECT COUNT(*) AS c FROM units').getSingle();
     expect(units.read<int>('c'), greaterThanOrEqualTo(30));

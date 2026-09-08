@@ -134,8 +134,6 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, Folder> {
 
 class Folder extends DataClass implements Insertable<Folder> {
   final String id;
-
-  /// Subpasta: aponta para outra pasta. `NULL` = raiz.
   final String? parentId;
   final String name;
   final int position;
@@ -1418,8 +1416,6 @@ class $IngredientsTable extends Ingredients
 class Ingredient extends DataClass implements Insertable<Ingredient> {
   final String id;
   final String displayName;
-
-  /// Chave canônica do §8.2 (minúsculo, sem acento, sem qualificador, singular).
   final String normalizedKey;
   final String? categoryId;
   final int usageCount;
@@ -2014,15 +2010,8 @@ class Unit extends DataClass implements Insertable<Unit> {
   final String code;
   final String displayName;
   final String plural;
-
-  /// `mass` | `volume` | `count` | `subjective`.
   final String kind;
-
-  /// Unidade-base da mesma família (`g` para massa, `ml` para volume).
-  /// `NULL` para as próprias bases e para `count`/`subjective`.
   final String? baseUnitId;
-
-  /// Fator de conversão para [baseUnitId]. `NULL` quando não há base.
   final double? factorToBase;
   const Unit(
       {required this.id,
@@ -2460,8 +2449,6 @@ class RecipeIngredient extends DataClass
   final double? quantity;
   final String? unitId;
   final String? qualifier;
-
-  /// Linha original digitada — fonte de verdade se o parsing falhar (§8.1).
   final String rawText;
   final String? groupLabel;
   final int position;
@@ -2878,9 +2865,6 @@ class $RecipeStepsTable extends RecipeSteps
 class RecipeStep extends DataClass implements Insertable<RecipeStep> {
   final String id;
   final String recipeId;
-
-  /// Texto do passo. (Getter `instruction` e não `text` — este último colide
-  /// com o construtor de coluna do drift e quebra o codegen.)
   final String instruction;
   final String? groupLabel;
   final int position;
@@ -3645,11 +3629,7 @@ class $MealPlanEntriesTable extends MealPlanEntries
 class MealPlanEntry extends DataClass implements Insertable<MealPlanEntry> {
   final String id;
   final String recipeId;
-
-  /// Dia planejado (a hora é ignorada).
   final DateTime date;
-
-  /// `breakfast` | `lunch` | `dinner` | `snack`.
   final String mealType;
   final int? servingsOverride;
   final String? note;
@@ -4054,8 +4034,6 @@ class $ShoppingListsTable extends ShoppingLists
 class ShoppingList extends DataClass implements Insertable<ShoppingList> {
   final String id;
   final String name;
-
-  /// `active` | `archived`.
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -4431,8 +4409,6 @@ class ShoppingListItem extends DataClass
   final String id;
   final String listId;
   final String? ingredientId;
-
-  /// Item avulso, sem ingrediente do catálogo (§RF-05.6).
   final String? manualName;
   final double? quantity;
   final String? unitId;
@@ -5101,9 +5077,6 @@ class $NormalizerTermsTable extends NormalizerTerms
 class NormalizerTerm extends DataClass implements Insertable<NormalizerTerm> {
   final String id;
   final String term;
-
-  /// `stopword` (conectivo/ruído, some no nome) | `qualifier` (estado/preparo,
-  /// vira o campo `qualifier` de `recipe_ingredients`).
   final String kind;
   const NormalizerTerm(
       {required this.id, required this.term, required this.kind});

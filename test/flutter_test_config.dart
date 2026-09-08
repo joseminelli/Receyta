@@ -4,14 +4,10 @@ import 'dart:io';
 
 import 'package:sqlite3/open.dart';
 
-/// `flutter test` não carrega plugins nativos, então o `sqlite3` que o app usa
-/// via `sqlite3_flutter_libs` não existe aqui. Este hook aponta o loader para
-/// uma biblioteca sqlite3 disponível na máquina de teste / no CI:
-///
-/// - **Windows:** `winsqlite3.dll` (vem com o Windows 10/11; SQLite recente,
-///   com FTS5). Fallback para `sqlite3.dll` no PATH.
-/// - **Linux (CI):** `libsqlite3.so` do sistema (`apt-get install libsqlite3-0`).
-/// - **macOS:** a `libsqlite3.dylib` do sistema já resolve sem override.
+/// `flutter test` roda na Dart VM sem plugins nativos, então a sqlite3 que o
+/// app usa via `sqlite3_flutter_libs` não existe aqui. Este hook aponta o
+/// loader para uma lib do sistema: `winsqlite3.dll` no Windows, `libsqlite3` no
+/// Linux (o CI instala `libsqlite3-0`), e a do sistema no macOS.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   if (Platform.isWindows) {
     open.overrideForAll(_openWindows);

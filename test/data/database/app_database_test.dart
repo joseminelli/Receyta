@@ -121,8 +121,7 @@ void main() {
       final rows =
           await db.customSelect('SELECT * FROM normalizer_terms').get();
       final byTerm = {
-        for (final r in rows)
-          r.read<String>('term'): r.read<String>('kind'),
+        for (final r in rows) r.read<String>('term'): r.read<String>('kind'),
       };
 
       expect(byTerm['de'], 'stopword');
