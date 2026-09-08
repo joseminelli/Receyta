@@ -1,0 +1,85 @@
+name: receyta
+description: Gerenciador de receitas offline-first com lista de compras e planejamento semanal.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # State management & DI
+  flutter_riverpod: ^2.5.0
+  riverpod_annotation: ^2.5.0
+
+  # Navigation
+  go_router: ^13.0.0
+
+  # Models & serialization
+  freezed_annotation: ^2.4.0
+  json_annotation: ^4.8.0
+
+  # Database
+  drift: ^2.17.0
+  sqlite3_flutter_libs: ^0.5.0
+
+  # Utilities
+  uuid: ^4.0.0
+  path_provider: ^2.1.0
+  path: ^1.8.0
+  intl: ^0.19.0
+
+  # Assets & images
+  image_picker: ^1.0.0
+  flutter_image_compress: ^2.2.0
+
+  # File sharing
+  share_plus: ^8.0.0
+  file_picker: ^5.5.0
+  receive_sharing_intent: ^1.4.0
+
+  # PDF
+  pdf: ^3.10.0
+  printing: ^5.11.0
+
+  # Calendar
+  table_calendar: ^3.1.0
+
+  # Utilities for keeping screen on (mode cozinha)
+  wakelock_plus: ^1.2.0
+
+  # Animation helpers
+  flutter_animate: ^4.5.0
+
+  # Reorderable lists
+  flutter_slidable: ^3.0.0
+
+  # HTTP for web imports
+  http: ^1.1.0
+  html: ^0.15.0
+
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Code generation
+  build_runner: ^2.4.0
+  freezed: ^2.5.0
+  riverpod_generator: ^2.5.0
+  json_serializable: ^6.8.0
+  drift_dev: ^2.17.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/brand/
+    - assets/ingredients/
