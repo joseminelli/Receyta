@@ -13,6 +13,11 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color textMuted;
   final Color textBody;
 
+  /// Erro e ação destrutiva. Vermelho frio, deliberadamente distante do
+  /// `coral` laranja — coral é a cor da seção Receitas, não de alerta.
+  /// Não consta na §9.2 do plano; adicionado por necessidade real.
+  final Color danger;
+
   // Pattern colors
   final Color coralPattern;
   final Color violetPattern;
@@ -31,6 +36,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.violet,
     required this.textMuted,
     required this.textBody,
+    required this.danger,
     required this.coralPattern,
     required this.violetPattern,
     required this.inkPattern,
@@ -49,6 +55,7 @@ class AppColors extends ThemeExtension<AppColors> {
     violet: Color(0xFF7B6CF6),
     textMuted: Color(0xFF8A8674),
     textBody: Color(0xFF3D3B30),
+    danger: Color(0xFFC0203F),
     coralPattern: Color(0xFFFF7A5E),
     violetPattern: Color(0xFF9A8EF9),
     inkPattern: Color(0xFF2B2A20),
@@ -67,6 +74,7 @@ class AppColors extends ThemeExtension<AppColors> {
     violet: Color(0xFF6957D8),
     textMuted: Color(0xFF776B5F),
     textBody: Color(0xFFB8B5A8),
+    danger: Color(0xFFFF6B85),
     coralPattern: Color(0xFFE64820),
     violetPattern: Color(0xFF7966E6),
     inkPattern: Color(0xFF373625),
@@ -86,6 +94,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? violet,
     Color? textMuted,
     Color? textBody,
+    Color? danger,
     Color? coralPattern,
     Color? violetPattern,
     Color? inkPattern,
@@ -103,6 +112,7 @@ class AppColors extends ThemeExtension<AppColors> {
       violet: violet ?? this.violet,
       textMuted: textMuted ?? this.textMuted,
       textBody: textBody ?? this.textBody,
+      danger: danger ?? this.danger,
       coralPattern: coralPattern ?? this.coralPattern,
       violetPattern: violetPattern ?? this.violetPattern,
       inkPattern: inkPattern ?? this.inkPattern,
@@ -125,6 +135,7 @@ class AppColors extends ThemeExtension<AppColors> {
       violet: Color.lerp(violet, other.violet, t)!,
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       textBody: Color.lerp(textBody, other.textBody, t)!,
+      danger: Color.lerp(danger, other.danger, t)!,
       coralPattern: Color.lerp(coralPattern, other.coralPattern, t)!,
       violetPattern: Color.lerp(violetPattern, other.violetPattern, t)!,
       inkPattern: Color.lerp(inkPattern, other.inkPattern, t)!,

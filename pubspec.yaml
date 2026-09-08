@@ -83,3 +83,11 @@ flutter:
   assets:
     - assets/brand/
     - assets/ingredients/
+
+  # Bricolage Grotesque (SIL OFL, licença em assets/fonts/OFL.txt).
+  # Asset local, nunca baixada em runtime — evita FOUT e dependência de rede.
+  # Arquivo variável: o peso 800 é aplicado via fontVariations em AppTextStyles.
+  fonts:
+    - family: Bricolage
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque-Variable.ttf

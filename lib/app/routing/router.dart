@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../theme/app_theme.dart';
+import '../theme/tokens.dart';
 import 'root_back_guard.dart';
 
 final router = GoRouter(
@@ -37,8 +39,13 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Bem-vindo ao Receyta!'),
-            const SizedBox(height: 24),
+            // Prova visual de que a Bricolage 800 carregou do asset local:
+            // o tracking negativo é visível a olho nu.
+            Text('Receyta', style: context.texts.displayLarge),
+            const SizedBox(height: AppSpacing.xs),
+            Text('SEU CADERNO DE RECEITAS',
+                style: context.texts.labelSmall),
+            const SizedBox(height: AppSpacing.lg),
             ElevatedButton(
               onPressed: () => context.push('/recipes'),
               child: const Text('Ir para Receitas'),
