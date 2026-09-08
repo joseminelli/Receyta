@@ -18,6 +18,16 @@ class AppColors extends ThemeExtension<AppColors> {
   /// Não consta na §9.2 do plano; adicionado por necessidade real.
   final Color danger;
 
+  /// Texto sobre bloco saturado (`coral`, `violet`): branco puro, sempre.
+  final Color onSaturated;
+
+  /// Label secundário sobre `coral`. Versão clara do próprio matiz — cinza
+  /// nesse fundo fica sujo (§9.2).
+  final Color coralMuted;
+
+  /// Label secundário sobre `violet`. Mesma regra do [coralMuted].
+  final Color violetMuted;
+
   // Pattern colors
   final Color coralPattern;
   final Color violetPattern;
@@ -37,6 +47,9 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.textMuted,
     required this.textBody,
     required this.danger,
+    required this.onSaturated,
+    required this.coralMuted,
+    required this.violetMuted,
     required this.coralPattern,
     required this.violetPattern,
     required this.inkPattern,
@@ -56,6 +69,9 @@ class AppColors extends ThemeExtension<AppColors> {
     textMuted: Color(0xFF8A8674),
     textBody: Color(0xFF3D3B30),
     danger: Color(0xFFC0203F),
+    onSaturated: Color(0xFFFFFFFF),
+    coralMuted: Color(0xFFFFB3A4),
+    violetMuted: Color(0xFFC2BCFA),
     coralPattern: Color(0xFFFF7A5E),
     violetPattern: Color(0xFF9A8EF9),
     inkPattern: Color(0xFF2B2A20),
@@ -75,6 +91,9 @@ class AppColors extends ThemeExtension<AppColors> {
     textMuted: Color(0xFF776B5F),
     textBody: Color(0xFFB8B5A8),
     danger: Color(0xFFFF6B85),
+    onSaturated: Color(0xFFFFFFFF),
+    coralMuted: Color(0xFFFFA38F),
+    violetMuted: Color(0xFFB3A8F5),
     coralPattern: Color(0xFFE64820),
     violetPattern: Color(0xFF7966E6),
     inkPattern: Color(0xFF373625),
@@ -95,6 +114,9 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? textMuted,
     Color? textBody,
     Color? danger,
+    Color? onSaturated,
+    Color? coralMuted,
+    Color? violetMuted,
     Color? coralPattern,
     Color? violetPattern,
     Color? inkPattern,
@@ -113,6 +135,9 @@ class AppColors extends ThemeExtension<AppColors> {
       textMuted: textMuted ?? this.textMuted,
       textBody: textBody ?? this.textBody,
       danger: danger ?? this.danger,
+      onSaturated: onSaturated ?? this.onSaturated,
+      coralMuted: coralMuted ?? this.coralMuted,
+      violetMuted: violetMuted ?? this.violetMuted,
       coralPattern: coralPattern ?? this.coralPattern,
       violetPattern: violetPattern ?? this.violetPattern,
       inkPattern: inkPattern ?? this.inkPattern,
@@ -136,6 +161,9 @@ class AppColors extends ThemeExtension<AppColors> {
       textMuted: Color.lerp(textMuted, other.textMuted, t)!,
       textBody: Color.lerp(textBody, other.textBody, t)!,
       danger: Color.lerp(danger, other.danger, t)!,
+      onSaturated: Color.lerp(onSaturated, other.onSaturated, t)!,
+      coralMuted: Color.lerp(coralMuted, other.coralMuted, t)!,
+      violetMuted: Color.lerp(violetMuted, other.violetMuted, t)!,
       coralPattern: Color.lerp(coralPattern, other.coralPattern, t)!,
       violetPattern: Color.lerp(violetPattern, other.violetPattern, t)!,
       inkPattern: Color.lerp(inkPattern, other.inkPattern, t)!,
@@ -151,6 +179,13 @@ class AppSpacing {
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;
+
+  /// Margem lateral padrão de tela (§9.8). Também o quanto o sheet de
+  /// conteúdo sobe sobre o hero.
+  static const double screen = 18;
+
+  /// Área mínima de toque — acessibilidade (RNF-05).
+  static const double minTapTarget = 48;
 }
 
 class AppRadii {
