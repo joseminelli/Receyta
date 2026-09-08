@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'root_back_guard.dart';
+
 final router = GoRouter(
+  initialLocation: '/',
   routes: [
     GoRoute(
       path: '/',
       name: 'home',
-      builder: (context, state) => const HomePage(),
+      builder: (context, state) => const RootBackGuard(child: HomePage()),
     ),
     GoRoute(
       path: '/recipes',
@@ -14,6 +17,11 @@ final router = GoRouter(
       builder: (context, state) => const RecipesPage(),
     ),
   ],
+  errorBuilder: (context, state) => Scaffold(
+    body: Center(
+      child: Text('Página não encontrada: ${state.uri}'),
+    ),
+  ),
 );
 
 class HomePage extends StatelessWidget {
@@ -32,7 +40,7 @@ class HomePage extends StatelessWidget {
             const Text('Bem-vindo ao Receyta!'),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.go('/recipes'),
+              onPressed: () => context.push('/recipes'),
               child: const Text('Ir para Receitas'),
             ),
           ],
@@ -58,7 +66,7 @@ class RecipesPage extends StatelessWidget {
             const Text('Página de Receitas'),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => context.go('/'),
+              onPressed: () => context.pop(),
               child: const Text('Voltar'),
             ),
           ],
