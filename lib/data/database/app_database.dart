@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'connection.dart';
+import 'daos/recipe_dao.dart';
 import 'seed_data.dart';
 import 'tables.dart';
 
@@ -60,6 +61,7 @@ END''',
     ShoppingItemSources,
     NormalizerTerms,
   ],
+  daos: [RecipeDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());
@@ -70,8 +72,14 @@ class AppDatabase extends _$AppDatabase {
   @override
   int get schemaVersion => 1;
 
-  /// `onUpgrade` fica vazio até o A8 gerar os passos versionados a partir do
-  /// schema dump; v1 é o baseline.
+  /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
+  /// sem ambiguidade de fuso quando o sync chegar.
+  @override
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: true);
+
+  /// `onUpgrade` vazio: v1 é o baseline. Os passos versionados entram quando o
+  /// bloco C subir o schema (harness em `test/data/database/schema_test.dart`).
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {

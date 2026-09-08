@@ -832,4 +832,7 @@ class DatabaseAtV1 extends GeneratedDatabase {
       ];
   @override
   int get schemaVersion => 1;
+  @override
+  DriftDatabaseOptions get options =>
+      const DriftDatabaseOptions(storeDateTimeAsText: true);
 }

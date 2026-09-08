@@ -4,7 +4,7 @@ import 'package:drift/drift.dart';
 /// FTS5 e triggers entram como SQL no `onCreate` de `AppDatabase`. IDs são
 /// sempre `TEXT`: UUID para linhas do usuário, slug para linhas de seed.
 
-@DataClassName('Folder')
+@DataClassName('FolderRow')
 class Folders extends Table {
   TextColumn get id => text()();
   TextColumn get parentId =>
@@ -19,7 +19,7 @@ class Folders extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DataClassName('Recipe')
+@DataClassName('RecipeRow')
 class Recipes extends Table {
   TextColumn get id => text()();
   TextColumn get folderId =>
@@ -42,7 +42,7 @@ class Recipes extends Table {
 }
 
 /// Corredores do mercado, na ordem de percurso. Seed em `seed_data.dart`.
-@DataClassName('Category')
+@DataClassName('CategoryRow')
 class Categories extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -52,7 +52,7 @@ class Categories extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DataClassName('Ingredient')
+@DataClassName('IngredientRow')
 class Ingredients extends Table {
   TextColumn get id => text()();
   TextColumn get displayName => text()();
@@ -67,7 +67,7 @@ class Ingredients extends Table {
 }
 
 /// Grafias alternativas de um ingrediente, confirmadas pelo usuário (§8.2).
-@DataClassName('IngredientAlias')
+@DataClassName('IngredientAliasRow')
 class IngredientAliases extends Table {
   TextColumn get id => text()();
   TextColumn get ingredientId =>
@@ -81,7 +81,7 @@ class IngredientAliases extends Table {
 /// Unidades de medida em pt-BR. `kind`: mass | volume | count | subjective.
 /// `baseUnitId`/`factorToBase` só existem em massa e volume. Seed em
 /// `seed_data.dart`.
-@DataClassName('Unit')
+@DataClassName('UnitRow')
 class Units extends Table {
   TextColumn get id => text()();
   TextColumn get code => text().unique()();
@@ -97,7 +97,7 @@ class Units extends Table {
 }
 
 /// `rawText` é a fonte de verdade se o parsing falhar (§8.1).
-@DataClassName('RecipeIngredient')
+@DataClassName('RecipeIngredientRow')
 class RecipeIngredients extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId =>
@@ -118,7 +118,7 @@ class RecipeIngredients extends Table {
 
 /// Getter `instruction`, não `text` — este colide com o construtor de coluna
 /// do drift e quebra o codegen.
-@DataClassName('RecipeStep')
+@DataClassName('RecipeStepRow')
 class RecipeSteps extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId =>
@@ -131,7 +131,7 @@ class RecipeSteps extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DataClassName('Tag')
+@DataClassName('TagRow')
 class Tags extends Table {
   TextColumn get id => text()();
   TextColumn get name => text().unique()();
@@ -140,7 +140,7 @@ class Tags extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DataClassName('RecipeTag')
+@DataClassName('RecipeTagRow')
 class RecipeTags extends Table {
   TextColumn get recipeId =>
       text().references(Recipes, #id, onDelete: KeyAction.cascade)();
@@ -151,7 +151,7 @@ class RecipeTags extends Table {
   Set<Column> get primaryKey => {recipeId, tagId};
 }
 
-@DataClassName('MealPlanEntry')
+@DataClassName('MealPlanEntryRow')
 class MealPlanEntries extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId =>
@@ -168,7 +168,7 @@ class MealPlanEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DataClassName('ShoppingList')
+@DataClassName('ShoppingListRow')
 class ShoppingLists extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -181,7 +181,7 @@ class ShoppingLists extends Table {
 }
 
 /// `manualName` guarda item avulso, sem ingrediente do catálogo (§RF-05.6).
-@DataClassName('ShoppingListItem')
+@DataClassName('ShoppingListItemRow')
 class ShoppingListItems extends Table {
   TextColumn get id => text()();
   TextColumn get listId =>
@@ -202,7 +202,7 @@ class ShoppingListItems extends Table {
 }
 
 /// De quais receitas veio cada item da lista (§RF-05.8).
-@DataClassName('ShoppingItemSource')
+@DataClassName('ShoppingItemSourceRow')
 class ShoppingItemSources extends Table {
   TextColumn get itemId =>
       text().references(ShoppingListItems, #id, onDelete: KeyAction.cascade)();
@@ -219,7 +219,7 @@ class ShoppingItemSources extends Table {
 /// Vocabulário do normalizador de ingredientes (§8.2). Extensão do modelo do
 /// §6. `kind`: stopword | qualifier. O engine (Dart puro, §5) lê via
 /// repositório e recebe as listas por parâmetro.
-@DataClassName('NormalizerTerm')
+@DataClassName('NormalizerTermRow')
 class NormalizerTerms extends Table {
   TextColumn get id => text()();
   TextColumn get term => text().unique()();
