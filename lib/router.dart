@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../theme/app_theme.dart';
-import '../theme/tokens.dart';
-import 'root_back_guard.dart';
+import 'package:receyta/bootstrap.dart';
+import 'package:receyta/splash.dart';
+import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/root_back_guard.dart';
 
 final router = GoRouter(
-  initialLocation: '/',
+  initialLocation: '/splash',
   routes: [
+    GoRoute(
+      path: '/splash',
+      name: 'splash',
+      builder: (context, state) => const _SplashRoute(),
+    ),
     GoRoute(
       path: '/',
       name: 'home',
@@ -25,6 +33,19 @@ final router = GoRouter(
     ),
   ),
 );
+
+/// Liga a splash à inicialização real do app e navega para a home ao fim.
+class _SplashRoute extends ConsumerWidget {
+  const _SplashRoute();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Splash(
+      ready: ref.watch(appBootstrapProvider.future),
+      onComplete: () => context.go('/'),
+    );
+  }
+}
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});

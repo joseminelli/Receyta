@@ -9,6 +9,21 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+
+// Alguns plugins ainda fixam compileSdkVersion antigo no próprio build.gradle
+// (printing usa 30), e aí o linking de recursos quebra em `android:attr/lStar`.
+// Força todo módulo Android a compilar contra o mesmo SDK do app. Precisa ser
+// registrado antes do evaluationDependsOn abaixo, que dispara a avaliação.
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileSdkVersion 35
+            }
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }

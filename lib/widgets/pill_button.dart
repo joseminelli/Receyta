@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
-import '../../app/theme/tokens.dart';
+import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/theme/tokens.dart';
 
 /// Papel visual do botão. Define o par fundo/texto — nunca combine cores à mão,
 /// porque as regras de pareamento da §9.2 não são simétricas.

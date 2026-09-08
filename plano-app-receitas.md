@@ -224,6 +224,21 @@ lib/
 
 O diretório `domain/engine/` é Dart puro, sem dependência de Flutter nem de Drift — 100% testável com unit tests rápidos.
 
+**A árvore acima é o destino, não o ponto de partida.** Cada bloco cria só as pastas que de fato usa, e nenhuma pasta existe com um arquivo só — profundidade paga aluguel. Ao fim do bloco A a estrutura real é rasa:
+
+```
+lib/
+  main.dart
+  gallery_app.dart     entrypoint alternativo da galeria de componentes
+  app_assets.dart      constantes de caminho de asset
+  router.dart          go_router
+  root_back_guard.dart
+  theme/               tokens.dart · typography.dart · app_theme.dart
+  widgets/             componentes compartilhados
+```
+
+`core/`, `data/`, `domain/` e `features/` entram quando o primeiro arquivo de cada um nasce (bloco B em diante). Imports internos usam `package:receyta/...`, então mover arquivo não quebra caminho relativo.
+
 ---
 
 ## 6. Modelo de dados
@@ -538,7 +553,8 @@ Referência: **Athos Bulcão**, não azulejo colonial. O azulejo entra reduzido 
 |---|---|---|
 | `coralPattern` | `#FF7A5E` | `coral` |
 | `violetPattern` | `#9A8EF9` | `violet` |
-| `inkPattern` | `#2B2A20` / `#37362A` | `ink` (dois tons no módulo diagonal) |
+| `inkPattern` | `#2B2A20` | `ink` — primeiro tom do módulo diagonal |
+| `inkPatternAlt` | `#37362A` | `ink` — segundo tom do módulo diagonal |
 | `limePattern` | `#C2E33F` | `lime` |
 
 **Consequência na hierarquia:** com o padrão ocupando a camada de textura, os números ilustrativos passam de tom sobre tom para **branco sólido**. Sem isso eles desaparecem no padrão.
@@ -565,6 +581,8 @@ A mesma receita mantém a estampa para sempre, e em qualquer dispositivo. Se ela
 | Clara | `paper` | `coralPattern`, **dentro da bandeja** | `coral` |
 
 Regra: o azulejo fica sempre sobre o coral. Quando o fundo é coral, o padrão é o fundo; quando o fundo é creme, o padrão vive dentro da bandeja.
+
+**Empacotamento (`flutter_launcher_icons`).** A versão **Clara** é a de produção. `assets/brand/Appicon.png` (1024², composto) gera iOS — com `remove_alpha_ios` e fundo `paper` — Android legado e web. O adaptativo Android usa fundo `paper` (`#F5F2EA`) chapado + `assets/brand/AppiconForeground.png` com a bandeja inteira dentro do círculo central de ~620px (safe zone). Regenerar com `dart run flutter_launcher_icons`.
 
 **Lockup.** A barra da bandeja se apoia na linha de base do wordmark — não no centro óptico. Assim o pegador fica na altura das maiúsculas e o descendente do `y` desce livre do outro lado, deixando as duas pontas simétricas. Altura do símbolo ≈ 0.76 do corpo do texto; vão de 0.18 do corpo.
 
@@ -607,9 +625,9 @@ O `sin(t * π)` é a altura do arco: vale 0 nas pontas e 1 no meio. Cada ingredi
 
 **Por que o `y` vazado não vira artefato:** o fundo é coral e o furo do `y` mostra coral. Quando a cúpula sobe, o furo sobe junto, coral sobre coral. Em fundo claro apareceria um `y` fantasma subindo — por isso a splash é obrigatoriamente coral.
 
-**Implementação:** um único `AnimationController` com `Interval` por fase, ingredientes num `Stack` com `AnimatedBuilder`. `flutter_svg` para os assets, ou `CustomPainter` se quiser zero dependência.
+**Implementação (`lib/splash.dart`).** Dois `AnimationController`: `intro` (1150ms — entrada da bandeja + os seis ingredientes em arco, toca sempre) e `outro` (600ms — cúpula/pegador sobem e saem, wordmark entra). Start quente ≈ 1,75s, dentro do orçamento de `SplashTimings.budget` (1,8s). Zero dependência: a bandeja é geometria chapada (`CustomPainter`) — pegador (círculo), cúpula (meia-lua), barra (stadium) em `paper` sobre `coral`; os ingredientes são seis formas simples na mesma linguagem. Trocar por `flutter_svg` + os ícones da §9.6 quando eles existirem.
 
-**Regra de produto:** a splash não pode atrasar a abertura. Ela roda enquanto o Drift inicializa; se o banco ficar pronto antes, corta na fase 3. Nunca segurar o app para terminar a animação.
+**Regra de produto:** a splash não pode atrasar a abertura. A `intro` roda em paralelo ao `appBootstrapProvider` (`lib/bootstrap.dart` — Drift no A7); a `outro` só toca quando o app está pronto. Se o bootstrap demora, a splash segura na última frame da `intro` até resolver — nunca trava, nunca corta a `outro`. A splash nativa (`flutter_native_splash`) usa o mesmo `coral`, então nativo → Flutter é invisível.
 
 ### 9.8 Forma e espaço
 
@@ -623,7 +641,7 @@ O `sin(t * π)` é a altura do arco: vale 0 nas pontas e 1 no meio. Cada ingredi
 ### 9.9 Implementação no Flutter
 
 ```
-lib/app/theme/
+lib/theme/
   tokens.dart       AppColors, AppRadii, AppSpacing — únicas constantes de cor do projeto
   typography.dart   AppTextStyles (display*, body*, label*)
   app_theme.dart    ThemeData montado a partir dos tokens
@@ -632,11 +650,10 @@ lib/app/theme/
 - Cores via `ThemeExtension<AppColors>` para acesso tipado: `context.colors.lime`.
 - Assets de marca e ingredientes referenciados por constantes em `AppAssets`, nunca por string solta.
 - `TextTheme` com os papéis mapeados; nunca `TextStyle` inline em tela.
-- Componentes compartilhados em `shared/widgets/`: `RecipeCard`, `FolderTile`, `MetricStat`, `SectionHeader`, `PillButton`, `PillNavBar`, `HeroNumber`, `IngredientRow`, `SuggestionBlock`, `TilePattern`.
+- Componentes compartilhados em `lib/widgets/`: `RecipeCard`, `FolderTile`, `MetricStat`, `SectionHeader`, `PillButton`, `PillNavBar`, `HeroNumber`, `IngredientRow`, `SuggestionBlock`, `TilePattern`.
 - `HeroNumber` encapsula o padrão do número sangrado: recebe valor, cor e canto de ancoragem.
-- `TilePattern(motif, color, tile: 40)` desenha o azulejo via `CustomPainter` — um painter por módulo (`ArcoPainter`, `MeiaLuaPainter`, `DiagonalPainter`, `PontoPainter`). Usar `PictureRecorder` + cache por (módulo, cor) para não repintar a cada scroll.
-- `TilePattern(motif, color, tile: 40)` desenha o azulejo via `CustomPainter`.
-- Widgetbook (ou galeria própria) para revisar todos os componentes fora do app.
+- `TilePattern(motif:, background:, patternColor:, patternColorAlt:, tile: 40)` desenha o azulejo via `CustomPainter`. Um único tile é rasterizado com `PictureRecorder.toImageSync` e cacheado por `(módulo, cor, cor alt, tile, dpr)`; o painter pinta o bloco chapado + uma `drawRect` com `ImageShader(TileMode.repeated)`. Custo por card: uma `drawRect`, não um path por pixel. O `diagonal` é o único que usa o segundo tom (`inkPatternAlt`). Módulo por receita: `tileMotifForId(recipe.id)`.
+- Widgetbook (ou galeria própria) para revisar todos os componentes fora do app. O benchmark de scroll do A4 vive lá: `TilePattern — benchmark`, 60 cards, rodar em `--profile`.
 
 **Assets de marca:**
 
@@ -671,7 +688,7 @@ Esforço em dias de trabalho focado.
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
 | A1 | Esqueleto: projeto, Riverpod, go_router, l10n pt-BR | 0,5 | App abre numa tela vazia e navega entre duas rotas |
-| A2 | Tokens, tipografia, `ThemeData`, Bricolage como asset local | 1 | Nenhuma cor ou `TextStyle` fora de `app/theme/` |
+| A2 | Tokens, tipografia, `ThemeData`, Bricolage como asset local | 1 | Nenhuma cor ou `TextStyle` fora de `lib/theme/` |
 | A3 | Galeria de componentes com `SectionHeader`, `PillButton`, `PillNavBar`, `MetricStat`, `HeroNumber` | 0,5 | Galeria navegável fora do app |
 | A4 | `TilePattern` com os quatro módulos + benchmark de scroll | 1 | 60 cards com padrão rolam a 60fps |
 | A5 | Ícone de app (duas versões, todos os tamanhos) e adaptativo Android | 0,5 | Ícone correto nas duas plataformas |

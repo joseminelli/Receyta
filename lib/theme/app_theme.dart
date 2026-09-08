@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'tokens.dart';
-import 'typography.dart';
+import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/theme/typography.dart';
 
 /// `ThemeData` montado inteiramente a partir dos tokens (§9.9 do plano).
 ///
-/// Nenhuma cor ou `TextStyle` literal deve existir fora de `app/theme/` —
+/// Nenhuma cor ou `TextStyle` literal deve existir fora de `lib/theme/` —
 /// telas consomem via `context.colors` e `Theme.of(context).textTheme`.
 abstract class AppTheme {
   static ThemeData light() => _build(AppColors.light, Brightness.light);

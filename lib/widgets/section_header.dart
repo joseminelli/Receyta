@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../app/theme/app_theme.dart';
-import '../../app/theme/tokens.dart';
+import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/theme/tokens.dart';
 
 /// Cabeçalho de seção: label caps opcional acima, título em Display S,
 /// ação opcional à direita.

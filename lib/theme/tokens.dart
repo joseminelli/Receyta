@@ -32,6 +32,10 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color coralPattern;
   final Color violetPattern;
   final Color inkPattern;
+
+  /// Segundo tom do módulo `diagonal` sobre `ink` — os triângulos precisam de
+  /// dois tons (§9.4). Os outros módulos usam só [inkPattern].
+  final Color inkPatternAlt;
   final Color limePattern;
 
   const AppColors({
@@ -53,6 +57,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.coralPattern,
     required this.violetPattern,
     required this.inkPattern,
+    required this.inkPatternAlt,
     required this.limePattern,
   });
 
@@ -75,6 +80,7 @@ class AppColors extends ThemeExtension<AppColors> {
     coralPattern: Color(0xFFFF7A5E),
     violetPattern: Color(0xFF9A8EF9),
     inkPattern: Color(0xFF2B2A20),
+    inkPatternAlt: Color(0xFF37362A),
     limePattern: Color(0xFFC2E33F),
   );
 
@@ -97,6 +103,7 @@ class AppColors extends ThemeExtension<AppColors> {
     coralPattern: Color(0xFFE64820),
     violetPattern: Color(0xFF7966E6),
     inkPattern: Color(0xFF373625),
+    inkPatternAlt: Color(0xFF423F2C),
     limePattern: Color(0xFFADD82E),
   );
 
@@ -120,6 +127,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? coralPattern,
     Color? violetPattern,
     Color? inkPattern,
+    Color? inkPatternAlt,
     Color? limePattern,
   }) {
     return AppColors(
@@ -141,6 +149,7 @@ class AppColors extends ThemeExtension<AppColors> {
       coralPattern: coralPattern ?? this.coralPattern,
       violetPattern: violetPattern ?? this.violetPattern,
       inkPattern: inkPattern ?? this.inkPattern,
+      inkPatternAlt: inkPatternAlt ?? this.inkPatternAlt,
       limePattern: limePattern ?? this.limePattern,
     );
   }
@@ -167,6 +176,7 @@ class AppColors extends ThemeExtension<AppColors> {
       coralPattern: Color.lerp(coralPattern, other.coralPattern, t)!,
       violetPattern: Color.lerp(violetPattern, other.violetPattern, t)!,
       inkPattern: Color.lerp(inkPattern, other.inkPattern, t)!,
+      inkPatternAlt: Color.lerp(inkPatternAlt, other.inkPatternAlt, t)!,
       limePattern: Color.lerp(limePattern, other.limePattern, t)!,
     );
   }
