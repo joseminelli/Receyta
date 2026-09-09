@@ -38,10 +38,12 @@ class PillNavBar extends StatelessWidget {
         color: colors.ink,
         borderRadius: BorderRadius.circular(AppRadii.pill),
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xs),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               for (var i = 0; i < items.length; i++)
                 _NavSlot(

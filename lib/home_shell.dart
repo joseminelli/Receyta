@@ -18,9 +18,9 @@ class _HomeShellState extends State<HomeShell> {
   int _tab = 0;
 
   static const _items = [
-    PillNavItem(icon: Icons.restaurant_menu, label: 'Receitas'),
-    PillNavItem(icon: Icons.calendar_month, label: 'Semana'),
-    PillNavItem(icon: Icons.shopping_basket, label: 'Compras'),
+    PillNavItem(icon: Icons.menu_book_rounded, label: 'Receitas'),
+    PillNavItem(icon: Icons.calendar_today_rounded, label: 'Semana'),
+    PillNavItem(icon: Icons.shopping_bag_outlined, label: 'Compras'),
   ];
 
   @override
@@ -29,16 +29,13 @@ class _HomeShellState extends State<HomeShell> {
       extendBody: true,
       body: Stack(
         children: [
-          SafeArea(
-            bottom: false,
-            child: IndexedStack(
-              index: _tab,
-              children: const [
-                RecipesPage(),
-                _ComingSoon('Semana'),
-                _ComingSoon('Compras'),
-              ],
-            ),
+          IndexedStack(
+            index: _tab,
+            children: const [
+              RecipesPage(),
+              _ComingSoon('Semana'),
+              _ComingSoon('Compras'),
+            ],
           ),
           Align(
             alignment: Alignment.bottomCenter,
@@ -63,15 +60,21 @@ class _ComingSoon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.hourglass_empty, size: 40, color: context.colors.textMuted),
-          const SizedBox(height: AppSpacing.sm),
-          Text(section, style: context.texts.displaySmall),
-          Text('Em breve', style: context.texts.bodyMedium),
-        ],
+    return SafeArea(
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.hourglass_empty,
+              size: 40,
+              color: context.colors.textMuted,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(section, style: context.texts.displaySmall),
+            Text('Em breve', style: context.texts.bodyMedium),
+          ],
+        ),
       ),
     );
   }

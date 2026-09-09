@@ -1,42 +1,71 @@
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/widgets/tile_pattern.dart';
 
-/// Dados falsos só para o B2 (lista, layout). **O B3 apaga este arquivo** e
-/// liga a tela no `recipeRepositoryProvider`. Algumas receitas não têm tempo
-/// para exercitar o card sem número.
-final List<Recipe> kSampleRecipes = () {
+/// Dados falsos só para o B2 (layout da home). **O B3 apaga este arquivo** e
+/// liga a tela no `recipeRepositoryProvider`.
+
+const int kSampleRecipeCount = 84;
+
+const List<String> kSampleFilters = [
+  'Todas',
+  'Massas',
+  'Frango',
+  'Doces',
+  'Rápidas',
+];
+
+class SampleFolder {
+  const SampleFolder(this.name, this.count, {this.motif});
+  final String name;
+  final int count;
+
+  /// Nulo = tile neutro "ver todas as pastas".
+  final TileMotif? motif;
+}
+
+const List<SampleFolder> kSampleFolders = [
+  SampleFolder('Semana', 12, motif: TileMotif.meiaLua),
+  SampleFolder('Da vó', 7, motif: TileMotif.arco),
+  SampleFolder('Pastas', 9),
+];
+
+Recipe _make(
+  String id,
+  String name, {
+  int? prep,
+  int? cook,
+  int? servings,
+  bool favorite = false,
+}) {
   final t = DateTime.utc(2026, 1, 1);
-  Recipe make(
-    String id,
-    String name, {
-    int? prep,
-    int? cook,
-    int? servings,
-  }) {
-    return Recipe(
-      id: id,
-      name: name,
-      createdAt: t,
-      updatedAt: t,
-      prepMinutes: prep,
-      cookMinutes: cook,
-      servings: servings,
-    );
-  }
+  return Recipe(
+    id: id,
+    name: name,
+    createdAt: t,
+    updatedAt: t,
+    prepMinutes: prep,
+    cookMinutes: cook,
+    servings: servings,
+    isFavorite: favorite,
+  );
+}
 
-  return [
-    make('sample-1', 'Estrogonofe de frango', prep: 15, cook: 20, servings: 4),
-    make('sample-2', 'Bolo de fubá cremoso', prep: 10, cook: 45, servings: 12),
-    make('sample-3', 'Lasanha à bolonhesa', prep: 30, cook: 40, servings: 8),
-    make('sample-4', 'Panqueca de banana', prep: 5, cook: 10, servings: 2),
-    make('sample-5', 'Feijoada completa', prep: 40, cook: 120, servings: 10),
-    make('sample-6', 'Salada Caesar'),
-    make('sample-7', 'Risoto de cogumelos', prep: 10, cook: 30, servings: 4),
-    make('sample-8', 'Pão de queijo', prep: 15, cook: 25, servings: 20),
-    make('sample-9', 'Moqueca de peixe', prep: 25, cook: 25, servings: 6),
-    make('sample-10', 'Torta de limão', prep: 20, cook: 15, servings: 8),
-    make('sample-11', 'Sopa de legumes', prep: 15, cook: 30, servings: 4),
-    make('sample-12', 'Farofa de ovo'),
-    make('sample-13', 'Frango ao curry', prep: 15, cook: 25, servings: 4),
-    make('sample-14', 'Brigadeiro de panela', prep: 5, cook: 15),
-  ];
-}();
+final Recipe kSampleFeatured = _make(
+  'sample-featured',
+  'Frango ao curry',
+  prep: 15,
+  cook: 25,
+  servings: 4,
+  favorite: true,
+);
+
+final List<Recipe> kSampleRecents = [
+  _make('sample-1', 'Risoto de limão', prep: 10, cook: 25, servings: 4),
+  _make('sample-2', 'Sopa de abóbora', prep: 15, cook: 35, servings: 6),
+  _make('sample-3', 'Estrogonofe de frango', prep: 15, cook: 20, servings: 4),
+  _make('sample-4', 'Bolo de fubá cremoso', prep: 10, cook: 45, servings: 12),
+  _make('sample-5', 'Lasanha à bolonhesa', prep: 30, cook: 40, servings: 8),
+  _make('sample-6', 'Panqueca de banana', prep: 5, cook: 10),
+  _make('sample-7', 'Moqueca de peixe', prep: 25, cook: 25, servings: 6),
+  _make('sample-8', 'Farofa de ovo'),
+];
