@@ -26,10 +26,7 @@ class RecipesPage extends ConsumerWidget {
       loading: () => _Scaffold(
         count: null,
         onCreate: () => _createRecipe(context, ref),
-        body: const SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        body: const SliverToBoxAdapter(child: SizedBox.shrink()),
       ),
       error: (_, __) => _Scaffold(
         count: null,

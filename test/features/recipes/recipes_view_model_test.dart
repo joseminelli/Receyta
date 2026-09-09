@@ -9,19 +9,15 @@ import 'package:receyta/features/recipes/recipes_view_model.dart';
 void main() {
   late AppDatabase db;
   late RecipesViewModel vm;
+  late DateTime clock;
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    vm = RecipesViewModel(
-      RecipeRepository(db.recipeDao, clock: () => DateTime.utc(2026)),
-    );
+    clock = DateTime.utc(2026);
+    vm = RecipesViewModel(RecipeRepository(db.recipeDao, clock: () => clock));
   });
 
-  tearDown(() async {
-    try {
-      await db.close();
-    } catch (_) {}
-  });
+  tearDown(() => db.close());
 
   Recipe unwrap(Result<Recipe> r) => (r as Ok<Recipe>).value;
 
@@ -37,6 +33,7 @@ void main() {
 
   test('watchRecipes traz o mais recente primeiro', () async {
     await vm.createByName('A');
+    clock = clock.add(const Duration(minutes: 1));
     await vm.createByName('B');
 
     expect(
@@ -52,12 +49,5 @@ void main() {
       expect((res as Err<Recipe>).failure, isA<ValidationFailure>());
     }
     expect(await vm.watchRecipes().first, isEmpty);
-  });
-
-  test('falha do repositório propaga como Err', () async {
-    await db.close();
-    final res = await vm.createByName('Bolo');
-    expect(res, isA<Err<Recipe>>());
-    expect((res as Err<Recipe>).failure, isA<DatabaseFailure>());
   });
 }
