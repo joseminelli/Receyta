@@ -2293,9 +2293,9 @@ class $RecipeIngredientsTable extends RecipeIngredients
       const VerificationMeta('ingredientId');
   @override
   late final GeneratedColumn<String> ingredientId = GeneratedColumn<String>(
-      'ingredient_id', aliasedName, false,
+      'ingredient_id', aliasedName, true,
       type: DriftSqlType.string,
-      requiredDuringInsert: true,
+      requiredDuringInsert: false,
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'REFERENCES ingredients (id) ON DELETE RESTRICT'));
   static const VerificationMeta _quantityMeta =
@@ -2377,8 +2377,6 @@ class $RecipeIngredientsTable extends RecipeIngredients
           _ingredientIdMeta,
           ingredientId.isAcceptableOrUnknown(
               data['ingredient_id']!, _ingredientIdMeta));
-    } else if (isInserting) {
-      context.missing(_ingredientIdMeta);
     }
     if (data.containsKey('quantity')) {
       context.handle(_quantityMeta,
@@ -2422,7 +2420,7 @@ class $RecipeIngredientsTable extends RecipeIngredients
       recipeId: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}recipe_id'])!,
       ingredientId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}ingredient_id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}ingredient_id']),
       quantity: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}quantity']),
       unitId: attachedDatabase.typeMapping
@@ -2448,7 +2446,7 @@ class RecipeIngredientRow extends DataClass
     implements Insertable<RecipeIngredientRow> {
   final String id;
   final String recipeId;
-  final String ingredientId;
+  final String? ingredientId;
   final double? quantity;
   final String? unitId;
   final String? qualifier;
@@ -2458,7 +2456,7 @@ class RecipeIngredientRow extends DataClass
   const RecipeIngredientRow(
       {required this.id,
       required this.recipeId,
-      required this.ingredientId,
+      this.ingredientId,
       this.quantity,
       this.unitId,
       this.qualifier,
@@ -2470,7 +2468,9 @@ class RecipeIngredientRow extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['recipe_id'] = Variable<String>(recipeId);
-    map['ingredient_id'] = Variable<String>(ingredientId);
+    if (!nullToAbsent || ingredientId != null) {
+      map['ingredient_id'] = Variable<String>(ingredientId);
+    }
     if (!nullToAbsent || quantity != null) {
       map['quantity'] = Variable<double>(quantity);
     }
@@ -2492,7 +2492,9 @@ class RecipeIngredientRow extends DataClass
     return RecipeIngredientsCompanion(
       id: Value(id),
       recipeId: Value(recipeId),
-      ingredientId: Value(ingredientId),
+      ingredientId: ingredientId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ingredientId),
       quantity: quantity == null && nullToAbsent
           ? const Value.absent()
           : Value(quantity),
@@ -2515,7 +2517,7 @@ class RecipeIngredientRow extends DataClass
     return RecipeIngredientRow(
       id: serializer.fromJson<String>(json['id']),
       recipeId: serializer.fromJson<String>(json['recipeId']),
-      ingredientId: serializer.fromJson<String>(json['ingredientId']),
+      ingredientId: serializer.fromJson<String?>(json['ingredientId']),
       quantity: serializer.fromJson<double?>(json['quantity']),
       unitId: serializer.fromJson<String?>(json['unitId']),
       qualifier: serializer.fromJson<String?>(json['qualifier']),
@@ -2530,7 +2532,7 @@ class RecipeIngredientRow extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'recipeId': serializer.toJson<String>(recipeId),
-      'ingredientId': serializer.toJson<String>(ingredientId),
+      'ingredientId': serializer.toJson<String?>(ingredientId),
       'quantity': serializer.toJson<double?>(quantity),
       'unitId': serializer.toJson<String?>(unitId),
       'qualifier': serializer.toJson<String?>(qualifier),
@@ -2543,7 +2545,7 @@ class RecipeIngredientRow extends DataClass
   RecipeIngredientRow copyWith(
           {String? id,
           String? recipeId,
-          String? ingredientId,
+          Value<String?> ingredientId = const Value.absent(),
           Value<double?> quantity = const Value.absent(),
           Value<String?> unitId = const Value.absent(),
           Value<String?> qualifier = const Value.absent(),
@@ -2553,7 +2555,8 @@ class RecipeIngredientRow extends DataClass
       RecipeIngredientRow(
         id: id ?? this.id,
         recipeId: recipeId ?? this.recipeId,
-        ingredientId: ingredientId ?? this.ingredientId,
+        ingredientId:
+            ingredientId.present ? ingredientId.value : this.ingredientId,
         quantity: quantity.present ? quantity.value : this.quantity,
         unitId: unitId.present ? unitId.value : this.unitId,
         qualifier: qualifier.present ? qualifier.value : this.qualifier,
@@ -2615,7 +2618,7 @@ class RecipeIngredientRow extends DataClass
 class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredientRow> {
   final Value<String> id;
   final Value<String> recipeId;
-  final Value<String> ingredientId;
+  final Value<String?> ingredientId;
   final Value<double?> quantity;
   final Value<String?> unitId;
   final Value<String?> qualifier;
@@ -2638,7 +2641,7 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredientRow> {
   RecipeIngredientsCompanion.insert({
     required String id,
     required String recipeId,
-    required String ingredientId,
+    this.ingredientId = const Value.absent(),
     this.quantity = const Value.absent(),
     this.unitId = const Value.absent(),
     this.qualifier = const Value.absent(),
@@ -2648,7 +2651,6 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredientRow> {
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         recipeId = Value(recipeId),
-        ingredientId = Value(ingredientId),
         rawText = Value(rawText);
   static Insertable<RecipeIngredientRow> custom({
     Expression<String>? id,
@@ -2679,7 +2681,7 @@ class RecipeIngredientsCompanion extends UpdateCompanion<RecipeIngredientRow> {
   RecipeIngredientsCompanion copyWith(
       {Value<String>? id,
       Value<String>? recipeId,
-      Value<String>? ingredientId,
+      Value<String?>? ingredientId,
       Value<double?>? quantity,
       Value<String?>? unitId,
       Value<String?>? qualifier,
@@ -6549,7 +6551,7 @@ typedef $$RecipeIngredientsTableCreateCompanionBuilder
     = RecipeIngredientsCompanion Function({
   required String id,
   required String recipeId,
-  required String ingredientId,
+  Value<String?> ingredientId,
   Value<double?> quantity,
   Value<String?> unitId,
   Value<String?> qualifier,
@@ -6562,7 +6564,7 @@ typedef $$RecipeIngredientsTableUpdateCompanionBuilder
     = RecipeIngredientsCompanion Function({
   Value<String> id,
   Value<String> recipeId,
-  Value<String> ingredientId,
+  Value<String?> ingredientId,
   Value<double?> quantity,
   Value<String?> unitId,
   Value<String?> qualifier,
@@ -6592,7 +6594,7 @@ class $$RecipeIngredientsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> recipeId = const Value.absent(),
-            Value<String> ingredientId = const Value.absent(),
+            Value<String?> ingredientId = const Value.absent(),
             Value<double?> quantity = const Value.absent(),
             Value<String?> unitId = const Value.absent(),
             Value<String?> qualifier = const Value.absent(),
@@ -6616,7 +6618,7 @@ class $$RecipeIngredientsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String recipeId,
-            required String ingredientId,
+            Value<String?> ingredientId = const Value.absent(),
             Value<double?> quantity = const Value.absent(),
             Value<String?> unitId = const Value.absent(),
             Value<String?> qualifier = const Value.absent(),

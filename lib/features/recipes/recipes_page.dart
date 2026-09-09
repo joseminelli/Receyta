@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
@@ -12,25 +13,26 @@ import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 
-/// Home da seção Receitas (§9.2). B3 liga a lista no `recipeRepositoryProvider`
-/// e cria receita só com nome. Pastas (B10) e filtros (B9/B10) voltam com dados
-/// reais nos seus blocos.
+/// Home da seção Receitas (§9.2): lista lida do Drift, `+` abre o formulário,
+/// tocar num card abre o detalhe. Pastas (B10) e filtros (B9/B10) voltam com
+/// dados reais nos seus blocos.
 class RecipesPage extends ConsumerWidget {
   const RecipesPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recipes = ref.watch(recipesStreamProvider);
+    void openNew() => context.push('/recipe/new');
 
     return recipes.when(
       loading: () => _Scaffold(
         count: null,
-        onCreate: () => _createRecipe(context, ref),
+        onCreate: openNew,
         body: const SliverToBoxAdapter(child: SizedBox.shrink()),
       ),
       error: (_, __) => _Scaffold(
         count: null,
-        onCreate: () => _createRecipe(context, ref),
+        onCreate: openNew,
         body: SliverFillRemaining(
           hasScrollBody: false,
           child: Center(
@@ -43,30 +45,13 @@ class RecipesPage extends ConsumerWidget {
       ),
       data: (list) => _Scaffold(
         count: list.length,
-        onCreate: () => _createRecipe(context, ref),
+        onCreate: openNew,
         body: list.isEmpty
             ? SliverFillRemaining(
                 hasScrollBody: false,
-                child: _EmptyState(onCreate: () => _createRecipe(context, ref)),
+                child: _EmptyState(onCreate: openNew),
               )
             : _RecipeList(recipes: list),
-      ),
-    );
-  }
-
-  Future<void> _createRecipe(BuildContext context, WidgetRef ref) async {
-    final name = await showDialog<String>(
-      context: context,
-      builder: (_) => const _NewRecipeDialog(),
-    );
-    if (name == null) return;
-
-    final result = await ref.read(recipesViewModelProvider).createByName(name);
-    if (!context.mounted) return;
-    result.when(
-      ok: (_) {},
-      err: (f) => ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(f.message)),
       ),
     );
   }
@@ -103,6 +88,7 @@ class _RecipeList extends StatelessWidget {
   Widget build(BuildContext context) {
     final featured = recipes.first;
     final rest = recipes.skip(1).toList();
+    void open(String id) => context.push('/recipe/$id');
 
     return SliverMainAxisGroup(
       slivers: [
@@ -125,7 +111,10 @@ class _RecipeList extends StatelessWidget {
             AppSpacing.md,
           ),
           sliver: SliverToBoxAdapter(
-            child: FeaturedRecipeCard(recipe: featured, onTap: () {}),
+            child: FeaturedRecipeCard(
+              recipe: featured,
+              onTap: () => open(featured.id),
+            ),
           ),
         ),
         SliverPadding(
@@ -143,7 +132,10 @@ class _RecipeList extends StatelessWidget {
               childAspectRatio: 0.78,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, i) => RecipeCard(recipe: rest[i], onTap: () {}),
+              (context, i) => RecipeCard(
+                recipe: rest[i],
+                onTap: () => open(rest[i].id),
+              ),
               childCount: rest.length,
             ),
           ),
@@ -309,73 +301,6 @@ class _EmptyState extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Diálogo mínimo do B3: só o nome. O formulário completo é o B4.
-class _NewRecipeDialog extends StatefulWidget {
-  const _NewRecipeDialog();
-
-  @override
-  State<_NewRecipeDialog> createState() => _NewRecipeDialogState();
-}
-
-class _NewRecipeDialogState extends State<_NewRecipeDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  bool get _valid => _controller.text.trim().isNotEmpty;
-
-  void _submit() {
-    if (!_valid) return;
-    Navigator.of(context).pop(_controller.text);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: context.colors.paper,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      title: Text('Nova receita', style: context.texts.displaySmall),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.sentences,
-        textInputAction: TextInputAction.done,
-        onSubmitted: (_) => _submit(),
-        decoration: const InputDecoration(hintText: 'Nome da receita'),
-      ),
-      actionsPadding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        0,
-        AppSpacing.md,
-        AppSpacing.md,
-      ),
-      actions: [
-        PillButton(
-          label: 'Cancelar',
-          variant: PillButtonVariant.ghost,
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        PillButton(
-          label: 'Criar',
-          onPressed: _valid ? _submit : null,
-        ),
-      ],
     );
   }
 }

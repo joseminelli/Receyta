@@ -1,0 +1,143 @@
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:receyta/core/result.dart';
+import 'package:receyta/data/database/app_database.dart';
+import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/features/recipes/recipe_form_page.dart';
+import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/widgets/pill_button.dart';
+
+void main() {
+  late AppDatabase db;
+  late RecipeRepository repo;
+
+  setUp(() {
+    db = AppDatabase.forTesting(NativeDatabase.memory());
+    repo = RecipeRepository(db.recipeDao, clock: () => DateTime.utc(2026));
+  });
+  tearDown(() => db.close());
+
+  Widget host(String initialLocation) {
+    final router = GoRouter(
+      initialLocation: initialLocation,
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (context, _) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => context.push('/new'),
+                child: const Text('início'),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(path: '/new', builder: (_, __) => const RecipeFormPage()),
+        GoRoute(
+          path: '/recipe/:id/edit',
+          builder: (_, s) => RecipeFormPage(recipeId: s.pathParameters['id']),
+        ),
+      ],
+    );
+    return ProviderScope(
+      overrides: [recipeRepositoryProvider.overrideWithValue(repo)],
+      child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+    );
+  }
+
+  Finder fieldByLabel(String label) => find.descendant(
+        of: find
+            .ancestor(
+              of: find.text(label.toUpperCase()),
+              matching: find.byType(Column),
+            )
+            .first,
+        matching: find.byType(TextField),
+      );
+
+  Finder hintField(String hint) => find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.hintText == hint,
+      );
+
+  PillButton salvar(WidgetTester tester) =>
+      tester.widget<PillButton>(find.widgetWithText(PillButton, 'Salvar'));
+
+  testWidgets('cria: nome, campo e ingrediente; salva e volta; tudo persiste',
+      (tester) async {
+    await tester.pumpWidget(host('/new'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(fieldByLabel('Nome'), 'Bolo de fubá');
+    await tester.enterText(fieldByLabel('Sobre'), 'de domingo');
+
+    await tester.scrollUntilVisible(
+      find.text('Adicionar ingrediente'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Adicionar ingrediente'));
+    await tester.pumpAndSettle();
+    await tester.enterText(hintField('ex.: 2 xícaras de farinha'), '2 xíc fubá');
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Salvar'),
+      -200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('início'), findsOneWidget);
+
+    final detail = await tester.runAsync(() async {
+      final list = await repo.watchAll().first;
+      return ((await repo.getDetail(list.single.id)) as Ok<RecipeDetail>).value;
+    });
+    expect(detail!.recipe.name, 'Bolo de fubá');
+    expect(detail.recipe.about, 'de domingo');
+    expect(detail.ingredients.single.rawText, '2 xíc fubá');
+  });
+
+  testWidgets('Salvar fica desabilitado sem nome', (tester) async {
+    await tester.pumpWidget(host('/new'));
+    await tester.pumpAndSettle();
+
+    expect(salvar(tester).onPressed, isNull);
+    await tester.enterText(fieldByLabel('Nome'), 'Pão');
+    await tester.pumpAndSettle();
+    expect(salvar(tester).onPressed, isNotNull);
+  });
+
+  testWidgets('edita: abre preenchido e grava por cima', (tester) async {
+    final created = await repo.saveDetail(
+      name: 'Sopa',
+      prepMinutes: 5,
+      about: 'antiga',
+      ingredientLines: ['água', 'sal'],
+    ) as Ok<Recipe>;
+
+    await tester.pumpWidget(host('/recipe/${created.value.id}/edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar receita'), findsOneWidget);
+    expect(find.text('Sopa'), findsOneWidget);
+    expect(find.text('antiga'), findsOneWidget);
+    expect(find.text('água'), findsOneWidget);
+
+    await tester.enterText(fieldByLabel('Nome'), 'Caldo verde');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    final saved = await tester.runAsync(() => repo.watchAll().first);
+    expect(saved!.single.name, 'Caldo verde');
+    expect(saved.single.id, created.value.id);
+    expect(saved.single.prepMinutes, 5);
+  });
+}

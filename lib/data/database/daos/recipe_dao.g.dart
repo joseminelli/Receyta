@@ -6,4 +6,10 @@ part of 'recipe_dao.dart';
 mixin _$RecipeDaoMixin on DatabaseAccessor<AppDatabase> {
   $FoldersTable get folders => attachedDatabase.folders;
   $RecipesTable get recipes => attachedDatabase.recipes;
+  $CategoriesTable get categories => attachedDatabase.categories;
+  $IngredientsTable get ingredients => attachedDatabase.ingredients;
+  $UnitsTable get units => attachedDatabase.units;
+  $RecipeIngredientsTable get recipeIngredients =>
+      attachedDatabase.recipeIngredients;
+  $RecipeStepsTable get recipeSteps => attachedDatabase.recipeSteps;
 }

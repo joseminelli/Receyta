@@ -5,6 +5,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/domain/models/recipe_detail.dart';
 
 void main() {
   late AppDatabase db;
@@ -20,58 +21,88 @@ void main() {
   tearDown(() => db.close());
 
   Recipe unwrap(Result<Recipe> r) => (r as Ok<Recipe>).value;
+  RecipeDetail unwrapDetail(Result<RecipeDetail> r) =>
+      (r as Ok<RecipeDetail>).value;
 
-  test('create persiste, gera uuid v4 e timestamps do clock', () async {
-    final recipe = unwrap(await repo.create(name: '  Bolo de fubá  '));
+  test('saveDetail cria: uuid v4, timestamps do clock, listas na ordem',
+      () async {
+    final recipe = unwrap(await repo.saveDetail(
+      name: '  Bolo de fubá  ',
+      about: 'cremoso',
+      prepMinutes: 10,
+      ingredientLines: ['2 xícaras de fubá', '3 ovos'],
+      stepLines: ['Misture tudo', 'Asse 40 min'],
+    ));
 
-    expect(recipe.name, 'Bolo de fubá');
+    expect(recipe.name, '  Bolo de fubá  ');
     expect(recipe.id, matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-')));
     expect(recipe.createdAt, clock);
-    expect(recipe.updatedAt, clock);
-    expect(recipe.isFavorite, isFalse);
 
-    expect(unwrap(await repo.getById(recipe.id)).name, 'Bolo de fubá');
+    final detail = unwrapDetail(await repo.getDetail(recipe.id));
+    expect(detail.ingredients.map((i) => i.rawText), ['2 xícaras de fubá', '3 ovos']);
+    expect(detail.ingredients.map((i) => i.position), [0, 1]);
+    expect(detail.ingredients.every((i) => i.ingredientId == null), isTrue);
+    expect(detail.steps.map((s) => s.text), ['Misture tudo', 'Asse 40 min']);
   });
 
-  test('getById devolve NotFoundFailure quando não existe', () async {
-    final res = await repo.getById('nope');
-    expect(res, isA<Err<Recipe>>());
-    expect((res as Err<Recipe>).failure, isA<NotFoundFailure>());
+  test('saveDetail edita: mantém id/createdAt, substitui as listas', () async {
+    final created = unwrap(await repo.saveDetail(
+      name: 'Sopa',
+      ingredientLines: ['água', 'sal', 'cenoura'],
+      stepLines: ['Ferva'],
+    ));
+    clock = clock.add(const Duration(hours: 2));
+
+    final edited = unwrap(await repo.saveDetail(
+      base: created,
+      name: 'Caldo verde',
+      ingredientLines: ['batata', 'couve'],
+      stepLines: ['Cozinhe a batata', 'Junte a couve'],
+    ));
+
+    expect(edited.id, created.id);
+    expect(edited.createdAt, created.createdAt);
+    expect(edited.updatedAt, clock);
+
+    final detail = unwrapDetail(await repo.getDetail(created.id));
+    expect(detail.recipe.name, 'Caldo verde');
+    expect(detail.ingredients.map((i) => i.rawText), ['batata', 'couve']);
+    expect(detail.steps.map((s) => s.text),
+        ['Cozinhe a batata', 'Junte a couve']);
+  });
+
+  test('watchDetail reemite quando a receita é salva de novo', () async {
+    final created = unwrap(await repo.saveDetail(name: 'A', ingredientLines: ['x']));
+
+    final stream = repo.watchDetail(created.id);
+    expect((await stream.first)!.ingredients.map((i) => i.rawText), ['x']);
+
+    await repo.saveDetail(base: created, name: 'A', ingredientLines: ['x', 'y']);
+    expect(
+      (await stream.first)!.ingredients.map((i) => i.rawText),
+      ['x', 'y'],
+    );
+  });
+
+  test('getDetail devolve NotFoundFailure quando não existe', () async {
+    final res = await repo.getDetail('nope');
+    expect((res as Err<RecipeDetail>).failure, isA<NotFoundFailure>());
   });
 
   test('watchAll: mais recente primeiro, exclui soft-deleted', () async {
-    final a = unwrap(await repo.create(name: 'A'));
+    final a = unwrap(await repo.saveDetail(name: 'A'));
     clock = clock.add(const Duration(minutes: 1));
-    final b = unwrap(await repo.create(name: 'B'));
+    final b = unwrap(await repo.saveDetail(name: 'B'));
 
-    expect(
-      (await repo.watchAll().first).map((r) => r.id),
-      [b.id, a.id],
-    );
+    expect((await repo.watchAll().first).map((r) => r.id), [b.id, a.id]);
 
     clock = clock.add(const Duration(minutes: 1));
     await repo.softDelete(a.id);
-
     expect((await repo.watchAll().first).map((r) => r.name), ['B']);
   });
 
-  test('update salva e sobe updatedAt sem mexer no createdAt', () async {
-    final r = unwrap(await repo.create(name: 'Sopa'));
-    clock = clock.add(const Duration(hours: 2));
-
-    final saved = unwrap(
-      await repo.update(r.copyWith(name: 'Caldo verde', servings: 4)),
-    );
-
-    expect(saved.name, 'Caldo verde');
-    expect(saved.servings, 4);
-    expect(saved.updatedAt, clock);
-    expect(saved.createdAt, r.createdAt);
-    expect(unwrap(await repo.getById(r.id)).name, 'Caldo verde');
-  });
-
   test('softDelete: some das consultas, linha continua no banco', () async {
-    final r = unwrap(await repo.create(name: 'Rascunho'));
+    final r = unwrap(await repo.saveDetail(name: 'Rascunho'));
     await repo.softDelete(r.id);
 
     expect(await repo.getById(r.id), isA<Err<Recipe>>());
@@ -84,18 +115,15 @@ void main() {
     expect(raw.read<DateTime?>('deleted_at'), isNotNull);
   });
 
-  test('round-trip: todo campo-núcleo sobrevive', () async {
-    final created = unwrap(await repo.create(
-      name: 'Frango ao curry',
-      about: 'rápido',
-      prepMinutes: 15,
-      cookMinutes: 25,
-      servings: 4,
-      sourceUrl: 'https://exemplo/curry',
-      notes: 'melhor no dia seguinte',
-      isFavorite: true,
+  test('saveDetail grava os ingredientes vinculados à receita', () async {
+    final r = unwrap(await repo.saveDetail(
+      name: 'X',
+      ingredientLines: ['a', 'b'],
     ));
-
-    expect(unwrap(await repo.getById(created.id)), created);
+    final count = await db
+        .customSelect('SELECT COUNT(*) c FROM recipe_ingredients WHERE recipe_id = ?',
+            variables: [Variable<String>(r.id)])
+        .getSingle();
+    expect(count.read<int>('c'), 2);
   });
 }

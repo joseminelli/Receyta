@@ -96,14 +96,16 @@ class Units extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// `rawText` é a fonte de verdade se o parsing falhar (§8.1).
+/// `rawText` é a fonte de verdade se o parsing falhar (§8.1). `ingredientId`
+/// nasce nulo no bloco B (texto livre) e é preenchido pela normalização (C5).
 @DataClassName('RecipeIngredientRow')
 class RecipeIngredients extends Table {
   TextColumn get id => text()();
   TextColumn get recipeId =>
       text().references(Recipes, #id, onDelete: KeyAction.cascade)();
-  TextColumn get ingredientId =>
-      text().references(Ingredients, #id, onDelete: KeyAction.restrict)();
+  TextColumn get ingredientId => text()
+      .nullable()
+      .references(Ingredients, #id, onDelete: KeyAction.restrict)();
   RealColumn get quantity => real().nullable()();
   TextColumn get unitId =>
       text().nullable().references(Units, #id, onDelete: KeyAction.setNull)();

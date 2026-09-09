@@ -70,7 +70,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -78,8 +78,8 @@ class AppDatabase extends _$AppDatabase {
   DriftDatabaseOptions get options =>
       const DriftDatabaseOptions(storeDateTimeAsText: true);
 
-  /// `onUpgrade` vazio: v1 é o baseline. Os passos versionados entram quando o
-  /// bloco C subir o schema (harness em `test/data/database/schema_test.dart`).
+  /// v2: `recipe_ingredients.ingredient_id` passa a aceitar nulo — o bloco B
+  /// grava só `raw_text`; a normalização (C5) preenche o vínculo depois.
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -92,7 +92,19 @@ class AppDatabase extends _$AppDatabase {
           }
           await _seed();
         },
-        onUpgrade: (m, from, to) async {},
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.alterTable(TableMigration(recipeIngredients));
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe_id '
+              'ON recipe_ingredients (recipe_id)',
+            );
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient_id '
+              'ON recipe_ingredients (ingredient_id)',
+            );
+          }
+        },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');
         },

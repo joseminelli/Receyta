@@ -36,7 +36,35 @@ abstract class AppTheme {
         centerTitle: false,
         titleTextStyle: AppTextStyles.displayS.copyWith(color: colors.ink),
       ),
+      inputDecorationTheme: _inputTheme(colors),
       textTheme: _textTheme(colors),
+    );
+  }
+
+  /// Campos chapados sobre `paperSoft`, sem borda em repouso (§9.1). O foco
+  /// ganha um anel `ink` fino — indicação de foco é acessibilidade (RNF-05),
+  /// não ornamento.
+  static InputDecorationTheme _inputTheme(AppColors colors) {
+    OutlineInputBorder border(Color color, double width) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+          borderSide: width == 0
+              ? BorderSide.none
+              : BorderSide(color: color, width: width),
+        );
+
+    return InputDecorationTheme(
+      filled: true,
+      fillColor: colors.paperSoft,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
+      hintStyle: AppTextStyles.body.copyWith(color: colors.textMuted),
+      border: border(colors.ink, 0),
+      enabledBorder: border(colors.ink, 0),
+      focusedBorder: border(colors.ink, 1.5),
+      errorBorder: border(colors.danger, 1.5),
+      focusedErrorBorder: border(colors.danger, 1.5),
     );
   }
 
