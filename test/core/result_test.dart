@@ -17,6 +17,12 @@ void main() {
     expect(const Err<int>(NotFoundFailure('n')).isOk, isFalse);
   });
 
+  test('ValidationFailure é uma Failure com mensagem', () {
+    const Result<int> r = Err(ValidationFailure('nome vazio'));
+    expect(r.when(ok: (_) => 'ok', err: (f) => f.message), 'nome vazio');
+    expect((r as Err<int>).failure, isA<ValidationFailure>());
+  });
+
   test('Failure carrega a causa', () {
     final f = DatabaseFailure('falhou', cause: StateError('raiz'));
     expect(f.message, 'falhou');

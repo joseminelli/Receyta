@@ -1,45 +1,114 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:receyta/features/recipes/sample_recipes.dart';
+import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/featured_recipe_card.dart';
-import 'package:receyta/widgets/folder_tile.dart';
-import 'package:receyta/widgets/recipe_card.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/recipe_card.dart';
 
-/// Home da seção Receitas (§9.2). B2 usa dados falsos; o B3 liga no repositório.
-class RecipesPage extends StatefulWidget {
+/// Home da seção Receitas (§9.2). B3 liga a lista no `recipeRepositoryProvider`
+/// e cria receita só com nome. Pastas (B10) e filtros (B9/B10) voltam com dados
+/// reais nos seus blocos.
+class RecipesPage extends ConsumerWidget {
   const RecipesPage({super.key});
 
   @override
-  State<RecipesPage> createState() => _RecipesPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recipes = ref.watch(recipesStreamProvider);
+
+    return recipes.when(
+      loading: () => _Scaffold(
+        count: null,
+        onCreate: () => _createRecipe(context, ref),
+        body: const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (_, __) => _Scaffold(
+        count: null,
+        onCreate: () => _createRecipe(context, ref),
+        body: SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Text(
+              'Não deu para carregar as receitas',
+              style: context.texts.bodyMedium,
+            ),
+          ),
+        ),
+      ),
+      data: (list) => _Scaffold(
+        count: list.length,
+        onCreate: () => _createRecipe(context, ref),
+        body: list.isEmpty
+            ? SliverFillRemaining(
+                hasScrollBody: false,
+                child: _EmptyState(onCreate: () => _createRecipe(context, ref)),
+              )
+            : _RecipeList(recipes: list),
+      ),
+    );
+  }
+
+  Future<void> _createRecipe(BuildContext context, WidgetRef ref) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => const _NewRecipeDialog(),
+    );
+    if (name == null) return;
+
+    final result = await ref.read(recipesViewModelProvider).createByName(name);
+    if (!context.mounted) return;
+    result.when(
+      ok: (_) {},
+      err: (f) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(f.message)),
+      ),
+    );
+  }
 }
 
-class _RecipesPageState extends State<RecipesPage> {
-  int _filter = 0;
+class _Scaffold extends StatelessWidget {
+  const _Scaffold({
+    required this.count,
+    required this.onCreate,
+    required this.body,
+  });
+
+  final int? count;
+  final VoidCallback onCreate;
+  final Widget body;
 
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
       slivers: [
-        SliverToBoxAdapter(
-          child: _Header(
-            activeFilter: _filter,
-            onFilter: (i) => setState(() => _filter = i),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            AppSpacing.md,
-            AppSpacing.screen,
-            0,
-          ),
-          sliver: const SliverToBoxAdapter(child: _FoldersRow()),
-        ),
+        SliverToBoxAdapter(child: _Header(count: count, onCreate: onCreate)),
+        body,
+      ],
+    );
+  }
+}
+
+class _RecipeList extends StatelessWidget {
+  const _RecipeList({required this.recipes});
+
+  final List<Recipe> recipes;
+
+  @override
+  Widget build(BuildContext context) {
+    final featured = recipes.first;
+    final rest = recipes.skip(1).toList();
+
+    return SliverMainAxisGroup(
+      slivers: [
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screen,
@@ -47,11 +116,8 @@ class _RecipesPageState extends State<RecipesPage> {
             AppSpacing.screen,
             AppSpacing.md,
           ),
-          sliver: SliverToBoxAdapter(
-            child: SectionHeader(
-              title: 'Recentes',
-              action: _SeeAll(onTap: () {}),
-            ),
+          sliver: const SliverToBoxAdapter(
+            child: SectionHeader(title: 'Recentes'),
           ),
         ),
         SliverPadding(
@@ -62,7 +128,7 @@ class _RecipesPageState extends State<RecipesPage> {
             AppSpacing.md,
           ),
           sliver: SliverToBoxAdapter(
-            child: FeaturedRecipeCard(recipe: kSampleFeatured, onTap: () {}),
+            child: FeaturedRecipeCard(recipe: featured, onTap: () {}),
           ),
         ),
         SliverPadding(
@@ -80,11 +146,8 @@ class _RecipesPageState extends State<RecipesPage> {
               childAspectRatio: 0.78,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, i) => RecipeCard(
-                recipe: kSampleRecents[i],
-                onTap: () {},
-              ),
-              childCount: kSampleRecents.length,
+              (context, i) => RecipeCard(recipe: rest[i], onTap: () {}),
+              childCount: rest.length,
             ),
           ),
         ),
@@ -94,10 +157,10 @@ class _RecipesPageState extends State<RecipesPage> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.activeFilter, required this.onFilter});
+  const _Header({required this.count, required this.onCreate});
 
-  final int activeFilter;
-  final ValueChanged<int> onFilter;
+  final int? count;
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
@@ -140,20 +203,17 @@ class _Header extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '$kSampleRecipeCount RECEITAS',
+                            count == null
+                                ? ''
+                                : '$count ${count == 1 ? 'RECEITA' : 'RECEITAS'}',
                             style: context.texts.labelSmall
                                 ?.copyWith(color: colors.lime),
                           ),
                         ),
                         _CircleButton(
-                          icon: Icons.search,
-                          onTap: () {},
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        _CircleButton(
                           icon: Icons.add,
                           filled: true,
-                          onTap: () {},
+                          onTap: onCreate,
                         ),
                       ],
                     ),
@@ -176,8 +236,6 @@ class _Header extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    _FilterChips(active: activeFilter, onTap: onFilter),
                   ],
                 ),
               ),
@@ -222,110 +280,105 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-class _FilterChips extends StatelessWidget {
-  const _FilterChips({required this.active, required this.onTap});
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.onCreate});
 
-  final int active;
-  final ValueChanged<int> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.zero,
-        itemCount: kSampleFilters.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.xs),
-        itemBuilder: (context, i) {
-          final selected = i == active;
-          return Semantics(
-            button: true,
-            selected: selected,
-            label: kSampleFilters[i],
-            child: Material(
-              color: selected ? colors.lime : colors.inkSoft,
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-              child: InkWell(
-                onTap: () => onTap(i),
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
-                  child: Center(
-                    child: Text(
-                      kSampleFilters[i],
-                      style: context.texts.labelLarge?.copyWith(
-                        color: selected
-                            ? colors.ink
-                            : colors.onSaturated.withValues(alpha: 0.65),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _FoldersRow extends StatelessWidget {
-  const _FoldersRow();
+  final VoidCallback onCreate;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < kSampleFolders.length; i++) ...[
-          if (i > 0) const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: FolderTile(
-              label: kSampleFolders[i].name,
-              count: kSampleFolders[i].count,
-              motif: kSampleFolders[i].motif,
-              onTap: () {},
-            ),
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'Nenhuma receita ainda',
+            style: context.texts.displaySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Comece pelo nome — o resto entra depois.',
+            style: context.texts.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          PillButton(
+            label: 'Nova receita',
+            icon: Icons.add,
+            onPressed: onCreate,
           ),
         ],
-      ],
+      ),
     );
   }
 }
 
-class _SeeAll extends StatelessWidget {
-  const _SeeAll({required this.onTap});
+/// Diálogo mínimo do B3: só o nome. O formulário completo é o B4.
+class _NewRecipeDialog extends StatefulWidget {
+  const _NewRecipeDialog();
 
-  final VoidCallback onTap;
+  @override
+  State<_NewRecipeDialog> createState() => _NewRecipeDialogState();
+}
+
+class _NewRecipeDialogState extends State<_NewRecipeDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get _valid => _controller.text.trim().isNotEmpty;
+
+  void _submit() {
+    if (!_valid) return;
+    Navigator.of(context).pop(_controller.text);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xs,
-          vertical: AppSpacing.xs,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Ver todas',
-              style: context.texts.labelLarge?.copyWith(color: colors.textMuted),
-            ),
-            const SizedBox(width: AppSpacing.xs / 2),
-            Icon(Icons.arrow_forward, size: 16, color: colors.textMuted),
-          ],
-        ),
+    return AlertDialog(
+      backgroundColor: context.colors.paper,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
+      title: Text('Nova receita', style: context.texts.displaySmall),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        textInputAction: TextInputAction.done,
+        onSubmitted: (_) => _submit(),
+        decoration: const InputDecoration(hintText: 'Nome da receita'),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        0,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
+      actions: [
+        PillButton(
+          label: 'Cancelar',
+          variant: PillButtonVariant.ghost,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        PillButton(
+          label: 'Criar',
+          onPressed: _valid ? _submit : null,
+        ),
+      ],
     );
   }
 }

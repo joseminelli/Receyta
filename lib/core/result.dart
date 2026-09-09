@@ -50,3 +50,8 @@ final class DatabaseFailure extends Failure {
 final class NotFoundFailure extends Failure {
   const NotFoundFailure(super.message);
 }
+
+/// Entrada do usuário rejeitada antes de tocar no repositório (nome vazio, etc).
+final class ValidationFailure extends Failure {
+  const ValidationFailure(super.message);
+}
