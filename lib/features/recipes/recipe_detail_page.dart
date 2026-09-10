@@ -11,6 +11,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/hero_number.dart';
 import 'package:receyta/widgets/metric_stat.dart';
+import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Tela de detalhe da receita (B6): "dá para cozinhar lendo pelo app". Hero
@@ -55,67 +56,88 @@ class _Detail extends StatelessWidget {
   Widget build(BuildContext context) {
     final recipe = detail.recipe;
 
+    final colors = context.colors;
+    final hasSteps = detail.steps.isNotEmpty;
+
     return Scaffold(
-      backgroundColor: context.colors.paper,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _Hero(recipe: recipe, tags: detail.tags)),
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -AppSpacing.screen),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: context.colors.paper,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppRadii.lg),
+      backgroundColor: colors.paper,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: _Hero(recipe: recipe, tags: detail.tags),
+              ),
+              SliverToBoxAdapter(
+                child: Transform.translate(
+                  offset: const Offset(0, -AppSpacing.screen),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: colors.paper,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(AppRadii.lg),
+                      ),
+                      border: Border.all(color: colors.paperSoft, width: 1.5),
+                    ),
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.screen,
+                      AppSpacing.lg,
+                      AppSpacing.screen,
+                      hasSteps ? 120 : AppSpacing.xxl,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Metrics(recipe: recipe),
+                        if ((recipe.about ?? '').isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.lg),
+                          Text(recipe.about!, style: context.texts.bodyLarge),
+                        ],
+                        if (detail.ingredients.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.xl),
+                          SectionHeader(
+                            title: 'Ingredientes',
+                            action: _CountPill(detail.ingredients.length, 'item',
+                                'itens'),
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          for (final i in detail.ingredients)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: AppSpacing.xs),
+                              child: Text(
+                                i.rawText,
+                                style: context.texts.bodyLarge,
+                              ),
+                            ),
+                        ],
+                        if (hasSteps) ...[
+                          const SizedBox(height: AppSpacing.xl),
+                          _Label('Preparo'),
+                          const SizedBox(height: AppSpacing.sm),
+                          for (var s = 0; s < detail.steps.length; s++)
+                            _Step(index: s + 1, text: detail.steps[s].text),
+                        ],
+                        if ((recipe.notes ?? '').isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.xl),
+                          _Label('Notas'),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(recipe.notes!, style: context.texts.bodyLarge),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screen,
-                  AppSpacing.lg,
-                  AppSpacing.screen,
-                  AppSpacing.xxl,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _Metrics(recipe: recipe),
-                    if ((recipe.about ?? '').isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(recipe.about!, style: context.texts.bodyLarge),
-                    ],
-                    if (detail.ingredients.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xl),
-                      _Label('Ingredientes'),
-                      const SizedBox(height: AppSpacing.sm),
-                      for (final i in detail.ingredients)
-                        Padding(
-                          padding:
-                              const EdgeInsets.only(bottom: AppSpacing.xs),
-                          child: Text(
-                            i.rawText,
-                            style: context.texts.bodyLarge,
-                          ),
-                        ),
-                    ],
-                    if (detail.steps.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xl),
-                      _Label('Passos'),
-                      const SizedBox(height: AppSpacing.sm),
-                      for (var s = 0; s < detail.steps.length; s++)
-                        _Step(index: s + 1, text: detail.steps[s].text),
-                    ],
-                    if ((recipe.notes ?? '').isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xl),
-                      _Label('Notas'),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(recipe.notes!, style: context.texts.bodyLarge),
-                    ],
-                  ],
-                ),
               ),
-            ),
+            ],
           ),
+          if (hasSteps)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _CookBar(recipeId: recipe.id),
+            ),
         ],
       ),
     );
@@ -152,14 +174,14 @@ class _Hero extends StatelessWidget {
           if (minutes != null)
             HeroNumber(
               value: '$minutes',
-              color: colors.onSaturated,
-              corner: Alignment.bottomRight,
-              size: 120,
+              color: colors.onSaturated.withValues(alpha: 0.16),
+              corner: Alignment.topRight,
+              size: 150,
             ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
-                AppSpacing.xs,
+                AppSpacing.screen,
                 AppSpacing.xs,
                 AppSpacing.screen,
                 AppSpacing.lg,
@@ -169,17 +191,16 @@ class _Hero extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      IconButton(
-                        onPressed: () => context.pop(),
-                        icon: const Icon(Icons.arrow_back),
-                        color: colors.onSaturated,
+                      _HeroCircleButton(
+                        icon: Icons.arrow_back,
+                        onTap: () => context.pop(),
+                        tooltip: 'Voltar',
                       ),
                       const Spacer(),
-                      IconButton(
-                        onPressed: () =>
+                      _HeroCircleButton(
+                        icon: Icons.edit_outlined,
+                        onTap: () =>
                             context.push('/recipe/${recipe.id}/edit'),
-                        icon: const Icon(Icons.edit_outlined),
-                        color: colors.onSaturated,
                         tooltip: 'Editar',
                       ),
                     ],
@@ -217,25 +238,43 @@ class _Metrics extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const size = 44.0;
     final stats = <Widget>[
       if (recipe.prepMinutes != null)
         MetricStat(
           value: '${recipe.prepMinutes}',
-          unit: ' min',
+          unit: 'm',
           label: 'Preparo',
+          valueSize: size,
         ),
       if (recipe.cookMinutes != null)
         MetricStat(
           value: '${recipe.cookMinutes}',
-          unit: ' min',
-          label: 'Cozimento',
+          unit: 'm',
+          label: 'Fogão',
+          valueSize: size,
         ),
       if (recipe.servings != null)
-        MetricStat(value: '${recipe.servings}', label: 'Porções'),
+        MetricStat(
+          value: '${recipe.servings}',
+          label: 'Porções',
+          valueSize: size,
+        ),
     ];
     if (stats.isEmpty) return const SizedBox.shrink();
 
-    return Wrap(spacing: AppSpacing.xl, runSpacing: AppSpacing.md, children: stats);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: AppSpacing.xl,
+          runSpacing: AppSpacing.md,
+          children: stats,
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        Divider(height: 1, color: context.colors.paperSoft),
+      ],
+    );
   }
 }
 
@@ -289,26 +328,138 @@ class _Step extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 40,
+            width: 52,
             child: Text(
-              '$index',
-              style: AppTextStyles.display(30)
-                  .copyWith(color: context.colors.coral),
+              '$index'.padLeft(2, '0'),
+              style: AppTextStyles.display(34)
+                  .copyWith(color: context.colors.textMuted),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs / 2),
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
               child: Text(text, style: context.texts.bodyLarge),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Botão circular preenchido sobre o hero — voltar e editar (screenshot B6).
+class _HeroCircleButton extends StatelessWidget {
+  const _HeroCircleButton({
+    required this.icon,
+    required this.onTap,
+    required this.tooltip,
+  });
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.ink,
+      shape: const CircleBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Tooltip(
+          message: tooltip,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: Icon(icon, size: 22, color: colors.onSaturated),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Contagem discreta ao lado de um título de seção ("6 itens").
+class _CountPill extends StatelessWidget {
+  const _CountPill(this.count, this.singular, this.plural);
+
+  final int count;
+  final String singular;
+  final String plural;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs / 2,
+      ),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Text(
+        '$count ${count == 1 ? singular : plural}',
+        style: context.texts.labelLarge?.copyWith(color: colors.textBody),
+      ),
+    );
+  }
+}
+
+/// Barra fixa no rodapé: abre o modo cozinha (§RF-01.11).
+class _CookBar extends StatelessWidget {
+  const _CookBar({required this.recipeId});
+
+  final String recipeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      color: colors.paper,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            AppSpacing.sm,
+            AppSpacing.screen,
+            AppSpacing.sm,
+          ),
+          child: Material(
+            color: colors.ink,
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: InkWell(
+              onTap: () => context.push('/recipe/$recipeId/cook'),
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              child: Container(
+                height: AppSpacing.minTapTarget + 6,
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_fire_department,
+                        size: 20, color: colors.lime),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      'Modo cozinha',
+                      style: context.texts.labelLarge
+                          ?.copyWith(color: colors.lime),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

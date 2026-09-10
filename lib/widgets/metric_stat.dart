@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/theme/typography.dart';
 
 /// Métrica de receita: valor em Bricolage 800 sobre um label caps.
 ///
-/// Usada em fila no detalhe da receita — preparo, cozimento, porções. O
-/// contraste entre o valor de 20px e o label de 10px é o mesmo salto de escala
-/// do resto da linguagem, em miniatura (§9.1).
+/// Usada em fila no detalhe da receita — preparo, fogão, porções. O contraste
+/// entre o valor grande e o label de 10px é o mesmo salto de escala do resto
+/// da linguagem, em miniatura (§9.1).
 class MetricStat extends StatelessWidget {
   const MetricStat({
     super.key,
@@ -16,12 +17,13 @@ class MetricStat extends StatelessWidget {
     this.unit,
     this.color,
     this.labelColor,
+    this.valueSize = 20,
   });
 
   final String value;
 
-  /// Sufixo curto ao lado do valor ("min", "g"). Fica no mesmo estilo do valor,
-  /// não num estilo próprio — separar os dois quebraria a leitura do número.
+  /// Sufixo curto ao lado do valor ("m", "g"), renderizado bem menor — um
+  /// índice, não parte do número.
   final String? unit;
 
   /// Renderizado em maiúsculas.
@@ -33,6 +35,9 @@ class MetricStat extends StatelessWidget {
   /// Padrão: `textMuted`. Sobre `coral` ou `violet`, use a versão clara do
   /// próprio matiz — nunca cinza (§9.2).
   final Color? labelColor;
+
+  /// Tamanho do valor. Detalhe da receita usa grande (§9.1, salto de escala).
+  final double valueSize;
 
   @override
   Widget build(BuildContext context) {
@@ -46,9 +51,16 @@ class MetricStat extends StatelessWidget {
         Text.rich(
           TextSpan(
             text: value,
-            children: unit == null ? null : [TextSpan(text: unit)],
+            children: unit == null
+                ? null
+                : [
+                    TextSpan(
+                      text: unit,
+                      style: TextStyle(fontSize: valueSize * 0.4),
+                    ),
+                  ],
           ),
-          style: context.texts.titleMedium?.copyWith(
+          style: AppTextStyles.display(valueSize).copyWith(
             color: color ?? colors.ink,
           ),
           maxLines: 1,

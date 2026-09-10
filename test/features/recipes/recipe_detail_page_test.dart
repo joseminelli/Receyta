@@ -51,6 +51,10 @@ Widget _host({RecipeDetail? detail}) {
         path: '/recipe/:id/edit',
         builder: (_, __) => const Text('ROTA EDIT'),
       ),
+      GoRoute(
+        path: '/recipe/:id/cook',
+        builder: (_, __) => const Text('ROTA COZINHA'),
+      ),
     ],
   );
   return ProviderScope(
@@ -69,13 +73,41 @@ void main() {
     expect(find.text('Frango ao curry'), findsOneWidget);
     expect(find.text('rápido para a semana'), findsOneWidget);
     expect(find.text('Ingredientes'), findsOneWidget);
+    expect(find.text('2 itens'), findsOneWidget);
     expect(find.text('500g de frango'), findsOneWidget);
     expect(find.text('2 dentes de alho'), findsOneWidget);
-    expect(find.text('Passos'), findsOneWidget);
+    expect(find.text('Preparo'), findsOneWidget);
     expect(find.text('Tempere o frango'), findsOneWidget);
     expect(find.text('melhor no dia seguinte'), findsOneWidget);
     expect(find.text('Rápido'), findsOneWidget);
     expect(find.text('Frango'), findsOneWidget);
+    expect(find.text('Modo cozinha'), findsOneWidget);
+  });
+
+  testWidgets('sem passos, não mostra "Modo cozinha"', (tester) async {
+    await tester.pumpWidget(_host(
+      detail: RecipeDetail(
+        recipe: Recipe(
+          id: 'r1',
+          name: 'Vitamina',
+          createdAt: DateTime.utc(2026),
+          updatedAt: DateTime.utc(2026),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Modo cozinha'), findsNothing);
+  });
+
+  testWidgets('"Modo cozinha" abre o modo cozinha', (tester) async {
+    await tester.pumpWidget(_host(detail: _detail()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Modo cozinha'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ROTA COZINHA'), findsOneWidget);
   });
 
   testWidgets('receita inexistente mostra aviso', (tester) async {

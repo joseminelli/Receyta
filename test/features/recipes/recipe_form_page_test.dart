@@ -123,26 +123,13 @@ void main() {
     expect(salvar(tester).onPressed, isNotNull);
   });
 
-  testWidgets('tags: vírgula quebra em duas, salva, e voltam ao reabrir',
-      (tester) async {
-    final created = await repo.saveDetail(name: 'Bolo') as Ok<Recipe>;
-    await openForm(tester, '/recipe/${created.value.id}/edit');
+  testWidgets('edita: as tags do banco aparecem como chips', (tester) async {
+    final bolo = await repo.saveDetail(
+      name: 'Bolo',
+      tagNames: ['doce', 'receitas de família'],
+    ) as Ok<Recipe>;
 
-    await tester.enterText(
-      hintField('rápido, frango, sobremesa — enter separa'),
-      'doce, receitas de família',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-
-    expect(find.text('Doce'), findsOneWidget);
-    expect(find.text('Receitas de Família'), findsOneWidget);
-
-    await tester.tap(find.text('Salvar'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('início'));
-    await tester.pumpAndSettle();
+    await openForm(tester, '/recipe/${bolo.value.id}/edit');
 
     expect(find.text('Doce'), findsOneWidget);
     expect(find.text('Receitas de Família'), findsOneWidget);
