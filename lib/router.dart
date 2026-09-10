@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/bootstrap.dart';
+import 'package:receyta/features/folders/folder_page.dart';
 import 'package:receyta/features/recipes/cooking_mode_page.dart';
 import 'package:receyta/features/recipes/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/recipe_form_page.dart';
@@ -48,6 +49,12 @@ final router = GoRouter(
       name: 'recipe-cook',
       builder: (context, state) =>
           CookingModePage(recipeId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/folder/:id',
+      name: 'folder',
+      builder: (context, state) =>
+          FolderPage(folderId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/trash',

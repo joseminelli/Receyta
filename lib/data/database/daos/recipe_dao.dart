@@ -16,10 +16,14 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   Stream<List<RecipeRow>> watchActive({
     Set<String> anyOfTagIds = const {},
     bool favoritesOnly = false,
+    bool rootOnly = false,
   }) {
     final query = select(recipes)
       ..where((r) => r.deletedAt.isNull())
       ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]);
+    if (rootOnly) {
+      query.where((r) => r.folderId.isNull());
+    }
     if (favoritesOnly) {
       query.where((r) => r.isFavorite.equals(true));
     }
@@ -131,6 +135,24 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         ]);
       });
     });
+  }
+
+  /// Receitas ativas de uma pasta (por `folderId`); nulo = as soltas na raiz.
+  Stream<List<RecipeRow>> watchInFolder(String? folderId) {
+    return (select(recipes)
+          ..where((r) =>
+              r.deletedAt.isNull() &
+              (folderId == null
+                  ? r.folderId.isNull()
+                  : r.folderId.equals(folderId)))
+          ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]))
+        .watch();
+  }
+
+  Future<int> setFolder(String id, String? folderId, DateTime at) {
+    return (update(recipes)..where((r) => r.id.equals(id))).write(
+      RecipesCompanion(folderId: Value(folderId), updatedAt: Value(at)),
+    );
   }
 
   Future<int> setFavorite(String id, bool value, DateTime at) {

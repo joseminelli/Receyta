@@ -33,9 +33,14 @@ class RecipeRepository {
   Stream<List<Recipe>> watchAll({
     Set<String> anyOfTagIds = const {},
     bool favoritesOnly = false,
+    bool rootOnly = false,
   }) =>
       _dao
-          .watchActive(anyOfTagIds: anyOfTagIds, favoritesOnly: favoritesOnly)
+          .watchActive(
+            anyOfTagIds: anyOfTagIds,
+            favoritesOnly: favoritesOnly,
+            rootOnly: rootOnly,
+          )
           .map((rows) => rows.map(_toDomain).toList());
 
   /// Existe alguma receita ativa favoritada? Decide se o chip "Favoritos"
@@ -43,6 +48,10 @@ class RecipeRepository {
   Stream<bool> watchHasFavorites() => _dao
       .watchActive(favoritesOnly: true)
       .map((rows) => rows.isNotEmpty);
+
+  /// Receitas de uma pasta (§RF-02); `folderId` nulo = as soltas na raiz.
+  Stream<List<Recipe>> watchInFolder(String? folderId) =>
+      _dao.watchInFolder(folderId).map((rows) => rows.map(_toDomain).toList());
 
   /// Busca por nome, sobre, notas e tag (§RF-01.9). Query vazia → lista vazia.
   Stream<List<Recipe>> search(String query) =>

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
+import 'package:receyta/features/folders/folders_view_model.dart';
 import 'package:receyta/features/recipes/recipes_page.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -40,6 +42,8 @@ Widget _host(
       trashedRecipesProvider
           .overrideWith((ref) => Stream.value(const <Recipe>[])),
       hasFavoritesProvider.overrideWith((ref) => Stream.value(hasFavorites)),
+      rootFoldersProvider
+          .overrideWith((ref) => Stream.value(const <FolderWithCounts>[])),
       tagsWithCountsProvider.overrideWith(
         (ref) => Stream.value([for (final t in tags) (tag: t, count: 1)]),
       ),
@@ -78,11 +82,17 @@ void main() {
     expect(find.byType(RecipeCard), findsNWidgets(2));
   });
 
-  testWidgets('+ abre o formulário de nova receita', (tester) async {
-    await tester.pumpWidget(_host(const []));
+  testWidgets('+ abre o menu e "Nova receita" leva ao formulário',
+      (tester) async {
+    await tester.pumpWidget(_host([_recipe('a', 'Sopa')]));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.add).first);
+    await tester.pumpAndSettle();
+    expect(find.text('Nova receita'), findsOneWidget);
+    expect(find.text('Nova pasta'), findsOneWidget);
+
+    await tester.tap(find.text('Nova receita'));
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA NOVA'), findsOneWidget);

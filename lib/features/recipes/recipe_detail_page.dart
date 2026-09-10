@@ -6,6 +6,7 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/tag.dart';
+import 'package:receyta/features/folders/folder_actions.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -169,26 +170,40 @@ class _Hero extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
+  void _showMore(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(
-        child: ListTile(
-          leading: Icon(Icons.delete_outline, color: colors.danger),
-          title: Text(
-            'Mover para a lixeira',
-            style: context.texts.bodyLarge?.copyWith(color: colors.danger),
-          ),
-          subtitle: Text(
-            'Some da lista agora; apaga de vez em 30 dias.',
-            style: context.texts.bodyMedium,
-          ),
-          onTap: () {
-            Navigator.of(sheet).pop();
-            _delete(context, ref);
-          },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outline),
+              title: const Text('Mover para pasta'),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                moveRecipeFlow(context, ref, recipe.id, recipe.folderId);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: colors.danger),
+              title: Text(
+                'Mover para a lixeira',
+                style: context.texts.bodyLarge?.copyWith(color: colors.danger),
+              ),
+              subtitle: Text(
+                'Some da lista agora; apaga de vez em 30 dias.',
+                style: context.texts.bodyMedium,
+              ),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                _delete(context, ref);
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
         ),
       ),
     );
@@ -276,7 +291,7 @@ class _Hero extends ConsumerWidget {
                           const SizedBox(width: AppSpacing.xs),
                           _HeroCircleButton(
                             icon: Icons.more_horiz,
-                            onTap: () => _confirmDelete(context, ref),
+                            onTap: () => _showMore(context, ref),
                             tooltip: 'Mais',
                           ),
                         ],

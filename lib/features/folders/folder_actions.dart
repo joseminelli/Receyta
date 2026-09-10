@@ -1,0 +1,216 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:receyta/core/result.dart';
+import 'package:receyta/data/repositories/folder_repository.dart';
+import 'package:receyta/domain/models/folder.dart';
+import 'package:receyta/features/folders/folder_picker.dart';
+import 'package:receyta/messenger.dart';
+import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/theme/tokens.dart';
+
+/// Diálogo de nome de pasta — serve pra criar ("Nova pasta") e renomear.
+/// Devolve o texto confirmado, ou nulo se cancelou.
+Future<String?> promptFolderName(
+  BuildContext context, {
+  required String title,
+  String initial = '',
+  String action = 'Salvar',
+}) {
+  final controller = TextEditingController(text: initial);
+  return showDialog<String>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: Text(title, style: context.texts.displaySmall),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(hintText: 'Nome da pasta'),
+        onSubmitted: (v) => Navigator.of(dialog).pop(v.trim()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialog).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(dialog).pop(controller.text.trim()),
+          child: Text(action),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Cria uma pasta (opcionalmente dentro de [parentId]) perguntando o nome.
+Future<void> createFolderFlow(
+  BuildContext context,
+  WidgetRef ref, {
+  String? parentId,
+}) async {
+  final name = await promptFolderName(
+    context,
+    title: parentId == null ? 'Nova pasta' : 'Nova subpasta',
+    action: 'Criar',
+  );
+  if (name == null || name.isEmpty) return;
+  final result = await ref
+      .read(folderRepositoryProvider)
+      .create(name: name, parentId: parentId);
+  _reportError(result);
+}
+
+/// Renomeia [folder] perguntando o novo nome.
+Future<void> renameFolderFlow(
+  BuildContext context,
+  WidgetRef ref,
+  Folder folder,
+) async {
+  final name = await promptFolderName(
+    context,
+    title: 'Renomear pasta',
+    initial: folder.name,
+  );
+  if (name == null || name.isEmpty || name == folder.name) return;
+  final result = await ref.read(folderRepositoryProvider).rename(folder.id, name);
+  _reportError(result);
+}
+
+/// Confirma a exclusão de [folder]. O conteúdo (subpastas e receitas) sobe pro
+/// nível de cima — nada é apagado. Devolve `true` se excluiu.
+Future<bool> deleteFolderFlow(
+  BuildContext context,
+  WidgetRef ref,
+  Folder folder,
+) async {
+  final colors = context.colors;
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialog) => AlertDialog(
+      title: Text('Excluir "${folder.name}"?', style: context.texts.displaySmall),
+      content: Text(
+        'As receitas e subpastas dela sobem um nível — nada é apagado.',
+        style: context.texts.bodyMedium,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(dialog).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: colors.danger),
+          onPressed: () => Navigator.of(dialog).pop(true),
+          child: const Text('Excluir'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return false;
+  final result = await ref.read(folderRepositoryProvider).delete(folder.id);
+  _reportError(result);
+  return result.isOk;
+}
+
+/// Move [folder] pra outra pasta (ou raiz) via o seletor de pastas.
+Future<void> moveFolderFlow(
+  BuildContext context,
+  WidgetRef ref,
+  Folder folder,
+) async {
+  final choice = await pickFolder(
+    context,
+    ref,
+    currentId: folder.parentId,
+    excludeSubtreeOf: folder.id,
+  );
+  if (choice == null || choice.id == folder.parentId) return;
+  final result =
+      await ref.read(folderRepositoryProvider).move(folder.id, choice.id);
+  _reportError(result);
+}
+
+/// Move uma receita pra uma pasta (ou raiz) via o seletor de pastas.
+Future<void> moveRecipeFlow(
+  BuildContext context,
+  WidgetRef ref,
+  String recipeId,
+  String? currentFolderId,
+) async {
+  final choice = await pickFolder(context, ref, currentId: currentFolderId);
+  if (choice == null || choice.id == currentFolderId) return;
+  final result = await ref
+      .read(folderRepositoryProvider)
+      .moveRecipe(recipeId, choice.id);
+  _reportError(result);
+  if (result.isOk) {
+    showRootSnackBar(
+      const SnackBar(content: Text('Receita movida')),
+    );
+  }
+}
+
+/// Menu ⋯ da tela da pasta: renomear, mover, nova subpasta, excluir.
+Future<void> showFolderMenu(
+  BuildContext context,
+  WidgetRef ref,
+  Folder folder, {
+  required VoidCallback onDeleted,
+}) {
+  final colors = context.colors;
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.drive_file_rename_outline),
+            title: const Text('Renomear'),
+            onTap: () {
+              Navigator.of(sheet).pop();
+              renameFolderFlow(context, ref, folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.drive_file_move_outline),
+            title: const Text('Mover pasta'),
+            onTap: () {
+              Navigator.of(sheet).pop();
+              moveFolderFlow(context, ref, folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.create_new_folder_outlined),
+            title: const Text('Nova subpasta'),
+            onTap: () {
+              Navigator.of(sheet).pop();
+              createFolderFlow(context, ref, parentId: folder.id);
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.delete_outline, color: colors.danger),
+            title: Text(
+              'Excluir pasta',
+              style: context.texts.bodyLarge?.copyWith(color: colors.danger),
+            ),
+            onTap: () async {
+              Navigator.of(sheet).pop();
+              final deleted = await deleteFolderFlow(context, ref, folder);
+              if (deleted) onDeleted();
+            },
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+      ),
+    ),
+  );
+}
+
+void _reportError(Result<Object?> result) {
+  result.when(
+    ok: (_) {},
+    err: (f) => showRootSnackBar(SnackBar(content: Text(f.message))),
+  );
+}

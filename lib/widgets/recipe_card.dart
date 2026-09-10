@@ -8,10 +8,15 @@ import 'package:receyta/widgets/tile_pattern.dart';
 /// Card de receita da grade (§9.4). Bloco de azulejo em cima, faixa `paperSoft`
 /// com nome e tempo embaixo. Sem foto ainda — a imagem (B7) cobre o azulejo.
 class RecipeCard extends StatelessWidget {
-  const RecipeCard({super.key, required this.recipe, this.onTap});
+  const RecipeCard({super.key, required this.recipe, this.onTap, this.motif});
 
   final Recipe recipe;
   final VoidCallback? onTap;
+
+  /// Força o módulo do azulejo em vez de derivar do id — o card fantasma que
+  /// segue o dedo usa isso pra bater com a origem (ex.: o destaque é sempre
+  /// `arco`).
+  final TileMotif? motif;
 
   int? get _totalMinutes {
     final total = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
@@ -21,7 +26,7 @@ class RecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final motif = tileMotifForId(recipe.id);
+    final motif = this.motif ?? tileMotifForId(recipe.id);
     final minutes = _totalMinutes;
 
     final (bg, pattern) = switch (motif) {

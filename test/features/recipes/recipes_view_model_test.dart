@@ -1,7 +1,10 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/data/database/app_database.dart';
+import 'package:receyta/core/result.dart';
+import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 
 void main() {
@@ -48,5 +51,23 @@ void main() {
     );
     expect((await vm.watchRecipes().first).map((r) => r.name).toSet(),
         {'Curry', 'Bolo'});
+  });
+
+  test('watchRecipes(rootOnly): esconde receita que está numa pasta', () async {
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
+    final folders = FolderRepository(db.folderDao, db.recipeDao, clock: () => clock);
+    final na = (await repo.saveDetail(name: 'Na pasta') as Ok).value;
+    await repo.saveDetail(name: 'Na raiz');
+    final f = (await folders.create(name: 'Pasta') as Ok<Folder>).value;
+    await folders.moveRecipe(na.id, f.id);
+
+    expect(
+      (await vm.watchRecipes(rootOnly: true).first).map((r) => r.name),
+      ['Na raiz'],
+    );
+    expect(
+      (await vm.watchRecipes().first).map((r) => r.name).toSet(),
+      {'Na pasta', 'Na raiz'},
+    );
   });
 }

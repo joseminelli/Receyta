@@ -15,11 +15,18 @@ class RecipesViewModel {
 
   /// Sem tags → todas as receitas. Com tags → as que têm pelo menos uma delas
   /// (filtro OU, §RF-01.10). `favoritesOnly` corta o resultado às favoritas.
+  /// `rootOnly` esconde as que estão dentro de alguma pasta (§RF-02) — a home
+  /// mostra só a raiz enquanto nenhum filtro está ligado.
   Stream<List<Recipe>> watchRecipes({
     Set<String> tagIds = const {},
     bool favoritesOnly = false,
+    bool rootOnly = false,
   }) =>
-      _repo.watchAll(anyOfTagIds: tagIds, favoritesOnly: favoritesOnly);
+      _repo.watchAll(
+        anyOfTagIds: tagIds,
+        favoritesOnly: favoritesOnly,
+        rootOnly: rootOnly,
+      );
 }
 
 final recipesViewModelProvider = Provider<RecipesViewModel>(
@@ -51,9 +58,14 @@ final hasFavoritesProvider = StreamProvider<bool>(
 final recipesStreamProvider = StreamProvider<List<Recipe>>((ref) {
   final tagIds = ref.watch(selectedTagIdsProvider);
   final favoritesOnly = ref.watch(favoritesOnlyProvider);
-  return ref
-      .watch(recipesViewModelProvider)
-      .watchRecipes(tagIds: tagIds, favoritesOnly: favoritesOnly);
+  // Home sem filtro = prateleira da raiz. Ao filtrar por tag ou favoritos, a
+  // busca passa a valer pra base toda, inclusive receitas em pastas.
+  final rootOnly = tagIds.isEmpty && !favoritesOnly;
+  return ref.watch(recipesViewModelProvider).watchRecipes(
+        tagIds: tagIds,
+        favoritesOnly: favoritesOnly,
+        rootOnly: rootOnly,
+      );
 });
 
 /// Receitas na lixeira (RF-01.6), da mais recente pra mais antiga.

@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
+import 'package:receyta/features/folders/folder_actions.dart';
+import 'package:receyta/features/folders/folders_strip.dart';
+import 'package:receyta/features/folders/recipe_drag.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/features/recipes/tags_page.dart';
 import 'package:receyta/features/recipes/trash_page.dart';
@@ -13,6 +16,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/featured_recipe_card.dart';
 import 'package:receyta/widgets/pill_button.dart';
+import 'package:receyta/widgets/expanding_create_menu.dart';
 import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/recipe_card.dart';
@@ -20,14 +24,40 @@ import 'package:receyta/widgets/recipe_card.dart';
 /// Home da seção Receitas (§9.2): lista lida do Drift, `+` abre o formulário,
 /// tocar num card abre o detalhe, lista horizontal de tags filtra (§RF-01.10).
 /// Pastas (B10) e busca (B9) voltam com dados reais nos seus blocos.
-class RecipesPage extends ConsumerWidget {
+class RecipesPage extends ConsumerStatefulWidget {
   const RecipesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<RecipesPage> createState() => _RecipesPageState();
+}
+
+class _RecipesPageState extends ConsumerState<RecipesPage> {
+  final _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final recipes = ref.watch(recipesStreamProvider);
     final filtering = ref.watch(selectedTagIdsProvider).isNotEmpty ||
         ref.watch(favoritesOnlyProvider);
+
+    // Ao começar a arrastar um card, sobe até a faixa de pastas pra ela estar
+    // visível como alvo de soltar.
+    ref.listen(draggingItemProvider, (prev, next) {
+      if (prev == null && next != null && _controller.hasClients) {
+        _controller.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+
     void clearFilter() {
       ref.read(selectedTagIdsProvider.notifier).state = const {};
       ref.read(favoritesOnlyProvider.notifier).state = false;
@@ -37,11 +67,13 @@ class RecipesPage extends ConsumerWidget {
 
     return recipes.when(
       loading: () => _Scaffold(
+        controller: _controller,
         count: null,
         onCreate: openNew,
         body: const SliverToBoxAdapter(child: SizedBox.shrink()),
       ),
       error: (_, __) => _Scaffold(
+        controller: _controller,
         count: null,
         onCreate: openNew,
         body: SliverFillRemaining(
@@ -55,6 +87,7 @@ class RecipesPage extends ConsumerWidget {
         ),
       ),
       data: (list) => _Scaffold(
+        controller: _controller,
         count: list.length,
         onCreate: openNew,
         body: list.isEmpty
@@ -72,11 +105,13 @@ class RecipesPage extends ConsumerWidget {
 
 class _Scaffold extends StatelessWidget {
   const _Scaffold({
+    required this.controller,
     required this.count,
     required this.onCreate,
     required this.body,
   });
 
+  final ScrollController controller;
   final int? count;
   final VoidCallback onCreate;
   final Widget body;
@@ -84,6 +119,7 @@ class _Scaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomScrollView(
+      controller: controller,
       slivers: [
         SliverToBoxAdapter(child: _Header(count: count, onCreate: onCreate)),
         body,
@@ -157,6 +193,7 @@ class _RecipeList extends StatelessWidget {
 
     return SliverMainAxisGroup(
       slivers: [
+        const SliverToBoxAdapter(child: FoldersStrip()),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screen,
@@ -176,9 +213,13 @@ class _RecipeList extends StatelessWidget {
             AppSpacing.md,
           ),
           sliver: SliverToBoxAdapter(
-            child: FeaturedRecipeCard(
+            child: DraggableRecipe(
               recipe: featured,
-              onTap: () => open(featured.id),
+              motif: TileMotif.arco,
+              child: FeaturedRecipeCard(
+                recipe: featured,
+                onTap: () => open(featured.id),
+              ),
             ),
           ),
         ),
@@ -197,9 +238,12 @@ class _RecipeList extends StatelessWidget {
               childAspectRatio: 0.78,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, i) => RecipeCard(
+              (context, i) => DraggableRecipe(
                 recipe: rest[i],
-                onTap: () => open(rest[i].id),
+                child: RecipeCard(
+                  recipe: rest[i],
+                  onTap: () => open(rest[i].id),
+                ),
               ),
               childCount: rest.length,
             ),
@@ -309,10 +353,22 @@ class _Header extends ConsumerWidget {
                                   onTap: () => context.push('/search'),
                                 ),
                                 const SizedBox(width: AppSpacing.xs),
-                                _CircleButton(
-                                  icon: Icons.add,
-                                  filled: true,
-                                  onTap: onCreate,
+                                ExpandingCreateMenu(
+                                  buttonColor: colors.lime,
+                                  iconColor: colors.ink,
+                                  actions: [
+                                    CreateMenuAction(
+                                      icon: Icons.restaurant_menu,
+                                      label: 'Nova receita',
+                                      onSelected: onCreate,
+                                    ),
+                                    CreateMenuAction(
+                                      icon: Icons.create_new_folder_outlined,
+                                      label: 'Nova pasta',
+                                      onSelected: () =>
+                                          createFolderFlow(context, ref),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
@@ -438,32 +494,23 @@ Future<void> _confirmDeleteTag(
 }
 
 class _CircleButton extends StatelessWidget {
-  const _CircleButton({
-    required this.icon,
-    required this.onTap,
-    this.filled = false,
-  });
+  const _CircleButton({required this.icon, required this.onTap});
 
   final IconData icon;
   final VoidCallback onTap;
-  final bool filled;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Material(
-      color: filled ? colors.lime : colors.inkSoft,
+      color: colors.inkSoft,
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Icon(
-            icon,
-            size: 22,
-            color: filled ? colors.ink : colors.onSaturated,
-          ),
+          child: Icon(icon, size: 22, color: colors.onSaturated),
         ),
       ),
     );
