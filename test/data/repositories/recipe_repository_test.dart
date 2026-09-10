@@ -15,7 +15,7 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     clock = DateTime.utc(2026, 1, 1, 12);
-    repo = RecipeRepository(db.recipeDao, clock: () => clock);
+    repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
   });
 
   tearDown(() => db.close());
@@ -113,6 +113,62 @@ void main() {
       variables: [Variable<String>(r.id)],
     ).getSingle();
     expect(raw.read<DateTime?>('deleted_at'), isNotNull);
+  });
+
+  test('saveDetail grava tags, reaproveita a mesma linha entre receitas',
+      () async {
+    final a = unwrap(await repo.saveDetail(
+      name: 'Curry',
+      tagNames: ['rápido', 'frango'],
+    ));
+    final b = unwrap(await repo.saveDetail(
+      name: 'Sopa',
+      tagNames: ['rápido', 'vegano'],
+    ));
+
+    expect(
+      unwrapDetail(await repo.getDetail(a.id)).tags.map((t) => t.name),
+      ['Frango', 'Rápido'],
+    );
+    expect(
+      unwrapDetail(await repo.getDetail(b.id)).tags.map((t) => t.name),
+      ['Rápido', 'Vegano'],
+    );
+
+    final rows = await db.customSelect('SELECT COUNT(*) c FROM tags').getSingle();
+    expect(rows.read<int>('c'), 3);
+  });
+
+  test('saveDetail edita: substitui as tags, não acumula', () async {
+    final r = unwrap(await repo.saveDetail(name: 'X', tagNames: ['Ana', 'Boa']));
+    await repo.saveDetail(base: r, name: 'X', tagNames: ['Boa', 'Céu']);
+
+    expect(
+      unwrapDetail(await repo.getDetail(r.id)).tags.map((t) => t.name),
+      ['Boa', 'Céu'],
+    );
+  });
+
+  test('watchAll(anyOfTagIds): filtro OU, só receitas ativas com a tag',
+      () async {
+    final curry =
+        unwrap(await repo.saveDetail(name: 'Curry', tagNames: ['rápido']));
+    unwrap(await repo.saveDetail(name: 'Bolo', tagNames: ['doce']));
+    final sopa = unwrap(
+        await repo.saveDetail(name: 'Sopa', tagNames: ['rápido', 'vegano']));
+
+    final rapido = unwrapDetail(await repo.getDetail(curry.id))
+        .tags
+        .firstWhere((t) => t.name == 'Rápido')
+        .id;
+
+    final filtered =
+        await repo.watchAll(anyOfTagIds: {rapido}).first;
+    expect(filtered.map((r) => r.name).toSet(), {'Curry', 'Sopa'});
+
+    await repo.softDelete(sopa.id);
+    final afterDelete = await repo.watchAll(anyOfTagIds: {rapido}).first;
+    expect(afterDelete.map((r) => r.name), ['Curry']);
   });
 
   test('saveDetail grava os ingredientes vinculados à receita', () async {

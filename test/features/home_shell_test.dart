@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipes_page.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/home_shell.dart';
@@ -11,6 +12,7 @@ Widget _host() => ProviderScope(
       overrides: [
         recipesStreamProvider
             .overrideWith((ref) => Stream.value(const <Recipe>[])),
+        inUseTagsProvider.overrideWith((ref) => Stream.value(const <Tag>[])),
       ],
       child: MaterialApp(theme: AppTheme.light(), home: const HomeShell()),
     );

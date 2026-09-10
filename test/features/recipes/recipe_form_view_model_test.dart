@@ -16,7 +16,7 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     clock = DateTime.utc(2026, 1, 1, 12);
-    repo = RecipeRepository(db.recipeDao, clock: () => clock);
+    repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
     vm = RecipeFormViewModel(repo);
   });
 
@@ -77,6 +77,17 @@ void main() {
     expect(err(await vm.submit(name: 'X', servingsText: '0')),
         isA<ValidationFailure>());
     expect(await repo.watchAll().first, isEmpty);
+  });
+
+  test('tags: title case pt-BR, espaço colapsado, sem duplicata, vazio ignorado',
+      () async {
+    final created = ok(await vm.submit(
+      name: 'Frango',
+      tagNames: ['  RÁPIDO ', 'frango', 'Rápido', '  ', 'no  forno'],
+    ));
+
+    final detail = ((await repo.getDetail(created.id)) as Ok<RecipeDetail>).value;
+    expect(detail.tags.map((t) => t.name), ['Frango', 'No Forno', 'Rápido']);
   });
 
   test('edita: mantém id/createdAt e substitui as listas', () async {

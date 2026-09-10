@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipes_page.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -14,7 +15,7 @@ Recipe _recipe(String id, String name) {
   return Recipe(id: id, name: name, createdAt: t, updatedAt: t);
 }
 
-Widget _host(List<Recipe> recipes) {
+Widget _host(List<Recipe> recipes, {List<Tag> tags = const []}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -31,6 +32,7 @@ Widget _host(List<Recipe> recipes) {
   return ProviderScope(
     overrides: [
       recipesStreamProvider.overrideWith((ref) => Stream.value(recipes)),
+      inUseTagsProvider.overrideWith((ref) => Stream.value(tags)),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -74,6 +76,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA NOVA'), findsOneWidget);
+  });
+
+  testWidgets('sem tags, a lista horizontal de filtro não aparece',
+      (tester) async {
+    await tester.pumpWidget(_host([_recipe('a', 'Sopa')]));
+    await tester.pumpAndSettle();
+    expect(find.text('Todas'), findsNothing);
+  });
+
+  testWidgets('com tags: "Todas" + as tags aparecem e respondem ao toque',
+      (tester) async {
+    await tester.pumpWidget(_host(
+      [_recipe('a', 'Sopa')],
+      tags: const [Tag(id: 't1', name: 'Rápido'), Tag(id: 't2', name: 'Doce')],
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Todas'), findsOneWidget);
+    expect(find.text('Rápido'), findsOneWidget);
+    expect(find.text('Doce'), findsOneWidget);
+
+    await tester.tap(find.text('Rápido'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rápido'), findsOneWidget);
   });
 
   testWidgets('tocar no destaque abre o detalhe daquela receita',

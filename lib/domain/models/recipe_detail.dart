@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
+import 'package:receyta/domain/models/tag.dart';
 
 part 'recipe_detail.freezed.dart';
 
@@ -14,5 +15,6 @@ class RecipeDetail with _$RecipeDetail {
     required Recipe recipe,
     @Default(<RecipeIngredient>[]) List<RecipeIngredient> ingredients,
     @Default(<RecipeStep>[]) List<RecipeStep> steps,
+    @Default(<Tag>[]) List<Tag> tags,
   }) = _RecipeDetail;
 }

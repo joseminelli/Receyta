@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -58,7 +59,7 @@ class _Detail extends StatelessWidget {
       backgroundColor: context.colors.paper,
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _Hero(recipe: recipe)),
+          SliverToBoxAdapter(child: _Hero(recipe: recipe, tags: detail.tags)),
           SliverToBoxAdapter(
             child: Transform.translate(
               offset: const Offset(0, -AppSpacing.screen),
@@ -122,9 +123,10 @@ class _Detail extends StatelessWidget {
 }
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.recipe});
+  const _Hero({required this.recipe, this.tags = const []});
 
   final Recipe recipe;
+  final List<Tag> tags;
 
   int? get _totalMinutes {
     final total = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
@@ -182,6 +184,14 @@ class _Hero extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (tags.isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.sm),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: AppSpacing.xs,
+                      children: [for (final t in tags) _TagPill(t.name)],
+                    ),
+                  ],
                   const Spacer(),
                   Text(
                     recipe.name,
@@ -226,6 +236,36 @@ class _Metrics extends StatelessWidget {
     if (stats.isEmpty) return const SizedBox.shrink();
 
     return Wrap(spacing: AppSpacing.xl, runSpacing: AppSpacing.md, children: stats);
+  }
+}
+
+/// Tag sobre o hero `coral`: pílula `lime` com texto `ink` (§9.2 — lime só
+/// aparece sobre bloco escuro ou saturado, nunca sobre `paper`).
+class _TagPill extends StatelessWidget {
+  const _TagPill(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs / 2,
+      ),
+      decoration: BoxDecoration(
+        color: colors.lime,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Text(
+        label,
+        style: context.texts.labelLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: colors.ink,
+        ),
+      ),
+    );
   }
 }
 

@@ -6,6 +6,7 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
+import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -34,6 +35,7 @@ RecipeDetail _detail() {
       RecipeStep(id: 's1', recipeId: 'r1', text: 'Tempere o frango', position: 0),
       RecipeStep(id: 's2', recipeId: 'r1', text: 'Refogue o alho', position: 1),
     ],
+    tags: const [Tag(id: 't1', name: 'Rápido'), Tag(id: 't2', name: 'Frango')],
   );
 }
 
@@ -72,6 +74,8 @@ void main() {
     expect(find.text('Passos'), findsOneWidget);
     expect(find.text('Tempere o frango'), findsOneWidget);
     expect(find.text('melhor no dia seguinte'), findsOneWidget);
+    expect(find.text('Rápido'), findsOneWidget);
+    expect(find.text('Frango'), findsOneWidget);
   });
 
   testWidgets('receita inexistente mostra aviso', (tester) async {

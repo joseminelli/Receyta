@@ -12,7 +12,7 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     clock = DateTime.utc(2026);
-    vm = RecipesViewModel(RecipeRepository(db.recipeDao, clock: () => clock));
+    vm = RecipesViewModel(RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock));
   });
 
   tearDown(() => db.close());
@@ -22,7 +22,7 @@ void main() {
   });
 
   test('watchRecipes traz o mais recente primeiro', () async {
-    final repo = RecipeRepository(db.recipeDao, clock: () => clock);
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
     await repo.saveDetail(name: 'A');
     clock = clock.add(const Duration(minutes: 1));
     await repo.saveDetail(name: 'B');
@@ -31,5 +31,22 @@ void main() {
       (await vm.watchRecipes().first).map((r) => r.name),
       ['B', 'A'],
     );
+  });
+
+  test('watchRecipes(tagIds): filtra pelas tags marcadas', () async {
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
+    await repo.saveDetail(name: 'Curry', tagNames: ['rápido']);
+    await repo.saveDetail(name: 'Bolo', tagNames: ['doce']);
+
+    final rapido = (await db.tagDao.watchAll().first)
+        .firstWhere((t) => t.name == 'Rápido')
+        .id;
+
+    expect(
+      (await vm.watchRecipes(tagIds: {rapido}).first).map((r) => r.name),
+      ['Curry'],
+    );
+    expect((await vm.watchRecipes().first).map((r) => r.name).toSet(),
+        {'Curry', 'Bolo'});
   });
 }

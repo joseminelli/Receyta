@@ -19,6 +19,7 @@ mixin _$RecipeDetail {
   Recipe get recipe => throw _privateConstructorUsedError;
   List<RecipeIngredient> get ingredients => throw _privateConstructorUsedError;
   List<RecipeStep> get steps => throw _privateConstructorUsedError;
+  List<Tag> get tags => throw _privateConstructorUsedError;
 
   /// Create a copy of RecipeDetail
   /// with the given fields replaced by the non-null parameter values.
@@ -36,7 +37,8 @@ abstract class $RecipeDetailCopyWith<$Res> {
   $Res call(
       {Recipe recipe,
       List<RecipeIngredient> ingredients,
-      List<RecipeStep> steps});
+      List<RecipeStep> steps,
+      List<Tag> tags});
 
   $RecipeCopyWith<$Res> get recipe;
 }
@@ -59,6 +61,7 @@ class _$RecipeDetailCopyWithImpl<$Res, $Val extends RecipeDetail>
     Object? recipe = null,
     Object? ingredients = null,
     Object? steps = null,
+    Object? tags = null,
   }) {
     return _then(_value.copyWith(
       recipe: null == recipe
@@ -73,6 +76,10 @@ class _$RecipeDetailCopyWithImpl<$Res, $Val extends RecipeDetail>
           ? _value.steps
           : steps // ignore: cast_nullable_to_non_nullable
               as List<RecipeStep>,
+      tags: null == tags
+          ? _value.tags
+          : tags // ignore: cast_nullable_to_non_nullable
+              as List<Tag>,
     ) as $Val);
   }
 
@@ -98,7 +105,8 @@ abstract class _$$RecipeDetailImplCopyWith<$Res>
   $Res call(
       {Recipe recipe,
       List<RecipeIngredient> ingredients,
-      List<RecipeStep> steps});
+      List<RecipeStep> steps,
+      List<Tag> tags});
 
   @override
   $RecipeCopyWith<$Res> get recipe;
@@ -120,6 +128,7 @@ class __$$RecipeDetailImplCopyWithImpl<$Res>
     Object? recipe = null,
     Object? ingredients = null,
     Object? steps = null,
+    Object? tags = null,
   }) {
     return _then(_$RecipeDetailImpl(
       recipe: null == recipe
@@ -134,6 +143,10 @@ class __$$RecipeDetailImplCopyWithImpl<$Res>
           ? _value._steps
           : steps // ignore: cast_nullable_to_non_nullable
               as List<RecipeStep>,
+      tags: null == tags
+          ? _value._tags
+          : tags // ignore: cast_nullable_to_non_nullable
+              as List<Tag>,
     ));
   }
 }
@@ -144,9 +157,11 @@ class _$RecipeDetailImpl implements _RecipeDetail {
   const _$RecipeDetailImpl(
       {required this.recipe,
       final List<RecipeIngredient> ingredients = const <RecipeIngredient>[],
-      final List<RecipeStep> steps = const <RecipeStep>[]})
+      final List<RecipeStep> steps = const <RecipeStep>[],
+      final List<Tag> tags = const <Tag>[]})
       : _ingredients = ingredients,
-        _steps = steps;
+        _steps = steps,
+        _tags = tags;
 
   @override
   final Recipe recipe;
@@ -168,9 +183,18 @@ class _$RecipeDetailImpl implements _RecipeDetail {
     return EqualUnmodifiableListView(_steps);
   }
 
+  final List<Tag> _tags;
+  @override
+  @JsonKey()
+  List<Tag> get tags {
+    if (_tags is EqualUnmodifiableListView) return _tags;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_tags);
+  }
+
   @override
   String toString() {
-    return 'RecipeDetail(recipe: $recipe, ingredients: $ingredients, steps: $steps)';
+    return 'RecipeDetail(recipe: $recipe, ingredients: $ingredients, steps: $steps, tags: $tags)';
   }
 
   @override
@@ -181,7 +205,8 @@ class _$RecipeDetailImpl implements _RecipeDetail {
             (identical(other.recipe, recipe) || other.recipe == recipe) &&
             const DeepCollectionEquality()
                 .equals(other._ingredients, _ingredients) &&
-            const DeepCollectionEquality().equals(other._steps, _steps));
+            const DeepCollectionEquality().equals(other._steps, _steps) &&
+            const DeepCollectionEquality().equals(other._tags, _tags));
   }
 
   @override
@@ -189,7 +214,8 @@ class _$RecipeDetailImpl implements _RecipeDetail {
       runtimeType,
       recipe,
       const DeepCollectionEquality().hash(_ingredients),
-      const DeepCollectionEquality().hash(_steps));
+      const DeepCollectionEquality().hash(_steps),
+      const DeepCollectionEquality().hash(_tags));
 
   /// Create a copy of RecipeDetail
   /// with the given fields replaced by the non-null parameter values.
@@ -204,7 +230,8 @@ abstract class _RecipeDetail implements RecipeDetail {
   const factory _RecipeDetail(
       {required final Recipe recipe,
       final List<RecipeIngredient> ingredients,
-      final List<RecipeStep> steps}) = _$RecipeDetailImpl;
+      final List<RecipeStep> steps,
+      final List<Tag> tags}) = _$RecipeDetailImpl;
 
   @override
   Recipe get recipe;
@@ -212,6 +239,8 @@ abstract class _RecipeDetail implements RecipeDetail {
   List<RecipeIngredient> get ingredients;
   @override
   List<RecipeStep> get steps;
+  @override
+  List<Tag> get tags;
 
   /// Create a copy of RecipeDetail
   /// with the given fields replaced by the non-null parameter values.

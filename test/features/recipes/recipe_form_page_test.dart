@@ -8,7 +8,9 @@ import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipe_form_page.dart';
+import 'package:receyta/features/recipes/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/pill_button.dart';
 
@@ -18,7 +20,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    repo = RecipeRepository(db.recipeDao, clock: () => DateTime.utc(2026));
+    repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => DateTime.utc(2026));
   });
   tearDown(() => db.close());
 
@@ -44,7 +46,10 @@ void main() {
       ],
     );
     return ProviderScope(
-      overrides: [recipeRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        recipeRepositoryProvider.overrideWithValue(repo),
+        allTagsProvider.overrideWith((ref) => Stream.value(const <Tag>[])),
+      ],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     );
   }
@@ -82,21 +87,19 @@ void main() {
     await tester.enterText(fieldByLabel('Nome'), 'Bolo de fubá');
     await tester.enterText(fieldByLabel('Sobre'), 'de domingo');
 
+    final addIngrediente = find.text('Adicionar ingrediente');
     await tester.scrollUntilVisible(
-      find.text('Adicionar ingrediente'),
+      addIngrediente,
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Adicionar ingrediente'));
+    await tester.ensureVisible(addIngrediente);
+    await tester.pumpAndSettle();
+    await tester.tap(addIngrediente);
     await tester.pumpAndSettle();
     await tester.enterText(hintField('ex.: 2 xícaras de farinha'), '2 xíc fubá');
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(
-      find.text('Salvar'),
-      -200,
-      scrollable: find.byType(Scrollable).first,
-    );
     await tester.tap(find.text('Salvar'));
     await tester.pumpAndSettle();
 
@@ -118,6 +121,31 @@ void main() {
     await tester.enterText(fieldByLabel('Nome'), 'Pão');
     await tester.pumpAndSettle();
     expect(salvar(tester).onPressed, isNotNull);
+  });
+
+  testWidgets('tags: vírgula quebra em duas, salva, e voltam ao reabrir',
+      (tester) async {
+    final created = await repo.saveDetail(name: 'Bolo') as Ok<Recipe>;
+    await openForm(tester, '/recipe/${created.value.id}/edit');
+
+    await tester.enterText(
+      hintField('rápido, frango, sobremesa — enter separa'),
+      'doce, receitas de família',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Doce'), findsOneWidget);
+    expect(find.text('Receitas de Família'), findsOneWidget);
+
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('início'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Doce'), findsOneWidget);
+    expect(find.text('Receitas de Família'), findsOneWidget);
   });
 
   testWidgets('edita: abre preenchido e grava por cima', (tester) async {

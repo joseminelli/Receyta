@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/domain/models/tag.dart';
 
 /// ViewModel do formulário de receita (§5, RF-01.2–01.5). Não conhece Flutter:
 /// recebe o texto cru dos campos, descarta linhas vazias, converte números,
@@ -24,6 +26,7 @@ class RecipeFormViewModel {
     String? notes,
     List<String> ingredientLines = const [],
     List<String> stepLines = const [],
+    List<String> tagNames = const [],
   }) {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
@@ -47,6 +50,7 @@ class RecipeFormViewModel {
       notes: _blankToNull(notes),
       ingredientLines: _cleanLines(ingredientLines),
       stepLines: _cleanLines(stepLines),
+      tagNames: tagNames,
     );
   }
 
@@ -76,9 +80,11 @@ final recipeFormViewModelProvider = Provider<RecipeFormViewModel>(
 );
 
 /// Carrega a receita (com listas) a editar — leitura única para o formulário.
+/// `autoDispose`: some quando o form fecha, então reabrir a edição relê do
+/// banco (senão o cache mostra a versão anterior, sem as tags recém-salvas).
 /// Erro (não encontrada) sobe como `AsyncError`.
 final recipeDetailFutureProvider =
-    FutureProvider.family<RecipeDetail, String>((ref, id) async {
+    FutureProvider.autoDispose.family<RecipeDetail, String>((ref, id) async {
   final result = await ref.watch(recipeRepositoryProvider).getDetail(id);
   return result.when(ok: (d) => d, err: (f) => throw f);
 });
@@ -88,3 +94,8 @@ final recipeDetailProvider =
     StreamProvider.family<RecipeDetail?, String>((ref, id) {
   return ref.watch(recipeRepositoryProvider).watchDetail(id);
 });
+
+/// Todas as tags já cadastradas — o campo de tags do formulário sugere daqui.
+final allTagsProvider = StreamProvider<List<Tag>>(
+  (ref) => ref.watch(tagRepositoryProvider).watchAll(),
+);

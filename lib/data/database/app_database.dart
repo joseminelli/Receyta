@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'connection.dart';
 import 'daos/recipe_dao.dart';
+import 'daos/tag_dao.dart';
 import 'seed_data.dart';
 import 'tables.dart';
 
@@ -61,7 +62,7 @@ END''',
     ShoppingItemSources,
     NormalizerTerms,
   ],
-  daos: [RecipeDao],
+  daos: [RecipeDao, TagDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());

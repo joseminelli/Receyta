@@ -2,31 +2,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:receyta/core/result.dart';
+import 'package:receyta/core/tag_name.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/database/daos/recipe_dao.dart';
+import 'package:receyta/data/database/daos/tag_dao.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
+import 'package:receyta/domain/models/tag.dart';
 
 /// Fonte de verdade do agregado "receita" (§5): a linha em `recipes` e suas
 /// listas de ingredientes e passos. Converte linha do Drift ↔ model de domínio
 /// e traduz falha de banco em [Failure]. Timestamps do domínio são sempre UTC.
 class RecipeRepository {
   RecipeRepository(
-    this._dao, {
+    this._dao,
+    this._tagDao, {
     Uuid uuid = const Uuid(),
     DateTime Function() clock = DateTime.now,
   })  : _uuid = uuid,
         _clock = clock;
 
   final RecipeDao _dao;
+  final TagDao _tagDao;
   final Uuid _uuid;
   final DateTime Function() _clock;
 
-  Stream<List<Recipe>> watchAll() =>
-      _dao.watchActive().map((rows) => rows.map(_toDomain).toList());
+  Stream<List<Recipe>> watchAll({Set<String> anyOfTagIds = const {}}) => _dao
+      .watchActive(anyOfTagIds: anyOfTagIds)
+      .map((rows) => rows.map(_toDomain).toList());
 
   Stream<RecipeDetail?> watchDetail(String id) {
     return _dao.watchById(id).asyncMap((row) async {
@@ -72,6 +78,7 @@ class RecipeRepository {
     String? notes,
     List<String> ingredientLines = const [],
     List<String> stepLines = const [],
+    List<String> tagNames = const [],
   }) async {
     final now = _clock().toUtc();
     final recipe = base == null
@@ -115,11 +122,19 @@ class RecipeRepository {
         ),
     ];
 
+    final seen = <String>{};
+    final canonicalTags = [
+      for (final raw in tagNames)
+        for (final part in raw.split(',')) canonicalTagName(part),
+    ].where((n) => n.isNotEmpty && seen.add(n)).toList();
+
     try {
+      final tagRows = await _tagDao.ensureTags(canonicalTags);
       await _dao.saveWithChildren(
         recipe: _toRow(recipe),
         ingredients: ingredients,
         steps: steps,
+        tagIds: [for (final t in tagRows) t.id],
       );
       return Ok(recipe);
     } catch (e) {
@@ -139,12 +154,16 @@ class RecipeRepository {
   Future<RecipeDetail> _detail(RecipeRow row) async {
     final ingredients = await _dao.ingredientsOf(row.id);
     final steps = await _dao.stepsOf(row.id);
+    final tags = await _dao.tagsOf(row.id);
     return RecipeDetail(
       recipe: _toDomain(row),
       ingredients: ingredients.map(_ingredientToDomain).toList(),
       steps: steps.map(_stepToDomain).toList(),
+      tags: tags.map(_tagToDomain).toList(),
     );
   }
+
+  Tag _tagToDomain(TagRow r) => Tag(id: r.id, name: r.name);
 
   Recipe _toDomain(RecipeRow r) => Recipe(
         id: r.id,
@@ -201,5 +220,6 @@ class RecipeRepository {
 }
 
 final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
-  return RecipeRepository(ref.watch(databaseProvider).recipeDao);
+  final db = ref.watch(databaseProvider);
+  return RecipeRepository(db.recipeDao, db.tagDao);
 });

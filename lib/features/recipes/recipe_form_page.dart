@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tag_name.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
+import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -82,6 +84,12 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
       _Line(s.text),
   ];
 
+  late final List<String> _tags = [
+    for (final Tag t in widget.original?.tags ?? const <Tag>[]) t.name,
+  ];
+  final _tagInput = TextEditingController();
+  final _tagFocus = FocusNode();
+
   bool _saving = false;
 
   bool get _isEditing => _recipe != null;
@@ -100,8 +108,21 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
     for (final l in [..._ingredients, ..._steps]) {
       l.controller.dispose();
     }
+    _tagInput.dispose();
+    _tagFocus.dispose();
     super.dispose();
   }
+
+  void _addTag(String raw) {
+    _tagInput.clear();
+    final names = [
+      for (final part in raw.split(',')) canonicalTagName(part),
+    ].where((n) => n.isNotEmpty && !_tags.contains(n)).toList();
+    if (names.isEmpty) return;
+    setState(() => _tags.addAll(names));
+  }
+
+  void _removeTag(String name) => setState(() => _tags.remove(name));
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -115,6 +136,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
           notes: _notes.text,
           ingredientLines: [for (final l in _ingredients) l.controller.text],
           stepLines: [for (final l in _steps) l.controller.text],
+          tagNames: [..._tags, _tagInput.text],
         );
     if (!mounted) return;
     result.when(
@@ -185,6 +207,13 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                   label: 'Rende (porções)',
                   controller: _servings,
                   numeric: true,
+                ),
+                _TagsField(
+                  tags: _tags,
+                  controller: _tagInput,
+                  focusNode: _tagFocus,
+                  onAdd: _addTag,
+                  onRemove: _removeTag,
                 ),
                 const SizedBox(height: AppSpacing.md),
                 _LineList(
@@ -260,6 +289,155 @@ class _TopBar extends StatelessWidget {
           Expanded(child: Text(title, style: context.texts.displaySmall)),
           PillButton(label: 'Salvar', onPressed: onSave),
         ],
+      ),
+    );
+  }
+}
+
+/// Campo de tags (§RF-01.10): pills removíveis + entrada com autocomplete das
+/// tags já existentes. Enter ou tocar numa sugestão adiciona; a normalização
+/// (minúsculas, dedupe) é do [RecipeFormViewModel].
+class _TagsField extends ConsumerWidget {
+  const _TagsField({
+    required this.tags,
+    required this.controller,
+    required this.focusNode,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final List<String> tags;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final void Function(String) onAdd;
+  final void Function(String) onRemove;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final known = ref.watch(allTagsProvider).valueOrNull ?? const <Tag>[];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('TAGS', style: context.texts.labelSmall),
+          const SizedBox(height: AppSpacing.xs),
+          if (tags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final t in tags)
+                    _RemovableChip(label: t, onRemove: () => onRemove(t)),
+                ],
+              ),
+            ),
+          RawAutocomplete<String>(
+            textEditingController: controller,
+            focusNode: focusNode,
+            optionsBuilder: (value) {
+              final q = value.text.trim().toLowerCase();
+              if (q.isEmpty) return const Iterable<String>.empty();
+              return known
+                  .map((t) => t.name)
+                  .where((n) => n.toLowerCase().contains(q) && !tags.contains(n));
+            },
+            onSelected: onAdd,
+            fieldViewBuilder:
+                (context, controller, focusNode, onFieldSubmitted) {
+              return TextField(
+                controller: controller,
+                focusNode: focusNode,
+                textCapitalization: TextCapitalization.none,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  hintText: 'rápido, frango, sobremesa — enter separa',
+                ),
+                onSubmitted: (value) {
+                  onAdd(value);
+                  focusNode.requestFocus();
+                },
+              );
+            },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  color: context.colors.paperSoft,
+                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxHeight: 180,
+                      maxWidth: 280,
+                    ),
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      children: [
+                        for (final option in options)
+                          InkWell(
+                            onTap: () => onSelected(option),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.xs,
+                              ),
+                              child: Text(
+                                option,
+                                style: context.texts.bodyMedium,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RemovableChip extends StatelessWidget {
+  const _RemovableChip({required this.label, required this.onRemove});
+
+  final String label;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.paperSoft,
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: InkWell(
+        onTap: onRemove,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.xs,
+            AppSpacing.xs,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: context.texts.labelLarge?.copyWith(color: colors.ink),
+              ),
+              const SizedBox(width: AppSpacing.xs / 2),
+              Icon(Icons.close, size: 16, color: colors.textMuted),
+            ],
+          ),
+        ),
       ),
     );
   }
