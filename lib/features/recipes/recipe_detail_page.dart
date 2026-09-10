@@ -206,102 +206,104 @@ class _Hero extends ConsumerWidget {
     return AnnotatedRegion(
       value: SystemBars.onDark,
       child: Material(
-      color: colors.coral,
-      elevation: 8,
-      shadowColor: colors.ink,
-      borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(AppRadii.lg),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 300,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: TilePattern(
-                motif: TileMotif.arco,
-                background: colors.coral,
-                patternColor: colors.coralPattern,
+        color: colors.coral,
+        elevation: 8,
+        shadowColor: colors.ink,
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(AppRadii.lg),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SizedBox(
+          height: 300,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: TilePattern(
+                  motif: TileMotif.arco,
+                  background: colors.coral,
+                  patternColor: colors.coralPattern,
+                ),
               ),
-            ),
-          if (minutes != null)
-            Transform.translate(
-              offset:
-                  const Offset(-40, -20), // 40px pra esquerda, 30px pra cima
-              child: HeroNumber(
-                value: '$minutes',
-                unit: 'min',
-                color: colors.onSaturated.withValues(alpha: 0.5),
-                corner: Alignment.bottomRight,
-                size: 100,
-              ),
-            ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.xs,
-                AppSpacing.screen,
-                AppSpacing.lg,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              if (minutes != null)
+                Transform.translate(
+                  offset: const Offset(
+                      -40, -20), // 40px pra esquerda, 30px pra cima
+                  child: HeroNumber(
+                    value: '$minutes',
+                    unit: 'min',
+                    color: colors.onSaturated.withValues(alpha: 0.5),
+                    corner: Alignment.bottomRight,
+                    size: 100,
+                  ),
+                ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.xs,
+                    AppSpacing.screen,
+                    AppSpacing.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _HeroCircleButton(
-                        icon: Icons.arrow_back,
-                        onTap: () => context.pop(),
-                        tooltip: 'Voltar',
+                      Row(
+                        children: [
+                          _HeroCircleButton(
+                            icon: Icons.arrow_back,
+                            onTap: () => context.pop(),
+                            tooltip: 'Voltar',
+                          ),
+                          const Spacer(),
+                          _HeroCircleButton(
+                            icon: recipe.isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            onTap: () => ref
+                                .read(recipeRepositoryProvider)
+                                .setFavorite(recipe.id, !recipe.isFavorite),
+                            tooltip: recipe.isFavorite
+                                ? 'Desfavoritar'
+                                : 'Favoritar',
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          _HeroCircleButton(
+                            icon: Icons.edit_outlined,
+                            onTap: () =>
+                                context.push('/recipe/${recipe.id}/edit'),
+                            tooltip: 'Editar',
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          _HeroCircleButton(
+                            icon: Icons.more_horiz,
+                            onTap: () => _confirmDelete(context, ref),
+                            tooltip: 'Mais',
+                          ),
+                        ],
                       ),
+                      if (tags.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
+                          children: [for (final t in tags) _TagPill(t.name)],
+                        ),
+                      ],
                       const Spacer(),
-                      _HeroCircleButton(
-                        icon: recipe.isFavorite
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        onTap: () => ref
-                            .read(recipeRepositoryProvider)
-                            .setFavorite(recipe.id, !recipe.isFavorite),
-                        tooltip:
-                            recipe.isFavorite ? 'Desfavoritar' : 'Favoritar',
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      _HeroCircleButton(
-                        icon: Icons.edit_outlined,
-                        onTap: () => context.push('/recipe/${recipe.id}/edit'),
-                        tooltip: 'Editar',
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      _HeroCircleButton(
-                        icon: Icons.more_horiz,
-                        onTap: () => _confirmDelete(context, ref),
-                        tooltip: 'Mais',
+                      Text(
+                        recipe.name,
+                        style: AppTextStyles.display(44)
+                            .copyWith(color: colors.onSaturated),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                  if (tags.isNotEmpty) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: AppSpacing.xs,
-                      runSpacing: AppSpacing.xs,
-                      children: [for (final t in tags) _TagPill(t.name)],
-                    ),
-                  ],
-                  const Spacer(),
-                  Text(
-                    recipe.name,
-                    style: AppTextStyles.display(44)
-                        .copyWith(color: colors.onSaturated),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
         ),
-      ),
       ),
     );
   }

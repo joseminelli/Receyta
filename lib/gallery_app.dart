@@ -377,10 +377,22 @@ class _PillNavBarPageState extends State<_PillNavBarPage> {
       child: PillNavBar(
         currentIndex: _navIndex,
         onSelected: (i) => setState(() => _navIndex = i),
-        items: const [
-          PillNavItem(icon: Icons.restaurant_menu, label: 'Receitas'),
-          PillNavItem(icon: Icons.calendar_month, label: 'Semana'),
-          PillNavItem(icon: Icons.shopping_basket, label: 'Compras'),
+        items: [
+          PillNavItem(
+              icon: Icons.restaurant_menu,
+              label: 'Receitas',
+              color: context.colors.coral,
+              motif: TileMotif.arco),
+          PillNavItem(
+              icon: Icons.calendar_month,
+              label: 'Semana',
+              color: context.colors.violet,
+              motif: TileMotif.meiaLua),
+          PillNavItem(
+              icon: Icons.shopping_basket,
+              label: 'Compras',
+              color: context.colors.lime,
+              motif: TileMotif.ponto),
         ],
       ),
     );
@@ -525,9 +537,18 @@ class _BenchmarkPage extends StatelessWidget {
   const _BenchmarkPage();
 
   static const _names = [
-    'Frango ao curry', 'Estrogonofe', 'Bolo de fubá', 'Lasanha à bolonhesa',
-    'Sopa de legumes', 'Pão de queijo', 'Risoto de cogumelos', 'Feijoada',
-    'Panqueca de banana', 'Salada caesar', 'Torta de limão', 'Moqueca',
+    'Frango ao curry',
+    'Estrogonofe',
+    'Bolo de fubá',
+    'Lasanha à bolonhesa',
+    'Sopa de legumes',
+    'Pão de queijo',
+    'Risoto de cogumelos',
+    'Feijoada',
+    'Panqueca de banana',
+    'Salada caesar',
+    'Torta de limão',
+    'Moqueca',
   ];
 
   @override

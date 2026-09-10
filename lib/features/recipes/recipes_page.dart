@@ -240,8 +240,7 @@ class _Header extends ConsumerWidget {
     final colors = context.colors;
     final tags = ref.watch(inUseTagsProvider).valueOrNull ?? const <Tag>[];
     final selected = ref.watch(selectedTagIdsProvider);
-    final hasFavorites =
-        ref.watch(hasFavoritesProvider).valueOrNull ?? false;
+    final hasFavorites = ref.watch(hasFavoritesProvider).valueOrNull ?? false;
     final favoritesOnly = ref.watch(favoritesOnlyProvider);
     final showBar = tags.isNotEmpty || hasFavorites;
 
@@ -259,138 +258,138 @@ class _Header extends ConsumerWidget {
     return AnnotatedRegion(
       value: SystemBars.onDark,
       child: ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(AppRadii.lg),
-      ),
-      child: Container(
-        color: colors.ink,
-        child: Stack(
-          children: [
-            Positioned(
-              top: -40,
-              right: -30,
-              child: SizedBox(
-                width: 260,
-                height: 260,
-                child: TilePattern(
-                  motif: TileMotif.arco,
-                  background: colors.ink,
-                  patternColor: colors.inkPattern,
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(AppRadii.lg),
+        ),
+        child: Container(
+          color: colors.ink,
+          child: Stack(
+            children: [
+              Positioned(
+                top: -40,
+                right: -30,
+                child: SizedBox(
+                  width: 260,
+                  height: 260,
+                  child: TilePattern(
+                    motif: TileMotif.arco,
+                    background: colors.ink,
+                    patternColor: colors.inkPattern,
+                  ),
                 ),
               ),
-            ),
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  top: AppSpacing.xs,
-                  bottom: AppSpacing.lg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: sidePad,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  count == null
-                                      ? ''
-                                      : '$count ${count == 1 ? 'RECEITA' : 'RECEITAS'}',
-                                  style: context.texts.labelSmall
-                                      ?.copyWith(color: colors.lime),
-                                ),
-                              ),
-                              _CircleButton(
-                                icon: Icons.search,
-                                onTap: () => context.push('/search'),
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              _CircleButton(
-                                icon: Icons.add,
-                                filled: true,
-                                onTap: onCreate,
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.xs),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text.rich(
-                              TextSpan(
-                                style: AppTextStyles.display(64)
-                                    .copyWith(color: colors.onSaturated),
-                                children: [
-                                  const TextSpan(text: 'Rece'),
-                                  TextSpan(
-                                    text: 'y',
-                                    style: TextStyle(color: colors.coral),
-                                  ),
-                                  const TextSpan(text: 'tas'),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (showBar) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      SizedBox(
-                        height: 44,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: sidePad,
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    top: AppSpacing.xs,
+                    bottom: AppSpacing.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: sidePad,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _HeaderChip(
-                              label: 'Todas',
-                              active: selected.isEmpty && !favoritesOnly,
-                              onTap: clearFilter,
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    count == null
+                                        ? ''
+                                        : '$count ${count == 1 ? 'RECEITA' : 'RECEITAS'}',
+                                    style: context.texts.labelSmall
+                                        ?.copyWith(color: colors.lime),
+                                  ),
+                                ),
+                                _CircleButton(
+                                  icon: Icons.search,
+                                  onTap: () => context.push('/search'),
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                _CircleButton(
+                                  icon: Icons.add,
+                                  filled: true,
+                                  onTap: onCreate,
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: AppSpacing.xs),
-                            if (hasFavorites) ...[
-                              _HeaderChip(
-                                label: 'Favoritos',
-                                icon: Icons.favorite,
-                                active: favoritesOnly,
-                                onTap: () => setFavoritesOnly(!favoritesOnly),
-                              ),
-                            ],
-                            for (final tag in tags) ...[
-                              const SizedBox(width: AppSpacing.xs),
-                              _HeaderChip(
-                                label: tag.name,
-                                active: selected.contains(tag.id),
-                                onTap: () {
-                                  final next = Set<String>.from(selected);
-                                  if (!next.remove(tag.id)) next.add(tag.id);
-                                  setSelected(next);
-                                },
-                                onLongPress: () => _confirmDeleteTag(
-                                  context,
-                                  ref,
-                                  tag,
-                                  selected,
-                                  setSelected,
+                            const SizedBox(height: AppSpacing.xs),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text.rich(
+                                TextSpan(
+                                  style: AppTextStyles.display(64)
+                                      .copyWith(color: colors.onSaturated),
+                                  children: [
+                                    const TextSpan(text: 'Rece'),
+                                    TextSpan(
+                                      text: 'y',
+                                      style: TextStyle(color: colors.coral),
+                                    ),
+                                    const TextSpan(text: 'tas'),
+                                  ],
                                 ),
                               ),
-                            ],
+                            ),
                           ],
                         ),
                       ),
+                      if (showBar) ...[
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                          height: 44,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: sidePad,
+                            children: [
+                              _HeaderChip(
+                                label: 'Todas',
+                                active: selected.isEmpty && !favoritesOnly,
+                                onTap: clearFilter,
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              if (hasFavorites) ...[
+                                _HeaderChip(
+                                  label: 'Favoritos',
+                                  icon: Icons.favorite,
+                                  active: favoritesOnly,
+                                  onTap: () => setFavoritesOnly(!favoritesOnly),
+                                ),
+                              ],
+                              for (final tag in tags) ...[
+                                const SizedBox(width: AppSpacing.xs),
+                                _HeaderChip(
+                                  label: tag.name,
+                                  active: selected.contains(tag.id),
+                                  onTap: () {
+                                    final next = Set<String>.from(selected);
+                                    if (!next.remove(tag.id)) next.add(tag.id);
+                                    setSelected(next);
+                                  },
+                                  onLongPress: () => _confirmDeleteTag(
+                                    context,
+                                    ref,
+                                    tag,
+                                    selected,
+                                    setSelected,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -417,8 +416,8 @@ Future<void> _confirmDeleteTag(
         leading: Icon(Icons.label_off_outlined, color: context.colors.danger),
         title: Text(
           'Remover "${tag.name}"',
-          style: context.texts.bodyLarge
-              ?.copyWith(color: context.colors.danger),
+          style:
+              context.texts.bodyLarge?.copyWith(color: context.colors.danger),
         ),
         subtitle: Text(
           uses == 0

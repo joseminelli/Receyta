@@ -53,69 +53,69 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     return AnnotatedRegion(
       value: SystemBars.onDark,
       child: Scaffold(
-      backgroundColor: colors.ink,
-      body: ref.watch(recipeDetailProvider(widget.recipeId)).when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const _Message(text: 'Receita não encontrada'),
-            data: (detail) {
-              if (detail == null) {
-                return const _Message(text: 'Receita não encontrada');
-              }
-              return SafeArea(
-                child: Column(
-                  children: [
-                    _TopBar(name: detail.recipe.name),
-                    Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screen,
-                          AppSpacing.xs,
-                          AppSpacing.screen,
-                          AppSpacing.xxl,
-                        ),
-                        children: [
-                          _IngredientsCard(
-                            ingredients: detail.ingredients,
-                            open: _ingredientsOpen,
-                            onToggle: () => setState(
-                              () => _ingredientsOpen = !_ingredientsOpen,
-                            ),
+        backgroundColor: colors.ink,
+        body: ref.watch(recipeDetailProvider(widget.recipeId)).when(
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const _Message(text: 'Receita não encontrada'),
+              data: (detail) {
+                if (detail == null) {
+                  return const _Message(text: 'Receita não encontrada');
+                }
+                return SafeArea(
+                  child: Column(
+                    children: [
+                      _TopBar(name: detail.recipe.name),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.screen,
+                            AppSpacing.xs,
+                            AppSpacing.screen,
+                            AppSpacing.xxl,
                           ),
-                          const SizedBox(height: AppSpacing.xl),
-                          _SectionLabel('Preparo'),
-                          const SizedBox(height: AppSpacing.md),
-                          if (detail.steps.isEmpty)
-                            Text(
-                              'Esta receita não tem passos.',
-                              style: context.texts.bodyLarge
-                                  ?.copyWith(color: colors.textBody),
-                            )
-                          else
-                            for (var i = 0; i < detail.steps.length; i++)
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  bottom: AppSpacing.sm,
-                                ),
-                                child: _StepCard(
-                                  number: i + 1,
-                                  text: detail.steps[i].text,
-                                  done: _done.contains(i),
-                                  onTap: () => setState(() {
-                                    _done.contains(i)
-                                        ? _done.remove(i)
-                                        : _done.add(i);
-                                  }),
-                                ),
+                          children: [
+                            _IngredientsCard(
+                              ingredients: detail.ingredients,
+                              open: _ingredientsOpen,
+                              onToggle: () => setState(
+                                () => _ingredientsOpen = !_ingredientsOpen,
                               ),
-                        ],
+                            ),
+                            const SizedBox(height: AppSpacing.xl),
+                            _SectionLabel('Preparo'),
+                            const SizedBox(height: AppSpacing.md),
+                            if (detail.steps.isEmpty)
+                              Text(
+                                'Esta receita não tem passos.',
+                                style: context.texts.bodyLarge
+                                    ?.copyWith(color: colors.textBody),
+                              )
+                            else
+                              for (var i = 0; i < detail.steps.length; i++)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: AppSpacing.sm,
+                                  ),
+                                  child: _StepCard(
+                                    number: i + 1,
+                                    text: detail.steps[i].text,
+                                    done: _done.contains(i),
+                                    onTap: () => setState(() {
+                                      _done.contains(i)
+                                          ? _done.remove(i)
+                                          : _done.add(i);
+                                    }),
+                                  ),
+                                ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-    ),
+                    ],
+                  ),
+                );
+              },
+            ),
+      ),
     );
   }
 }
@@ -194,8 +194,8 @@ class _IngredientsCard extends StatelessWidget {
                 children: [
                   Text(
                     'INGREDIENTES',
-                    style: context.texts.labelSmall
-                        ?.copyWith(color: colors.lime),
+                    style:
+                        context.texts.labelSmall?.copyWith(color: colors.lime),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
