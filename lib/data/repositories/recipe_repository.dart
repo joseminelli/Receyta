@@ -44,6 +44,10 @@ class RecipeRepository {
       .watchActive(favoritesOnly: true)
       .map((rows) => rows.isNotEmpty);
 
+  /// Busca por nome, sobre, notas e tag (§RF-01.9). Query vazia → lista vazia.
+  Stream<List<Recipe>> search(String query) =>
+      _dao.search(query).map((rows) => rows.map(_toDomain).toList());
+
   Stream<RecipeDetail?> watchDetail(String id) {
     return _dao.watchById(id).asyncMap((row) async {
       if (row == null) return null;

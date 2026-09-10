@@ -50,7 +50,9 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   Widget build(BuildContext context) {
     final colors = context.colors;
 
-    return Scaffold(
+    return AnnotatedRegion(
+      value: SystemBars.onDark,
+      child: Scaffold(
       backgroundColor: colors.ink,
       body: ref.watch(recipeDetailProvider(widget.recipeId)).when(
             loading: () => const SizedBox.shrink(),
@@ -113,6 +115,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
               );
             },
           ),
+    ),
     );
   }
 }

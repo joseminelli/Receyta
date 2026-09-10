@@ -256,7 +256,9 @@ class _Header extends ConsumerWidget {
 
     const sidePad = EdgeInsets.symmetric(horizontal: AppSpacing.screen);
 
-    return ClipRRect(
+    return AnnotatedRegion(
+      value: SystemBars.onDark,
+      child: ClipRRect(
       borderRadius: const BorderRadius.vertical(
         bottom: Radius.circular(AppRadii.lg),
       ),
@@ -303,6 +305,11 @@ class _Header extends ConsumerWidget {
                                       ?.copyWith(color: colors.lime),
                                 ),
                               ),
+                              _CircleButton(
+                                icon: Icons.search,
+                                onTap: () => context.push('/search'),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
                               _CircleButton(
                                 icon: Icons.add,
                                 filled: true,
@@ -383,6 +390,7 @@ class _Header extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

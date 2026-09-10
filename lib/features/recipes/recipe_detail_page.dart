@@ -201,8 +201,11 @@ class _Hero extends ConsumerWidget {
 
     // Cartão coral: canto arredondado embaixo e sombra, para ler como um bloco
     // por cima do conteúdo. `Material` cuida da sombra + clip sem brigar com o
-    // shader do azulejo.
-    return Material(
+    // shader do azulejo. `AnnotatedRegion`: hora/bateria em branco enquanto o
+    // hero cobre o topo; ao rolar, o sheet claro assume e volta ao escuro.
+    return AnnotatedRegion(
+      value: SystemBars.onDark,
+      child: Material(
       color: colors.coral,
       elevation: 8,
       shadowColor: colors.ink,
@@ -298,6 +301,7 @@ class _Hero extends ConsumerWidget {
           ),
         ],
         ),
+      ),
       ),
     );
   }

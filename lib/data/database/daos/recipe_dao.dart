@@ -37,6 +37,35 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     return query.watch();
   }
 
+  /// Busca por nome, sobre e notas (FTS5) e por nome de tag (§RF-01.9). Cada
+  /// termo vira prefixo (`curry` acha "curry ao forno"). Query vazia → nada.
+  Stream<List<RecipeRow>> search(String query) {
+    final trimmed = query.trim();
+    final terms = trimmed
+        .split(RegExp(r'\s+'))
+        .map((t) => t.replaceAll('"', '').trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (terms.isEmpty) return Stream.value(const []);
+
+    final match = terms.map((t) => '"$t"*').join(' ');
+    final like = '%${trimmed.replaceAll(RegExp(r'[%_\\]'), r'\$0')}%';
+
+    return customSelect(
+      'SELECT r.* FROM recipes r '
+      'WHERE r.deleted_at IS NULL AND ('
+      '  r.rowid IN (SELECT rowid FROM recipes_fts WHERE recipes_fts MATCH ?1)'
+      '  OR r.id IN ('
+      '    SELECT rt.recipe_id FROM recipe_tags rt '
+      '    JOIN tags t ON t.id = rt.tag_id '
+      "    WHERE t.name LIKE ?2 ESCAPE '\\'"
+      '  )'
+      ') ORDER BY r.updated_at DESC',
+      variables: [Variable<String>(match), Variable<String>(like)],
+      readsFrom: {recipes, recipeTags, tags},
+    ).map((row) => recipes.map(row.data)).watch();
+  }
+
   Future<List<TagRow>> tagsOf(String recipeId) {
     final query = select(tags).join([
       innerJoin(recipeTags, recipeTags.tagId.equalsExp(tags.id)),

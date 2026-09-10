@@ -1,7 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+
+/// Estilo da barra de status do sistema (hora, bateria). Blocos escuros no topo
+/// (header da home/busca, hero de receita, modo cozinha) pedem ícones claros;
+/// telas de fundo `paper` usam os escuros — o default do tema claro.
+abstract class SystemBars {
+  static const onDark = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+  );
+
+  static const onLight = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+  );
+}
 
 /// `ThemeData` montado inteiramente a partir dos tokens (§9.9 do plano).
 ///

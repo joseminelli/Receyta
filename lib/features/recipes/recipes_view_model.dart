@@ -60,3 +60,19 @@ final recipesStreamProvider = StreamProvider<List<Recipe>>((ref) {
 final trashedRecipesProvider = StreamProvider<List<Recipe>>(
   (ref) => ref.watch(recipeRepositoryProvider).watchTrashed(),
 );
+
+/// Todas as receitas ativas, sem filtro — a tela de busca mostra elas enquanto
+/// o campo está vazio.
+final allRecipesProvider = StreamProvider<List<Recipe>>(
+  (ref) => ref.watch(recipeRepositoryProvider).watchAll(),
+);
+
+/// Texto da busca (§RF-01.9). `autoDispose`: zera ao sair da tela de busca.
+final searchQueryProvider = StateProvider.autoDispose<String>((ref) => '');
+
+/// Resultados da busca por nome, sobre, notas e tag. Query vazia → vazio.
+final searchResultsProvider = StreamProvider.autoDispose<List<Recipe>>((ref) {
+  final query = ref.watch(searchQueryProvider).trim();
+  if (query.isEmpty) return Stream.value(const []);
+  return ref.watch(recipeRepositoryProvider).search(query);
+});
