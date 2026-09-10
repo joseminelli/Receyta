@@ -22,16 +22,15 @@ void main() {
   });
   tearDown(() => db.close());
 
-  Widget host(String initialLocation) {
+  Widget host(String target) {
     final router = GoRouter(
-      initialLocation: initialLocation,
       routes: [
         GoRoute(
           path: '/',
           builder: (context, _) => Scaffold(
             body: Center(
               child: TextButton(
-                onPressed: () => context.push('/new'),
+                onPressed: () => context.push(target),
                 child: const Text('início'),
               ),
             ),
@@ -48,6 +47,15 @@ void main() {
       overrides: [recipeRepositoryProvider.overrideWithValue(repo)],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     );
+  }
+
+  /// Abre o formulário a partir da home ('/'), para que `context.pop()` no
+  /// salvar tenha uma tela abaixo — como no router real, onde ele é empurrado.
+  Future<void> openForm(WidgetTester tester, String target) async {
+    await tester.pumpWidget(host(target));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('início'));
+    await tester.pumpAndSettle();
   }
 
   Finder fieldByLabel(String label) => find.descendant(
@@ -69,8 +77,7 @@ void main() {
 
   testWidgets('cria: nome, campo e ingrediente; salva e volta; tudo persiste',
       (tester) async {
-    await tester.pumpWidget(host('/new'));
-    await tester.pumpAndSettle();
+    await openForm(tester, '/new');
 
     await tester.enterText(fieldByLabel('Nome'), 'Bolo de fubá');
     await tester.enterText(fieldByLabel('Sobre'), 'de domingo');
@@ -105,8 +112,7 @@ void main() {
   });
 
   testWidgets('Salvar fica desabilitado sem nome', (tester) async {
-    await tester.pumpWidget(host('/new'));
-    await tester.pumpAndSettle();
+    await openForm(tester, '/new');
 
     expect(salvar(tester).onPressed, isNull);
     await tester.enterText(fieldByLabel('Nome'), 'Pão');
@@ -122,8 +128,7 @@ void main() {
       ingredientLines: ['água', 'sal'],
     ) as Ok<Recipe>;
 
-    await tester.pumpWidget(host('/recipe/${created.value.id}/edit'));
-    await tester.pumpAndSettle();
+    await openForm(tester, '/recipe/${created.value.id}/edit');
 
     expect(find.text('Editar receita'), findsOneWidget);
     expect(find.text('Sopa'), findsOneWidget);
