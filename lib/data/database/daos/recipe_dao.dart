@@ -13,10 +13,16 @@ part 'recipe_dao.g.dart';
 class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   RecipeDao(super.db);
 
-  Stream<List<RecipeRow>> watchActive({Set<String> anyOfTagIds = const {}}) {
+  Stream<List<RecipeRow>> watchActive({
+    Set<String> anyOfTagIds = const {},
+    bool favoritesOnly = false,
+  }) {
     final query = select(recipes)
       ..where((r) => r.deletedAt.isNull())
       ..orderBy([(r) => OrderingTerm.desc(r.updatedAt)]);
+    if (favoritesOnly) {
+      query.where((r) => r.isFavorite.equals(true));
+    }
     if (anyOfTagIds.isNotEmpty) {
       query.where(
         (r) => existsQuery(
@@ -98,9 +104,43 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     });
   }
 
+  Future<int> setFavorite(String id, bool value, DateTime at) {
+    return (update(recipes)..where((r) => r.id.equals(id))).write(
+      RecipesCompanion(isFavorite: Value(value), updatedAt: Value(at)),
+    );
+  }
+
   Future<int> softDelete(String id, DateTime at) {
     return (update(recipes)..where((r) => r.id.equals(id))).write(
       RecipesCompanion(deletedAt: Value(at), updatedAt: Value(at)),
     );
+  }
+
+  /// Linhas na lixeira (RF-01.6), da mais recente pra mais antiga.
+  Stream<List<RecipeRow>> watchTrashed() {
+    return (select(recipes)
+          ..where((r) => r.deletedAt.isNotNull())
+          ..orderBy([(r) => OrderingTerm.desc(r.deletedAt)]))
+        .watch();
+  }
+
+  Future<int> restore(String id, DateTime at) {
+    return (update(recipes)..where((r) => r.id.equals(id))).write(
+      RecipesCompanion(deletedAt: const Value(null), updatedAt: Value(at)),
+    );
+  }
+
+  /// Apaga de verdade — o cascade leva ingredientes, passos e vínculos de tag.
+  Future<int> hardDelete(String id) {
+    return (delete(recipes)..where((r) => r.id.equals(id))).go();
+  }
+
+  /// Esvazia da lixeira tudo que passou do prazo. Roda no boot.
+  Future<int> purgeExpired(DateTime cutoff) {
+    return (delete(recipes)
+          ..where((r) =>
+              r.deletedAt.isNotNull() &
+              r.deletedAt.isSmallerThanValue(cutoff)))
+        .go();
   }
 }

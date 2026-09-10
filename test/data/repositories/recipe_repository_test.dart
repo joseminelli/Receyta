@@ -115,6 +115,76 @@ void main() {
     expect(raw.read<DateTime?>('deleted_at'), isNotNull);
   });
 
+  test('setFavorite alterna e reflete no watch', () async {
+    final r = unwrap(await repo.saveDetail(name: 'Bolo'));
+    expect(r.isFavorite, isFalse);
+
+    await repo.setFavorite(r.id, true);
+    expect((await repo.watchAll().first).single.isFavorite, isTrue);
+
+    await repo.setFavorite(r.id, false);
+    expect((await repo.watchAll().first).single.isFavorite, isFalse);
+  });
+
+  test('watchAll(favoritesOnly) e watchHasFavorites', () async {
+    final a = unwrap(await repo.saveDetail(name: 'Curry'));
+    unwrap(await repo.saveDetail(name: 'Bolo'));
+
+    expect(await repo.watchHasFavorites().first, isFalse);
+    expect(
+      (await repo.watchAll(favoritesOnly: true).first),
+      isEmpty,
+    );
+
+    await repo.setFavorite(a.id, true);
+    expect(await repo.watchHasFavorites().first, isTrue);
+    expect(
+      (await repo.watchAll(favoritesOnly: true).first).map((r) => r.name),
+      ['Curry'],
+    );
+  });
+
+  test('lixeira: soft delete entra, restore volta, deleteForever apaga',
+      () async {
+    final r = unwrap(await repo.saveDetail(
+      name: 'Sopa',
+      ingredientLines: ['água'],
+      tagNames: ['rápido'],
+    ));
+
+    await repo.softDelete(r.id);
+    final trashed = await repo.watchTrashed().first;
+    expect(trashed.single.name, 'Sopa');
+    expect(trashed.single.deletedAt, isNotNull);
+
+    await repo.restore(r.id);
+    expect(await repo.watchTrashed().first, isEmpty);
+    expect((await repo.watchAll().first).single.name, 'Sopa');
+
+    await repo.softDelete(r.id);
+    await repo.deleteForever(r.id);
+    expect(await repo.watchTrashed().first, isEmpty);
+    final rows = await db
+        .customSelect('SELECT COUNT(*) c FROM recipe_ingredients')
+        .getSingle();
+    expect(rows.read<int>('c'), 0); // cascade
+  });
+
+  test('purgeExpired só apaga o que passou do prazo', () async {
+    final old = unwrap(await repo.saveDetail(name: 'Antiga'));
+    final fresh = unwrap(await repo.saveDetail(name: 'Nova'));
+
+    clock = DateTime.utc(2026, 1, 1);
+    await repo.softDelete(old.id);
+    clock = DateTime.utc(2026, 2, 15); // 45 dias depois
+    await repo.softDelete(fresh.id);
+
+    await repo.purgeExpired(); // clock = 2026-02-15, corte = -30d = 2026-01-16
+
+    final trashed = await repo.watchTrashed().first;
+    expect(trashed.map((r) => r.name), ['Nova']);
+  });
+
   test('saveDetail grava tags, reaproveita a mesma linha entre receitas',
       () async {
     final a = unwrap(await repo.saveDetail(

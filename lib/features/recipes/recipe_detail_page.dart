@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
+import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -69,63 +71,59 @@ class _Detail extends StatelessWidget {
                 child: _Hero(recipe: recipe, tags: detail.tags),
               ),
               SliverToBoxAdapter(
-                child: Transform.translate(
-                  offset: const Offset(0, -AppSpacing.screen),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: colors.paper,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppRadii.lg),
-                      ),
-                      border: Border.all(color: colors.paperSoft, width: 1.5),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colors.paper,
+                    border: Border(
+                      top: BorderSide(color: colors.paperSoft, width: 1.5),
                     ),
-                    padding: EdgeInsets.fromLTRB(
-                      AppSpacing.screen,
-                      AppSpacing.lg,
-                      AppSpacing.screen,
-                      hasSteps ? 120 : AppSpacing.xxl,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _Metrics(recipe: recipe),
-                        if ((recipe.about ?? '').isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.lg),
-                          Text(recipe.about!, style: context.texts.bodyLarge),
-                        ],
-                        if (detail.ingredients.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xl),
-                          SectionHeader(
-                            title: 'Ingredientes',
-                            action: _CountPill(detail.ingredients.length, 'item',
-                                'itens'),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          for (final i in detail.ingredients)
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: AppSpacing.xs),
-                              child: Text(
-                                i.rawText,
-                                style: context.texts.bodyLarge,
-                              ),
-                            ),
-                        ],
-                        if (hasSteps) ...[
-                          const SizedBox(height: AppSpacing.xl),
-                          _Label('Preparo'),
-                          const SizedBox(height: AppSpacing.sm),
-                          for (var s = 0; s < detail.steps.length; s++)
-                            _Step(index: s + 1, text: detail.steps[s].text),
-                        ],
-                        if ((recipe.notes ?? '').isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.xl),
-                          _Label('Notas'),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(recipe.notes!, style: context.texts.bodyLarge),
-                        ],
+                  ),
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.xl,
+                    AppSpacing.screen,
+                    hasSteps ? 120 : AppSpacing.xxl,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _Metrics(recipe: recipe),
+                      if ((recipe.about ?? '').isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        Text(recipe.about!, style: context.texts.bodyLarge),
                       ],
-                    ),
+                      if (detail.ingredients.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        SectionHeader(
+                          title: 'Ingredientes',
+                          action: _CountPill(
+                              detail.ingredients.length, 'item', 'itens'),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        for (final i in detail.ingredients)
+                          Padding(
+                            padding:
+                                const EdgeInsets.only(bottom: AppSpacing.xs),
+                            child: Text(
+                              i.rawText,
+                              style: context.texts.bodyLarge,
+                            ),
+                          ),
+                      ],
+                      if (hasSteps) ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        _Label('Preparo'),
+                        const SizedBox(height: AppSpacing.sm),
+                        for (var s = 0; s < detail.steps.length; s++)
+                          _Step(index: s + 1, text: detail.steps[s].text),
+                      ],
+                      if ((recipe.notes ?? '').isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        _Label('Notas'),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(recipe.notes!, style: context.texts.bodyLarge),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -144,7 +142,7 @@ class _Detail extends StatelessWidget {
   }
 }
 
-class _Hero extends StatelessWidget {
+class _Hero extends ConsumerWidget {
   const _Hero({required this.recipe, this.tags = const []});
 
   final Recipe recipe;
@@ -155,28 +153,85 @@ class _Hero extends StatelessWidget {
     return total == 0 ? null : total;
   }
 
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final repo = ref.read(recipeRepositoryProvider);
+    await repo.softDelete(recipe.id);
+    if (!context.mounted) return;
+    context.pop();
+    showRootSnackBar(
+      SnackBar(
+        content: const Text('Receita movida para a lixeira'),
+        action: SnackBarAction(
+          label: 'Desfazer',
+          onPressed: () => repo.restore(recipe.id),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: ListTile(
+          leading: Icon(Icons.delete_outline, color: colors.danger),
+          title: Text(
+            'Mover para a lixeira',
+            style: context.texts.bodyLarge?.copyWith(color: colors.danger),
+          ),
+          subtitle: Text(
+            'Some da lista agora; apaga de vez em 30 dias.',
+            style: context.texts.bodyMedium,
+          ),
+          onTap: () {
+            Navigator.of(sheet).pop();
+            _delete(context, ref);
+          },
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final minutes = _totalMinutes;
 
-    return SizedBox(
-      height: 300,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: TilePattern(
-              motif: TileMotif.arco,
-              background: colors.coral,
-              patternColor: colors.coralPattern,
+    // Cartão coral: canto arredondado embaixo e sombra, para ler como um bloco
+    // por cima do conteúdo. `Material` cuida da sombra + clip sem brigar com o
+    // shader do azulejo.
+    return Material(
+      color: colors.coral,
+      elevation: 8,
+      shadowColor: colors.ink,
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppRadii.lg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 300,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: TilePattern(
+                motif: TileMotif.arco,
+                background: colors.coral,
+                patternColor: colors.coralPattern,
+              ),
             ),
-          ),
           if (minutes != null)
-            HeroNumber(
-              value: '$minutes',
-              color: colors.onSaturated.withValues(alpha: 0.16),
-              corner: Alignment.topRight,
-              size: 150,
+            Transform.translate(
+              offset:
+                  const Offset(-40, -20), // 40px pra esquerda, 30px pra cima
+              child: HeroNumber(
+                value: '$minutes',
+                unit: 'min',
+                color: colors.onSaturated.withValues(alpha: 0.5),
+                corner: Alignment.bottomRight,
+                size: 100,
+              ),
             ),
           SafeArea(
             child: Padding(
@@ -198,10 +253,26 @@ class _Hero extends StatelessWidget {
                       ),
                       const Spacer(),
                       _HeroCircleButton(
+                        icon: recipe.isFavorite
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        onTap: () => ref
+                            .read(recipeRepositoryProvider)
+                            .setFavorite(recipe.id, !recipe.isFavorite),
+                        tooltip:
+                            recipe.isFavorite ? 'Desfavoritar' : 'Favoritar',
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      _HeroCircleButton(
                         icon: Icons.edit_outlined,
-                        onTap: () =>
-                            context.push('/recipe/${recipe.id}/edit'),
+                        onTap: () => context.push('/recipe/${recipe.id}/edit'),
                         tooltip: 'Editar',
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      _HeroCircleButton(
+                        icon: Icons.more_horiz,
+                        onTap: () => _confirmDelete(context, ref),
+                        tooltip: 'Mais',
                       ),
                     ],
                   ),
@@ -226,6 +297,7 @@ class _Hero extends StatelessWidget {
             ),
           ),
         ],
+        ),
       ),
     );
   }

@@ -22,5 +22,8 @@ class Recipe with _$Recipe {
     String? sourceUrl,
     String? notes,
     @Default(false) bool isFavorite,
+
+    /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
+    DateTime? deletedAt,
   }) = _Recipe;
 }

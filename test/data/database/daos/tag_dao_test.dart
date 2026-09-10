@@ -4,6 +4,7 @@ import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/domain/models/recipe_detail.dart';
 
 void main() {
   late AppDatabase db;
@@ -26,6 +27,41 @@ void main() {
 
     final all = await db.tagDao.watchAll().first;
     expect(all.map((t) => t.name), ['frango', 'novo', 'rápido']);
+  });
+
+  test('watchAllWithCounts inclui tag não usada com contagem 0', () async {
+    await recipes.saveDetail(name: 'Curry', tagNames: ['rápido']);
+    await db.tagDao.ensureTags(['orfã']);
+
+    final rows = await db.tagDao.watchAllWithCounts().first;
+    expect(
+      {for (final r in rows) r.tag.name: r.count},
+      {'Rápido': 1, 'orfã': 0},
+    );
+  });
+
+  test('deleteTag: some do catálogo e de todas as receitas (cascade)',
+      () async {
+    final curry = (await recipes.saveDetail(
+      name: 'Curry',
+      tagNames: ['rápido', 'frango'],
+    ) as Ok<Recipe>)
+        .value;
+    await recipes.saveDetail(name: 'Sopa', tagNames: ['rápido']);
+
+    final rapido =
+        (await db.tagDao.watchAll().first).firstWhere((t) => t.name == 'Rápido');
+    expect(await db.tagDao.usageCount(rapido.id), 2);
+
+    await db.tagDao.deleteTag(rapido.id);
+
+    expect(
+      (await db.tagDao.watchAll().first).map((t) => t.name),
+      ['Frango'],
+    );
+    final detail =
+        (await recipes.getDetail(curry.id) as Ok<RecipeDetail>).value;
+    expect(detail.tags.map((t) => t.name), ['Frango']);
   });
 
   test('watchInUse: só tags presas a receita ativa, sem duplicar', () async {

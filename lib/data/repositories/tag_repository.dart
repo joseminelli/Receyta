@@ -21,6 +21,22 @@ class TagRepository {
   Stream<List<Tag>> watchInUse() =>
       _dao.watchInUse().map((rows) => rows.map(_toDomain).toList());
 
+  /// Todas as tags com a contagem de receitas — pra tela de gerenciar tags,
+  /// que mostra até as não usadas.
+  Stream<List<({Tag tag, int count})>> watchAllWithCounts() =>
+      _dao.watchAllWithCounts().map(
+            (rows) => [
+              for (final row in rows)
+                (tag: _toDomain(row.tag), count: row.count),
+            ],
+          );
+
+  /// Quantas receitas usam a tag (pra confirmar a remoção).
+  Future<int> usageCount(String tagId) => _dao.usageCount(tagId);
+
+  /// Remove a tag de todas as receitas e do catálogo (§RF-01.10).
+  Future<void> delete(String tagId) => _dao.deleteTag(tagId);
+
   Tag _toDomain(TagRow r) => Tag(id: r.id, name: r.name);
 }
 

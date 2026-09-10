@@ -20,6 +20,24 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
     return (select(tags)..orderBy([(t) => OrderingTerm.asc(t.name)])).watch();
   }
 
+  /// Todas as tags com a contagem de receitas (ativas ou não) — a tela de
+  /// gerenciar tags mostra até as que não estão em nenhuma receita.
+  Stream<List<({TagRow tag, int count})>> watchAllWithCounts() {
+    final count = recipeTags.recipeId.count();
+    final query = select(tags).join([
+      leftOuterJoin(recipeTags, recipeTags.tagId.equalsExp(tags.id)),
+    ])
+      ..addColumns([count])
+      ..groupBy([tags.id])
+      ..orderBy([OrderingTerm.asc(tags.name)]);
+    return query.watch().map(
+          (rows) => [
+            for (final row in rows)
+              (tag: row.readTable(tags), count: row.read(count) ?? 0),
+          ],
+        );
+  }
+
   /// Só as tags presas a pelo menos uma receita ativa — é o que o filtro
   /// horizontal da home mostra (tag sem receita não filtra nada).
   Stream<List<TagRow>> watchInUse() {
@@ -31,6 +49,18 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
       ..groupBy([tags.id])
       ..orderBy([OrderingTerm.asc(tags.name)]);
     return query.map((row) => row.readTable(tags)).watch();
+  }
+
+  /// Quantas receitas carregam a tag — pra confirmar a remoção.
+  Future<int> usageCount(String tagId) async {
+    final rows =
+        await (select(recipeTags)..where((t) => t.tagId.equals(tagId))).get();
+    return rows.length;
+  }
+
+  /// Apaga a tag do catálogo; o cascade tira o vínculo de todas as receitas.
+  Future<int> deleteTag(String tagId) {
+    return (delete(tags)..where((t) => t.id.equals(tagId))).go();
   }
 
   /// Resolve nomes em linhas de `tags`, criando o que faltar. Devolve na mesma

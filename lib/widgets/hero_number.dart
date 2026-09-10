@@ -30,10 +30,14 @@ class HeroNumber extends StatelessWidget {
     this.corner = Alignment.bottomRight,
     this.size = 96,
     this.bleed,
+    this.unit,
   });
 
   final String value;
   final Color color;
+
+  /// Sufixo pequeno colado no valor ("min"). Deixa claro o que o número mede.
+  final String? unit;
 
   /// Canto de ancoragem. O sangramento segue a direção do canto.
   final Alignment corner;
@@ -57,8 +61,21 @@ class HeroNumber extends StatelessWidget {
           // bloco inteiro (RNF-12). O mesmo dado aparece legível no MetricStat,
           // que acompanha a escala do sistema normalmente.
           child: ExcludeSemantics(
-            child: Text(
-              value,
+            child: Text.rich(
+              TextSpan(
+                text: value,
+                children: unit == null
+                    ? null
+                    : [
+                        TextSpan(
+                          text: unit,
+                          style: TextStyle(
+                            fontSize: size * 0.22,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ],
+              ),
               style: Theme.of(context).textTheme.displayLarge?.copyWith(
                     fontSize: size,
                     letterSpacing: size * -0.045,

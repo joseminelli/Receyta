@@ -32,15 +32,16 @@ void main() {
     );
 
     expect(find.text('Frango ao curry'), findsOneWidget);
-    expect(find.text('40 min'), findsOneWidget);
-    expect(find.text('40'), findsOneWidget);
+    expect(find.text('40 min'), findsOneWidget); // chip na faixa preta
     expect(find.text('4 porções'), findsOneWidget);
     expect(find.text('Favorita'), findsOneWidget);
   });
 
-  testWidgets('sem tempo não mostra número', (tester) async {
-    await tester.pumpWidget(_host(FeaturedRecipeCard(recipe: _recipe())));
-    expect(find.text('40'), findsNothing);
+  testWidgets('sem tempo não mostra o chip de minutos', (tester) async {
+    await tester.pumpWidget(
+      _host(FeaturedRecipeCard(recipe: _recipe(servings: 2))),
+    );
     expect(find.textContaining('min'), findsNothing);
+    expect(find.text('2 porções'), findsOneWidget);
   });
 }

@@ -15,7 +15,11 @@ Recipe _recipe(String id, String name) {
   return Recipe(id: id, name: name, createdAt: t, updatedAt: t);
 }
 
-Widget _host(List<Recipe> recipes, {List<Tag> tags = const []}) {
+Widget _host(
+  List<Recipe> recipes, {
+  List<Tag> tags = const [],
+  bool hasFavorites = false,
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -33,6 +37,12 @@ Widget _host(List<Recipe> recipes, {List<Tag> tags = const []}) {
     overrides: [
       recipesStreamProvider.overrideWith((ref) => Stream.value(recipes)),
       inUseTagsProvider.overrideWith((ref) => Stream.value(tags)),
+      trashedRecipesProvider
+          .overrideWith((ref) => Stream.value(const <Recipe>[])),
+      hasFavoritesProvider.overrideWith((ref) => Stream.value(hasFavorites)),
+      tagsWithCountsProvider.overrideWith(
+        (ref) => Stream.value([for (final t in tags) (tag: t, count: 1)]),
+      ),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -99,6 +109,26 @@ void main() {
     await tester.tap(find.text('Rápido'));
     await tester.pumpAndSettle();
     expect(find.text('Rápido'), findsOneWidget);
+  });
+
+  testWidgets('chip "Favoritos" aparece quando há favorita, como 1º do filtro',
+      (tester) async {
+    await tester.pumpWidget(_host([_recipe('a', 'Sopa')], hasFavorites: true));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Favoritos'), findsOneWidget);
+    expect(find.text('Todas'), findsOneWidget);
+
+    await tester.tap(find.text('Favoritos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Favoritos'), findsOneWidget);
+  });
+
+  testWidgets('sem favorita nem tag, o filtro não aparece', (tester) async {
+    await tester.pumpWidget(_host([_recipe('a', 'Sopa')]));
+    await tester.pumpAndSettle();
+    expect(find.text('Favoritos'), findsNothing);
+    expect(find.text('Todas'), findsNothing);
   });
 
   testWidgets('tocar no destaque abre o detalhe daquela receita',

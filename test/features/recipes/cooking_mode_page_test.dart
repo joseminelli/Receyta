@@ -95,7 +95,10 @@ void main() {
       (tester) async {
     await _open(tester, _detail());
 
-    expect(_stepText(tester, 'Tempere o frango').style?.decoration, isNull);
+    expect(
+      _stepText(tester, 'Tempere o frango').style?.decoration,
+      isNot(TextDecoration.lineThrough),
+    );
 
     await tester.tap(find.text('Tempere o frango'));
     await tester.pumpAndSettle();

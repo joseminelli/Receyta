@@ -30,6 +30,9 @@ mixin _$Recipe {
   String? get notes => throw _privateConstructorUsedError;
   bool get isFavorite => throw _privateConstructorUsedError;
 
+  /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
+  DateTime? get deletedAt => throw _privateConstructorUsedError;
+
   /// Create a copy of Recipe
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -54,7 +57,8 @@ abstract class $RecipeCopyWith<$Res> {
       String? imagePath,
       String? sourceUrl,
       String? notes,
-      bool isFavorite});
+      bool isFavorite,
+      DateTime? deletedAt});
 }
 
 /// @nodoc
@@ -85,6 +89,7 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
     Object? sourceUrl = freezed,
     Object? notes = freezed,
     Object? isFavorite = null,
+    Object? deletedAt = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -139,6 +144,10 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
           ? _value.isFavorite
           : isFavorite // ignore: cast_nullable_to_non_nullable
               as bool,
+      deletedAt: freezed == deletedAt
+          ? _value.deletedAt
+          : deletedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ) as $Val);
   }
 }
@@ -163,7 +172,8 @@ abstract class _$$RecipeImplCopyWith<$Res> implements $RecipeCopyWith<$Res> {
       String? imagePath,
       String? sourceUrl,
       String? notes,
-      bool isFavorite});
+      bool isFavorite,
+      DateTime? deletedAt});
 }
 
 /// @nodoc
@@ -192,6 +202,7 @@ class __$$RecipeImplCopyWithImpl<$Res>
     Object? sourceUrl = freezed,
     Object? notes = freezed,
     Object? isFavorite = null,
+    Object? deletedAt = freezed,
   }) {
     return _then(_$RecipeImpl(
       id: null == id
@@ -246,6 +257,10 @@ class __$$RecipeImplCopyWithImpl<$Res>
           ? _value.isFavorite
           : isFavorite // ignore: cast_nullable_to_non_nullable
               as bool,
+      deletedAt: freezed == deletedAt
+          ? _value.deletedAt
+          : deletedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ));
   }
 }
@@ -266,7 +281,8 @@ class _$RecipeImpl implements _Recipe {
       this.imagePath,
       this.sourceUrl,
       this.notes,
-      this.isFavorite = false});
+      this.isFavorite = false,
+      this.deletedAt});
 
   @override
   final String id;
@@ -296,9 +312,13 @@ class _$RecipeImpl implements _Recipe {
   @JsonKey()
   final bool isFavorite;
 
+  /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
+  @override
+  final DateTime? deletedAt;
+
   @override
   String toString() {
-    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, sourceUrl: $sourceUrl, notes: $notes, isFavorite: $isFavorite)';
+    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, sourceUrl: $sourceUrl, notes: $notes, isFavorite: $isFavorite, deletedAt: $deletedAt)';
   }
 
   @override
@@ -327,7 +347,9 @@ class _$RecipeImpl implements _Recipe {
                 other.sourceUrl == sourceUrl) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.isFavorite, isFavorite) ||
-                other.isFavorite == isFavorite));
+                other.isFavorite == isFavorite) &&
+            (identical(other.deletedAt, deletedAt) ||
+                other.deletedAt == deletedAt));
   }
 
   @override
@@ -345,7 +367,8 @@ class _$RecipeImpl implements _Recipe {
       imagePath,
       sourceUrl,
       notes,
-      isFavorite);
+      isFavorite,
+      deletedAt);
 
   /// Create a copy of Recipe
   /// with the given fields replaced by the non-null parameter values.
@@ -370,7 +393,8 @@ abstract class _Recipe implements Recipe {
       final String? imagePath,
       final String? sourceUrl,
       final String? notes,
-      final bool isFavorite}) = _$RecipeImpl;
+      final bool isFavorite,
+      final DateTime? deletedAt}) = _$RecipeImpl;
 
   @override
   String get id;
@@ -398,6 +422,10 @@ abstract class _Recipe implements Recipe {
   String? get notes;
   @override
   bool get isFavorite;
+
+  /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
+  @override
+  DateTime? get deletedAt;
 
   /// Create a copy of Recipe
   /// with the given fields replaced by the non-null parameter values.

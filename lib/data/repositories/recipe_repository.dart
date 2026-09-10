@@ -30,9 +30,19 @@ class RecipeRepository {
   final Uuid _uuid;
   final DateTime Function() _clock;
 
-  Stream<List<Recipe>> watchAll({Set<String> anyOfTagIds = const {}}) => _dao
-      .watchActive(anyOfTagIds: anyOfTagIds)
-      .map((rows) => rows.map(_toDomain).toList());
+  Stream<List<Recipe>> watchAll({
+    Set<String> anyOfTagIds = const {},
+    bool favoritesOnly = false,
+  }) =>
+      _dao
+          .watchActive(anyOfTagIds: anyOfTagIds, favoritesOnly: favoritesOnly)
+          .map((rows) => rows.map(_toDomain).toList());
+
+  /// Existe alguma receita ativa favoritada? Decide se o chip "Favoritos"
+  /// aparece no filtro da home.
+  Stream<bool> watchHasFavorites() => _dao
+      .watchActive(favoritesOnly: true)
+      .map((rows) => rows.isNotEmpty);
 
   Stream<RecipeDetail?> watchDetail(String id) {
     return _dao.watchById(id).asyncMap((row) async {
@@ -142,12 +152,52 @@ class RecipeRepository {
     }
   }
 
+  Future<Result<void>> setFavorite(String id, bool value) async {
+    try {
+      await _dao.setFavorite(id, value, _clock().toUtc());
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao favoritar', cause: e));
+    }
+  }
+
   Future<Result<void>> softDelete(String id) async {
     try {
       await _dao.softDelete(id, _clock().toUtc());
       return const Ok(null);
     } catch (e) {
       return Err(DatabaseFailure('Falha ao excluir a receita', cause: e));
+    }
+  }
+
+  /// Lixeira (RF-01.6): receitas com `deletedAt` preenchido.
+  Stream<List<Recipe>> watchTrashed() =>
+      _dao.watchTrashed().map((rows) => rows.map(_toDomain).toList());
+
+  Future<Result<void>> restore(String id) async {
+    try {
+      await _dao.restore(id, _clock().toUtc());
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao restaurar', cause: e));
+    }
+  }
+
+  Future<Result<void>> deleteForever(String id) async {
+    try {
+      await _dao.hardDelete(id);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao excluir de vez', cause: e));
+    }
+  }
+
+  /// Esvazia da lixeira o que já passou dos 30 dias (RF-01.6). Roda no boot.
+  Future<void> purgeExpired({Duration keep = const Duration(days: 30)}) async {
+    try {
+      await _dao.purgeExpired(_clock().toUtc().subtract(keep));
+    } catch (_) {
+      // Faxina best-effort: uma falha aqui não pode travar a abertura do app.
     }
   }
 
@@ -179,6 +229,7 @@ class RecipeRepository {
         sourceUrl: r.sourceUrl,
         notes: r.notes,
         isFavorite: r.isFavorite,
+        deletedAt: r.deletedAt,
       );
 
   RecipeRow _toRow(Recipe r) => RecipeRow(

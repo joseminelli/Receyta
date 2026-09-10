@@ -13,6 +13,12 @@ Widget _host() => ProviderScope(
         recipesStreamProvider
             .overrideWith((ref) => Stream.value(const <Recipe>[])),
         inUseTagsProvider.overrideWith((ref) => Stream.value(const <Tag>[])),
+        trashedRecipesProvider
+            .overrideWith((ref) => Stream.value(const <Recipe>[])),
+        hasFavoritesProvider.overrideWith((ref) => Stream.value(false)),
+        tagsWithCountsProvider.overrideWith(
+          (ref) => Stream.value(const <({Tag tag, int count})>[]),
+        ),
       ],
       child: MaterialApp(theme: AppTheme.light(), home: const HomeShell()),
     );
@@ -23,8 +29,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(RecipesPage), findsOneWidget);
+    // RegExp, não igualdade: no slot ativo o label do Semantics funde com o
+    // Text visível ("Receitas Receitas").
     for (final label in ['Receitas', 'Semana', 'Compras']) {
-      expect(find.bySemanticsLabel(label), findsWidgets);
+      expect(find.bySemanticsLabel(RegExp(label)), findsWidgets);
     }
     expect(find.text('Em breve'), findsNothing);
   });
