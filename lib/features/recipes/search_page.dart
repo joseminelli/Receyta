@@ -225,7 +225,7 @@ class _Browse extends ConsumerWidget {
 
     return _GridBody(
       recipes: all,
-      label: 'TODAS AS RECEITAS',
+      label: 'TODAS AS RECEITAS · ${all.length}',
       leading: tags.isEmpty ? null : _TagRow(tags: tags, onPick: onPickTag),
     );
   }

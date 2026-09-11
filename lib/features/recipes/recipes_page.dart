@@ -50,6 +50,9 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
     // 7"); a contagem do cabeçalho e o estado vazio continuam olhando pra
     // lista completa (`recipes`), que já é a fonte de verdade de hoje.
     final recent = filtering ? null : ref.watch(recentRecipesProvider);
+    // Cabeçalho mostra o total geral (todas as receitas, mesmo as em pasta) —
+    // não a contagem da lista atual, que quando sem filtro é só a raiz.
+    final totalCount = ref.watch(allRecipesProvider).valueOrNull?.length;
 
     // Ao começar a arrastar um card, sobe até a faixa de pastas pra ela estar
     // visível como alvo de soltar.
@@ -73,13 +76,13 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
     return recipes.when(
       loading: () => _Scaffold(
         controller: _controller,
-        count: null,
+        count: totalCount,
         onCreate: openNew,
         body: const SliverToBoxAdapter(child: SizedBox.shrink()),
       ),
       error: (_, __) => _Scaffold(
         controller: _controller,
-        count: null,
+        count: totalCount,
         onCreate: openNew,
         body: const SliverFillRemaining(
           hasScrollBody: false,
@@ -88,7 +91,7 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
       ),
       data: (list) => _Scaffold(
         controller: _controller,
-        count: list.length,
+        count: totalCount,
         onCreate: openNew,
         body: list.isEmpty
             ? SliverFillRemaining(
