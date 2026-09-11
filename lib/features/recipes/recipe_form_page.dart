@@ -43,10 +43,32 @@ class RecipeFormPage extends ConsumerWidget {
   }
 }
 
+/// Uma linha da lista de ingredientes ou passos. Quando [heading], é um
+/// separador de seção ("Para a massa") e não vira uma linha própria no banco —
+/// vira o `groupLabel` das linhas abaixo dela.
 class _Line {
-  _Line(String text) : controller = TextEditingController(text: text);
+  _Line(String text, {this.heading = false})
+      : controller = TextEditingController(text: text);
   final TextEditingController controller;
+  final bool heading;
   final key = UniqueKey();
+}
+
+/// Reconstrói as linhas do formulário a partir das linhas do banco, inserindo
+/// um separador sempre que o `groupLabel` muda pra um rótulo não nulo.
+List<_Line> _linesWithHeadings(
+  Iterable<({String text, String? group})> items,
+) {
+  final out = <_Line>[];
+  String? current;
+  for (final it in items) {
+    if (it.group != current && it.group != null) {
+      out.add(_Line(it.group!, heading: true));
+    }
+    current = it.group;
+    out.add(_Line(it.text));
+  }
+  return out;
 }
 
 class _RecipeForm extends ConsumerStatefulWidget {
@@ -73,16 +95,15 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
   );
   late final _notes = TextEditingController(text: _recipe?.notes ?? '');
 
-  late final List<_Line> _ingredients = [
+  late final List<_Line> _ingredients = _linesWithHeadings([
     for (final RecipeIngredient i
         in widget.original?.ingredients ?? const <RecipeIngredient>[])
-      _Line(i.rawText),
-  ];
-  late final List<_Line> _steps = [
-    for (final RecipeStep s
-        in widget.original?.steps ?? const <RecipeStep>[])
-      _Line(s.text),
-  ];
+      (text: i.rawText, group: i.groupLabel),
+  ]);
+  late final List<_Line> _steps = _linesWithHeadings([
+    for (final RecipeStep s in widget.original?.steps ?? const <RecipeStep>[])
+      (text: s.text, group: s.groupLabel),
+  ]);
 
   late final List<String> _tags = [
     for (final Tag t in widget.original?.tags ?? const <Tag>[]) t.name,
@@ -124,8 +145,29 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
 
   void _removeTag(String name) => setState(() => _tags.remove(name));
 
+  /// Achata a lista do formulário em (textos, rótulos de grupo). Um separador
+  /// vira o rótulo das linhas seguintes; ele mesmo não entra.
+  (List<String>, List<String?>) _collect(List<_Line> lines) {
+    final texts = <String>[];
+    final groups = <String?>[];
+    String? current;
+    for (final l in lines) {
+      final text = l.controller.text;
+      if (l.heading) {
+        final t = text.trim();
+        current = t.isEmpty ? null : t;
+        continue;
+      }
+      texts.add(text);
+      groups.add(current);
+    }
+    return (texts, groups);
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
+    final (ingLines, ingGroups) = _collect(_ingredients);
+    final (stepLines, stepGroups) = _collect(_steps);
     final result = await ref.read(recipeFormViewModelProvider).submit(
           original: _recipe,
           name: _name.text,
@@ -134,8 +176,10 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
           cookText: _cook.text,
           servingsText: _servings.text,
           notes: _notes.text,
-          ingredientLines: [for (final l in _ingredients) l.controller.text],
-          stepLines: [for (final l in _steps) l.controller.text],
+          ingredientLines: ingLines,
+          stepLines: stepLines,
+          ingredientGroups: ingGroups,
+          stepGroups: stepGroups,
           tagNames: [..._tags, _tagInput.text],
         );
     if (!mounted) return;
@@ -222,6 +266,9 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                   hintFor: (i) => 'ex.: 2 xícaras de farinha',
                   lines: _ingredients,
                   onAdd: () => setState(() => _ingredients.add(_Line(''))),
+                  onAddHeading: () => setState(
+                    () => _ingredients.add(_Line('', heading: true)),
+                  ),
                   onRemove: (i) => setState(() {
                     _ingredients.removeAt(i).controller.dispose();
                   }),
@@ -234,6 +281,8 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                   hintFor: (i) => 'Passo ${i + 1}',
                   lines: _steps,
                   onAdd: () => setState(() => _steps.add(_Line(''))),
+                  onAddHeading: () =>
+                      setState(() => _steps.add(_Line('', heading: true))),
                   onRemove: (i) => setState(() {
                     _steps.removeAt(i).controller.dispose();
                   }),
@@ -493,6 +542,7 @@ class _LineList extends StatelessWidget {
     required this.hintFor,
     required this.lines,
     required this.onAdd,
+    required this.onAddHeading,
     required this.onRemove,
     required this.onReorder,
   });
@@ -502,11 +552,13 @@ class _LineList extends StatelessWidget {
   final String Function(int index) hintFor;
   final List<_Line> lines;
   final VoidCallback onAdd;
+  final VoidCallback onAddHeading;
   final void Function(int index) onRemove;
   final void Function(int oldIndex, int newIndex) onReorder;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -529,16 +581,24 @@ class _LineList extends StatelessWidget {
             onReorder: onReorder,
             itemBuilder: (context, i) {
               final line = lines[i];
-              return Padding(
+              return Container(
                 key: line.key,
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+                decoration: line.heading
+                    ? BoxDecoration(
+                        color: colors.coral.withValues(alpha: 0.06),
+                        border: Border(
+                          left: BorderSide(color: colors.coral, width: 3),
+                        ),
+                      )
+                    : null,
                 child: Row(
                   children: [
                     ReorderableDragStartListener(
                       index: i,
                       child: Icon(
-                        Icons.drag_indicator,
-                        color: context.colors.textMuted,
+                        line.heading ? Icons.segment : Icons.drag_indicator,
+                        color: line.heading ? colors.coral : colors.textMuted,
                       ),
                     ),
                     const SizedBox(width: AppSpacing.xs / 2),
@@ -547,14 +607,26 @@ class _LineList extends StatelessWidget {
                         controller: line.controller,
                         textCapitalization: TextCapitalization.sentences,
                         minLines: 1,
-                        maxLines: 4,
-                        decoration: InputDecoration(hintText: hintFor(i)),
+                        maxLines: line.heading ? 1 : 4,
+                        style: line.heading
+                            ? context.texts.labelLarge?.copyWith(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                                color: colors.coral,
+                              )
+                            : null,
+                        decoration: InputDecoration(
+                          hintText: line.heading
+                              ? 'Nome da seção (ex.: Para a massa)'
+                              : hintFor(i),
+                        ),
                       ),
                     ),
                     IconButton(
                       onPressed: () => onRemove(i),
                       icon: const Icon(Icons.close),
-                      color: context.colors.textMuted,
+                      color: colors.textMuted,
                       tooltip: 'Remover',
                     ),
                   ],
@@ -564,11 +636,23 @@ class _LineList extends StatelessWidget {
           ),
         Align(
           alignment: Alignment.centerLeft,
-          child: PillButton(
-            label: addLabel,
-            icon: Icons.add,
-            variant: PillButtonVariant.secondary,
-            onPressed: onAdd,
+          child: Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              PillButton(
+                label: addLabel,
+                icon: Icons.add,
+                variant: PillButtonVariant.secondary,
+                onPressed: onAdd,
+              ),
+              PillButton(
+                label: 'Separador',
+                icon: Icons.segment,
+                variant: PillButtonVariant.secondary,
+                onPressed: onAddHeading,
+              ),
+            ],
           ),
         ),
       ],

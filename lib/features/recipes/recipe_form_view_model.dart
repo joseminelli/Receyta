@@ -26,6 +26,10 @@ class RecipeFormViewModel {
     String? notes,
     List<String> ingredientLines = const [],
     List<String> stepLines = const [],
+
+    /// Rótulo do grupo de cada linha (paralelo às listas). Vazio = sem grupos.
+    List<String?> ingredientGroups = const [],
+    List<String?> stepGroups = const [],
     List<String> tagNames = const [],
   }) {
     final trimmedName = name.trim();
@@ -40,6 +44,11 @@ class RecipeFormViewModel {
     final servings = _parseCount(servingsText, 'O rendimento');
     if (servings is Err<int?>) return Future.value(Err(servings.failure));
 
+    final (ingLines, ingGroups) =
+        _cleanGrouped(ingredientLines, ingredientGroups);
+    final (stepLinesClean, stepGroupsClean) =
+        _cleanGrouped(stepLines, stepGroups);
+
     return _repo.saveDetail(
       base: original,
       name: trimmedName,
@@ -48,14 +57,30 @@ class RecipeFormViewModel {
       cookMinutes: (cook as Ok<int?>).value,
       servings: (servings as Ok<int?>).value,
       notes: _blankToNull(notes),
-      ingredientLines: _cleanLines(ingredientLines),
-      stepLines: _cleanLines(stepLines),
+      ingredientLines: ingLines,
+      stepLines: stepLinesClean,
+      ingredientGroups: ingGroups,
+      stepGroups: stepGroupsClean,
       tagNames: tagNames,
     );
   }
 
-  List<String> _cleanLines(List<String> lines) =>
-      [for (final l in lines) l.trim()].where((l) => l.isNotEmpty).toList();
+  /// Tira linhas vazias mantendo o rótulo de grupo alinhado com o que sobrou.
+  (List<String>, List<String?>) _cleanGrouped(
+    List<String> lines,
+    List<String?> groups,
+  ) {
+    final outLines = <String>[];
+    final outGroups = <String?>[];
+    for (var i = 0; i < lines.length; i++) {
+      final text = lines[i].trim();
+      if (text.isEmpty) continue;
+      outLines.add(text);
+      final g = i < groups.length ? groups[i]?.trim() : null;
+      outGroups.add((g == null || g.isEmpty) ? null : g);
+    }
+    return (outLines, outGroups);
+  }
 
   Result<int?> _parseCount(String? raw, String field) {
     final text = raw?.trim() ?? '';

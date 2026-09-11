@@ -102,6 +102,11 @@ class RecipeRepository {
     String? notes,
     List<String> ingredientLines = const [],
     List<String> stepLines = const [],
+
+    /// Rótulo do grupo de cada linha (§RF-01.4 — "Para a massa"), paralelo às
+    /// listas acima. Mais curto ou vazio = sem grupo.
+    List<String?> ingredientGroups = const [],
+    List<String?> stepGroups = const [],
     List<String> tagNames = const [],
   }) async {
     final now = _clock().toUtc();
@@ -127,12 +132,16 @@ class RecipeRepository {
             updatedAt: now,
           );
 
+    String? groupAt(List<String?> groups, int i) =>
+        i < groups.length ? groups[i] : null;
+
     final ingredients = [
       for (var i = 0; i < ingredientLines.length; i++)
         RecipeIngredientRow(
           id: _uuid.v4(),
           recipeId: recipe.id,
           rawText: ingredientLines[i],
+          groupLabel: groupAt(ingredientGroups, i),
           position: i,
         ),
     ];
@@ -142,6 +151,7 @@ class RecipeRepository {
           id: _uuid.v4(),
           recipeId: recipe.id,
           instruction: stepLines[i],
+          groupLabel: groupAt(stepGroups, i),
           position: i,
         ),
     ];

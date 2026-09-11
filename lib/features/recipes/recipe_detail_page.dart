@@ -104,8 +104,10 @@ class _Detail extends StatelessWidget {
                               detail.ingredients.length, 'item', 'itens'),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        for (final i in detail.ingredients)
-                          Padding(
+                        ..._grouped(
+                          detail.ingredients,
+                          (i) => i.groupLabel,
+                          (idx, i) => Padding(
                             padding:
                                 const EdgeInsets.only(bottom: AppSpacing.xs),
                             child: Text(
@@ -113,13 +115,17 @@ class _Detail extends StatelessWidget {
                               style: context.texts.bodyLarge,
                             ),
                           ),
+                        ),
                       ],
                       if (hasSteps) ...[
                         const SizedBox(height: AppSpacing.xl),
                         _Label('Preparo'),
                         const SizedBox(height: AppSpacing.sm),
-                        for (var s = 0; s < detail.steps.length; s++)
-                          _Step(index: s + 1, text: detail.steps[s].text),
+                        ..._grouped(
+                          detail.steps,
+                          (s) => s.groupLabel,
+                          (idx, s) => _Step(index: idx + 1, text: s.text),
+                        ),
                       ],
                       if ((recipe.notes ?? '').isNotEmpty) ...[
                         const SizedBox(height: AppSpacing.xl),
@@ -345,6 +351,58 @@ class _Hero extends ConsumerWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Intercala subtítulos de grupo (§RF-01.4) numa lista de ingredientes ou
+/// passos. `index` passado ao builder é a posição só entre os itens de verdade
+/// (numeração dos passos não pula por causa dos separadores).
+List<Widget> _grouped<T>(
+  List<T> items,
+  String? Function(T item) groupOf,
+  Widget Function(int index, T item) row,
+) {
+  final out = <Widget>[];
+  String? last;
+  var i = 0;
+  for (final item in items) {
+    final g = groupOf(item);
+    if (g != last && g != null && g.isNotEmpty) out.add(_GroupLabel(g));
+    last = g;
+    out.add(row(i, item));
+    i++;
+  }
+  return out;
+}
+
+/// Separador de grupo (§RF-01.4): fonte display em `coral` (cor da seção
+/// Receitas, §9.2) com um traço curto embaixo, hugando o texto.
+class _GroupLabel extends StatelessWidget {
+  const _GroupLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.sm),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.only(bottom: 5),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: colors.coral, width: 3),
+            ),
+          ),
+          child: Text(
+            text,
+            style: AppTextStyles.display(19).copyWith(color: colors.coral),
           ),
         ),
       ),

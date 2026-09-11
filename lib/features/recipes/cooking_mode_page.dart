@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:receyta/domain/models/recipe_ingredient.dart';
+import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -46,6 +47,38 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     } catch (_) {}
   }
 
+  /// Passos em cartão + subtítulos de grupo (§RF-01.4). O número não pula por
+  /// causa dos separadores; `_done` continua indexado pela posição do passo.
+  List<Widget> _stepRows(List<RecipeStep> steps) {
+    final out = <Widget>[];
+    String? last;
+    for (var i = 0; i < steps.length; i++) {
+      final g = steps[i].groupLabel;
+      if (g != last && g != null && g.isNotEmpty) {
+        out.add(Padding(
+          padding: const EdgeInsets.only(
+            top: AppSpacing.md,
+            bottom: AppSpacing.xs,
+          ),
+          child: _GroupLabel(g),
+        ));
+      }
+      last = g;
+      out.add(Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: _StepCard(
+          number: i + 1,
+          text: steps[i].text,
+          done: _done.contains(i),
+          onTap: () => setState(() {
+            _done.contains(i) ? _done.remove(i) : _done.add(i);
+          }),
+        ),
+      ));
+    }
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -65,6 +98,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                   child: Column(
                     children: [
                       _TopBar(name: detail.recipe.name),
+                      const _WakeTip(),
                       Expanded(
                         child: ListView(
                           padding: const EdgeInsets.fromLTRB(
@@ -91,22 +125,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                                     ?.copyWith(color: colors.textBody),
                               )
                             else
-                              for (var i = 0; i < detail.steps.length; i++)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: AppSpacing.sm,
-                                  ),
-                                  child: _StepCard(
-                                    number: i + 1,
-                                    text: detail.steps[i].text,
-                                    done: _done.contains(i),
-                                    onTap: () => setState(() {
-                                      _done.contains(i)
-                                          ? _done.remove(i)
-                                          : _done.add(i);
-                                    }),
-                                  ),
-                                ),
+                              ..._stepRows(detail.steps),
                           ],
                         ),
                       ),
@@ -152,9 +171,33 @@ class _TopBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: AppSpacing.xs),
+        ],
+      ),
+    );
+  }
+}
+
+/// Aviso visível de que a tela não vai apagar durante o preparo (RF-01.11).
+class _WakeTip extends StatelessWidget {
+  const _WakeTip();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
           Icon(Icons.lightbulb_outline,
-              size: 16, color: colors.lime.withValues(alpha: 0.7)),
+              size: 14, color: colors.lime.withValues(alpha: 0.8)),
+          const SizedBox(width: AppSpacing.xs / 2),
+          Text(
+            'A tela fica acesa enquanto você cozinha',
+            style: context.texts.labelSmall?.copyWith(
+              color: colors.onSaturated.withValues(alpha: 0.6),
+            ),
+          ),
         ],
       ),
     );
@@ -173,6 +216,37 @@ class _IngredientsCard extends StatelessWidget {
   final List<RecipeIngredient> ingredients;
   final bool open;
   final VoidCallback onToggle;
+
+  /// Linhas + subtítulos de grupo (§RF-01.4), no tom escuro do modo cozinha.
+  List<Widget> _rows(BuildContext context) {
+    final colors = context.colors;
+    final out = <Widget>[];
+    String? last;
+    for (final i in ingredients) {
+      final g = i.groupLabel;
+      if (g != last && g != null && g.isNotEmpty) {
+        out.add(Padding(
+          padding: const EdgeInsets.only(
+            top: AppSpacing.sm,
+            bottom: AppSpacing.xs / 2,
+          ),
+          child: _GroupLabel(g),
+        ));
+      }
+      last = g;
+      out.add(Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+        child: Text(
+          i.rawText,
+          style: context.texts.bodyLarge?.copyWith(
+            color: colors.onSaturated,
+            height: 1.35,
+          ),
+        ),
+      ));
+    }
+    return out;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -232,17 +306,7 @@ class _IngredientsCard extends StatelessWidget {
                           ?.copyWith(color: colors.textBody),
                     )
                   else
-                    for (final i in ingredients)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                        child: Text(
-                          i.rawText,
-                          style: context.texts.bodyLarge?.copyWith(
-                            color: colors.onSaturated,
-                            height: 1.35,
-                          ),
-                        ),
-                      ),
+                    ..._rows(context),
                 ],
               ),
             ),
@@ -262,6 +326,33 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       text.toUpperCase(),
       style: context.texts.labelSmall?.copyWith(color: context.colors.lime),
+    );
+  }
+}
+
+/// Subtítulo de grupo (§RF-01.4) dentro de ingredientes ou passos: fonte
+/// display em `lime` (acento do modo cozinha) com traço embaixo, grande pra ler
+/// de longe no fogão.
+class _GroupLabel extends StatelessWidget {
+  const _GroupLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 5),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: colors.lime, width: 3)),
+        ),
+        child: Text(
+          text,
+          style: AppTextStyles.display(21).copyWith(color: colors.lime),
+        ),
+      ),
     );
   }
 }
