@@ -231,42 +231,86 @@ class _Browse extends ConsumerWidget {
   }
 }
 
-class _TagRow extends StatelessWidget {
+class _TagRow extends StatefulWidget {
   const _TagRow({required this.tags, required this.onPick});
 
   final List<Tag> tags;
   final ValueChanged<String> onPick;
 
   @override
+  State<_TagRow> createState() => _TagRowState();
+}
+
+class _TagRowState extends State<_TagRow> {
+  /// ~2 linhas de chip (padding 12 + texto ~17 por linha, + o `runSpacing`
+  /// entre elas). Acima disso a lista de tags corria sem limite algum.
+  static const _collapsedHeight = 90.0;
+
+  /// Só compensa mostrar o botão quando dá pra imaginar que vai passar de
+  /// 2 linhas — não dá pra medir o `Wrap` sem montar, então é estimativa.
+  static const _toggleThreshold = 8;
+
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final showToggle = widget.tags.length > _toggleThreshold;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('BUSCAR POR TAG', style: context.texts.labelSmall),
         const SizedBox(height: AppSpacing.sm),
-        Wrap(
-          spacing: AppSpacing.xs,
-          runSpacing: AppSpacing.xs,
-          children: [
-            for (final t in tags)
-              Material(
-                color: colors.paperSoft,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-                child: InkWell(
-                  onTap: () => onPick(t.name),
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    child: Text(t.name, style: context.texts.labelLarge),
-                  ),
-                ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topLeft,
+          child: ClipRect(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: !showToggle || _expanded
+                    ? double.infinity
+                    : _collapsedHeight,
               ),
-          ],
+              child: Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final t in widget.tags)
+                    Material(
+                      color: colors.paperSoft,
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      child: InkWell(
+                        onTap: () => widget.onPick(t.name),
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.sm,
+                          ),
+                          child: Text(t.name, style: context.texts.labelLarge),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
+        if (showToggle) ...[
+          const SizedBox(height: AppSpacing.xs),
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Text(
+              _expanded ? 'Esconder' : 'Mostrar todas',
+              style: context.texts.labelLarge?.copyWith(
+                color: colors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.lg),
       ],
     );
