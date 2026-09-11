@@ -151,6 +151,43 @@ class _TileKey {
   int get hashCode => Object.hash(motif, color, colorAlt, tile, dpr);
 }
 
+/// O azulejo (fundo + padrão) como `Shader`, pra usar fora do [TilePattern] —
+/// ex. um `ShaderMask` "vazando" a textura através de texto ou ícone, em vez
+/// de um bloco de cor. Reaproveita o mesmo raster das formas ([_tileImage]) e
+/// só compõe o fundo por baixo, já que aqui não tem uma segunda camada de
+/// fundo pra completar como no [TilePattern] normal.
+Shader tileShader({
+  required TileMotif motif,
+  required Color background,
+  required Color patternColor,
+  Color? patternColorAlt,
+  double tile = 40,
+  required double devicePixelRatio,
+}) {
+  final shapes = _tileImage(_TileKey(
+    motif,
+    patternColor,
+    patternColorAlt ?? patternColor,
+    tile,
+    devicePixelRatio,
+  ));
+  final px = shapes.width.toDouble();
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  canvas.drawRect(Rect.fromLTWH(0, 0, px, px), Paint()..color = background);
+  canvas.drawImage(shapes, Offset.zero, Paint());
+  final composed = recorder.endRecording().toImageSync(shapes.width, shapes.height);
+
+  final s = 1 / devicePixelRatio;
+  final matrix = Float64List.fromList([
+    s, 0, 0, 0, //
+    0, s, 0, 0, //
+    0, 0, 1, 0, //
+    0, 0, 0, 1, //
+  ]);
+  return ui.ImageShader(composed, TileMode.repeated, TileMode.repeated, matrix);
+}
+
 final Map<_TileKey, ui.Image> _tileCache = {};
 
 ui.Image _tileImage(_TileKey key) {

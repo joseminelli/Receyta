@@ -38,6 +38,8 @@ Widget _host(
   return ProviderScope(
     overrides: [
       recipesStreamProvider.overrideWith((ref) => Stream.value(recipes)),
+      recentRecipesProvider.overrideWith((ref) => Stream.value(recipes)),
+      allRecipesProvider.overrideWith((ref) => Stream.value(recipes)),
       inUseTagsProvider.overrideWith((ref) => Stream.value(tags)),
       trashedRecipesProvider
           .overrideWith((ref) => Stream.value(const <Recipe>[])),
