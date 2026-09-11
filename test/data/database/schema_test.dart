@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v2 versionado', () async {
-    final connection = await verifier.startAt(2);
+  test('schema do código bate com o snapshot v3 versionado', () async {
+    final connection = await verifier.startAt(3);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 2);
+    await verifier.migrateAndValidate(db, 3);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -54,7 +54,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 2);
+    await verifier.migrateAndValidate(db, 3);
     addTearDown(db.close);
 
     final kept = await db.customSelect(
@@ -73,5 +73,45 @@ void main() {
       "SELECT ingredient_id FROM recipe_ingredients WHERE id = 'ri2'",
     ).getSingle();
     expect(free.read<String?>('ingredient_id'), isNull);
+  });
+
+  test('migração v2→v3: dados preservados, tile_color/tile_motif entram nulos',
+      () async {
+    final schema = await verifier.schemaAt(2);
+
+    final oldDb = schema.newConnection();
+    final at2 = AppDatabase.forTesting(oldDb);
+    await at2.customStatement(
+      "INSERT INTO recipes (id, name, created_at, updated_at, is_favorite) "
+      "VALUES ('r1', 'Bolo', '2026-01-01T00:00:00.000Z', "
+      "'2026-01-01T00:00:00.000Z', 0)",
+    );
+    await at2.customStatement(
+      "INSERT INTO folders (id, name, position, created_at, updated_at) "
+      "VALUES ('f1', 'Doces', 0, '2026-01-01T00:00:00.000Z', "
+      "'2026-01-01T00:00:00.000Z')",
+    );
+    await at2.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 3);
+    addTearDown(db.close);
+
+    final recipe = await db
+        .customSelect("SELECT name, tile_color, tile_motif FROM recipes")
+        .getSingle();
+    expect(recipe.read<String>('name'), 'Bolo');
+    expect(recipe.read<String?>('tile_color'), isNull);
+    expect(recipe.read<String?>('tile_motif'), isNull);
+
+    await db.customStatement(
+      "UPDATE folders SET tile_color = 'lime', tile_motif = 'ponto' "
+      "WHERE id = 'f1'",
+    );
+    final folder = await db
+        .customSelect("SELECT tile_color, tile_motif FROM folders")
+        .getSingle();
+    expect(folder.read<String?>('tile_color'), 'lime');
+    expect(folder.read<String?>('tile_motif'), 'ponto');
   });
 }

@@ -4,6 +4,7 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Card grande da "Recentes" (§9.8): nome em escala grande sobre o bloco de
@@ -25,6 +26,12 @@ class FeaturedRecipeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final minutes = _totalMinutes;
+    final tile = resolveTileAppearance(
+      colors,
+      color: recipe.tileColor,
+      motif: recipe.tileMotif,
+      seedId: recipe.id,
+    );
 
     final chips = [
       if (recipe.servings != null) '${recipe.servings} porções',
@@ -47,9 +54,10 @@ class FeaturedRecipeCard extends StatelessWidget {
                   children: [
                     Positioned.fill(
                       child: TilePattern(
-                        motif: TileMotif.arco,
-                        background: colors.coral,
-                        patternColor: colors.coralPattern,
+                        motif: tile.motif,
+                        background: tile.background,
+                        patternColor: tile.patternColor,
+                        patternColorAlt: tile.patternColorAlt,
                       ),
                     ),
                     Positioned(
@@ -59,7 +67,7 @@ class FeaturedRecipeCard extends StatelessWidget {
                       child: Text(
                         recipe.name,
                         style: AppTextStyles.display(42)
-                            .copyWith(color: colors.onSaturated),
+                            .copyWith(color: tile.onColor),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -215,7 +215,6 @@ class _RecipeList extends StatelessWidget {
           sliver: SliverToBoxAdapter(
             child: DraggableRecipe(
               recipe: featured,
-              motif: TileMotif.arco,
               child: FeaturedRecipeCard(
                 recipe: featured,
                 onTap: () => open(featured.id),

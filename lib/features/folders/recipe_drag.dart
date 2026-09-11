@@ -3,6 +3,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/domain/models/recipe.dart';
@@ -10,6 +11,7 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/recipe_card.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// O que está sendo arrastado — uma receita ou uma pasta. Vira o payload do
@@ -39,16 +41,10 @@ class DraggableRecipe extends ConsumerStatefulWidget {
     super.key,
     required this.recipe,
     required this.child,
-    this.motif,
   });
 
   final Recipe recipe;
   final Widget child;
-
-  /// Módulo do azulejo do card de origem, quando ele não vem do id (o destaque
-  /// da home é sempre `arco`). O card fantasma usa isso pra ter a mesma cor e
-  /// estampa.
-  final TileMotif? motif;
 
   @override
   ConsumerState<DraggableRecipe> createState() => _DraggableRecipeState();
@@ -81,7 +77,7 @@ class _DraggableRecipeState extends ConsumerState<DraggableRecipe> {
         feedback: _LiftIn(
           lift: _lift,
           rest: const Offset(-84, 20),
-          child: _RecipeGhost(recipe: widget.recipe, motif: widget.motif),
+          child: _RecipeGhost(recipe: widget.recipe),
         ),
         childWhenDragging: Opacity(
           opacity: 0.25,
@@ -136,7 +132,7 @@ class _DraggableFolderState extends ConsumerState<DraggableFolder> {
         feedback: _LiftIn(
           lift: _lift,
           rest: const Offset(-70, 18),
-          child: _FolderGhost(name: widget.folder.name),
+          child: _FolderGhost(folder: widget.folder),
         ),
         childWhenDragging: Opacity(
           opacity: 0.25,
@@ -185,10 +181,9 @@ class _LiftIn extends StatelessWidget {
 }
 
 class _RecipeGhost extends StatelessWidget {
-  const _RecipeGhost({required this.recipe, this.motif});
+  const _RecipeGhost({required this.recipe});
 
   final Recipe recipe;
-  final TileMotif? motif;
 
   @override
   Widget build(BuildContext context) {
@@ -199,20 +194,26 @@ class _RecipeGhost extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadii.md),
         elevation: 14,
         shadowColor: context.colors.ink.withValues(alpha: 0.5),
-        child: RecipeCard(recipe: recipe, motif: motif),
+        child: RecipeCard(recipe: recipe),
       ),
     );
   }
 }
 
 class _FolderGhost extends StatelessWidget {
-  const _FolderGhost({required this.name});
+  const _FolderGhost({required this.folder});
 
-  final String name;
+  final Folder folder;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final tile = resolveTileAppearance(
+      colors,
+      color: folder.tileColor,
+      motif: folder.tileMotif,
+      fallbackColor: TileColor.violet,
+    );
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppRadii.md),
@@ -227,9 +228,10 @@ class _FolderGhost extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               TilePattern(
-                motif: TileMotif.meiaLua,
-                background: colors.violet,
-                patternColor: colors.violetPattern,
+                motif: tile.motif,
+                background: tile.background,
+                patternColor: tile.patternColor,
+                patternColorAlt: tile.patternColorAlt,
               ),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.sm),
@@ -237,14 +239,13 @@ class _FolderGhost extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.folder_outlined,
-                        size: 18, color: colors.onSaturated),
+                    Icon(Icons.folder_outlined, size: 18, color: tile.onColor),
                     Text(
-                      name,
+                      folder.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: context.texts.labelLarge?.copyWith(
-                        color: colors.onSaturated,
+                        color: tile.onColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

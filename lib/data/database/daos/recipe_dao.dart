@@ -161,6 +161,22 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     );
   }
 
+  /// `color`/`motif` são o `.name` do enum, ou nulo pra voltar ao automático.
+  Future<int> setAppearance(
+    String id, {
+    required String? color,
+    required String? motif,
+    required DateTime at,
+  }) {
+    return (update(recipes)..where((r) => r.id.equals(id))).write(
+      RecipesCompanion(
+        tileColor: Value(color),
+        tileMotif: Value(motif),
+        updatedAt: Value(at),
+      ),
+    );
+  }
+
   Future<int> softDelete(String id, DateTime at) {
     return (update(recipes)..where((r) => r.id.equals(id))).write(
       RecipesCompanion(deletedAt: Value(at), updatedAt: Value(at)),

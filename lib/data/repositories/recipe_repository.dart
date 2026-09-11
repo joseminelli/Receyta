@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tag_name.dart';
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/database/daos/recipe_dao.dart';
@@ -174,6 +175,26 @@ class RecipeRepository {
     }
   }
 
+  /// Troca a cor e/ou o módulo do azulejo (§9.4). Nulo em qualquer um volta ao
+  /// automático daquele eixo.
+  Future<Result<void>> setAppearance(
+    String id, {
+    TileColor? color,
+    TileMotif? motif,
+  }) async {
+    try {
+      await _dao.setAppearance(
+        id,
+        color: color?.name,
+        motif: motif?.name,
+        at: _clock().toUtc(),
+      );
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao mudar a aparência', cause: e));
+    }
+  }
+
   Future<Result<void>> softDelete(String id) async {
     try {
       await _dao.softDelete(id, _clock().toUtc());
@@ -241,6 +262,8 @@ class RecipeRepository {
         imagePath: r.imagePath,
         sourceUrl: r.sourceUrl,
         notes: r.notes,
+        tileColor: tileColorFromName(r.tileColor),
+        tileMotif: tileMotifFromName(r.tileMotif),
         isFavorite: r.isFavorite,
         deletedAt: r.deletedAt,
       );
@@ -255,6 +278,8 @@ class RecipeRepository {
         prepMinutes: r.prepMinutes,
         cookMinutes: r.cookMinutes,
         servings: r.servings,
+        tileColor: r.tileColor?.name,
+        tileMotif: r.tileMotif?.name,
         imagePath: r.imagePath,
         sourceUrl: r.sourceUrl,
         notes: r.notes,

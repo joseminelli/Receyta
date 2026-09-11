@@ -28,6 +28,11 @@ mixin _$Recipe {
   String? get imagePath => throw _privateConstructorUsedError;
   String? get sourceUrl => throw _privateConstructorUsedError;
   String? get notes => throw _privateConstructorUsedError;
+
+  /// Aparência do azulejo escolhida pelo usuário (§9.4). Nulo em qualquer um
+  /// = deriva do id / pareamento padrão.
+  TileColor? get tileColor => throw _privateConstructorUsedError;
+  TileMotif? get tileMotif => throw _privateConstructorUsedError;
   bool get isFavorite => throw _privateConstructorUsedError;
 
   /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
@@ -57,6 +62,8 @@ abstract class $RecipeCopyWith<$Res> {
       String? imagePath,
       String? sourceUrl,
       String? notes,
+      TileColor? tileColor,
+      TileMotif? tileMotif,
       bool isFavorite,
       DateTime? deletedAt});
 }
@@ -88,6 +95,8 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
     Object? imagePath = freezed,
     Object? sourceUrl = freezed,
     Object? notes = freezed,
+    Object? tileColor = freezed,
+    Object? tileMotif = freezed,
     Object? isFavorite = null,
     Object? deletedAt = freezed,
   }) {
@@ -140,6 +149,14 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
               as String?,
+      tileColor: freezed == tileColor
+          ? _value.tileColor
+          : tileColor // ignore: cast_nullable_to_non_nullable
+              as TileColor?,
+      tileMotif: freezed == tileMotif
+          ? _value.tileMotif
+          : tileMotif // ignore: cast_nullable_to_non_nullable
+              as TileMotif?,
       isFavorite: null == isFavorite
           ? _value.isFavorite
           : isFavorite // ignore: cast_nullable_to_non_nullable
@@ -172,6 +189,8 @@ abstract class _$$RecipeImplCopyWith<$Res> implements $RecipeCopyWith<$Res> {
       String? imagePath,
       String? sourceUrl,
       String? notes,
+      TileColor? tileColor,
+      TileMotif? tileMotif,
       bool isFavorite,
       DateTime? deletedAt});
 }
@@ -201,6 +220,8 @@ class __$$RecipeImplCopyWithImpl<$Res>
     Object? imagePath = freezed,
     Object? sourceUrl = freezed,
     Object? notes = freezed,
+    Object? tileColor = freezed,
+    Object? tileMotif = freezed,
     Object? isFavorite = null,
     Object? deletedAt = freezed,
   }) {
@@ -253,6 +274,14 @@ class __$$RecipeImplCopyWithImpl<$Res>
           ? _value.notes
           : notes // ignore: cast_nullable_to_non_nullable
               as String?,
+      tileColor: freezed == tileColor
+          ? _value.tileColor
+          : tileColor // ignore: cast_nullable_to_non_nullable
+              as TileColor?,
+      tileMotif: freezed == tileMotif
+          ? _value.tileMotif
+          : tileMotif // ignore: cast_nullable_to_non_nullable
+              as TileMotif?,
       isFavorite: null == isFavorite
           ? _value.isFavorite
           : isFavorite // ignore: cast_nullable_to_non_nullable
@@ -281,6 +310,8 @@ class _$RecipeImpl implements _Recipe {
       this.imagePath,
       this.sourceUrl,
       this.notes,
+      this.tileColor,
+      this.tileMotif,
       this.isFavorite = false,
       this.deletedAt});
 
@@ -308,6 +339,13 @@ class _$RecipeImpl implements _Recipe {
   final String? sourceUrl;
   @override
   final String? notes;
+
+  /// Aparência do azulejo escolhida pelo usuário (§9.4). Nulo em qualquer um
+  /// = deriva do id / pareamento padrão.
+  @override
+  final TileColor? tileColor;
+  @override
+  final TileMotif? tileMotif;
   @override
   @JsonKey()
   final bool isFavorite;
@@ -318,7 +356,7 @@ class _$RecipeImpl implements _Recipe {
 
   @override
   String toString() {
-    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, sourceUrl: $sourceUrl, notes: $notes, isFavorite: $isFavorite, deletedAt: $deletedAt)';
+    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, sourceUrl: $sourceUrl, notes: $notes, tileColor: $tileColor, tileMotif: $tileMotif, isFavorite: $isFavorite, deletedAt: $deletedAt)';
   }
 
   @override
@@ -346,6 +384,10 @@ class _$RecipeImpl implements _Recipe {
             (identical(other.sourceUrl, sourceUrl) ||
                 other.sourceUrl == sourceUrl) &&
             (identical(other.notes, notes) || other.notes == notes) &&
+            (identical(other.tileColor, tileColor) ||
+                other.tileColor == tileColor) &&
+            (identical(other.tileMotif, tileMotif) ||
+                other.tileMotif == tileMotif) &&
             (identical(other.isFavorite, isFavorite) ||
                 other.isFavorite == isFavorite) &&
             (identical(other.deletedAt, deletedAt) ||
@@ -367,6 +409,8 @@ class _$RecipeImpl implements _Recipe {
       imagePath,
       sourceUrl,
       notes,
+      tileColor,
+      tileMotif,
       isFavorite,
       deletedAt);
 
@@ -393,6 +437,8 @@ abstract class _Recipe implements Recipe {
       final String? imagePath,
       final String? sourceUrl,
       final String? notes,
+      final TileColor? tileColor,
+      final TileMotif? tileMotif,
       final bool isFavorite,
       final DateTime? deletedAt}) = _$RecipeImpl;
 
@@ -420,6 +466,13 @@ abstract class _Recipe implements Recipe {
   String? get sourceUrl;
   @override
   String? get notes;
+
+  /// Aparência do azulejo escolhida pelo usuário (§9.4). Nulo em qualquer um
+  /// = deriva do id / pareamento padrão.
+  @override
+  TileColor? get tileColor;
+  @override
+  TileMotif? get tileMotif;
   @override
   bool get isFavorite;
 

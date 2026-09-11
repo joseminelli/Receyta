@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/result.dart';
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/folder_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/tile_style_picker.dart';
 
 /// Diálogo de nome de pasta — serve pra criar ("Nova pasta") e renomear.
 /// Devolve o texto confirmado, ou nulo se cancelou.
@@ -150,7 +152,25 @@ Future<void> moveRecipeFlow(
   }
 }
 
-/// Menu ⋯ da tela da pasta: renomear, mover, nova subpasta, excluir.
+/// Sheet de aparência da pasta (§9.4) — aplica cada toque na hora, com prévia.
+Future<void> folderAppearanceFlow(
+  BuildContext context,
+  WidgetRef ref,
+  Folder folder,
+) {
+  return showAppearanceSheet(
+    context,
+    title: 'Aparência de "${folder.name}"',
+    color: folder.tileColor,
+    motif: folder.tileMotif,
+    fallbackColor: TileColor.violet,
+    onChanged: (c, m) => ref
+        .read(folderRepositoryProvider)
+        .setAppearance(folder.id, color: c, motif: m),
+  );
+}
+
+/// Menu ⋯ da tela da pasta: renomear, aparência, mover, nova subpasta, excluir.
 Future<void> showFolderMenu(
   BuildContext context,
   WidgetRef ref,
@@ -171,6 +191,14 @@ Future<void> showFolderMenu(
             onTap: () {
               Navigator.of(sheet).pop();
               renameFolderFlow(context, ref, folder);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Aparência'),
+            onTap: () {
+              Navigator.of(sheet).pop();
+              folderAppearanceFlow(context, ref, folder);
             },
           ),
           ListTile(

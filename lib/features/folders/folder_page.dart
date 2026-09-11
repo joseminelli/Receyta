@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/folder_actions.dart';
 import 'package:receyta/features/folders/folders_view_model.dart';
@@ -11,6 +12,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Tela de uma pasta (§RF-02): cabeçalho `violet` com meia-lua (§9.4 — pastas),
@@ -154,7 +156,13 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
+    final tile = resolveTileAppearance(
+      context.colors,
+      color: folder.tileColor,
+      motif: folder.tileMotif,
+      fallbackColor: TileColor.violet,
+    );
+    final onColor = tile.onColor;
     final bits = <String>[
       if (recipeCount > 0)
         '$recipeCount ${recipeCount == 1 ? 'receita' : 'receitas'}',
@@ -169,7 +177,7 @@ class _Header extends StatelessWidget {
           bottom: Radius.circular(AppRadii.lg),
         ),
         child: Container(
-          color: colors.violet,
+          color: tile.background,
           child: Stack(
             children: [
               Positioned(
@@ -179,9 +187,10 @@ class _Header extends StatelessWidget {
                   width: 240,
                   height: 240,
                   child: TilePattern(
-                    motif: TileMotif.meiaLua,
-                    background: colors.violet,
-                    patternColor: colors.violetPattern,
+                    motif: tile.motif,
+                    background: tile.background,
+                    patternColor: tile.patternColor,
+                    patternColorAlt: tile.patternColorAlt,
                   ),
                 ),
               ),
@@ -211,13 +220,12 @@ class _Header extends StatelessWidget {
                       Text(
                         'PASTA',
                         style: context.texts.labelSmall
-                            ?.copyWith(color: colors.onSaturated),
+                            ?.copyWith(color: onColor),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         folder.name,
-                        style: AppTextStyles.display(40)
-                            .copyWith(color: colors.onSaturated),
+                        style: AppTextStyles.display(40).copyWith(color: onColor),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -226,7 +234,7 @@ class _Header extends StatelessWidget {
                         Text(
                           bits.join('  ·  '),
                           style: context.texts.bodyMedium?.copyWith(
-                            color: colors.onSaturated.withValues(alpha: 0.8),
+                            color: onColor.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -277,7 +285,7 @@ class _Subfolders extends StatelessWidget {
                       folderId: it.folder.id,
                       folderName: it.folder.name,
                       child: _MiniFolder(
-                        name: it.folder.name,
+                        folder: it.folder,
                         count: it.recipeCount,
                         onTap: () => context.push('/folder/${it.folder.id}'),
                       ),
@@ -295,18 +303,24 @@ class _Subfolders extends StatelessWidget {
 
 class _MiniFolder extends StatelessWidget {
   const _MiniFolder({
-    required this.name,
+    required this.folder,
     required this.count,
     required this.onTap,
   });
 
-  final String name;
+  final Folder folder;
   final int count;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final accent = resolveTileAppearance(
+      colors,
+      color: folder.tileColor,
+      motif: folder.tileMotif,
+      fallbackColor: TileColor.violet,
+    ).background;
     return Material(
       color: colors.paperSoft,
       borderRadius: BorderRadius.circular(AppRadii.md),
@@ -319,13 +333,13 @@ class _MiniFolder extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.folder_outlined, size: 20, color: colors.violet),
+              Icon(Icons.folder_outlined, size: 20, color: accent),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    name,
+                    folder.name,
                     style: context.texts.bodyLarge
                         ?.copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,

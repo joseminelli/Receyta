@@ -6,9 +6,11 @@ import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/folder_actions.dart';
 import 'package:receyta/features/folders/folders_view_model.dart';
 import 'package:receyta/features/folders/recipe_drag.dart';
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Faixa "Pastas" da home (§9.9): rolagem horizontal de tiles `violet` com
@@ -53,7 +55,7 @@ class FoldersStrip extends ConsumerWidget {
                   folderId: it.folder.id,
                   folderName: it.folder.name,
                   child: _Tile(
-                    name: it.folder.name,
+                    folder: it.folder,
                     count: it.recipeCount,
                     subfolders: it.subfolders,
                     onTap: () => context.push('/folder/${it.folder.id}'),
@@ -70,24 +72,29 @@ class FoldersStrip extends ConsumerWidget {
 
 class _Tile extends StatelessWidget {
   const _Tile({
-    required this.name,
+    required this.folder,
     required this.count,
     required this.subfolders,
     required this.onTap,
   });
 
-  final String name;
+  final Folder folder;
   final int count;
   final int subfolders;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
+    final tile = resolveTileAppearance(
+      context.colors,
+      color: folder.tileColor,
+      motif: folder.tileMotif,
+      fallbackColor: TileColor.violet,
+    );
     return SizedBox(
       width: 128,
       child: Material(
-        color: colors.violet,
+        color: tile.background,
         borderRadius: BorderRadius.circular(AppRadii.md),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -96,9 +103,10 @@ class _Tile extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               TilePattern(
-                motif: TileMotif.meiaLua,
-                background: colors.violet,
-                patternColor: colors.violetPattern,
+                motif: tile.motif,
+                background: tile.background,
+                patternColor: tile.patternColor,
+                patternColorAlt: tile.patternColorAlt,
               ),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.sm),
@@ -107,15 +115,15 @@ class _Tile extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Icon(Icons.folder_outlined,
-                        size: 20, color: colors.onSaturated),
+                        size: 20, color: tile.onColor),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          name,
+                          folder.name,
                           style: context.texts.bodyLarge?.copyWith(
-                            color: colors.onSaturated,
+                            color: tile.onColor,
                             fontWeight: FontWeight.w600,
                           ),
                           maxLines: 1,
@@ -124,7 +132,7 @@ class _Tile extends StatelessWidget {
                         Text(
                           _subtitle(),
                           style: context.texts.labelLarge?.copyWith(
-                            color: colors.onSaturated.withValues(alpha: 0.82),
+                            color: tile.onColor.withValues(alpha: 0.82),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

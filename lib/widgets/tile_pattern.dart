@@ -4,21 +4,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Os quatro módulos do azulejo modernista (§9.4). A referência é Athos Bulcão:
-/// geometria pura, sem floral e sem moldura.
-enum TileMotif {
-  /// Quarto de círculo. `coral` — hero de receita, seção Receitas.
-  arco,
+import 'package:receyta/core/tile_style.dart';
 
-  /// Meias-luas alternadas. `violet` — pastas, blocos de sugestão.
-  meiaLua,
-
-  /// Triângulos em dois tons. `ink` — cabeçalhos, superfícies escuras.
-  diagonal,
-
-  /// Círculos em grade deslocada. `lime` — cards claros.
-  ponto,
-}
+export 'package:receyta/core/tile_style.dart' show TileMotif;
 
 /// Módulo determinístico a partir de um id (§9.4) — sem campo no banco.
 ///

@@ -72,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -82,6 +82,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// v2: `recipe_ingredients.ingredient_id` passa a aceitar nulo — o bloco B
   /// grava só `raw_text`; a normalização (C5) preenche o vínculo depois.
+  /// v3: `recipes`/`folders` ganham `tile_color`/`tile_motif` (§9.4, nuláveis).
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -105,6 +106,12 @@ class AppDatabase extends _$AppDatabase {
               'CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_ingredient_id '
               'ON recipe_ingredients (ingredient_id)',
             );
+          }
+          if (from < 3) {
+            await m.addColumn(recipes, recipes.tileColor);
+            await m.addColumn(recipes, recipes.tileMotif);
+            await m.addColumn(folders, folders.tileColor);
+            await m.addColumn(folders, folders.tileMotif);
           }
         },
         beforeOpen: (details) async {

@@ -10,6 +10,12 @@ class Folders extends Table {
   TextColumn get parentId =>
       text().nullable().customConstraint('NULL REFERENCES folders (id)')();
   TextColumn get name => text()();
+
+  /// Cor e módulo do azulejo escolhidos (§9.4). Nulo = aparência padrão
+  /// (violet/meia-lua). Guardados como o `.name` do enum.
+  TextColumn get tileColor => text().nullable()();
+  TextColumn get tileMotif => text().nullable()();
+
   IntColumn get position => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
@@ -32,6 +38,12 @@ class Recipes extends Table {
   TextColumn get imagePath => text().nullable()();
   TextColumn get sourceUrl => text().nullable()();
   TextColumn get notes => text().nullable()();
+
+  /// Cor e módulo do azulejo escolhidos (§9.4). Nulo = deriva do id, como
+  /// sempre. Guardados como o `.name` do enum.
+  TextColumn get tileColor => text().nullable()();
+  TextColumn get tileMotif => text().nullable()();
+
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();

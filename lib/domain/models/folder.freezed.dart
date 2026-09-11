@@ -19,6 +19,10 @@ mixin _$Folder {
   String get id => throw _privateConstructorUsedError;
   String get name => throw _privateConstructorUsedError;
   String? get parentId => throw _privateConstructorUsedError;
+
+  /// Aparência do azulejo (§9.4). Nulo = padrão (violet/meia-lua).
+  TileColor? get tileColor => throw _privateConstructorUsedError;
+  TileMotif? get tileMotif => throw _privateConstructorUsedError;
   int get position => throw _privateConstructorUsedError;
 
   /// Create a copy of Folder
@@ -32,7 +36,13 @@ abstract class $FolderCopyWith<$Res> {
   factory $FolderCopyWith(Folder value, $Res Function(Folder) then) =
       _$FolderCopyWithImpl<$Res, Folder>;
   @useResult
-  $Res call({String id, String name, String? parentId, int position});
+  $Res call(
+      {String id,
+      String name,
+      String? parentId,
+      TileColor? tileColor,
+      TileMotif? tileMotif,
+      int position});
 }
 
 /// @nodoc
@@ -53,6 +63,8 @@ class _$FolderCopyWithImpl<$Res, $Val extends Folder>
     Object? id = null,
     Object? name = null,
     Object? parentId = freezed,
+    Object? tileColor = freezed,
+    Object? tileMotif = freezed,
     Object? position = null,
   }) {
     return _then(_value.copyWith(
@@ -68,6 +80,14 @@ class _$FolderCopyWithImpl<$Res, $Val extends Folder>
           ? _value.parentId
           : parentId // ignore: cast_nullable_to_non_nullable
               as String?,
+      tileColor: freezed == tileColor
+          ? _value.tileColor
+          : tileColor // ignore: cast_nullable_to_non_nullable
+              as TileColor?,
+      tileMotif: freezed == tileMotif
+          ? _value.tileMotif
+          : tileMotif // ignore: cast_nullable_to_non_nullable
+              as TileMotif?,
       position: null == position
           ? _value.position
           : position // ignore: cast_nullable_to_non_nullable
@@ -83,7 +103,13 @@ abstract class _$$FolderImplCopyWith<$Res> implements $FolderCopyWith<$Res> {
       __$$FolderImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String id, String name, String? parentId, int position});
+  $Res call(
+      {String id,
+      String name,
+      String? parentId,
+      TileColor? tileColor,
+      TileMotif? tileMotif,
+      int position});
 }
 
 /// @nodoc
@@ -102,6 +128,8 @@ class __$$FolderImplCopyWithImpl<$Res>
     Object? id = null,
     Object? name = null,
     Object? parentId = freezed,
+    Object? tileColor = freezed,
+    Object? tileMotif = freezed,
     Object? position = null,
   }) {
     return _then(_$FolderImpl(
@@ -117,6 +145,14 @@ class __$$FolderImplCopyWithImpl<$Res>
           ? _value.parentId
           : parentId // ignore: cast_nullable_to_non_nullable
               as String?,
+      tileColor: freezed == tileColor
+          ? _value.tileColor
+          : tileColor // ignore: cast_nullable_to_non_nullable
+              as TileColor?,
+      tileMotif: freezed == tileMotif
+          ? _value.tileMotif
+          : tileMotif // ignore: cast_nullable_to_non_nullable
+              as TileMotif?,
       position: null == position
           ? _value.position
           : position // ignore: cast_nullable_to_non_nullable
@@ -129,7 +165,12 @@ class __$$FolderImplCopyWithImpl<$Res>
 
 class _$FolderImpl implements _Folder {
   const _$FolderImpl(
-      {required this.id, required this.name, this.parentId, this.position = 0});
+      {required this.id,
+      required this.name,
+      this.parentId,
+      this.tileColor,
+      this.tileMotif,
+      this.position = 0});
 
   @override
   final String id;
@@ -137,13 +178,19 @@ class _$FolderImpl implements _Folder {
   final String name;
   @override
   final String? parentId;
+
+  /// Aparência do azulejo (§9.4). Nulo = padrão (violet/meia-lua).
+  @override
+  final TileColor? tileColor;
+  @override
+  final TileMotif? tileMotif;
   @override
   @JsonKey()
   final int position;
 
   @override
   String toString() {
-    return 'Folder(id: $id, name: $name, parentId: $parentId, position: $position)';
+    return 'Folder(id: $id, name: $name, parentId: $parentId, tileColor: $tileColor, tileMotif: $tileMotif, position: $position)';
   }
 
   @override
@@ -155,12 +202,17 @@ class _$FolderImpl implements _Folder {
             (identical(other.name, name) || other.name == name) &&
             (identical(other.parentId, parentId) ||
                 other.parentId == parentId) &&
+            (identical(other.tileColor, tileColor) ||
+                other.tileColor == tileColor) &&
+            (identical(other.tileMotif, tileMotif) ||
+                other.tileMotif == tileMotif) &&
             (identical(other.position, position) ||
                 other.position == position));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, parentId, position);
+  int get hashCode => Object.hash(
+      runtimeType, id, name, parentId, tileColor, tileMotif, position);
 
   /// Create a copy of Folder
   /// with the given fields replaced by the non-null parameter values.
@@ -176,6 +228,8 @@ abstract class _Folder implements Folder {
       {required final String id,
       required final String name,
       final String? parentId,
+      final TileColor? tileColor,
+      final TileMotif? tileMotif,
       final int position}) = _$FolderImpl;
 
   @override
@@ -184,6 +238,12 @@ abstract class _Folder implements Folder {
   String get name;
   @override
   String? get parentId;
+
+  /// Aparência do azulejo (§9.4). Nulo = padrão (violet/meia-lua).
+  @override
+  TileColor? get tileColor;
+  @override
+  TileMotif? get tileMotif;
   @override
   int get position;
 

@@ -95,6 +95,22 @@ class FolderDao extends DatabaseAccessor<AppDatabase> with _$FolderDaoMixin {
     );
   }
 
+  /// `color`/`motif` são o `.name` do enum, ou nulo pra voltar ao padrão.
+  Future<int> setAppearance(
+    String id, {
+    required String? color,
+    required String? motif,
+    required DateTime at,
+  }) {
+    return (update(folders)..where((f) => f.id.equals(id))).write(
+      FoldersCompanion(
+        tileColor: Value(color),
+        tileMotif: Value(motif),
+        updatedAt: Value(at),
+      ),
+    );
+  }
+
   Future<int> move(String id, String? newParentId, DateTime at) {
     return (update(folders)..where((f) => f.id.equals(id))).write(
       FoldersCompanion(parentId: Value(newParentId), updatedAt: Value(at)),

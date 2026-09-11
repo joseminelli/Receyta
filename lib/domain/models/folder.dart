@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:receyta/core/tile_style.dart';
+
 part 'folder.freezed.dart';
 
 /// Uma pasta (RF-02). `parentId` nulo = pasta de raiz; senão, subpasta. As
@@ -10,6 +12,10 @@ class Folder with _$Folder {
     required String id,
     required String name,
     String? parentId,
+
+    /// Aparência do azulejo (§9.4). Nulo = padrão (violet/meia-lua).
+    TileColor? tileColor,
+    TileMotif? tileMotif,
     @Default(0) int position,
   }) = _Folder;
 }

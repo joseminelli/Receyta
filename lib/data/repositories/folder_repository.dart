@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/result.dart';
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/folder_dao.dart';
 import 'package:receyta/data/database/daos/recipe_dao.dart';
@@ -71,6 +72,26 @@ class FolderRepository {
     }
   }
 
+  /// Troca a cor e/ou o módulo do azulejo (§9.4). Nulo em qualquer um volta ao
+  /// padrão daquele eixo.
+  Future<Result<void>> setAppearance(
+    String id, {
+    TileColor? color,
+    TileMotif? motif,
+  }) async {
+    try {
+      await _dao.setAppearance(
+        id,
+        color: color?.name,
+        motif: motif?.name,
+        at: _clock().toUtc(),
+      );
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao mudar a aparência', cause: e));
+    }
+  }
+
   /// Move [id] pra dentro de [newParentId] (nulo = raiz). Recusa se o destino
   /// for a própria pasta ou uma descendente dela — isso quebraria a árvore.
   Future<Result<void>> move(String id, String? newParentId) async {
@@ -125,6 +146,8 @@ class FolderRepository {
         id: r.id,
         name: r.name,
         parentId: r.parentId,
+        tileColor: tileColorFromName(r.tileColor),
+        tileMotif: tileMotifFromName(r.tileMotif),
         position: r.position,
       );
 }

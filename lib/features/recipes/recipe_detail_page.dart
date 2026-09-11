@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
@@ -15,7 +16,9 @@ import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/hero_number.dart';
 import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/tile_style_picker.dart';
 
 /// Tela de detalhe da receita (B6): "dá para cozinhar lendo pelo app". Hero
 /// `coral` com azulejo (§9.2), sheet de conteúdo subindo 18px sobre ele
@@ -180,6 +183,24 @@ class _Hero extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              leading: const Icon(Icons.palette_outlined),
+              title: const Text('Aparência'),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                showAppearanceSheet(
+                  context,
+                  title: 'Aparência de "${recipe.name}"',
+                  color: recipe.tileColor,
+                  motif: recipe.tileMotif,
+                  fallbackColor: TileColor.coral,
+                  seedId: recipe.id,
+                  onChanged: (c, m) => ref
+                      .read(recipeRepositoryProvider)
+                      .setAppearance(recipe.id, color: c, motif: m),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.drive_file_move_outline),
               title: const Text('Mover para pasta'),
               onTap: () {
@@ -213,15 +234,21 @@ class _Hero extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final minutes = _totalMinutes;
+    final tile = resolveTileAppearance(
+      colors,
+      color: recipe.tileColor,
+      motif: recipe.tileMotif,
+      seedId: recipe.id,
+    );
 
-    // Cartão coral: canto arredondado embaixo e sombra, para ler como um bloco
+    // Cartão de cor: canto arredondado embaixo e sombra, para ler como um bloco
     // por cima do conteúdo. `Material` cuida da sombra + clip sem brigar com o
     // shader do azulejo. `AnnotatedRegion`: hora/bateria em branco enquanto o
     // hero cobre o topo; ao rolar, o sheet claro assume e volta ao escuro.
     return AnnotatedRegion(
       value: SystemBars.onDark,
       child: Material(
-        color: colors.coral,
+        color: tile.background,
         elevation: 8,
         shadowColor: colors.ink,
         borderRadius: const BorderRadius.vertical(
@@ -234,9 +261,10 @@ class _Hero extends ConsumerWidget {
             children: [
               Positioned.fill(
                 child: TilePattern(
-                  motif: TileMotif.arco,
-                  background: colors.coral,
-                  patternColor: colors.coralPattern,
+                  motif: tile.motif,
+                  background: tile.background,
+                  patternColor: tile.patternColor,
+                  patternColorAlt: tile.patternColorAlt,
                 ),
               ),
               if (minutes != null)
@@ -246,7 +274,7 @@ class _Hero extends ConsumerWidget {
                   child: HeroNumber(
                     value: '$minutes',
                     unit: 'min',
-                    color: colors.onSaturated.withValues(alpha: 0.5),
+                    color: tile.onColor.withValues(alpha: 0.5),
                     corner: Alignment.bottomRight,
                     size: 100,
                   ),
@@ -308,7 +336,7 @@ class _Hero extends ConsumerWidget {
                       Text(
                         recipe.name,
                         style: AppTextStyles.display(44)
-                            .copyWith(color: colors.onSaturated),
+                            .copyWith(color: tile.onColor),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),

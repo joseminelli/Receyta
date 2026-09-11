@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:receyta/core/tile_style.dart';
+
 part 'recipe.freezed.dart';
 
 /// Uma receita, do ponto de vista do domínio (§5). Só o núcleo em B1 —
@@ -21,6 +23,11 @@ class Recipe with _$Recipe {
     String? imagePath,
     String? sourceUrl,
     String? notes,
+
+    /// Aparência do azulejo escolhida pelo usuário (§9.4). Nulo em qualquer um
+    /// = deriva do id / pareamento padrão.
+    TileColor? tileColor,
+    TileMotif? tileMotif,
     @Default(false) bool isFavorite,
 
     /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.

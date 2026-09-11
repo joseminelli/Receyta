@@ -3,20 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Card de receita da grade (§9.4). Bloco de azulejo em cima, faixa `paperSoft`
 /// com nome e tempo embaixo. Sem foto ainda — a imagem (B7) cobre o azulejo.
+/// A cor e o módulo vêm da escolha do usuário (`recipe.tileColor/tileMotif`),
+/// ou derivam do id quando ele não escolheu.
 class RecipeCard extends StatelessWidget {
-  const RecipeCard({super.key, required this.recipe, this.onTap, this.motif});
+  const RecipeCard({super.key, required this.recipe, this.onTap});
 
   final Recipe recipe;
   final VoidCallback? onTap;
-
-  /// Força o módulo do azulejo em vez de derivar do id — o card fantasma que
-  /// segue o dedo usa isso pra bater com a origem (ex.: o destaque é sempre
-  /// `arco`).
-  final TileMotif? motif;
 
   int? get _totalMinutes {
     final total = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
@@ -26,15 +24,13 @@ class RecipeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final motif = this.motif ?? tileMotifForId(recipe.id);
+    final tile = resolveTileAppearance(
+      colors,
+      color: recipe.tileColor,
+      motif: recipe.tileMotif,
+      seedId: recipe.id,
+    );
     final minutes = _totalMinutes;
-
-    final (bg, pattern) = switch (motif) {
-      TileMotif.arco => (colors.coral, colors.coralPattern),
-      TileMotif.meiaLua => (colors.violet, colors.violetPattern),
-      TileMotif.diagonal => (colors.ink, colors.inkPattern),
-      TileMotif.ponto => (colors.lime, colors.limePattern),
-    };
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadii.md),
@@ -49,9 +45,10 @@ class RecipeCard extends StatelessWidget {
               AspectRatio(
                 aspectRatio: 1.45,
                 child: TilePattern(
-                  motif: motif,
-                  background: bg,
-                  patternColor: pattern,
+                  motif: tile.motif,
+                  background: tile.background,
+                  patternColor: tile.patternColor,
+                  patternColorAlt: tile.patternColorAlt,
                 ),
               ),
               Padding(

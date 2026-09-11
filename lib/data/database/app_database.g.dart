@@ -26,6 +26,18 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
       'name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _tileColorMeta =
+      const VerificationMeta('tileColor');
+  @override
+  late final GeneratedColumn<String> tileColor = GeneratedColumn<String>(
+      'tile_color', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tileMotifMeta =
+      const VerificationMeta('tileMotif');
+  @override
+  late final GeneratedColumn<String> tileMotif = GeneratedColumn<String>(
+      'tile_motif', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _positionMeta =
       const VerificationMeta('position');
   @override
@@ -57,8 +69,17 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
       'deleted_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, parentId, name, position, createdAt, updatedAt, deletedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        parentId,
+        name,
+        tileColor,
+        tileMotif,
+        position,
+        createdAt,
+        updatedAt,
+        deletedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -83,6 +104,14 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
           _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('tile_color')) {
+      context.handle(_tileColorMeta,
+          tileColor.isAcceptableOrUnknown(data['tile_color']!, _tileColorMeta));
+    }
+    if (data.containsKey('tile_motif')) {
+      context.handle(_tileMotifMeta,
+          tileMotif.isAcceptableOrUnknown(data['tile_motif']!, _tileMotifMeta));
     }
     if (data.containsKey('position')) {
       context.handle(_positionMeta,
@@ -115,6 +144,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
           .read(DriftSqlType.string, data['${effectivePrefix}parent_id']),
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      tileColor: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tile_color']),
+      tileMotif: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tile_motif']),
       position: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}position'])!,
       createdAt: attachedDatabase.typeMapping
@@ -136,6 +169,11 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
   final String id;
   final String? parentId;
   final String name;
+
+  /// Cor e módulo do azulejo escolhidos (§9.4). Nulo = aparência padrão
+  /// (violet/meia-lua). Guardados como o `.name` do enum.
+  final String? tileColor;
+  final String? tileMotif;
   final int position;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -144,6 +182,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       {required this.id,
       this.parentId,
       required this.name,
+      this.tileColor,
+      this.tileMotif,
       required this.position,
       required this.createdAt,
       required this.updatedAt,
@@ -156,6 +196,12 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       map['parent_id'] = Variable<String>(parentId);
     }
     map['name'] = Variable<String>(name);
+    if (!nullToAbsent || tileColor != null) {
+      map['tile_color'] = Variable<String>(tileColor);
+    }
+    if (!nullToAbsent || tileMotif != null) {
+      map['tile_motif'] = Variable<String>(tileMotif);
+    }
     map['position'] = Variable<int>(position);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -172,6 +218,12 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           ? const Value.absent()
           : Value(parentId),
       name: Value(name),
+      tileColor: tileColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tileColor),
+      tileMotif: tileMotif == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tileMotif),
       position: Value(position),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -188,6 +240,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       id: serializer.fromJson<String>(json['id']),
       parentId: serializer.fromJson<String?>(json['parentId']),
       name: serializer.fromJson<String>(json['name']),
+      tileColor: serializer.fromJson<String?>(json['tileColor']),
+      tileMotif: serializer.fromJson<String?>(json['tileMotif']),
       position: serializer.fromJson<int>(json['position']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -201,6 +255,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       'id': serializer.toJson<String>(id),
       'parentId': serializer.toJson<String?>(parentId),
       'name': serializer.toJson<String>(name),
+      'tileColor': serializer.toJson<String?>(tileColor),
+      'tileMotif': serializer.toJson<String?>(tileMotif),
       'position': serializer.toJson<int>(position),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -212,6 +268,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           {String? id,
           Value<String?> parentId = const Value.absent(),
           String? name,
+          Value<String?> tileColor = const Value.absent(),
+          Value<String?> tileMotif = const Value.absent(),
           int? position,
           DateTime? createdAt,
           DateTime? updatedAt,
@@ -220,6 +278,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
         id: id ?? this.id,
         parentId: parentId.present ? parentId.value : this.parentId,
         name: name ?? this.name,
+        tileColor: tileColor.present ? tileColor.value : this.tileColor,
+        tileMotif: tileMotif.present ? tileMotif.value : this.tileMotif,
         position: position ?? this.position,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -230,6 +290,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       id: data.id.present ? data.id.value : this.id,
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
       name: data.name.present ? data.name.value : this.name,
+      tileColor: data.tileColor.present ? data.tileColor.value : this.tileColor,
+      tileMotif: data.tileMotif.present ? data.tileMotif.value : this.tileMotif,
       position: data.position.present ? data.position.value : this.position,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -243,6 +305,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           ..write('id: $id, ')
           ..write('parentId: $parentId, ')
           ..write('name: $name, ')
+          ..write('tileColor: $tileColor, ')
+          ..write('tileMotif: $tileMotif, ')
           ..write('position: $position, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -252,8 +316,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, parentId, name, position, createdAt, updatedAt, deletedAt);
+  int get hashCode => Object.hash(id, parentId, name, tileColor, tileMotif,
+      position, createdAt, updatedAt, deletedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -261,6 +325,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           other.id == this.id &&
           other.parentId == this.parentId &&
           other.name == this.name &&
+          other.tileColor == this.tileColor &&
+          other.tileMotif == this.tileMotif &&
           other.position == this.position &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -271,6 +337,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
   final Value<String> id;
   final Value<String?> parentId;
   final Value<String> name;
+  final Value<String?> tileColor;
+  final Value<String?> tileMotif;
   final Value<int> position;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -280,6 +348,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.id = const Value.absent(),
     this.parentId = const Value.absent(),
     this.name = const Value.absent(),
+    this.tileColor = const Value.absent(),
+    this.tileMotif = const Value.absent(),
     this.position = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -290,6 +360,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     required String id,
     this.parentId = const Value.absent(),
     required String name,
+    this.tileColor = const Value.absent(),
+    this.tileMotif = const Value.absent(),
     this.position = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -301,6 +373,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     Expression<String>? id,
     Expression<String>? parentId,
     Expression<String>? name,
+    Expression<String>? tileColor,
+    Expression<String>? tileMotif,
     Expression<int>? position,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -311,6 +385,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       if (id != null) 'id': id,
       if (parentId != null) 'parent_id': parentId,
       if (name != null) 'name': name,
+      if (tileColor != null) 'tile_color': tileColor,
+      if (tileMotif != null) 'tile_motif': tileMotif,
       if (position != null) 'position': position,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -323,6 +399,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       {Value<String>? id,
       Value<String?>? parentId,
       Value<String>? name,
+      Value<String?>? tileColor,
+      Value<String?>? tileMotif,
       Value<int>? position,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
@@ -332,6 +410,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       id: id ?? this.id,
       parentId: parentId ?? this.parentId,
       name: name ?? this.name,
+      tileColor: tileColor ?? this.tileColor,
+      tileMotif: tileMotif ?? this.tileMotif,
       position: position ?? this.position,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -351,6 +431,12 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (tileColor.present) {
+      map['tile_color'] = Variable<String>(tileColor.value);
+    }
+    if (tileMotif.present) {
+      map['tile_motif'] = Variable<String>(tileMotif.value);
     }
     if (position.present) {
       map['position'] = Variable<int>(position.value);
@@ -376,6 +462,8 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
           ..write('id: $id, ')
           ..write('parentId: $parentId, ')
           ..write('name: $name, ')
+          ..write('tileColor: $tileColor, ')
+          ..write('tileMotif: $tileMotif, ')
           ..write('position: $position, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -450,6 +538,18 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
       'notes', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tileColorMeta =
+      const VerificationMeta('tileColor');
+  @override
+  late final GeneratedColumn<String> tileColor = GeneratedColumn<String>(
+      'tile_color', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _tileMotifMeta =
+      const VerificationMeta('tileMotif');
+  @override
+  late final GeneratedColumn<String> tileMotif = GeneratedColumn<String>(
+      'tile_motif', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _isFavoriteMeta =
       const VerificationMeta('isFavorite');
   @override
@@ -494,6 +594,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         imagePath,
         sourceUrl,
         notes,
+        tileColor,
+        tileMotif,
         isFavorite,
         createdAt,
         updatedAt,
@@ -556,6 +658,14 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
       context.handle(
           _notesMeta, notes.isAcceptableOrUnknown(data['notes']!, _notesMeta));
     }
+    if (data.containsKey('tile_color')) {
+      context.handle(_tileColorMeta,
+          tileColor.isAcceptableOrUnknown(data['tile_color']!, _tileColorMeta));
+    }
+    if (data.containsKey('tile_motif')) {
+      context.handle(_tileMotifMeta,
+          tileMotif.isAcceptableOrUnknown(data['tile_motif']!, _tileMotifMeta));
+    }
     if (data.containsKey('is_favorite')) {
       context.handle(
           _isFavoriteMeta,
@@ -603,6 +713,10 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
           .read(DriftSqlType.string, data['${effectivePrefix}source_url']),
       notes: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}notes']),
+      tileColor: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tile_color']),
+      tileMotif: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}tile_motif']),
       isFavorite: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_favorite'])!,
       createdAt: attachedDatabase.typeMapping
@@ -631,6 +745,11 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
   final String? imagePath;
   final String? sourceUrl;
   final String? notes;
+
+  /// Cor e módulo do azulejo escolhidos (§9.4). Nulo = deriva do id, como
+  /// sempre. Guardados como o `.name` do enum.
+  final String? tileColor;
+  final String? tileMotif;
   final bool isFavorite;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -646,6 +765,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       this.imagePath,
       this.sourceUrl,
       this.notes,
+      this.tileColor,
+      this.tileMotif,
       required this.isFavorite,
       required this.createdAt,
       required this.updatedAt,
@@ -678,6 +799,12 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || tileColor != null) {
+      map['tile_color'] = Variable<String>(tileColor);
+    }
+    if (!nullToAbsent || tileMotif != null) {
+      map['tile_motif'] = Variable<String>(tileMotif);
     }
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -714,6 +841,12 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           : Value(sourceUrl),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
+      tileColor: tileColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tileColor),
+      tileMotif: tileMotif == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tileMotif),
       isFavorite: Value(isFavorite),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -737,6 +870,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       imagePath: serializer.fromJson<String?>(json['imagePath']),
       sourceUrl: serializer.fromJson<String?>(json['sourceUrl']),
       notes: serializer.fromJson<String?>(json['notes']),
+      tileColor: serializer.fromJson<String?>(json['tileColor']),
+      tileMotif: serializer.fromJson<String?>(json['tileMotif']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -757,6 +892,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       'imagePath': serializer.toJson<String?>(imagePath),
       'sourceUrl': serializer.toJson<String?>(sourceUrl),
       'notes': serializer.toJson<String?>(notes),
+      'tileColor': serializer.toJson<String?>(tileColor),
+      'tileMotif': serializer.toJson<String?>(tileMotif),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -775,6 +912,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           Value<String?> imagePath = const Value.absent(),
           Value<String?> sourceUrl = const Value.absent(),
           Value<String?> notes = const Value.absent(),
+          Value<String?> tileColor = const Value.absent(),
+          Value<String?> tileMotif = const Value.absent(),
           bool? isFavorite,
           DateTime? createdAt,
           DateTime? updatedAt,
@@ -790,6 +929,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
         imagePath: imagePath.present ? imagePath.value : this.imagePath,
         sourceUrl: sourceUrl.present ? sourceUrl.value : this.sourceUrl,
         notes: notes.present ? notes.value : this.notes,
+        tileColor: tileColor.present ? tileColor.value : this.tileColor,
+        tileMotif: tileMotif.present ? tileMotif.value : this.tileMotif,
         isFavorite: isFavorite ?? this.isFavorite,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -809,6 +950,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       sourceUrl: data.sourceUrl.present ? data.sourceUrl.value : this.sourceUrl,
       notes: data.notes.present ? data.notes.value : this.notes,
+      tileColor: data.tileColor.present ? data.tileColor.value : this.tileColor,
+      tileMotif: data.tileMotif.present ? data.tileMotif.value : this.tileMotif,
       isFavorite:
           data.isFavorite.present ? data.isFavorite.value : this.isFavorite,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -830,6 +973,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           ..write('imagePath: $imagePath, ')
           ..write('sourceUrl: $sourceUrl, ')
           ..write('notes: $notes, ')
+          ..write('tileColor: $tileColor, ')
+          ..write('tileMotif: $tileMotif, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -850,6 +995,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       imagePath,
       sourceUrl,
       notes,
+      tileColor,
+      tileMotif,
       isFavorite,
       createdAt,
       updatedAt,
@@ -868,6 +1015,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           other.imagePath == this.imagePath &&
           other.sourceUrl == this.sourceUrl &&
           other.notes == this.notes &&
+          other.tileColor == this.tileColor &&
+          other.tileMotif == this.tileMotif &&
           other.isFavorite == this.isFavorite &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
@@ -885,6 +1034,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
   final Value<String?> imagePath;
   final Value<String?> sourceUrl;
   final Value<String?> notes;
+  final Value<String?> tileColor;
+  final Value<String?> tileMotif;
   final Value<bool> isFavorite;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -901,6 +1052,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.imagePath = const Value.absent(),
     this.sourceUrl = const Value.absent(),
     this.notes = const Value.absent(),
+    this.tileColor = const Value.absent(),
+    this.tileMotif = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -918,6 +1071,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.imagePath = const Value.absent(),
     this.sourceUrl = const Value.absent(),
     this.notes = const Value.absent(),
+    this.tileColor = const Value.absent(),
+    this.tileMotif = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -936,6 +1091,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Expression<String>? imagePath,
     Expression<String>? sourceUrl,
     Expression<String>? notes,
+    Expression<String>? tileColor,
+    Expression<String>? tileMotif,
     Expression<bool>? isFavorite,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -953,6 +1110,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       if (imagePath != null) 'image_path': imagePath,
       if (sourceUrl != null) 'source_url': sourceUrl,
       if (notes != null) 'notes': notes,
+      if (tileColor != null) 'tile_color': tileColor,
+      if (tileMotif != null) 'tile_motif': tileMotif,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -972,6 +1131,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       Value<String?>? imagePath,
       Value<String?>? sourceUrl,
       Value<String?>? notes,
+      Value<String?>? tileColor,
+      Value<String?>? tileMotif,
       Value<bool>? isFavorite,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
@@ -988,6 +1149,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       imagePath: imagePath ?? this.imagePath,
       sourceUrl: sourceUrl ?? this.sourceUrl,
       notes: notes ?? this.notes,
+      tileColor: tileColor ?? this.tileColor,
+      tileMotif: tileMotif ?? this.tileMotif,
       isFavorite: isFavorite ?? this.isFavorite,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1029,6 +1192,12 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (tileColor.present) {
+      map['tile_color'] = Variable<String>(tileColor.value);
+    }
+    if (tileMotif.present) {
+      map['tile_motif'] = Variable<String>(tileMotif.value);
+    }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
     }
@@ -1060,6 +1229,8 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
           ..write('imagePath: $imagePath, ')
           ..write('sourceUrl: $sourceUrl, ')
           ..write('notes: $notes, ')
+          ..write('tileColor: $tileColor, ')
+          ..write('tileMotif: $tileMotif, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -5404,6 +5575,8 @@ typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   required String id,
   Value<String?> parentId,
   required String name,
+  Value<String?> tileColor,
+  Value<String?> tileMotif,
   Value<int> position,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -5414,6 +5587,8 @@ typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
   Value<String> id,
   Value<String?> parentId,
   Value<String> name,
+  Value<String?> tileColor,
+  Value<String?> tileMotif,
   Value<int> position,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -5441,6 +5616,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String?> parentId = const Value.absent(),
             Value<String> name = const Value.absent(),
+            Value<String?> tileColor = const Value.absent(),
+            Value<String?> tileMotif = const Value.absent(),
             Value<int> position = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -5451,6 +5628,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             id: id,
             parentId: parentId,
             name: name,
+            tileColor: tileColor,
+            tileMotif: tileMotif,
             position: position,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -5461,6 +5640,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             required String id,
             Value<String?> parentId = const Value.absent(),
             required String name,
+            Value<String?> tileColor = const Value.absent(),
+            Value<String?> tileMotif = const Value.absent(),
             Value<int> position = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -5471,6 +5652,8 @@ class $$FoldersTableTableManager extends RootTableManager<
             id: id,
             parentId: parentId,
             name: name,
+            tileColor: tileColor,
+            tileMotif: tileMotif,
             position: position,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -5495,6 +5678,16 @@ class $$FoldersTableFilterComposer
 
   ColumnFilters<String> get name => $state.composableBuilder(
       column: $state.table.name,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get tileColor => $state.composableBuilder(
+      column: $state.table.tileColor,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get tileMotif => $state.composableBuilder(
+      column: $state.table.tileMotif,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -5550,6 +5743,16 @@ class $$FoldersTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
+  ColumnOrderings<String> get tileColor => $state.composableBuilder(
+      column: $state.table.tileColor,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get tileMotif => $state.composableBuilder(
+      column: $state.table.tileMotif,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
   ColumnOrderings<int> get position => $state.composableBuilder(
       column: $state.table.position,
       builder: (column, joinBuilders) =>
@@ -5582,6 +5785,8 @@ typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
   Value<String?> imagePath,
   Value<String?> sourceUrl,
   Value<String?> notes,
+  Value<String?> tileColor,
+  Value<String?> tileMotif,
   Value<bool> isFavorite,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -5599,6 +5804,8 @@ typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
   Value<String?> imagePath,
   Value<String?> sourceUrl,
   Value<String?> notes,
+  Value<String?> tileColor,
+  Value<String?> tileMotif,
   Value<bool> isFavorite,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -5633,6 +5840,8 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<String?> imagePath = const Value.absent(),
             Value<String?> sourceUrl = const Value.absent(),
             Value<String?> notes = const Value.absent(),
+            Value<String?> tileColor = const Value.absent(),
+            Value<String?> tileMotif = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -5650,6 +5859,8 @@ class $$RecipesTableTableManager extends RootTableManager<
             imagePath: imagePath,
             sourceUrl: sourceUrl,
             notes: notes,
+            tileColor: tileColor,
+            tileMotif: tileMotif,
             isFavorite: isFavorite,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -5667,6 +5878,8 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<String?> imagePath = const Value.absent(),
             Value<String?> sourceUrl = const Value.absent(),
             Value<String?> notes = const Value.absent(),
+            Value<String?> tileColor = const Value.absent(),
+            Value<String?> tileMotif = const Value.absent(),
             Value<bool> isFavorite = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -5684,6 +5897,8 @@ class $$RecipesTableTableManager extends RootTableManager<
             imagePath: imagePath,
             sourceUrl: sourceUrl,
             notes: notes,
+            tileColor: tileColor,
+            tileMotif: tileMotif,
             isFavorite: isFavorite,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -5738,6 +5953,16 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<String> get notes => $state.composableBuilder(
       column: $state.table.notes,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get tileColor => $state.composableBuilder(
+      column: $state.table.tileColor,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get tileMotif => $state.composableBuilder(
+      column: $state.table.tileMotif,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -5893,6 +6118,16 @@ class $$RecipesTableOrderingComposer
 
   ColumnOrderings<String> get notes => $state.composableBuilder(
       column: $state.table.notes,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get tileColor => $state.composableBuilder(
+      column: $state.table.tileColor,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get tileMotif => $state.composableBuilder(
+      column: $state.table.tileMotif,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
