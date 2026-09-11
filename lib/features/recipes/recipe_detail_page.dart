@@ -335,7 +335,10 @@ class _Hero extends ConsumerWidget {
                         Wrap(
                           spacing: AppSpacing.xs,
                           runSpacing: AppSpacing.xs,
-                          children: [for (final t in tags) _TagPill(t.name)],
+                          children: [
+                            for (final t in tags)
+                              _TagPill(t.name, heroColor: tile.background),
+                          ],
                         ),
                       ],
                       const Spacer(),
@@ -457,30 +460,35 @@ class _Metrics extends StatelessWidget {
   }
 }
 
-/// Tag sobre o hero `coral`: pílula `lime` com texto `ink` (§9.2 — lime só
-/// aparece sobre bloco escuro ou saturado, nunca sobre `paper`).
+/// Tag sobre o hero: pílula `lime` com texto `ink` por padrão (§9.2). Se o hero
+/// for lime (o usuário pode escolher a cor, §9.4), a pílula vira `ink` pra
+/// nunca sumir no fundo.
 class _TagPill extends StatelessWidget {
-  const _TagPill(this.label);
+  const _TagPill(this.label, {required this.heroColor});
 
   final String label;
+  final Color heroColor;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final onLime = heroColor.computeLuminance() > 0.6;
+    final pillColor = onLime ? colors.ink : colors.lime;
+    final textColor = onLime ? colors.onSaturated : colors.ink;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.xs / 2,
       ),
       decoration: BoxDecoration(
-        color: colors.lime,
+        color: pillColor,
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: Text(
         label,
         style: context.texts.labelLarge?.copyWith(
           fontWeight: FontWeight.w500,
-          color: colors.ink,
+          color: textColor,
         ),
       ),
     );

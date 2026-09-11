@@ -35,7 +35,7 @@ App de gerenciamento de receitas pessoais com planejamento semanal e lista de co
 | ID | Requisito | Prioridade |
 |---|---|---|
 | RF-01.1 | Criar receita do zero | Must |
-| RF-01.2 | Campos: nome, sobre, tempo de preparo, tempo de cozimento, rendimento (porções), imagem, notas | Must |
+| RF-01.2 | Campos: nome, sobre, tempo de preparo, tempo de cozimento, rendimento (porções), imagem¹, notas | Must |
 | RF-01.3 | Lista ordenada de ingredientes com quantidade, unidade e observação | Must |
 | RF-01.4 | Lista ordenada de passos de preparo | Must |
 | RF-01.5 | Agrupar ingredientes/passos em seções ("Para a massa", "Para o recheio") | Should |
@@ -46,6 +46,11 @@ App de gerenciamento de receitas pessoais com planejamento semanal e lista de co
 | RF-01.10 | Tags livres | Should |
 | RF-01.11 | Modo cozinha: tela sempre ligada, passos grandes, timers inline | Should |
 | RF-01.12 | Escalar porções (recalcula quantidades) | Could |
+
+¹ A **imagem** ficou para o bloco H (Supabase Storage) — ver §10. A coluna
+`recipes.image_path` já existe no schema; só a captura/exibição está adiada.
+Personalização de **cor e textura do azulejo** por receita/pasta (schema v3) faz
+as vezes de identidade visual até lá.
 
 ### RF-02 — Pastas
 
@@ -682,6 +687,28 @@ Esforço em dias de trabalho focado.
 
 ---
 
+### Status de implementação
+
+*Atualizado conforme o código; a barra está no fim do bloco B.*
+
+- **Bloco A (A1–A8)** — ✅ completo e commitado.
+- **Bloco B** — ✅ completo, **exceto imagem** (B7 foi movida para o bloco H,
+  ver abaixo). Entregues: B1, B2, B3, B4, B5, B6, B8, B9, B10.
+  - **Tags** (§RF-01.10) e o **modo cozinha mínimo** (fatia do G1: wakelock +
+    passos grandes em lista + ingredientes recolhíveis, com aviso visível de
+    "tela acesa") entraram junto neste bloco.
+  - **B5** ganhou separadores de seção em ingredientes e passos (§RF-01.4):
+    "Para a massa" etc. viram `group_label` das linhas seguintes.
+  - **B10** foi além do previsto: personalizar **cor e textura do azulejo** de
+    cada receita e pasta (schema **v3**, colunas `tile_color`/`tile_motif`
+    nuláveis, editável pelo menu ⋯); **arrastar e soltar** receita→pasta,
+    pasta→pasta e "tirar da pasta"; menu `+` expansível ("Nova receita" / "Nova
+    pasta"); a home sem filtro mostra só a raiz.
+- **Bloco C em diante** — não começado. Próximo passo real: **usar o app com
+  receitas de verdade por uma semana** (ver aviso ao fim do bloco B), depois C1.
+
+---
+
 ### Bloco A — Fundação
 *Nada disso aparece para o usuário, mas tudo depois depende. ~5 dias.*
 
@@ -699,7 +726,7 @@ Esforço em dias de trabalho focado.
 ---
 
 ### Bloco B — A primeira receita
-*Aqui o app vira útil. ~7 dias.*
+*Aqui o app vira útil. ~6,5 dias.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
@@ -707,12 +734,16 @@ Esforço em dias de trabalho focado.
 | B2 | Tela de lista com dados falsos, só UI | 1 | Layout bate com o desenho aprovado |
 | B3 | 🎯 Lista lendo do Drift + criar receita só com nome | 0,5 | Você cadastra e reencontra uma receita real |
 | B4 | Formulário completo: sobre, tempos, porções, notas | 1 | Todos os campos persistem e voltam |
-| B5 | Ingredientes e passos como texto livre, gravando `raw_text` | 1 | Listas reordenáveis, nada se perde |
+| B5 | Ingredientes e passos como texto livre, gravando `raw_text`, com separadores de seção | 1 | Listas reordenáveis, nada se perde |
 | B6 | Tela de detalhe | 1 | 🎯 Dá para cozinhar lendo pelo app |
-| B7 | Imagem: câmera e galeria, compressão, thumbnail | 0,5 | Foto some do banco, só o caminho fica |
 | B8 | Favoritar, soft delete e lixeira de 30 dias | 0,5 | Nada é apagado de verdade antes do prazo |
 | B9 | Busca FTS por nome, sobre e notas | 0,5 | Busca responde abaixo de 100ms com 200 receitas |
 | B10 | Pastas: criar, renomear, mover, aninhar | 1 | 🎯 20 receitas reais organizadas |
+
+> **B7 (imagem) saiu daqui.** Foto de receita só compensa com armazenamento na
+> nuvem: sem Storage, os arquivos ficam presos num aparelho só e ainda exigem
+> compressão, thumbnail e faxina de órfãos. Foi movida para o **bloco H**, junto
+> do Supabase. Até lá o azulejo (§9.4) cobre o espaço da foto, como o §9 já prevê.
 
 > **Pare aqui e use o app por uma semana.** As entregas seguintes ficam muito melhores com receitas reais no banco — o parser precisa de exemplos verdadeiros, e o IDF não funciona com base vazia.
 
@@ -784,12 +815,16 @@ Esforço em dias de trabalho focado.
 
 ---
 
-### Bloco H — Conta e sync
+### Bloco H — Conta, sync e fotos
 *Só depois de usar o app no dia a dia por algumas semanas. 3+ semanas.*
 
 Supabase, auth, RLS, espelhamento do schema, fila de mutações offline, compartilhamento de pasta, lista colaborativa.
 
-Não comece este bloco antes de responder duas coisas com uso real: você de fato precisa de sync, ou export/import já resolve? E quantas pessoas vão compartilhar de verdade?
+| ID | Entrega | Esforço | Pronto quando |
+|---|---|---|---|
+| H0 | Imagem de receita (ex-B7): câmera e galeria, compressão, thumbnail, **Supabase Storage** com caminho local como cache | 1 | Foto tirada num aparelho aparece no outro; some da UI mas o arquivo local vira cache |
+
+Não comece este bloco antes de responder duas coisas com uso real: você de fato precisa de sync, ou export/import já resolve? E quantas pessoas vão compartilhar de verdade? (Se a resposta for "só quero as fotos", dá pra fazer o H0 sozinho com Storage, sem o resto do sync.)
 
 ---
 
@@ -798,13 +833,16 @@ Não comece este bloco antes de responder duas coisas com uso real: você de fat
 | Bloco | Esforço | Entrega o quê |
 |---|---|---|
 | A — Fundação | 5 d | Nada visível, tudo depende |
-| B — Primeira receita | 7 d | **App já substitui o caderno** |
+| B — Primeira receita | 6,5 d | **App já substitui o caderno** |
 | C — Ingredientes | 4,5 d | Destrava compras e sugestão |
 | D — Import/export | 4,5 d | Compartilhar e fazer backup |
 | E — Compras | 4 d | **Substitui a lista do mercado** |
 | F — Calendário | 3,5 d | **Fecha o ciclo da semana** |
 | G — Acabamento | 3,5 d | Tira as arestas |
-| **Até G** | **32 d** | ~7 semanas de trabalho focado |
+| **Até G** | **31,5 d** | ~7 semanas de trabalho focado |
+
+Fora dessa conta: **bloco H** (conta, sync e a foto de receita ex-B7), que só
+entra depois de semanas de uso real.
 
 Três momentos em que o app fica bom o bastante para parar: **fim do bloco B** (caderno de receitas digital), **fim do bloco E** (receitas + compras) e **fim do bloco F** (o produto completo). Qualquer um deles é um lugar legítimo para parar e usar por um mês antes de continuar.
 
