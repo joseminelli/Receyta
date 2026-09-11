@@ -7,6 +7,9 @@ import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_dialog.dart';
+import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/state_badge.dart';
 
 /// Gerenciar tags (§RF-01.10): lista tudo, inclusive as que não estão em
 /// nenhuma receita, pra poder apagá-las. Apagar tira a tag de todas as receitas
@@ -20,29 +23,18 @@ class TagsPage extends ConsumerWidget {
     Tag tag,
     int count,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Apagar "${tag.name}"?'),
-        content: Text(
-          count == 0
-              ? 'Não está em nenhuma receita.'
-              : 'Sai de $count receita${count == 1 ? '' : 's'}.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Apagar',
-                style: TextStyle(color: context.colors.danger)),
-          ),
-        ],
-      ),
+    final colors = context.colors;
+    final ok = await AppDialog.confirm(
+      context,
+      icon: Icons.delete_outline,
+      accent: colors.danger,
+      title: 'Apagar "${tag.name}"?',
+      message: count == 0
+          ? 'Não está em nenhuma receita.'
+          : 'Sai de $count receita${count == 1 ? '' : 's'}.',
+      confirmLabel: 'Apagar',
     );
-    if (ok == true) {
+    if (ok) {
       await ref.read(tagRepositoryProvider).delete(tag.id);
     }
   }
@@ -56,39 +48,144 @@ class TagsPage extends ConsumerWidget {
       backgroundColor: colors.paper,
       appBar: AppBar(title: const Text('Tags')),
       body: tags.when(
-        loading: () => const SizedBox.shrink(),
+        loading: () => Center(
+          child: CircularProgressIndicator(color: colors.ink),
+        ),
         error: (_, __) => Center(
-          child: Text('Não deu para carregar', style: context.texts.bodyMedium),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                StateBadge(
+                  icon: Icons.priority_high_rounded,
+                  background: colors.danger,
+                  foreground: colors.onSaturated,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Não deu para carregar as tags',
+                  style: context.texts.displaySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
         ),
         data: (items) {
           if (items.isEmpty) {
             return Center(
-              child: Text('Nenhuma tag ainda.', style: context.texts.bodyLarge),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    StateBadge(
+                      icon: Icons.sell_outlined,
+                      background: colors.violet,
+                      foreground: colors.onSaturated,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Text(
+                      'Nenhuma tag ainda',
+                      style: context.texts.displaySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
             );
           }
           return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            padding: const EdgeInsets.all(AppSpacing.screen),
             itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
             itemBuilder: (context, i) {
               final (:tag, :count) = items[i];
-              return ListTile(
-                title: Text(tag.name, style: context.texts.bodyLarge),
-                subtitle: Text(
-                  count == 0
-                      ? 'Não usada'
-                      : '$count receita${count == 1 ? '' : 's'}',
-                  style: context.texts.labelMedium,
-                ),
-                trailing: IconButton(
-                  onPressed: () => _delete(context, ref, tag, count),
-                  icon: Icon(Icons.delete_outline, color: colors.danger),
-                  tooltip: 'Apagar',
-                ),
+              return _TagRow(
+                tag: tag,
+                count: count,
+                onDelete: () => _delete(context, ref, tag, count),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+/// Linha da lista de tags: cartão `paperSoft` arredondado, nome em negrito e
+/// a contagem de uso como pílula tingida de `violet` — em vez do
+/// `ListTile`+`Divider` chapado que o Material dá por padrão.
+class _TagRow extends StatelessWidget {
+  const _TagRow({
+    required this.tag,
+    required this.count,
+    required this.onDelete,
+  });
+
+  final Tag tag;
+  final int count;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.sm,
+        AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  tag.name,
+                  style: context.texts.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: AppSpacing.xs / 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.violet.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                  ),
+                  child: Text(
+                    count == 0
+                        ? 'Não usada'
+                        : '$count receita${count == 1 ? '' : 's'}',
+                    style: context.texts.labelMedium
+                        ?.copyWith(color: colors.violet),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          CircleIconButton(
+            icon: Icons.delete_outline,
+            background: colors.danger,
+            onTap: onDelete,
+            tooltip: 'Apagar',
+          ),
+        ],
       ),
     );
   }

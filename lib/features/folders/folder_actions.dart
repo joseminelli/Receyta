@@ -9,7 +9,9 @@ import 'package:receyta/features/folders/folder_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/tile_style_picker.dart';
 
 /// Diálogo de nome de pasta — serve pra criar ("Nova pasta") e renomear.
@@ -21,28 +23,31 @@ Future<String?> promptFolderName(
   String action = 'Salvar',
 }) {
   final controller = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (dialog) => AlertDialog(
-      title: Text(title, style: context.texts.displaySmall),
-      content: TextField(
-        controller: controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(hintText: 'Nome da pasta'),
-        onSubmitted: (v) => Navigator.of(dialog).pop(v.trim()),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialog).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(dialog).pop(controller.text.trim()),
-          child: Text(action),
-        ),
-      ],
+  return AppDialog.show<String>(
+    context,
+    icon: Icons.folder_outlined,
+    accent: context.colors.violet,
+    title: title,
+    content: TextField(
+      controller: controller,
+      autofocus: true,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: const InputDecoration(hintText: 'Nome da pasta'),
+      onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
     ),
+    actions: [
+      PillButton(
+        label: 'Cancelar',
+        variant: PillButtonVariant.ghost,
+        dense: true,
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      PillButton(
+        label: action,
+        dense: true,
+        onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+      ),
+    ],
   );
 }
 
@@ -87,29 +92,15 @@ Future<bool> deleteFolderFlow(
   WidgetRef ref,
   Folder folder,
 ) async {
-  final colors = context.colors;
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialog) => AlertDialog(
-      title: Text('Excluir "${folder.name}"?', style: context.texts.displaySmall),
-      content: Text(
-        'As receitas e subpastas dela sobem um nível — nada é apagado.',
-        style: context.texts.bodyMedium,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialog).pop(false),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: colors.danger),
-          onPressed: () => Navigator.of(dialog).pop(true),
-          child: const Text('Excluir'),
-        ),
-      ],
-    ),
+  final confirmed = await AppDialog.confirm(
+    context,
+    icon: Icons.delete_outline,
+    accent: context.colors.danger,
+    title: 'Excluir "${folder.name}"?',
+    message: 'As receitas e subpastas dela sobem um nível — nada é apagado.',
+    confirmLabel: 'Excluir',
   );
-  if (confirmed != true) return false;
+  if (!confirmed) return false;
   final result = await ref.read(folderRepositoryProvider).delete(folder.id);
   _reportError(result);
   return result.isOk;

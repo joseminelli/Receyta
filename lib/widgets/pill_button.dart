@@ -21,6 +21,10 @@ enum PillButtonVariant {
 
   /// Sem fundo, texto `ink`. Ação terciária.
   ghost,
+
+  /// Fundo `danger`, texto branco. Ação destrutiva (apagar, esvaziar) —
+  /// mesmo par do `StateBadge`/`CircleIconButton` quando marcados de perigo.
+  danger,
 }
 
 /// Botão em pílula total (raio 99, §9.8).
@@ -57,6 +61,7 @@ class PillButton extends StatelessWidget {
       PillButtonVariant.accent => (colors.lime, colors.ink),
       PillButtonVariant.secondary => (colors.paperSoft, colors.ink),
       PillButtonVariant.ghost => (Colors.transparent, colors.ink),
+      PillButtonVariant.danger => (colors.danger, colors.onSaturated),
     };
 
     // Desabilitado perde saturação sem virar cinza: mistura com a superfície.

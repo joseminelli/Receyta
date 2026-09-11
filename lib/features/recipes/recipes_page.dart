@@ -18,6 +18,7 @@ import 'package:receyta/widgets/featured_recipe_card.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/expanding_create_menu.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 
@@ -511,33 +512,6 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-/// Medalhão de ícone pros estados vazio/sem-resultado/erro — o mesmo par
-/// "ícone dentro de bloco de cor saturada" do botão circular do hero e do
-/// chip do `AppSnackBar` (§9.2), só que grande o bastante pra segurar a tela
-/// sozinho em vez do texto solto que o Material dá por padrão.
-class _StateBadge extends StatelessWidget {
-  const _StateBadge({
-    required this.icon,
-    required this.background,
-    required this.foreground,
-  });
-
-  final IconData icon;
-  final Color background;
-  final Color foreground;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 88,
-      height: 88,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(color: background, shape: BoxShape.circle),
-      child: Icon(icon, size: 38, color: foreground),
-    );
-  }
-}
-
 class _ErrorState extends StatelessWidget {
   const _ErrorState();
 
@@ -549,7 +523,7 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _StateBadge(
+          StateBadge(
             icon: Icons.priority_high_rounded,
             background: colors.danger,
             foreground: colors.onSaturated,
@@ -579,7 +553,7 @@ class _NoMatch extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _StateBadge(
+          StateBadge(
             icon: Icons.search_off_rounded,
             background: colors.ink,
             foreground: colors.lime,
@@ -616,7 +590,7 @@ class _EmptyState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _StateBadge(
+          StateBadge(
             icon: Icons.restaurant_menu_rounded,
             background: colors.coral,
             foreground: colors.onSaturated,

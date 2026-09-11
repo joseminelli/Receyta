@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
+import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/messenger.dart';
@@ -56,8 +57,7 @@ class _DraggableRecipeState extends ConsumerState<DraggableRecipe> {
   Offset _pointer = Offset.zero;
   Offset _lift = Offset.zero;
 
-  void _clear() =>
-      ref.read(draggingItemProvider.notifier).state = null;
+  void _clear() => ref.read(draggingItemProvider.notifier).state = null;
 
   @override
   Widget build(BuildContext context) {
@@ -111,8 +111,7 @@ class _DraggableFolderState extends ConsumerState<DraggableFolder> {
   Offset _pointer = Offset.zero;
   Offset _lift = Offset.zero;
 
-  void _clear() =>
-      ref.read(draggingItemProvider.notifier).state = null;
+  void _clear() => ref.read(draggingItemProvider.notifier).state = null;
 
   @override
   Widget build(BuildContext context) {
@@ -403,6 +402,84 @@ class FolderExitDropBar extends ConsumerWidget {
                 },
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Alvo circular flutuante pra excluir arrastando — só aceita receita
+/// (`RecipeDragItem`); pasta não tem essa opção por aqui, só pelo menu ⋯
+/// (exclusão de pasta sobe o conteúdo um nível, não é o mesmo gesto). Soltar
+/// manda pra lixeira com o mesmo aviso de "Desfazer" do botão de excluir do
+/// detalhe — reversível, então sem diálogo de confirmação.
+class RecipeDeleteDropTarget extends ConsumerWidget {
+  const RecipeDeleteDropTarget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final dragging = ref.watch(draggingItemProvider);
+    final visible = dragging is RecipeDragItem;
+
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedSlide(
+        offset: visible ? Offset.zero : const Offset(0, 2),
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: const Duration(milliseconds: 160),
+          child: DragTarget<DragItem>(
+            onWillAcceptWithDetails: (details) =>
+                details.data is RecipeDragItem,
+            onAcceptWithDetails: (details) async {
+              final id = details.data.id;
+              final repo = ref.read(recipeRepositoryProvider);
+              await repo.softDelete(id);
+              showAppSnackBar(
+                message: 'Receita movida para a lixeira',
+                actionLabel: 'Desfazer',
+                onAction: () => repo.restore(id),
+              );
+            },
+            builder: (context, candidate, rejected) {
+              final active = candidate.isNotEmpty;
+              return AnimatedScale(
+                scale: active ? 1 : .9,
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOutBack,
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        colors.danger,
+                        Color.lerp(colors.danger, colors.ink, 0.35)!,
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors.danger
+                            .withValues(alpha: active ? 0.55 : 0.35),
+                        blurRadius: active ? 28 : 18,
+                        spreadRadius: active ? 6 : 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.delete_outline,
+                    color: colors.onSaturated,
+                    size: 28,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),

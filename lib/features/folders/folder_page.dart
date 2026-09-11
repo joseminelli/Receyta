@@ -126,6 +126,17 @@ class FolderPage extends ConsumerWidget {
                 ),
             ],
           ),
+          Align(
+            alignment: Alignment.bottomRight,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                // Clareia a `FolderExitDropBar` (~96 de altura visível) + folga.
+                padding: const EdgeInsets.only(bottom: 112, right: 16),
+                child: const RecipeDeleteDropTarget(),
+              ),
+            ),
+          ),
           Positioned(
             left: 0,
             right: 0,
@@ -219,13 +230,14 @@ class _Header extends StatelessWidget {
                       const SizedBox(height: AppSpacing.md),
                       Text(
                         'PASTA',
-                        style: context.texts.labelSmall
-                            ?.copyWith(color: onColor),
+                        style:
+                            context.texts.labelSmall?.copyWith(color: onColor),
                       ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         folder.name,
-                        style: AppTextStyles.display(40).copyWith(color: onColor),
+                        style:
+                            AppTextStyles.display(40).copyWith(color: onColor),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
