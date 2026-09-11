@@ -108,12 +108,13 @@ as vezes de identidade visual até lá.
 | RF-06.2 | Exportar receita(s) individual(is) como JSON | Must |
 | RF-06.3 | Importar JSON com detecção de duplicatas e escolha (substituir/duplicar/pular) | Must |
 | RF-06.4 | `schemaVersion` no arquivo + migrações de import | Must |
-| RF-06.5 | Abrir arquivo `.json` compartilhado por outro app direto no app | Should |
+| RF-06.5 | Abrir arquivo `.receyta` (extensão própria, JSON por dentro) compartilhado por outro app direto no app | Should |
 | RF-06.6 | Exportar receita como PDF | Must |
 | RF-06.7 | Exportar lista de compras como PDF | Could |
 | RF-06.8 | Imagens embutidas em base64 no JSON (opcional, com aviso de tamanho) | Should |
 | RF-06.9 | Importar receita de URL via JSON-LD schema.org/Recipe | Should |
 | RF-06.10 | Importar via OCR de foto | Could |
+| RF-06.11 | Compartilhar receita avulsa via link efêmero (token em Redis, sem conta) como alternativa ao arquivo | Should |
 
 ### RF-07 — Conta e sincronização (bloco H)
 
@@ -764,16 +765,40 @@ Esforço em dias de trabalho focado.
 ---
 
 ### Bloco D — Os dados saem e entram
-*Independente dos blocos E e F. ~4,5 dias.*
+*Independente dos blocos E e F. ~6 dias.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
-| D1 | 🎯 Export de uma receita em JSON + share sheet | 0,5 | Você manda uma receita pelo WhatsApp |
+| D1 | 🎯 Export de uma receita como `.receyta` (JSON) + share sheet | 0,5 | Você manda uma receita pelo WhatsApp |
 | D2 | Export completo com pastas e `schemaVersion` | 0,5 | Arquivo serve como backup manual |
 | D3 | Import com `file_picker` + reconciliação de ingredientes | 1 | Importar em outro device reproduz a base |
 | D4 | Tela de conflitos: substituir, duplicar ou pular | 0,5 | Reimportar o mesmo arquivo não gera lixo |
-| D5 | `receive_sharing_intent`: abrir `.json` pelo sistema | 0,5 | Tocar no anexo abre o Receyta |
+| D5 | `receive_sharing_intent`: abrir `.receyta` pelo sistema | 0,5 | Tocar no anexo abre o Receyta |
 | D6 | 🎯 PDF da receita | 1 | Impressão sai legível em A4 |
+| D7 | Link efêmero: function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
+| D8 | Deep link (App Links/Universal Links) resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
+
+> **Dois mecanismos de compartilhar uma receita, de propósito (não é
+> duplicação).** `.receyta` (arquivo, D1/D5) e **link efêmero** (D7/D8) resolvem
+> problemas diferentes e usam o mesmo corpo JSON do §7 por baixo — não são
+> dois caminhos de código, é o mesmo serializer com dois transportes.
+>
+> - **Link é o padrão** no botão "Compartilhar": abre o Receyta sozinho nas
+>   duas plataformas via App Links/Universal Links (sem a ambiguidade de
+>   "abrir com" que um arquivo tem no iOS) e ainda gera preview bonito no
+>   WhatsApp. Custo: exige internet dos dois lados antes do token expirar, e
+>   depende de uma function pequena + Redis no ar (Upstash free tier serve;
+>   não precisa de conta de usuário, só um id anônimo de dispositivo pra
+>   aplicar o limite de pilha por usuário).
+> - **Arquivo continua existindo** como opção secundária ("compartilhar como
+>   arquivo") e é a única via para **export completo** (D2 — múltiplas
+>   receitas/backup): isso não cabe no modelo de TTL do Redis, e precisa
+>   funcionar mesmo sem servidor nenhum no ar (ex.: mandar por Bluetooth/e-mail,
+>   ou guardar como backup permanente numa nuvem própria).
+> - Nenhum dos dois usa o Postgres do bloco H — ele fica reservado para o que
+>   de fato precisa persistir e sincronizar (calendário, lista de compras
+>   compartilhada, RF-07), evitando que compartilhar receitas avulsas lote o
+>   tier free do banco relacional.
 
 ---
 
@@ -835,11 +860,11 @@ Não comece este bloco antes de responder duas coisas com uso real: você de fat
 | A — Fundação | 5 d | Nada visível, tudo depende |
 | B — Primeira receita | 6,5 d | **App já substitui o caderno** |
 | C — Ingredientes | 4,5 d | Destrava compras e sugestão |
-| D — Import/export | 4,5 d | Compartilhar e fazer backup |
+| D — Import/export | 6 d | Compartilhar (arquivo ou link) e fazer backup |
 | E — Compras | 4 d | **Substitui a lista do mercado** |
 | F — Calendário | 3,5 d | **Fecha o ciclo da semana** |
 | G — Acabamento | 3,5 d | Tira as arestas |
-| **Até G** | **31,5 d** | ~7 semanas de trabalho focado |
+| **Até G** | **33 d** | ~7 semanas de trabalho focado |
 
 Fora dessa conta: **bloco H** (conta, sync e a foto de receita ex-B7), que só
 entra depois de semanas de uso real.
@@ -857,6 +882,7 @@ Três momentos em que o app fica bom o bastante para parar: **fim do bloco B** (
 | Base de ingredientes vira lixo com duplicatas | Tela de mesclagem + `usage_count` para destacar órfãos |
 | Sync com conflito corrompe dados | Só depois da v1; `updated_at` por registro desde já; export JSON funciona como backup manual |
 | Import de URL quebra por mudança de site | JSON-LD é padrão estável; falha degrada para "colar texto manualmente" |
+| Link efêmero de receita (D7/D8) depende de backend no ar antes do bloco H | Falha vira "compartilhar como arquivo" (`.receyta`, offline, sem prazo); TTL curto (1h) ou pilha por dispositivo limita custo/abuso do Redis sem precisar de conta |
 | Tipografia display quebra com nome de receita longo | `maxLines: 2` com reticências; testar com "Estrogonofe de frango com arroz sete grãos" |
 | Paleta ácida reprova em contraste | Regras de pareamento fixas na §9.2; teste automatizado de contraste sobre os tokens |
 | Maximalismo cansa no uso diário | Telas de consulta (compras, modo cozinha) já nascem sóbrias; validar depois de 2 semanas de uso real |
