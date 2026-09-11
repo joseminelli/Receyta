@@ -11,10 +11,12 @@ import 'package:receyta/features/recipes/search_page.dart';
 import 'package:receyta/features/recipes/tags_page.dart';
 import 'package:receyta/features/recipes/trash_page.dart';
 import 'package:receyta/home_shell.dart';
+import 'package:receyta/messenger.dart';
 import 'package:receyta/root_back_guard.dart';
 import 'package:receyta/splash.dart';
 
 final router = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/splash',
   routes: [
     GoRoute(

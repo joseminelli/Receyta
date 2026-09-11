@@ -168,14 +168,10 @@ class _Hero extends ConsumerWidget {
     await repo.softDelete(recipe.id);
     if (!context.mounted) return;
     context.pop();
-    showRootSnackBar(
-      SnackBar(
-        content: const Text('Receita movida para a lixeira'),
-        action: SnackBarAction(
-          label: 'Desfazer',
-          onPressed: () => repo.restore(recipe.id),
-        ),
-      ),
+    showAppSnackBar(
+      message: 'Receita movida para a lixeira',
+      actionLabel: 'Desfazer',
+      onAction: () => repo.restore(recipe.id),
     );
   }
 

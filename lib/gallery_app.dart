@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:receyta/splash.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/hero_number.dart';
 import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/pill_button.dart';
@@ -92,6 +93,11 @@ final List<GalleryEntry> galleryEntries = [
     title: 'PillButton',
     blurb: 'Quatro variantes. Accent só existe sobre fundo escuro.',
     builder: (_) => const _PillButtonPage(),
+  ),
+  GalleryEntry(
+    title: 'AppSnackBar',
+    blurb: 'Bloco `ink`, chip de ícone animado, ação em pílula (§9.8).',
+    builder: (_) => const _AppSnackBarPage(),
   ),
   GalleryEntry(
     title: 'PillNavBar',
@@ -354,6 +360,58 @@ class _PillButtonPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AppSnackBarPage extends StatelessWidget {
+  const _AppSnackBarPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Demo(
+      label: 'Dispare um snackbar',
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        children: [
+          PillButton(
+            label: 'Sucesso',
+            onPressed: () => AppSnackBar.show(
+              context,
+              message: 'Receita movida',
+            ),
+          ),
+          PillButton(
+            label: 'Sucesso com ação',
+            onPressed: () => AppSnackBar.show(
+              context,
+              message: 'Receita movida para a lixeira',
+              actionLabel: 'Desfazer',
+              onAction: () {},
+            ),
+          ),
+          PillButton(
+            label: 'Erro',
+            variant: PillButtonVariant.secondary,
+            onPressed: () => AppSnackBar.show(
+              context,
+              message: 'Não foi possível salvar a receita',
+              variant: AppSnackBarVariant.error,
+            ),
+          ),
+          PillButton(
+            label: 'Mensagem longa',
+            variant: PillButtonVariant.secondary,
+            onPressed: () => AppSnackBar.show(
+              context,
+              message:
+                  'Não foi possível mover a receita: a pasta de destino foi excluída.',
+              variant: AppSnackBarVariant.error,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

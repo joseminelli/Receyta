@@ -11,6 +11,7 @@ import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
 
@@ -187,8 +188,11 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
       ok: (_) => context.pop(),
       err: (f) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(f.message)));
+        AppSnackBar.show(
+          context,
+          message: f.message,
+          variant: AppSnackBarVariant.error,
+        );
       },
     );
   }

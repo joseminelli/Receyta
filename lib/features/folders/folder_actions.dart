@@ -9,6 +9,7 @@ import 'package:receyta/features/folders/folder_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/tile_style_picker.dart';
 
 /// Diálogo de nome de pasta — serve pra criar ("Nova pasta") e renomear.
@@ -146,9 +147,7 @@ Future<void> moveRecipeFlow(
       .moveRecipe(recipeId, choice.id);
   _reportError(result);
   if (result.isOk) {
-    showRootSnackBar(
-      const SnackBar(content: Text('Receita movida')),
-    );
+    showAppSnackBar(message: 'Receita movida');
   }
 }
 
@@ -239,6 +238,9 @@ Future<void> showFolderMenu(
 void _reportError(Result<Object?> result) {
   result.when(
     ok: (_) {},
-    err: (f) => showRootSnackBar(SnackBar(content: Text(f.message))),
+    err: (f) => showAppSnackBar(
+      message: f.message,
+      variant: AppSnackBarVariant.error,
+    ),
   );
 }

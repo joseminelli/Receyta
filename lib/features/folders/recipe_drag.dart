@@ -10,6 +10,7 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -291,10 +292,11 @@ class FolderDropZone extends ConsumerWidget {
           FolderDragItem(:final id) => await repo.move(id, folderId),
         };
         result.when(
-          ok: (_) => showRootSnackBar(
-            SnackBar(content: Text('Movida para "$folderName"')),
+          ok: (_) => showAppSnackBar(message: 'Movida para "$folderName"'),
+          err: (f) => showAppSnackBar(
+            message: f.message,
+            variant: AppSnackBarVariant.error,
           ),
-          err: (f) => showRootSnackBar(SnackBar(content: Text(f.message))),
         );
       },
       builder: (context, candidate, rejected) {
@@ -362,11 +364,11 @@ class FolderExitDropBar extends ConsumerWidget {
                     FolderDragItem(:final id) => await repo.move(id, parentId),
                   };
                   result.when(
-                    ok: (_) => showRootSnackBar(
-                      SnackBar(content: Text('$label — feito')),
+                    ok: (_) => showAppSnackBar(message: '$label — feito'),
+                    err: (f) => showAppSnackBar(
+                      message: f.message,
+                      variant: AppSnackBarVariant.error,
                     ),
-                    err: (f) =>
-                        showRootSnackBar(SnackBar(content: Text(f.message))),
                   );
                 },
                 builder: (context, candidate, rejected) {
