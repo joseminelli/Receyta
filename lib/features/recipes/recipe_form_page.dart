@@ -49,8 +49,23 @@ class RecipeFormPage extends ConsumerWidget {
 /// vira o `groupLabel` das linhas abaixo dela.
 class _Line {
   _Line(String text, {this.heading = false})
-      : controller = TextEditingController(text: text);
+      : controller = TextEditingController(text: text) {
+    // Ao ganhar foco (não a cada letra) centraliza a linha na tela — listas
+    // longas de ingrediente/passo senão ficam embaixo do teclado.
+    focusNode.addListener(() {
+      if (!focusNode.hasFocus) return;
+      final ctx = focusNode.context;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
   final TextEditingController controller;
+  final FocusNode focusNode = FocusNode();
   final bool heading;
   final key = UniqueKey();
 }
@@ -129,6 +144,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
     }
     for (final l in [..._ingredients, ..._steps]) {
       l.controller.dispose();
+      l.focusNode.dispose();
     }
     _tagInput.dispose();
     _tagFocus.dispose();
@@ -609,6 +625,7 @@ class _LineList extends StatelessWidget {
                     Expanded(
                       child: TextField(
                         controller: line.controller,
+                        focusNode: line.focusNode,
                         textCapitalization: TextCapitalization.sentences,
                         minLines: 1,
                         maxLines: line.heading ? 1 : 4,
