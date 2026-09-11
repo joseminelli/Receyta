@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
-import 'package:receyta/widgets/tile_pattern.dart';
 
-/// Um destino da [PillNavBar]. `color` e `motif` são da seção (§9.2/§9.4): a
-/// pílula ativa vira uma lasca de azulejo — a cor da seção com o módulo dela
-/// desenhado tom sobre tom no canto. É o que dá identidade à navegação.
+/// Um destino da [PillNavBar]. `color` é a cor da seção (§9.2) — o `motif` fica
+/// só de referência pra quem consome via [TileMotif], a navbar em si não
+/// desenha o azulejo (ficava grosseiro nesse tamanho).
 class PillNavItem {
   const PillNavItem({
     required this.icon,
@@ -22,8 +22,8 @@ class PillNavItem {
 }
 
 /// Ilha de navegação flutuante em pílula `ink` (§9.8) — compacta, centrada, não
-/// uma barra de ponta a ponta. Inativos mostram só o ícone; o ativo abre numa
-/// lasca de azulejo da seção, com ícone + label.
+/// uma barra de ponta a ponta. Inativos mostram só o ícone; o ativo ganha a
+/// cor da seção e o ícone entra num medalhão, com ícone + label.
 class PillNavBar extends StatelessWidget {
   const PillNavBar({
     super.key,
@@ -79,7 +79,7 @@ class PillNavBar extends StatelessWidget {
   }
 }
 
-class _NavSlot extends StatelessWidget {
+class _NavSlot extends StatefulWidget {
   const _NavSlot({
     required this.item,
     required this.selected,
@@ -91,19 +91,66 @@ class _NavSlot extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_NavSlot> createState() => _NavSlotState();
+}
+
+class _NavSlotState extends State<_NavSlot> with SingleTickerProviderStateMixin {
+  late final AnimationController _pop;
+
+  @override
+  void initState() {
+    super.initState();
+    _pop = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    if (widget.selected) _pop.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant _NavSlot old) {
+    super.didUpdateWidget(old);
+    // Só estoura ao ENTRAR selecionado — sair não anima o ícone, a pílula só
+    // encolhe (o `AnimatedContainer` já cuida disso).
+    if (widget.selected && !old.selected) {
+      _pop.forward(from: 0);
+    } else if (!widget.selected) {
+      _pop.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final item = widget.item;
+    final selected = widget.selected;
     final onSection =
         item.color.computeLuminance() > 0.5 ? colors.ink : colors.onSaturated;
     final foreground =
         selected ? onSection : colors.onSaturated.withValues(alpha: 0.5);
+    // Medalhão atrás do ícone quando ativo — mesmo par "ícone dentro de
+    // círculo de tom" do chip do AppSnackBar e dos estados vazios: um tom do
+    // próprio `onSection` misturado na cor da seção, sutil o bastante pra não
+    // brigar com o ícone por cima.
+    final medallion = Color.lerp(item.color, onSection, 0.18)!;
+    // Estouro do ícone ao selecionar — mesmo easeOutBack do chip do
+    // AppSnackBar e dos pills do menu `+`.
+    final iconPop = Tween<double>(begin: 0.7, end: 1).animate(
+      CurvedAnimation(parent: _pop, curve: Curves.easeOutBack),
+    );
 
     return Semantics(
       button: true,
       selected: selected,
       label: item.label,
       child: InkWell(
-        onTap: onTap,
+        onTap: widget.onTap,
         borderRadius: BorderRadius.circular(AppRadii.pill),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 240),
@@ -117,37 +164,37 @@ class _NavSlot extends StatelessWidget {
             color: selected ? item.color : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
-          child: Stack(
-            alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (selected)
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _MotifAccent(
-                      motif: item.motif,
-                      color: Color.lerp(item.color, colors.onSaturated, 0.16)!,
-                    ),
-                  ),
-                ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(item.icon, size: 21, color: foreground),
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 240),
-                    curve: Curves.easeOutCubic,
-                    child: selected
-                        ? Padding(
-                            padding: const EdgeInsets.only(left: AppSpacing.xs),
-                            child: Text(
-                              item.label,
-                              style: context.texts.labelLarge
-                                  ?.copyWith(color: foreground),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                ],
+              ScaleTransition(
+                scale: iconPop,
+                child: selected
+                    ? Container(
+                        width: 30,
+                        height: 30,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: medallion,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(item.icon, size: 17, color: foreground),
+                      )
+                    : Icon(item.icon, size: 21, color: foreground),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutCubic,
+                child: selected
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: AppSpacing.xs),
+                        child: Text(
+                          item.label,
+                          style: context.texts.labelLarge
+                              ?.copyWith(color: foreground),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
           ),
@@ -157,52 +204,3 @@ class _NavSlot extends StatelessWidget {
   }
 }
 
-/// Um único módulo do azulejo (§9.4) desenhado grande no canto da pílula ativa,
-/// tom sobre tom. Não é o padrão repetido (que nunca entra na navegação) — é
-/// uma lasca, do jeito que os números ilustrativos sangram na borda.
-class _MotifAccent extends CustomPainter {
-  _MotifAccent({required this.motif, required this.color});
-
-  final TileMotif motif;
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = color
-      ..isAntiAlias = true;
-    final h = size.height;
-
-    switch (motif) {
-      case TileMotif.arco:
-        final r = h * 1.5;
-        canvas.drawPath(
-          Path()
-            ..moveTo(-h * 0.15, -h * 0.15)
-            ..lineTo(r, -h * 0.15)
-            ..arcToPoint(Offset(-h * 0.15, r),
-                radius: Radius.circular(r), clockwise: false)
-            ..close(),
-          p,
-        );
-      case TileMotif.meiaLua:
-        canvas.drawCircle(Offset(-h * 0.1, h / 2), h * 0.85, p);
-      case TileMotif.ponto:
-        canvas.drawCircle(Offset(h * 0.15, h * 0.3), h * 0.34, p);
-        canvas.drawCircle(Offset(size.width - h * 0.1, h * 0.8), h * 0.34, p);
-      case TileMotif.diagonal:
-        canvas.drawPath(
-          Path()
-            ..moveTo(0, 0)
-            ..lineTo(h * 1.4, 0)
-            ..lineTo(0, h * 1.4)
-            ..close(),
-          p,
-        );
-    }
-  }
-
-  @override
-  bool shouldRepaint(_MotifAccent old) =>
-      old.motif != motif || old.color != color;
-}

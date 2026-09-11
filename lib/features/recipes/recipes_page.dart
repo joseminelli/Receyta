@@ -76,14 +76,9 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
         controller: _controller,
         count: null,
         onCreate: openNew,
-        body: SliverFillRemaining(
+        body: const SliverFillRemaining(
           hasScrollBody: false,
-          child: Center(
-            child: Text(
-              'Não deu para carregar as receitas',
-              style: context.texts.bodyMedium,
-            ),
-          ),
+          child: _ErrorState(),
         ),
       ),
       data: (list) => _Scaffold(
@@ -516,6 +511,61 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
+/// Medalhão de ícone pros estados vazio/sem-resultado/erro — o mesmo par
+/// "ícone dentro de bloco de cor saturada" do botão circular do hero e do
+/// chip do `AppSnackBar` (§9.2), só que grande o bastante pra segurar a tela
+/// sozinho em vez do texto solto que o Material dá por padrão.
+class _StateBadge extends StatelessWidget {
+  const _StateBadge({
+    required this.icon,
+    required this.background,
+    required this.foreground,
+  });
+
+  final IconData icon;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 88,
+      height: 88,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+      child: Icon(icon, size: 38, color: foreground),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _StateBadge(
+            icon: Icons.priority_high_rounded,
+            background: colors.danger,
+            foreground: colors.onSaturated,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Não deu para carregar as receitas',
+            style: context.texts.displaySmall,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _NoMatch extends StatelessWidget {
   const _NoMatch({required this.onClear});
 
@@ -523,11 +573,18 @@ class _NoMatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          _StateBadge(
+            icon: Icons.search_off_rounded,
+            background: colors.ink,
+            foreground: colors.lime,
+          ),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             'Nada nesse filtro',
             style: context.texts.displaySmall,
@@ -552,12 +609,19 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          _StateBadge(
+            icon: Icons.restaurant_menu_rounded,
+            background: colors.coral,
+            foreground: colors.onSaturated,
+          ),
+          const SizedBox(height: AppSpacing.lg),
           Text(
             'Nenhuma receita ainda',
             style: context.texts.displaySmall,
