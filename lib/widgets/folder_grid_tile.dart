@@ -9,10 +9,7 @@ import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Tile de pasta pra grade da tela "todas as pastas" — mesmo azulejo e
 /// pareamento cor/módulo de `resolveTileAppearance` que `folder_page.dart` e
-/// o `_Tile` de `folders_strip.dart` já usam (§9.4). Não é o `FolderTile` de
-/// `lib/widgets/folder_tile.dart`: aquele resolve a cor só a partir do
-/// módulo, de forma fixa, e por isso mostraria a cor errada pra uma pasta
-/// com combinação cor/módulo escolhida à parte.
+/// o `_Tile` de `folders_strip.dart` já usam (§9.4).
 class FolderGridTile extends StatelessWidget {
   const FolderGridTile({super.key, required this.item, required this.onTap});
 
