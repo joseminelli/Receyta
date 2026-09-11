@@ -1,15 +1,37 @@
 <div align="center">
 
-# Receyta
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/joseminelli/Receyta/blob/main/assets/brand/logoInverted.png?raw=true">
+  <img src="https://github.com/joseminelli/Receyta/blob/main/assets/brand/logo.png?raw=true" alt="Receyta" width="360">
+</picture>
 
-**Um caderno de receitas que funciona sem internet.**
+### Um caderno de receitas que funciona sem internet.
 
 Cadastre receitas, organize em pastas, planeje a semana e saia pro mercado com a
 lista pronta — tudo local, tudo rápido, tudo em português.
 
-Flutter · Riverpod · Drift (SQLite) · offline-first
+`Flutter` · `Riverpod` · `Drift (SQLite)` · `offline-first`
 
 </div>
+
+---
+
+## Telas
+
+<table>
+  <tr>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/MainPage.png" alt="Home"></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/P%C3%A1ginaReceita.png" alt="Detalhe da receita"></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/PassosReceita.png" alt="Passos de preparo"></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/modoCozinha.png" alt="Modo cozinha"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Home</b><br><sub>cabeçalho de azulejo, filtro de tags, faixa de pastas, destaque em "Recentes"</sub></td>
+    <td align="center"><b>Detalhe</b><br><sub>hero na cor escolhida, métricas gigantes, ingredientes com separador de seção</sub></td>
+    <td align="center"><b>Preparo</b><br><sub>passos numerados, seções "Bolo" / "Calda" na fonte display</sub></td>
+    <td align="center"><b>Modo cozinha</b><br><sub>tela escura que não apaga, passos grandes, ingredientes a um toque</sub></td>
+  </tr>
+</table>
 
 ---
 
