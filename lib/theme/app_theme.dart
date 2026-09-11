@@ -56,8 +56,22 @@ abstract class AppTheme {
       ),
       inputDecorationTheme: _inputTheme(colors),
       textTheme: _textTheme(colors),
+      pageTransitionsTheme: _pageTransitionsTheme,
     );
   }
+
+  /// Mesma transição em toda plataforma (não a zoom do Android nem o slide
+  /// lateral do iOS) — fade + leve subida, o mesmo par curva/deslocamento da
+  /// folha de conteúdo subindo sobre o hero (§9.8), só que na página inteira.
+  static const _pageTransitionsTheme = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android: _AppPageTransitionsBuilder(),
+      TargetPlatform.iOS: _AppPageTransitionsBuilder(),
+      TargetPlatform.macOS: _AppPageTransitionsBuilder(),
+      TargetPlatform.linux: _AppPageTransitionsBuilder(),
+      TargetPlatform.windows: _AppPageTransitionsBuilder(),
+    },
+  );
 
   /// Campos chapados sobre `paperSoft`, sem borda em repouso (§9.1). O foco
   /// ganha um anel `ink` fino — indicação de foco é acessibilidade (RNF-05),
@@ -115,4 +129,30 @@ extension ThemeContextExtension on BuildContext {
 
   /// Atalho para a escala tipográfica já colorida pelo tema.
   TextTheme get texts => Theme.of(this).textTheme;
+}
+
+/// Só um fade — de propósito o efeito mais barato de compor que existe.
+/// Chegamos a testar fade + deslocamento + escala na página de baixo, mas
+/// compor duas telas cheias ao mesmo tempo derrubava quadro e lia como bug,
+/// não como transição.
+class _AppPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _AppPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOut,
+        reverseCurve: Curves.easeIn,
+      ),
+      child: child,
+    );
+  }
 }
