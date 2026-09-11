@@ -38,6 +38,9 @@ mixin _$Recipe {
   /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
   DateTime? get deletedAt => throw _privateConstructorUsedError;
 
+  /// Última abertura ou criação — ordena a prateleira "Recentes" da home.
+  DateTime? get lastOpenedAt => throw _privateConstructorUsedError;
+
   /// Create a copy of Recipe
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -65,7 +68,8 @@ abstract class $RecipeCopyWith<$Res> {
       TileColor? tileColor,
       TileMotif? tileMotif,
       bool isFavorite,
-      DateTime? deletedAt});
+      DateTime? deletedAt,
+      DateTime? lastOpenedAt});
 }
 
 /// @nodoc
@@ -99,6 +103,7 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
     Object? tileMotif = freezed,
     Object? isFavorite = null,
     Object? deletedAt = freezed,
+    Object? lastOpenedAt = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -165,6 +170,10 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
           ? _value.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      lastOpenedAt: freezed == lastOpenedAt
+          ? _value.lastOpenedAt
+          : lastOpenedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ) as $Val);
   }
 }
@@ -192,7 +201,8 @@ abstract class _$$RecipeImplCopyWith<$Res> implements $RecipeCopyWith<$Res> {
       TileColor? tileColor,
       TileMotif? tileMotif,
       bool isFavorite,
-      DateTime? deletedAt});
+      DateTime? deletedAt,
+      DateTime? lastOpenedAt});
 }
 
 /// @nodoc
@@ -224,6 +234,7 @@ class __$$RecipeImplCopyWithImpl<$Res>
     Object? tileMotif = freezed,
     Object? isFavorite = null,
     Object? deletedAt = freezed,
+    Object? lastOpenedAt = freezed,
   }) {
     return _then(_$RecipeImpl(
       id: null == id
@@ -290,6 +301,10 @@ class __$$RecipeImplCopyWithImpl<$Res>
           ? _value.deletedAt
           : deletedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      lastOpenedAt: freezed == lastOpenedAt
+          ? _value.lastOpenedAt
+          : lastOpenedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
     ));
   }
 }
@@ -313,7 +328,8 @@ class _$RecipeImpl implements _Recipe {
       this.tileColor,
       this.tileMotif,
       this.isFavorite = false,
-      this.deletedAt});
+      this.deletedAt,
+      this.lastOpenedAt});
 
   @override
   final String id;
@@ -354,9 +370,13 @@ class _$RecipeImpl implements _Recipe {
   @override
   final DateTime? deletedAt;
 
+  /// Última abertura ou criação — ordena a prateleira "Recentes" da home.
+  @override
+  final DateTime? lastOpenedAt;
+
   @override
   String toString() {
-    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, sourceUrl: $sourceUrl, notes: $notes, tileColor: $tileColor, tileMotif: $tileMotif, isFavorite: $isFavorite, deletedAt: $deletedAt)';
+    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, sourceUrl: $sourceUrl, notes: $notes, tileColor: $tileColor, tileMotif: $tileMotif, isFavorite: $isFavorite, deletedAt: $deletedAt, lastOpenedAt: $lastOpenedAt)';
   }
 
   @override
@@ -391,7 +411,9 @@ class _$RecipeImpl implements _Recipe {
             (identical(other.isFavorite, isFavorite) ||
                 other.isFavorite == isFavorite) &&
             (identical(other.deletedAt, deletedAt) ||
-                other.deletedAt == deletedAt));
+                other.deletedAt == deletedAt) &&
+            (identical(other.lastOpenedAt, lastOpenedAt) ||
+                other.lastOpenedAt == lastOpenedAt));
   }
 
   @override
@@ -412,7 +434,8 @@ class _$RecipeImpl implements _Recipe {
       tileColor,
       tileMotif,
       isFavorite,
-      deletedAt);
+      deletedAt,
+      lastOpenedAt);
 
   /// Create a copy of Recipe
   /// with the given fields replaced by the non-null parameter values.
@@ -440,7 +463,8 @@ abstract class _Recipe implements Recipe {
       final TileColor? tileColor,
       final TileMotif? tileMotif,
       final bool isFavorite,
-      final DateTime? deletedAt}) = _$RecipeImpl;
+      final DateTime? deletedAt,
+      final DateTime? lastOpenedAt}) = _$RecipeImpl;
 
   @override
   String get id;
@@ -479,6 +503,10 @@ abstract class _Recipe implements Recipe {
   /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
   @override
   DateTime? get deletedAt;
+
+  /// Última abertura ou criação — ordena a prateleira "Recentes" da home.
+  @override
+  DateTime? get lastOpenedAt;
 
   /// Create a copy of Recipe
   /// with the given fields replaced by the non-null parameter values.

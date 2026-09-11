@@ -59,6 +59,32 @@ class FolderRepository {
     }
   }
 
+  /// Marca "aberta agora" — sobe pro topo da prateleira de pastas da home.
+  Future<Result<void>> markOpened(String id) async {
+    try {
+      await _dao.setLastOpenedAt(id, _clock().toUtc());
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao registrar abertura', cause: e));
+    }
+  }
+
+  /// As 7 pastas de raiz mais recentes (criação ou abertura) — a prateleira
+  /// da home. `watchChildrenWithCounts(null)` continua servindo a "ver
+  /// todas", em ordem alfabética.
+  Stream<List<FolderWithCounts>> watchRecentRootWithCounts({int limit = 7}) {
+    return _dao.watchRecentRootWithCounts(limit: limit).map(
+          (rows) => [
+            for (final row in rows)
+              (
+                folder: _toDomain(row.folder),
+                recipeCount: row.recipeCount,
+                subfolders: row.subfolders,
+              ),
+          ],
+        );
+  }
+
   Future<Result<void>> rename(String id, String name) async {
     final clean = name.trim();
     if (clean.isEmpty) {

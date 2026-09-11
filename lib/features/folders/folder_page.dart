@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/folder_actions.dart';
 import 'package:receyta/features/folders/folders_view_model.dart';
@@ -18,13 +19,26 @@ import 'package:receyta/widgets/tile_pattern.dart';
 /// Tela de uma pasta (§RF-02): cabeçalho `violet` com meia-lua (§9.4 — pastas),
 /// faixa de subpastas e a grade de receitas diretas. O ⋯ renomeia, move, cria
 /// subpasta ou exclui (o conteúdo sobe um nível).
-class FolderPage extends ConsumerWidget {
+class FolderPage extends ConsumerStatefulWidget {
   const FolderPage({super.key, required this.folderId});
 
   final String folderId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FolderPage> createState() => _FolderPageState();
+}
+
+class _FolderPageState extends ConsumerState<FolderPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Sobe pro topo da prateleira de pastas da home (§ "recentes").
+    ref.read(folderRepositoryProvider).markOpened(widget.folderId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final folderId = widget.folderId;
     final folder = ref.watch(folderProvider(folderId)).valueOrNull;
     final subfolders =
         ref.watch(subfoldersProvider(folderId)).valueOrNull ?? const [];

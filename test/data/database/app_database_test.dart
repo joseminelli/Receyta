@@ -22,8 +22,8 @@ void main() {
     return rows.map((r) => r.read<String>('name')).toSet();
   }
 
-  test('schema v2', () {
-    expect(db.schemaVersion, 2);
+  test('schema v4', () {
+    expect(db.schemaVersion, 4);
   });
 
   test('onCreate cria todas as tabelas do schema + o índice FTS', () async {

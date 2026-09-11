@@ -54,6 +54,11 @@ class RecipeRepository {
   Stream<List<Recipe>> watchInFolder(String? folderId) =>
       _dao.watchInFolder(folderId).map((rows) => rows.map(_toDomain).toList());
 
+  /// As 7 mais recentes (criação ou abertura) — a prateleira da home.
+  Stream<List<Recipe>> watchRecent({int limit = 7}) => _dao
+      .watchRecent(limit: limit)
+      .map((rows) => rows.map(_toDomain).toList());
+
   /// Busca por nome, sobre, notas e tag (§RF-01.9). Query vazia → lista vazia.
   Stream<List<Recipe>> search(String query) =>
       _dao.search(query).map((rows) => rows.map(_toDomain).toList());
@@ -116,6 +121,7 @@ class RecipeRepository {
             name: name,
             createdAt: now,
             updatedAt: now,
+            lastOpenedAt: now,
             about: about,
             prepMinutes: prepMinutes,
             cookMinutes: cookMinutes,
@@ -173,6 +179,16 @@ class RecipeRepository {
       return Ok(recipe);
     } catch (e) {
       return Err(DatabaseFailure('Falha ao salvar a receita', cause: e));
+    }
+  }
+
+  /// Marca "aberta agora" — sobe pro topo da prateleira "Recentes" da home.
+  Future<Result<void>> markOpened(String id) async {
+    try {
+      await _dao.setLastOpenedAt(id, _clock().toUtc());
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao registrar abertura', cause: e));
     }
   }
 
@@ -276,6 +292,7 @@ class RecipeRepository {
         tileMotif: tileMotifFromName(r.tileMotif),
         isFavorite: r.isFavorite,
         deletedAt: r.deletedAt,
+        lastOpenedAt: r.lastOpenedAt,
       );
 
   RecipeRow _toRow(Recipe r) => RecipeRow(
@@ -295,6 +312,7 @@ class RecipeRepository {
         notes: r.notes,
         isFavorite: r.isFavorite,
         deletedAt: null,
+        lastOpenedAt: r.lastOpenedAt,
       );
 
   RecipeIngredient _ingredientToDomain(RecipeIngredientRow r) => RecipeIngredient(

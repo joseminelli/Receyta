@@ -46,6 +46,10 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
     final recipes = ref.watch(recipesStreamProvider);
     final filtering = ref.watch(selectedTagIdsProvider).isNotEmpty ||
         ref.watch(favoritesOnlyProvider);
+    // Sem filtro, a prateleira "Recentes" mostra só as 7 últimas (§ "cap de
+    // 7"); a contagem do cabeçalho e o estado vazio continuam olhando pra
+    // lista completa (`recipes`), que já é a fonte de verdade de hoje.
+    final recent = filtering ? null : ref.watch(recentRecipesProvider);
 
     // Ao começar a arrastar um card, sobe até a faixa de pastas pra ela estar
     // visível como alvo de soltar.
@@ -93,7 +97,10 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
                     ? _NoMatch(onClear: clearFilter)
                     : _EmptyState(onCreate: openNew),
               )
-            : _RecipeList(recipes: list),
+            : _RecipeList(
+                recipes: filtering ? list : (recent?.valueOrNull ?? list),
+                showViewAll: !filtering,
+              ),
       ),
     );
   }
@@ -177,9 +184,13 @@ class _HeaderChip extends StatelessWidget {
 }
 
 class _RecipeList extends StatelessWidget {
-  const _RecipeList({required this.recipes});
+  const _RecipeList({required this.recipes, required this.showViewAll});
 
   final List<Recipe> recipes;
+
+  /// Só faz sentido "Ver todas" quando a lista já veio capada em 7 (sem
+  /// filtro) — filtrando, a lista mostrada já é a completa.
+  final bool showViewAll;
 
   @override
   Widget build(BuildContext context) {
@@ -197,8 +208,18 @@ class _RecipeList extends StatelessWidget {
             AppSpacing.screen,
             AppSpacing.md,
           ),
-          sliver: const SliverToBoxAdapter(
-            child: SectionHeader(title: 'Recentes'),
+          sliver: SliverToBoxAdapter(
+            child: SectionHeader(
+              title: 'Recentes',
+              action: showViewAll
+                  ? PillButton(
+                      label: 'Ver todas',
+                      variant: PillButtonVariant.ghost,
+                      dense: true,
+                      onPressed: () => context.push('/search'),
+                    )
+                  : null,
+            ),
           ),
         ),
         SliverPadding(

@@ -68,6 +68,12 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
   late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
       'deleted_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _lastOpenedAtMeta =
+      const VerificationMeta('lastOpenedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastOpenedAt = GeneratedColumn<DateTime>(
+      'last_opened_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -78,7 +84,8 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
         position,
         createdAt,
         updatedAt,
-        deletedAt
+        deletedAt,
+        lastOpenedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -129,6 +136,12 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
     }
+    if (data.containsKey('last_opened_at')) {
+      context.handle(
+          _lastOpenedAtMeta,
+          lastOpenedAt.isAcceptableOrUnknown(
+              data['last_opened_at']!, _lastOpenedAtMeta));
+    }
     return context;
   }
 
@@ -156,6 +169,8 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+      lastOpenedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_opened_at']),
     );
   }
 
@@ -178,6 +193,12 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
+
+  /// Último acesso — criação ou abertura (§ "recentes" da home). Preenchida
+  /// pela aplicação, nunca fica nula na prática; nullable só porque
+  /// `addColumn` de migração não backfilla por linha sozinho (v3→v4 faz isso
+  /// com um `UPDATE`, ver `app_database.dart`).
+  final DateTime? lastOpenedAt;
   const FolderRow(
       {required this.id,
       this.parentId,
@@ -187,7 +208,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       required this.position,
       required this.createdAt,
       required this.updatedAt,
-      this.deletedAt});
+      this.deletedAt,
+      this.lastOpenedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -207,6 +229,9 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    if (!nullToAbsent || lastOpenedAt != null) {
+      map['last_opened_at'] = Variable<DateTime>(lastOpenedAt);
     }
     return map;
   }
@@ -230,6 +255,9 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      lastOpenedAt: lastOpenedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastOpenedAt),
     );
   }
 
@@ -246,6 +274,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      lastOpenedAt: serializer.fromJson<DateTime?>(json['lastOpenedAt']),
     );
   }
   @override
@@ -261,6 +290,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'lastOpenedAt': serializer.toJson<DateTime?>(lastOpenedAt),
     };
   }
 
@@ -273,7 +303,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           int? position,
           DateTime? createdAt,
           DateTime? updatedAt,
-          Value<DateTime?> deletedAt = const Value.absent()}) =>
+          Value<DateTime?> deletedAt = const Value.absent(),
+          Value<DateTime?> lastOpenedAt = const Value.absent()}) =>
       FolderRow(
         id: id ?? this.id,
         parentId: parentId.present ? parentId.value : this.parentId,
@@ -284,6 +315,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        lastOpenedAt:
+            lastOpenedAt.present ? lastOpenedAt.value : this.lastOpenedAt,
       );
   FolderRow copyWithCompanion(FoldersCompanion data) {
     return FolderRow(
@@ -296,6 +329,9 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      lastOpenedAt: data.lastOpenedAt.present
+          ? data.lastOpenedAt.value
+          : this.lastOpenedAt,
     );
   }
 
@@ -310,14 +346,15 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           ..write('position: $position, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('lastOpenedAt: $lastOpenedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, parentId, name, tileColor, tileMotif,
-      position, createdAt, updatedAt, deletedAt);
+      position, createdAt, updatedAt, deletedAt, lastOpenedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -330,7 +367,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           other.position == this.position &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.lastOpenedAt == this.lastOpenedAt);
 }
 
 class FoldersCompanion extends UpdateCompanion<FolderRow> {
@@ -343,6 +381,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
+  final Value<DateTime?> lastOpenedAt;
   final Value<int> rowid;
   const FoldersCompanion({
     this.id = const Value.absent(),
@@ -354,6 +393,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.lastOpenedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   FoldersCompanion.insert({
@@ -366,6 +406,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.lastOpenedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name);
@@ -379,6 +420,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
+    Expression<DateTime>? lastOpenedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -391,6 +433,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (lastOpenedAt != null) 'last_opened_at': lastOpenedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -405,6 +448,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
+      Value<DateTime?>? lastOpenedAt,
       Value<int>? rowid}) {
     return FoldersCompanion(
       id: id ?? this.id,
@@ -416,6 +460,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -450,6 +495,9 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
+    if (lastOpenedAt.present) {
+      map['last_opened_at'] = Variable<DateTime>(lastOpenedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -468,6 +516,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('lastOpenedAt: $lastOpenedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -582,6 +631,12 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
   late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
       'deleted_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _lastOpenedAtMeta =
+      const VerificationMeta('lastOpenedAt');
+  @override
+  late final GeneratedColumn<DateTime> lastOpenedAt = GeneratedColumn<DateTime>(
+      'last_opened_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -599,7 +654,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         isFavorite,
         createdAt,
         updatedAt,
-        deletedAt
+        deletedAt,
+        lastOpenedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -684,6 +740,12 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
       context.handle(_deletedAtMeta,
           deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
     }
+    if (data.containsKey('last_opened_at')) {
+      context.handle(
+          _lastOpenedAtMeta,
+          lastOpenedAt.isAcceptableOrUnknown(
+              data['last_opened_at']!, _lastOpenedAtMeta));
+    }
     return context;
   }
 
@@ -725,6 +787,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
+      lastOpenedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_opened_at']),
     );
   }
 
@@ -754,6 +818,10 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
+
+  /// Último acesso — criação ou abertura (§ "recentes" da home). Ver o
+  /// comentário equivalente em `Folders`.
+  final DateTime? lastOpenedAt;
   const RecipeRow(
       {required this.id,
       this.folderId,
@@ -770,7 +838,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       required this.isFavorite,
       required this.createdAt,
       required this.updatedAt,
-      this.deletedAt});
+      this.deletedAt,
+      this.lastOpenedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -811,6 +880,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || deletedAt != null) {
       map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    if (!nullToAbsent || lastOpenedAt != null) {
+      map['last_opened_at'] = Variable<DateTime>(lastOpenedAt);
     }
     return map;
   }
@@ -853,6 +925,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(deletedAt),
+      lastOpenedAt: lastOpenedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastOpenedAt),
     );
   }
 
@@ -876,6 +951,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      lastOpenedAt: serializer.fromJson<DateTime?>(json['lastOpenedAt']),
     );
   }
   @override
@@ -898,6 +974,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'lastOpenedAt': serializer.toJson<DateTime?>(lastOpenedAt),
     };
   }
 
@@ -917,7 +994,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           bool? isFavorite,
           DateTime? createdAt,
           DateTime? updatedAt,
-          Value<DateTime?> deletedAt = const Value.absent()}) =>
+          Value<DateTime?> deletedAt = const Value.absent(),
+          Value<DateTime?> lastOpenedAt = const Value.absent()}) =>
       RecipeRow(
         id: id ?? this.id,
         folderId: folderId.present ? folderId.value : this.folderId,
@@ -935,6 +1013,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+        lastOpenedAt:
+            lastOpenedAt.present ? lastOpenedAt.value : this.lastOpenedAt,
       );
   RecipeRow copyWithCompanion(RecipesCompanion data) {
     return RecipeRow(
@@ -957,6 +1037,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      lastOpenedAt: data.lastOpenedAt.present
+          ? data.lastOpenedAt.value
+          : this.lastOpenedAt,
     );
   }
 
@@ -978,7 +1061,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           ..write('isFavorite: $isFavorite, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('lastOpenedAt: $lastOpenedAt')
           ..write(')'))
         .toString();
   }
@@ -1000,7 +1084,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       isFavorite,
       createdAt,
       updatedAt,
-      deletedAt);
+      deletedAt,
+      lastOpenedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1020,7 +1105,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           other.isFavorite == this.isFavorite &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.lastOpenedAt == this.lastOpenedAt);
 }
 
 class RecipesCompanion extends UpdateCompanion<RecipeRow> {
@@ -1040,6 +1126,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
+  final Value<DateTime?> lastOpenedAt;
   final Value<int> rowid;
   const RecipesCompanion({
     this.id = const Value.absent(),
@@ -1058,6 +1145,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.lastOpenedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RecipesCompanion.insert({
@@ -1077,6 +1165,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.lastOpenedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name);
@@ -1097,6 +1186,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
+    Expression<DateTime>? lastOpenedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1116,6 +1206,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (lastOpenedAt != null) 'last_opened_at': lastOpenedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1137,6 +1228,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
+      Value<DateTime?>? lastOpenedAt,
       Value<int>? rowid}) {
     return RecipesCompanion(
       id: id ?? this.id,
@@ -1155,6 +1247,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1210,6 +1303,9 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
+    if (lastOpenedAt.present) {
+      map['last_opened_at'] = Variable<DateTime>(lastOpenedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1235,6 +1331,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('lastOpenedAt: $lastOpenedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5581,6 +5678,7 @@ typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
+  Value<DateTime?> lastOpenedAt,
   Value<int> rowid,
 });
 typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
@@ -5593,6 +5691,7 @@ typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
+  Value<DateTime?> lastOpenedAt,
   Value<int> rowid,
 });
 
@@ -5622,6 +5721,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
+            Value<DateTime?> lastOpenedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion(
@@ -5634,6 +5734,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
+            lastOpenedAt: lastOpenedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -5646,6 +5747,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
+            Value<DateTime?> lastOpenedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion.insert(
@@ -5658,6 +5760,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
+            lastOpenedAt: lastOpenedAt,
             rowid: rowid,
           ),
         ));
@@ -5708,6 +5811,11 @@ class $$FoldersTableFilterComposer
 
   ColumnFilters<DateTime> get deletedAt => $state.composableBuilder(
       column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get lastOpenedAt => $state.composableBuilder(
+      column: $state.table.lastOpenedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -5772,6 +5880,11 @@ class $$FoldersTableOrderingComposer
       column: $state.table.deletedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get lastOpenedAt => $state.composableBuilder(
+      column: $state.table.lastOpenedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
 typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
@@ -5791,6 +5904,7 @@ typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
+  Value<DateTime?> lastOpenedAt,
   Value<int> rowid,
 });
 typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
@@ -5810,6 +5924,7 @@ typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
+  Value<DateTime?> lastOpenedAt,
   Value<int> rowid,
 });
 
@@ -5846,6 +5961,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
+            Value<DateTime?> lastOpenedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RecipesCompanion(
@@ -5865,6 +5981,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
+            lastOpenedAt: lastOpenedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -5884,6 +6001,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
+            Value<DateTime?> lastOpenedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RecipesCompanion.insert(
@@ -5903,6 +6021,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             deletedAt: deletedAt,
+            lastOpenedAt: lastOpenedAt,
             rowid: rowid,
           ),
         ));
@@ -5983,6 +6102,11 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<DateTime> get deletedAt => $state.composableBuilder(
       column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get lastOpenedAt => $state.composableBuilder(
+      column: $state.table.lastOpenedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -6148,6 +6272,11 @@ class $$RecipesTableOrderingComposer
 
   ColumnOrderings<DateTime> get deletedAt => $state.composableBuilder(
       column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get lastOpenedAt => $state.composableBuilder(
+      column: $state.table.lastOpenedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

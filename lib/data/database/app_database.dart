@@ -72,7 +72,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -83,6 +83,11 @@ class AppDatabase extends _$AppDatabase {
   /// v2: `recipe_ingredients.ingredient_id` passa a aceitar nulo — o bloco B
   /// grava só `raw_text`; a normalização (C5) preenche o vínculo depois.
   /// v3: `recipes`/`folders` ganham `tile_color`/`tile_motif` (§9.4, nuláveis).
+  /// v4: `recipes`/`folders` ganham `last_opened_at` (recentes da home) —
+  /// entra nula pela migração; `ensureReady()` backfilla com `updated_at`
+  /// pra dado existente não sumir da prateleira. O backfill não roda aqui no
+  /// `onUpgrade`/`beforeOpen` porque a conexão ainda não enxerga com certeza
+  /// dado já commitado por outra conexão até a abertura terminar de vez.
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -112,6 +117,10 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(recipes, recipes.tileMotif);
             await m.addColumn(folders, folders.tileColor);
             await m.addColumn(folders, folders.tileMotif);
+          }
+          if (from < 4) {
+            await m.addColumn(recipes, recipes.lastOpenedAt);
+            await m.addColumn(folders, folders.lastOpenedAt);
           }
         },
         beforeOpen: (details) async {
@@ -170,6 +179,22 @@ class AppDatabase extends _$AppDatabase {
   /// `appBootstrapProvider` aguarda antes de liberar a home.
   Future<void> ensureReady() async {
     await customSelect('SELECT 1').get();
+    await _backfillLastOpenedAt();
+  }
+
+  /// Migração v4: `last_opened_at` nasce nula pra dado existente — aqui ela
+  /// herda `updated_at`, uma vez só (o `WHERE` faz virar no-op depois). Trata
+  /// nula como "nunca aberto ainda de propósito" seria pior: a receita
+  /// sumiria da prateleira de recentes até alguém abri-la de novo.
+  Future<void> _backfillLastOpenedAt() async {
+    await customStatement(
+      'UPDATE recipes SET last_opened_at = updated_at '
+      'WHERE last_opened_at IS NULL',
+    );
+    await customStatement(
+      'UPDATE folders SET last_opened_at = updated_at '
+      'WHERE last_opened_at IS NULL',
+    );
   }
 
   /// Reexecuta o seed. Existe para o teste de idempotência.

@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v3 versionado', () async {
-    final connection = await verifier.startAt(3);
+  test('schema do código bate com o snapshot v4 versionado', () async {
+    final connection = await verifier.startAt(4);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 3);
+    await verifier.migrateAndValidate(db, 4);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -54,7 +54,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 3);
+    await verifier.migrateAndValidate(db, 4);
     addTearDown(db.close);
 
     final kept = await db.customSelect(
@@ -94,7 +94,7 @@ void main() {
     await at2.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 3);
+    await verifier.migrateAndValidate(db, 4);
     addTearDown(db.close);
 
     final recipe = await db
@@ -113,5 +113,53 @@ void main() {
         .getSingle();
     expect(folder.read<String?>('tile_color'), 'lime');
     expect(folder.read<String?>('tile_motif'), 'ponto');
+  });
+
+  test(
+      'migração v3→v4: dados preservados, last_opened_at herda updated_at '
+      'via ensureReady()', () async {
+    final schema = await verifier.schemaAt(3);
+
+    final oldDb = schema.newConnection();
+    final at3 = AppDatabase.forTesting(oldDb);
+    await at3.customStatement(
+      "INSERT INTO recipes (id, name, created_at, updated_at, is_favorite) "
+      "VALUES ('r1', 'Bolo', '2026-01-01T00:00:00.000Z', "
+      "'2026-02-15T10:00:00.000Z', 0)",
+    );
+    await at3.customStatement(
+      "INSERT INTO folders (id, name, position, created_at, updated_at) "
+      "VALUES ('f1', 'Doces', 0, '2026-01-01T00:00:00.000Z', "
+      "'2026-02-20T10:00:00.000Z')",
+    );
+    await at3.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 4);
+    addTearDown(db.close);
+    // O backfill de `last_opened_at` roda em `ensureReady()` (não na
+    // migração em si — ver o comentário em `app_database.dart`), então o
+    // teste precisa chamá-lo, do jeito que `appBootstrapProvider` já faz.
+    await db.ensureReady();
+
+    final recipe = await db
+        .customSelect(
+            "SELECT name, updated_at, last_opened_at FROM recipes")
+        .getSingle();
+    expect(recipe.read<String>('name'), 'Bolo');
+    expect(
+      recipe.read<String>('last_opened_at'),
+      recipe.read<String>('updated_at'),
+    );
+
+    final folder = await db
+        .customSelect(
+            "SELECT name, updated_at, last_opened_at FROM folders")
+        .getSingle();
+    expect(folder.read<String>('name'), 'Doces');
+    expect(
+      folder.read<String>('last_opened_at'),
+      folder.read<String>('updated_at'),
+    );
   });
 }

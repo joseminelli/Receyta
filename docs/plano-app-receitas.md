@@ -703,8 +703,12 @@ Esforço em dias de trabalho focado.
   - **B10** foi além do previsto: personalizar **cor e textura do azulejo** de
     cada receita e pasta (schema **v3**, colunas `tile_color`/`tile_motif`
     nuláveis, editável pelo menu ⋯); **arrastar e soltar** receita→pasta,
-    pasta→pasta e "tirar da pasta"; menu `+` expansível ("Nova receita" / "Nova
-    pasta"); a home sem filtro mostra só a raiz.
+    pasta→pasta e "tirar da pasta" (e arrastar receita até um alvo circular
+    pra mandar pra lixeira); menu `+` expansível ("Nova receita" / "Nova
+    pasta"); a home sem filtro mostra só a raiz; "Recentes" (receitas) e
+    "Pastas" da home viram prateleiras por **uso recente** (MRU) capadas em 7,
+    com "Ver todas" pra lista completa (schema **v4**, coluna
+    `last_opened_at` nas duas tabelas).
 - **Bloco C em diante** — não começado. Próximo passo real: **usar o app com
   receitas de verdade por uma semana** (ver aviso ao fim do bloco B), depois C1.
 

@@ -9,6 +9,7 @@ import 'package:receyta/features/folders/recipe_drag.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -21,21 +22,29 @@ class FoldersStrip extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final folders =
-        ref.watch(rootFoldersProvider).valueOrNull ?? const <FolderWithCounts>[];
+    final folders = ref.watch(recentFoldersProvider).valueOrNull ??
+        const <FolderWithCounts>[];
     if (folders.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
             AppSpacing.screen,
             AppSpacing.lg,
             AppSpacing.screen,
             AppSpacing.sm,
           ),
-          child: SectionHeader(title: 'Pastas'),
+          child: SectionHeader(
+            title: 'Pastas',
+            action: PillButton(
+              label: 'Ver todas',
+              variant: PillButtonVariant.ghost,
+              dense: true,
+              onPressed: () => context.push('/folders'),
+            ),
+          ),
         ),
         SizedBox(
           height: 128,

@@ -10,6 +10,13 @@ final rootFoldersProvider = StreamProvider<List<FolderWithCounts>>(
   (ref) => ref.watch(folderRepositoryProvider).watchChildrenWithCounts(null),
 );
 
+/// As 7 pastas de raiz mais recentes (criação ou abertura) — a faixa da
+/// home. `rootFoldersProvider` continua servindo a tela "ver todas".
+final recentFoldersProvider = StreamProvider<List<FolderWithCounts>>(
+  (ref) =>
+      ref.watch(folderRepositoryProvider).watchRecentRootWithCounts(limit: 7),
+);
+
 /// A pasta em si (nome, pai) — cabeçalho da tela da pasta.
 final folderProvider = StreamProvider.family<Folder?, String>(
   (ref, id) => ref.watch(folderRepositoryProvider).watchFolder(id),

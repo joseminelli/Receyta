@@ -68,6 +68,12 @@ final recipesStreamProvider = StreamProvider<List<Recipe>>((ref) {
       );
 });
 
+/// As 7 receitas mais recentes (criação ou abertura) — a prateleira
+/// "Recentes" da home, sem filtro nenhum aplicado.
+final recentRecipesProvider = StreamProvider<List<Recipe>>(
+  (ref) => ref.watch(recipeRepositoryProvider).watchRecent(limit: 7),
+);
+
 /// Receitas na lixeira (RF-01.6), da mais recente pra mais antiga.
 final trashedRecipesProvider = StreamProvider<List<Recipe>>(
   (ref) => ref.watch(recipeRepositoryProvider).watchTrashed(),

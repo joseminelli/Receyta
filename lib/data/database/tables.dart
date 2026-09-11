@@ -21,6 +21,12 @@ class Folders extends Table {
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
 
+  /// Último acesso — criação ou abertura (§ "recentes" da home). Preenchida
+  /// pela aplicação, nunca fica nula na prática; nullable só porque
+  /// `addColumn` de migração não backfilla por linha sozinho (v3→v4 faz isso
+  /// com um `UPDATE`, ver `app_database.dart`).
+  DateTimeColumn get lastOpenedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -48,6 +54,10 @@ class Recipes extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get deletedAt => dateTime().nullable()();
+
+  /// Último acesso — criação ou abertura (§ "recentes" da home). Ver o
+  /// comentário equivalente em `Folders`.
+  DateTimeColumn get lastOpenedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

@@ -32,5 +32,8 @@ class Recipe with _$Recipe {
 
     /// Preenchido só nas linhas da lixeira (RF-01.6). `null` = receita ativa.
     DateTime? deletedAt,
+
+    /// Última abertura ou criação — ordena a prateleira "Recentes" da home.
+    DateTime? lastOpenedAt,
   }) = _Recipe;
 }

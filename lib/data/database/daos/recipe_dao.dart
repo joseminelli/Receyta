@@ -177,6 +177,21 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     );
   }
 
+  Future<int> setLastOpenedAt(String id, DateTime at) {
+    return (update(recipes)..where((r) => r.id.equals(id)))
+        .write(RecipesCompanion(lastOpenedAt: Value(at)));
+  }
+
+  /// As 7 mais recentes (criação ou abertura), só as soltas na raiz — as de
+  /// dentro de pasta são acessadas por lá, não pela prateleira da home.
+  Stream<List<RecipeRow>> watchRecent({int limit = 7}) {
+    return (select(recipes)
+          ..where((r) => r.deletedAt.isNull() & r.folderId.isNull())
+          ..orderBy([(r) => OrderingTerm.desc(r.lastOpenedAt)])
+          ..limit(limit))
+        .watch();
+  }
+
   Future<int> softDelete(String id, DateTime at) {
     return (update(recipes)..where((r) => r.id.equals(id))).write(
       RecipesCompanion(deletedAt: Value(at), updatedAt: Value(at)),

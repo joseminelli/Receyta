@@ -24,14 +24,26 @@ import 'package:receyta/widgets/tile_style_picker.dart';
 /// `coral` com azulejo (§9.2), sheet de conteúdo subindo 18px sobre ele
 /// (§9.8). Ingredientes e passos em fundo chapado — o padrão nunca entra atrás
 /// de texto que se lê linha a linha (§9.4).
-class RecipeDetailPage extends ConsumerWidget {
+class RecipeDetailPage extends ConsumerStatefulWidget {
   const RecipeDetailPage({super.key, required this.recipeId});
 
   final String recipeId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(recipeDetailProvider(recipeId)).when(
+  ConsumerState<RecipeDetailPage> createState() => _RecipeDetailPageState();
+}
+
+class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Sobe pro topo da prateleira "Recentes" da home (§ "recentes").
+    ref.read(recipeRepositoryProvider).markOpened(widget.recipeId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ref.watch(recipeDetailProvider(widget.recipeId)).when(
           loading: () => const Scaffold(body: SizedBox.shrink()),
           error: (_, __) => _Missing(),
           data: (detail) =>

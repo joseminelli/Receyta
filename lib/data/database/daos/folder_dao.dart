@@ -84,6 +84,7 @@ class FolderDao extends DatabaseAccessor<AppDatabase> with _$FolderDaoMixin {
       position: 0,
       createdAt: now,
       updatedAt: now,
+      lastOpenedAt: now,
     );
     await into(folders).insert(row);
     return row;
@@ -93,6 +94,39 @@ class FolderDao extends DatabaseAccessor<AppDatabase> with _$FolderDaoMixin {
     return (update(folders)..where((f) => f.id.equals(id))).write(
       FoldersCompanion(name: Value(name), updatedAt: Value(at)),
     );
+  }
+
+  Future<int> setLastOpenedAt(String id, DateTime at) {
+    return (update(folders)..where((f) => f.id.equals(id)))
+        .write(FoldersCompanion(lastOpenedAt: Value(at)));
+  }
+
+  /// As 7 pastas de raiz mais recentes (criação ou abertura), com as mesmas
+  /// contagens de [watchChildrenWithCounts].
+  Stream<List<({FolderRow folder, int recipeCount, int subfolders})>>
+      watchRecentRootWithCounts({int limit = 7}) {
+    return customSelect(
+      'SELECT f.*, '
+      '  (SELECT COUNT(*) FROM recipes r '
+      '   WHERE r.folder_id = f.id AND r.deleted_at IS NULL) AS recipe_count, '
+      '  (SELECT COUNT(*) FROM folders c '
+      '   WHERE c.parent_id = f.id AND c.deleted_at IS NULL) AS subfolder_count '
+      'FROM folders f '
+      'WHERE f.deleted_at IS NULL AND f.parent_id IS NULL '
+      'ORDER BY f.last_opened_at DESC '
+      'LIMIT ?1',
+      variables: [Variable<int>(limit)],
+      readsFrom: {folders, recipes},
+    ).watch().map(
+          (rows) => [
+            for (final row in rows)
+              (
+                folder: folders.map(row.data),
+                recipeCount: row.read<int>('recipe_count'),
+                subfolders: row.read<int>('subfolder_count'),
+              ),
+          ],
+        );
   }
 
   /// `color`/`motif` são o `.name` do enum, ou nulo pra voltar ao padrão.
