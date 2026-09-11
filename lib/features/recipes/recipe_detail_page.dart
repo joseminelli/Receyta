@@ -16,6 +16,7 @@ import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/hero_number.dart';
 import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/widgets/skeleton_box.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/tile_style_picker.dart';
@@ -43,16 +44,24 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ref.watch(recipeDetailProvider(widget.recipeId)).when(
-          loading: () => const Scaffold(body: SizedBox.shrink()),
-          error: (_, __) => _Missing(),
-          data: (detail) =>
-              detail == null ? _Missing() : _Detail(detail: detail),
-        );
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: ref.watch(recipeDetailProvider(widget.recipeId)).when(
+            loading: () => const _DetailSkeleton(key: ValueKey('skeleton')),
+            error: (_, __) => const _Missing(key: ValueKey('missing')),
+            data: (detail) => detail == null
+                ? const _Missing(key: ValueKey('missing'))
+                : _Detail(key: const ValueKey('detail'), detail: detail),
+          ),
+    );
   }
 }
 
 class _Missing extends StatelessWidget {
+  const _Missing({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,8 +74,112 @@ class _Missing extends StatelessWidget {
   }
 }
 
+/// Enquanto o `recipeDetailProvider` não emitiu o primeiro valor — silhueta
+/// do `_Hero` (bloco coral, botões circulares, título) + da folha de
+/// conteúdo (métricas, algumas linhas), em vez da tela em branco.
+class _DetailSkeleton extends StatelessWidget {
+  const _DetailSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final onHero = colors.onSaturated;
+
+    return Scaffold(
+      backgroundColor: colors.paper,
+      body: ListView(
+        padding: EdgeInsets.zero,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [
+          Container(
+            height: 300,
+            color: colors.coral,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.xs,
+                  AppSpacing.screen,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        SkeletonBox(
+                          width: 40,
+                          height: 40,
+                          borderRadius: AppRadii.pill,
+                          color: onHero,
+                        ),
+                        const Spacer(),
+                        SkeletonBox(
+                          width: 40,
+                          height: 40,
+                          borderRadius: AppRadii.pill,
+                          color: onHero,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        SkeletonBox(
+                          width: 40,
+                          height: 40,
+                          borderRadius: AppRadii.pill,
+                          color: onHero,
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    SkeletonBox(width: 220, height: 40, color: onHero),
+                    const SizedBox(height: AppSpacing.sm),
+                    SkeletonBox(width: 140, height: 40, color: onHero),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.xl,
+              AppSpacing.screen,
+              AppSpacing.xxl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SkeletonBox(width: 64, height: 44),
+                    SkeletonBox(width: 64, height: 44),
+                    SkeletonBox(width: 64, height: 44),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                const SkeletonBox(width: 140, height: 18),
+                const SizedBox(height: AppSpacing.sm),
+                for (final w in const [
+                  double.infinity,
+                  260.0,
+                  200.0,
+                  240.0
+                ]) ...[
+                  SkeletonBox(width: w.isFinite ? w : null, height: 16),
+                  const SizedBox(height: AppSpacing.xs),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Detail extends StatelessWidget {
-  const _Detail({required this.detail});
+  const _Detail({super.key, required this.detail});
 
   final RecipeDetail detail;
 
