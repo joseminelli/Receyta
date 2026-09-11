@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/joseminelli/Receyta/blob/main/assets/brand/logoInverted.png?raw=true">
-  <img src="https://github.com/joseminelli/Receyta/blob/main/assets/brand/logo.png?raw=true" alt="Receyta" width="360">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/joseminelli/Receyta/refs/heads/main/assets/brand/logoInverted.png?token=GHSAT0AAAAAAEFNU4KO5TX4UVK67GZX3XYO2VDMCGQ">
+  <img src="https://raw.githubusercontent.com/joseminelli/Receyta/refs/heads/main/assets/brand/logo.png?token=GHSAT0AAAAAAEFNU4KPJGPB5OAVCY2SAA5I2VDMCHA" alt="Receyta" width="360">
 </picture>
 
 ### Um caderno de receitas que funciona sem internet.
@@ -20,10 +20,10 @@ lista pronta — tudo local, tudo rápido, tudo em português.
 
 <table>
   <tr>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/MainPage.png" alt="Home"></td>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/P%C3%A1ginaReceita.png" alt="Detalhe da receita"></td>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/PassosReceita.png" alt="Passos de preparo"></td>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/modoCozinha.png" alt="Modo cozinha"></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/refs/heads/main/images/preview/MainPage.png?token=GHSAT0AAAAAAEFNU4KPNQJUA6VMBBZL5G3S2VDMBQQ" alt="Home"></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/refs/heads/main/images/preview/P%C3%A1ginaReceita.png?token=GHSAT0AAAAAAEFNU4KPA3TOA7L3ZLRLNG4C2VDMBWA" alt="Detalhe da receita"></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/refs/heads/main/images/preview/PassosReceita.png?token=GHSAT0AAAAAAEFNU4KPY5Z7B3JPFPPX6M3W2VDMB3Q" alt="Passos de preparo"></td>
+    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/refs/heads/main/images/preview/modoCozinha.png?token=GHSAT0AAAAAAEFNU4KP73VYVZD274GRXHAA2VDMB6Q" alt="Modo cozinha"></td>
   </tr>
   <tr>
     <td align="center"><b>Home</b><br><sub>cabeçalho de azulejo, filtro de tags, faixa de pastas, destaque em "Recentes"</sub></td>
