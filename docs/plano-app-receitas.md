@@ -172,7 +172,7 @@ as vezes de identidade visual até lá.
 | Caminhos | `path_provider`, `path` |
 | Calendário | `table_calendar` |
 | Import web | `http` + `html` (extrair JSON-LD) |
-| OCR (fase tardia) | `google_mlkit_text_recognition` |
+| OCR (bloco C) | `google_mlkit_text_recognition` |
 | IDs | `uuid` |
 | Datas | `intl` |
 | Tela ligada (modo cozinha) | `wakelock_plus` |
@@ -672,7 +672,7 @@ assets/
 
 ### 9.10 Telas ainda não desenhadas
 
-Criar/editar receita · importar (arquivo, URL) · modo cozinha · conflitos de importação · mesclagem de ingredientes · onboarding · estados vazios · configurações.
+Criar/editar receita · importar (arquivo, URL, foto) · modo cozinha · conflitos de importação · mesclagem de ingredientes · onboarding · estados vazios · configurações.
 
 O modo cozinha pode reaproveitar a superfície escura já definida para Compras, em vez de criar um terceiro tema.
 
@@ -755,7 +755,7 @@ Esforço em dias de trabalho focado.
 ---
 
 ### Bloco C — Ingredientes viram dados
-*O bloco que destrava lista de compras e sugestão. ~4,5 dias.*
+*O bloco que destrava lista de compras e sugestão. ~7 dias.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
@@ -765,6 +765,15 @@ Esforço em dias de trabalho focado.
 | C4 | Fuzzy match com confirmação do usuário | 1 | Nunca funde sozinho; sempre pergunta |
 | C5 | Migração que reprocessa os `raw_text` do bloco B | 0,5 | Receitas antigas ganham ingredientes normalizados |
 | C6 | Tela de gerenciar e mesclar ingredientes | 1 | Duplicata detectada some em dois toques |
+| C7 | Import de URL por JSON-LD (RF-06.9) | 1 | 8 de 10 sites de receita importam limpo |
+| C8 | Import por foto: câmera/galeria + OCR on-device, auto-preenche o formulário sem salvar a imagem (RF-06.10) | 1,5 | Foto de uma receita impressa preenche nome/ingredientes/passos pra revisão; nenhum arquivo de imagem fica gravado |
+
+> **C7 e C8 são duas entradas para o mesmo formulário.** Ambas rodam o texto
+> extraído (JSON-LD ou OCR) pelo parser do C1 e o normalizador do C2 — o
+> usuário sempre revisa antes de salvar, igual a digitar manualmente. C8 não
+> depende do bloco H: a imagem só existe em memória durante o reconhecimento
+> (`google_mlkit_text_recognition`, local) e é descartada depois; guardar a
+> foto da receita em si é o H0, um recurso diferente.
 
 ---
 
@@ -833,14 +842,13 @@ Esforço em dias de trabalho focado.
 ---
 
 ### Bloco G — Acabamento
-*Cada item é independente; pegue por ordem de incômodo. ~3,5 dias.*
+*Cada item é independente; pegue por ordem de incômodo. ~2,5 dias.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
 | G1 | Modo cozinha: wakelock, passos grandes, timers | 1 | Cozinhar sem tocar na tela com a mão suja |
-| G2 | Import de URL por JSON-LD | 1 | 8 de 10 sites de receita importam limpo |
-| G3 | Escalar porções | 0,5 | Dobrar a receita recalcula tudo |
-| G4 | Estados vazios e onboarding | 1 | App recém-instalado não parece quebrado |
+| G2 | Escalar porções | 0,5 | Dobrar a receita recalcula tudo |
+| G3 | Estados vazios e onboarding | 1 | App recém-instalado não parece quebrado |
 
 ---
 
@@ -863,12 +871,12 @@ Não comece este bloco antes de responder duas coisas com uso real: você de fat
 |---|---|---|
 | A — Fundação | 5 d | Nada visível, tudo depende |
 | B — Primeira receita | 6,5 d | **App já substitui o caderno** |
-| C — Ingredientes | 4,5 d | Destrava compras e sugestão |
+| C — Ingredientes | 7 d | Destrava compras e sugestão; import por URL e foto |
 | D — Import/export | 6 d | Compartilhar (arquivo ou link) e fazer backup |
 | E — Compras | 4 d | **Substitui a lista do mercado** |
 | F — Calendário | 3,5 d | **Fecha o ciclo da semana** |
-| G — Acabamento | 3,5 d | Tira as arestas |
-| **Até G** | **33 d** | ~7 semanas de trabalho focado |
+| G — Acabamento | 2,5 d | Tira as arestas |
+| **Até G** | **34,5 d** | ~7 semanas de trabalho focado |
 
 Fora dessa conta: **bloco H** (conta, sync e a foto de receita ex-B7), que só
 entra depois de semanas de uso real.
@@ -886,6 +894,7 @@ Três momentos em que o app fica bom o bastante para parar: **fim do bloco B** (
 | Base de ingredientes vira lixo com duplicatas | Tela de mesclagem + `usage_count` para destacar órfãos |
 | Sync com conflito corrompe dados | Só depois da v1; `updated_at` por registro desde já; export JSON funciona como backup manual |
 | Import de URL quebra por mudança de site | JSON-LD é padrão estável; falha degrada para "colar texto manualmente" |
+| OCR erra em foto de baixa qualidade, letra à mão ou fonte estilizada | Preenche só o que reconhece; usuário sempre revisa antes de salvar, como digitação manual; imagem nunca é gravada, só o texto extraído |
 | Link efêmero de receita (D7/D8) depende de backend no ar antes do bloco H | Falha vira "compartilhar como arquivo" (`.receyta`, offline, sem prazo); TTL curto (1h) ou pilha por dispositivo limita custo/abuso do Redis sem precisar de conta |
 | Tipografia display quebra com nome de receita longo | `maxLines: 2` com reticências; testar com "Estrogonofe de frango com arroz sete grãos" |
 | Paleta ácida reprova em contraste | Regras de pareamento fixas na §9.2; teste automatizado de contraste sobre os tokens |
