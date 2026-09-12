@@ -193,19 +193,19 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
     final (ingLines, ingGroups) = _collect(_ingredients);
     final (stepLines, stepGroups) = _collect(_steps);
     final result = await ref.read(recipeFormViewModelProvider).submit(
-          original: _recipe,
-          name: _name.text,
-          about: _about.text,
-          prepText: _prep.text,
-          cookText: _cook.text,
-          servingsText: _servings.text,
-          notes: _notes.text,
-          ingredientLines: ingLines,
-          stepLines: stepLines,
-          ingredientGroups: ingGroups,
-          stepGroups: stepGroups,
-          tagNames: [..._tags, _tagInput.text],
-        );
+      original: _recipe,
+      name: _name.text,
+      about: _about.text,
+      prepText: _prep.text,
+      cookText: _cook.text,
+      servingsText: _servings.text,
+      notes: _notes.text,
+      ingredientLines: ingLines,
+      stepLines: stepLines,
+      ingredientGroups: ingGroups,
+      stepGroups: stepGroups,
+      tagNames: [..._tags, _tagInput.text],
+    );
     if (!mounted) return;
     result.when(
       ok: (_) => context.pop(),
@@ -230,6 +230,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
   @override
   Widget build(BuildContext context) {
     final canSave = _name.text.trim().isNotEmpty && !_saving;
+    final blocked = _isCoverScreenSize(context);
 
     return _Frame(
       child: Column(
@@ -251,7 +252,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                 _Field(
                   label: 'Nome',
                   controller: _name,
-                  autofocus: !_isEditing,
+                  autofocus: !_isEditing && !blocked,
                 ),
                 _Field(label: 'Sobre', controller: _about, maxLines: 3),
                 Row(
@@ -459,15 +460,16 @@ class _FoldOpenAnimationState extends State<_FoldOpenAnimation>
 
   @override
   Widget build(BuildContext context) {
-    final ink = context.colors.ink;
+    final colors = context.colors;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
+        final progress = Curves.easeInOut.transform(_controller.value);
         final closedAngle = math.pi * 0.94;
-        final angle = closedAngle * (1 - Curves.easeInOut.transform(_controller.value));
+        final angle = closedAngle * (1 - progress);
         return SizedBox(
-          width: 68,
-          height: 100,
+          width: 66,
+          height: 114,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -476,31 +478,75 @@ class _FoldOpenAnimationState extends State<_FoldOpenAnimation>
                 transform: Matrix4.identity()
                   ..setEntry(3, 2, 0.003)
                   ..rotateX(angle),
-                child: Container(
-                  width: 60,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: ink,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(14),
-                    ),
-                  ),
+                child: _PhoneHalf(
+                  radius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  colors: colors,
+                  cameras: const [Alignment.topCenter],
                 ),
               ),
-              Container(
-                width: 60,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: ink,
-                  borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(14),
-                  ),
-                ),
+              _PhoneHalf(
+                radius:
+                    const BorderRadius.vertical(bottom: Radius.circular(16)),
+                colors: colors,
+                cameras: const [
+                  Alignment(0.3, 0.75),
+                  Alignment(0.9, 0.75),
+                ],
+                cameraSize: 9,
+                camerasOpacity: 1 - progress,
               ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// Uma "metade" do corpo do celular dobrável: bloco preto com furos de
+/// câmera na cor de fundo, sem indicação de tela.
+class _PhoneHalf extends StatelessWidget {
+  const _PhoneHalf({
+    required this.radius,
+    required this.colors,
+    required this.cameras,
+    this.cameraSize = 6,
+    this.camerasOpacity = 1,
+  });
+
+  final BorderRadius radius;
+  final AppColors colors;
+  final List<Alignment> cameras;
+  final double cameraSize;
+  final double camerasOpacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 60,
+      height: 52,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: colors.ink, borderRadius: radius),
+      child: Opacity(
+        opacity: camerasOpacity,
+        child: Stack(
+          children: [
+            for (final alignment in cameras)
+              Align(
+                alignment: alignment,
+                child: Container(
+                  width: cameraSize,
+                  height: cameraSize,
+                  margin: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: colors.paper,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -582,9 +628,8 @@ class _TagsField extends ConsumerWidget {
             optionsBuilder: (value) {
               final q = value.text.trim().toLowerCase();
               if (q.isEmpty) return const Iterable<String>.empty();
-              return known
-                  .map((t) => t.name)
-                  .where((n) => n.toLowerCase().contains(q) && !tags.contains(n));
+              return known.map((t) => t.name).where(
+                  (n) => n.toLowerCase().contains(q) && !tags.contains(n));
             },
             onSelected: onAdd,
             fieldViewBuilder:
