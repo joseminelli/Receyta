@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -126,6 +129,8 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
   ];
   final _tagInput = TextEditingController();
   final _tagFocus = FocusNode();
+  final _cookFocus = FocusNode();
+  final _servingsFocus = FocusNode();
 
   bool _saving = false;
 
@@ -148,6 +153,8 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
     }
     _tagInput.dispose();
     _tagFocus.dispose();
+    _cookFocus.dispose();
+    _servingsFocus.dispose();
     super.dispose();
   }
 
@@ -255,6 +262,8 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                         label: 'Preparo (min)',
                         controller: _prep,
                         numeric: true,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _cookFocus.requestFocus(),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -263,6 +272,9 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                         label: 'Cozimento (min)',
                         controller: _cook,
                         numeric: true,
+                        focusNode: _cookFocus,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) => _servingsFocus.requestFocus(),
                       ),
                     ),
                   ],
@@ -271,6 +283,9 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                   label: 'Rende (porções)',
                   controller: _servings,
                   numeric: true,
+                  focusNode: _servingsFocus,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                 ),
                 _TagsField(
                   tags: _tags,
@@ -319,6 +334,13 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
   }
 }
 
+/// Heurística de tela de capa (Z Flip fechado etc.): pequena e quase
+/// quadrada, bem diferente de qualquer celular aberto.
+bool _isCoverScreenSize(BuildContext context) {
+  final size = MediaQuery.sizeOf(context);
+  return size.shortestSide < 500 && (size.width / size.height) > 0.75;
+}
+
 class _Frame extends StatelessWidget {
   const _Frame({required this.child});
 
@@ -326,9 +348,159 @@ class _Frame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final blocked = _isCoverScreenSize(context);
+    final debugSize = MediaQuery.sizeOf(context);
     return Scaffold(
       backgroundColor: context.colors.paper,
-      body: SafeArea(child: child),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            IgnorePointer(ignoring: blocked, child: child),
+            if (blocked) const _CoverScreenBlocker(),
+            if (kDebugMode)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: ColoredBox(
+                  color: Colors.black87,
+                  child: Text(
+                    '${debugSize.width.toStringAsFixed(0)} x '
+                    '${debugSize.height.toStringAsFixed(0)} '
+                    '(blocked: $blocked)',
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CoverScreenBlocker extends StatefulWidget {
+  const _CoverScreenBlocker();
+
+  @override
+  State<_CoverScreenBlocker> createState() => _CoverScreenBlockerState();
+}
+
+class _CoverScreenBlockerState extends State<_CoverScreenBlocker> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusManager.instance.primaryFocus?.unfocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: context.colors.paper,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const _FoldOpenAnimation(),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Abra o celular pra continuar',
+                  style: context.texts.displaySmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Essa tela precisa de mais espaço.',
+                  style: context.texts.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                PillButton(
+                  label: 'Voltar',
+                  variant: PillButtonVariant.secondary,
+                  onPressed: () => context.pop(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dois retângulos com dobradiça no meio: o de cima gira em X, indo de
+/// dobrado (sobre o de baixo) até aberto, em loop, sugerindo "abra o celular".
+class _FoldOpenAnimation extends StatefulWidget {
+  const _FoldOpenAnimation();
+
+  @override
+  State<_FoldOpenAnimation> createState() => _FoldOpenAnimationState();
+}
+
+class _FoldOpenAnimationState extends State<_FoldOpenAnimation>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true, period: const Duration(milliseconds: 2000));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = context.colors.ink;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final closedAngle = math.pi * 0.94;
+        final angle = closedAngle * (1 - Curves.easeInOut.transform(_controller.value));
+        return SizedBox(
+          width: 68,
+          height: 100,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Transform(
+                alignment: Alignment.bottomCenter,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.003)
+                  ..rotateX(angle),
+                child: Container(
+                  width: 60,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: ink,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                width: 60,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: ink,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -519,6 +691,9 @@ class _Field extends StatelessWidget {
     this.maxLines = 1,
     this.numeric = false,
     this.autofocus = false,
+    this.focusNode,
+    this.textInputAction,
+    this.onSubmitted,
   });
 
   final String label;
@@ -526,6 +701,9 @@ class _Field extends StatelessWidget {
   final int maxLines;
   final bool numeric;
   final bool autofocus;
+  final FocusNode? focusNode;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -540,6 +718,9 @@ class _Field extends StatelessWidget {
             controller: controller,
             autofocus: autofocus,
             maxLines: maxLines,
+            focusNode: focusNode,
+            textInputAction: textInputAction,
+            onSubmitted: onSubmitted,
             keyboardType: numeric
                 ? TextInputType.number
                 : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
