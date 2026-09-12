@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -350,7 +349,6 @@ class _Frame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final blocked = _isCoverScreenSize(context);
-    final debugSize = MediaQuery.sizeOf(context);
     return Scaffold(
       backgroundColor: context.colors.paper,
       body: SafeArea(
@@ -358,22 +356,6 @@ class _Frame extends StatelessWidget {
           children: [
             IgnorePointer(ignoring: blocked, child: child),
             if (blocked) const _CoverScreenBlocker(),
-            if (kDebugMode)
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: ColoredBox(
-                  color: Colors.black87,
-                  child: Text(
-                    '${debugSize.width.toStringAsFixed(0)} x '
-                    '${debugSize.height.toStringAsFixed(0)} '
-                    '(blocked: $blocked)',
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
