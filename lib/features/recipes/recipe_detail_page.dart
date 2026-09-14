@@ -478,10 +478,10 @@ class _Hero extends ConsumerWidget {
   }
 }
 
-/// Linha de ingrediente estruturada: quantidade em destaque + unidade (mais
-/// clara) numa coluna fixa, nome + qualificador (cinza) no resto da linha.
-/// Sem quantidade reconhecida (linha que o parser não deu conta), cai pro
-/// `rawText` cru — nunca esconde o que o usuário digitou.
+/// Linha de ingrediente como texto corrido, com quantidade e unidade em
+/// negrito no meio da frase — sem coluna nem alinhamento forçado, lê como
+/// texto normal. Sem quantidade reconhecida (linha que o parser não deu
+/// conta), cai pro `rawText` cru — nunca esconde o que o usuário digitou.
 class _IngredientRow extends StatelessWidget {
   const _IngredientRow(this.ingredient);
 
@@ -494,53 +494,42 @@ class _IngredientRow extends StatelessWidget {
 
     if (qty == null) {
       return Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
         child: Text(ingredient.rawText, style: context.texts.bodyLarge),
       );
     }
 
     final parsed = parseIngredientLine(ingredient.rawText);
     final unit = _unitLabel(ingredient.unitId, qty);
+    final base = context.texts.bodyLarge?.copyWith(color: colors.ink);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 68,
-            child: RichText(
-              text: TextSpan(
-                style: AppTextStyles.display(19).copyWith(color: colors.ink),
-                children: [
-                  TextSpan(text: _formatQuantity(qty)),
-                  if (unit != null)
-                    TextSpan(
-                      text: ' $unit',
-                      style: AppTextStyles.display(13)
-                          .copyWith(color: colors.textMuted),
-                    ),
-                ],
-              ),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: RichText(
+        text: TextSpan(
+          style: base,
+          children: [
+            TextSpan(
+              text: _formatQuantity(qty),
+              style: AppTextStyles.metric.copyWith(color: colors.ink),
             ),
-          ),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: context.texts.bodyLarge?.copyWith(color: colors.ink),
-                children: [
-                  TextSpan(text: parsed.name),
-                  if (parsed.qualifier != null)
-                    TextSpan(
-                      text: ' ${parsed.qualifier}',
-                      style: context.texts.bodyLarge
-                          ?.copyWith(color: colors.textMuted),
-                    ),
-                ],
+            if (unit != null) ...[
+              TextSpan(
+                text: '   $unit',
+                style: AppTextStyles.display(15).copyWith(
+                  color: colors.textMuted,
+                ),
               ),
-            ),
-          ),
-        ],
+              const TextSpan(text: ' de'),
+            ],
+            TextSpan(text: ' ${parsed.name}'),
+            if (parsed.qualifier != null)
+              TextSpan(
+                text: ', ${parsed.qualifier}',
+                style: base?.copyWith(color: colors.textMuted),
+              ),
+          ],
+        ),
       ),
     );
   }

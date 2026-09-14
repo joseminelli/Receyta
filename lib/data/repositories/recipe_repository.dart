@@ -202,6 +202,36 @@ class RecipeRepository {
     }
   }
 
+  /// Migração de dado (C5): roda o parser (C1) + `getOrCreate` (C2) nas
+  /// linhas de ingrediente que ainda só têm `raw_text` (bloco B, de antes do
+  /// parser existir). Idempotente — a segunda chamada não acha mais nada
+  /// pra reprocessar. Devolve quantas linhas foram resolvidas.
+  Future<Result<int>> reprocessLegacyIngredients() async {
+    try {
+      final rows = await _dao.findUnresolvedIngredients();
+      for (final row in rows) {
+        final parsed = parseIngredientLine(row.rawText);
+        String? ingredientId;
+        if (parsed.name.isNotEmpty) {
+          final ingredientRow = await _ingredientDao.getOrCreate(parsed.name);
+          ingredientId = ingredientRow.id;
+        }
+        await _dao.resolveIngredient(
+          row.id,
+          ingredientId: ingredientId,
+          quantity: parsed.quantity,
+          unitId: parsed.unitCode,
+          qualifier: parsed.qualifier,
+        );
+      }
+      return Ok(rows.length);
+    } catch (e) {
+      return Err(
+        DatabaseFailure('Falha ao reprocessar ingredientes', cause: e),
+      );
+    }
+  }
+
   /// Marca "aberta agora" — sobe pro topo da prateleira "Recentes" da home.
   Future<Result<void>> markOpened(String id) async {
     try {

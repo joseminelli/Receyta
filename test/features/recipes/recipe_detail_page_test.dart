@@ -86,10 +86,10 @@ void main() {
     expect(find.text('rápido para a semana'), findsOneWidget);
     expect(find.text('Ingredientes'), findsOneWidget);
     expect(find.text('2 itens'), findsOneWidget);
-    expect(find.text('500 g', findRichText: true), findsOneWidget);
-    expect(find.text('frango', findRichText: true), findsOneWidget);
-    expect(find.text('2 dentes', findRichText: true), findsOneWidget);
-    expect(find.text('alho', findRichText: true), findsOneWidget);
+    expect(find.text('500   g de frango', findRichText: true),
+        findsOneWidget);
+    expect(find.text('2   dentes de alho', findRichText: true),
+        findsOneWidget);
     expect(find.text('Preparo'), findsOneWidget);
     expect(find.text('Tempere o frango'), findsOneWidget);
     expect(find.text('melhor no dia seguinte'), findsOneWidget);

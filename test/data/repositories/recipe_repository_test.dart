@@ -281,4 +281,30 @@ void main() {
       detailAgain.ingredients[1].ingredientId,
     );
   });
+
+  test(
+      'reprocessLegacyIngredients resolve raw_text do bloco B e é '
+      'idempotente', () async {
+    final recipe = unwrap(await repo.saveDetail(name: 'Bolo'));
+    await db.into(db.recipeIngredients).insert(
+          RecipeIngredientRow(
+            id: 'legacy-1',
+            recipeId: recipe.id,
+            rawText: '2 xícaras de farinha de trigo',
+            position: 0,
+          ),
+        );
+
+    final first = await repo.reprocessLegacyIngredients();
+    expect((first as Ok<int>).value, 1);
+
+    final detail = unwrapDetail(await repo.getDetail(recipe.id));
+    expect(detail.ingredients[0].quantity, 2);
+    expect(detail.ingredients[0].unitId, 'xicara');
+    expect(detail.ingredients[0].ingredientId, isNotNull);
+    expect(detail.ingredients[0].rawText, '2 xícaras de farinha de trigo');
+
+    final second = await repo.reprocessLegacyIngredients();
+    expect((second as Ok<int>).value, 0);
+  });
 }

@@ -98,6 +98,34 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         .get();
   }
 
+  /// Linhas nunca resolvidas contra o catálogo — `raw_text` do bloco B, de
+  /// antes do parser (C1) existir, ou qualquer linha que por algum motivo
+  /// ficou sem `ingredient_id`. É o que o C5 reprocessa.
+  Future<List<RecipeIngredientRow>> findUnresolvedIngredients() {
+    return (select(recipeIngredients)
+          ..where((i) => i.ingredientId.isNull()))
+        .get();
+  }
+
+  /// Grava o resultado do parser (C1) + `getOrCreate` (C2) numa linha
+  /// existente, sem tocar em `raw_text`/`group_label`/`position`.
+  Future<void> resolveIngredient(
+    String id, {
+    required String? ingredientId,
+    required double? quantity,
+    required String? unitId,
+    required String? qualifier,
+  }) {
+    return (update(recipeIngredients)..where((i) => i.id.equals(id))).write(
+      RecipeIngredientsCompanion(
+        ingredientId: Value(ingredientId),
+        quantity: Value(quantity),
+        unitId: Value(unitId),
+        qualifier: Value(qualifier),
+      ),
+    );
+  }
+
   Future<List<RecipeStepRow>> stepsOf(String recipeId) {
     return (select(recipeSteps)
           ..where((s) => s.recipeId.equals(recipeId))

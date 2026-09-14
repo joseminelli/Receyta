@@ -9,5 +9,7 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 /// resolver, sem estourar o orçamento de `SplashTimings`.
 final appBootstrapProvider = FutureProvider<void>((ref) async {
   await ref.watch(databaseProvider).ensureReady();
-  await ref.read(recipeRepositoryProvider).purgeExpired();
+  final recipes = ref.read(recipeRepositoryProvider);
+  await recipes.purgeExpired();
+  await recipes.reprocessLegacyIngredients();
 });
