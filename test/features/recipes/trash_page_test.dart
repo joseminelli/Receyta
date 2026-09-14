@@ -29,7 +29,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    repo = RecipeRepository(db.recipeDao, db.tagDao,
+    repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
         clock: () => DateTime.now().toUtc());
     trash = StreamController<List<Recipe>>.broadcast();
   });
@@ -56,10 +56,9 @@ void main() {
 
   /// 'ativa' | 'lixeira' | 'sumiu' — lido direto do banco, sem stream.
   Future<String> stateOf(WidgetTester tester, String id) async {
-    final row = await tester.runAsync(() => db
-        .customSelect('SELECT deleted_at FROM recipes WHERE id = ?',
-            variables: [Variable<String>(id)])
-        .getSingleOrNull());
+    final row = await tester.runAsync(() => db.customSelect(
+        'SELECT deleted_at FROM recipes WHERE id = ?',
+        variables: [Variable<String>(id)]).getSingleOrNull());
     if (row == null) return 'sumiu';
     return row.read<DateTime?>('deleted_at') == null ? 'ativa' : 'lixeira';
   }

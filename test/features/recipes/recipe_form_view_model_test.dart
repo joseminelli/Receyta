@@ -16,7 +16,8 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     clock = DateTime.utc(2026, 1, 1, 12);
-    repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
+    repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
+        clock: () => clock);
     vm = RecipeFormViewModel(repo);
   });
 
@@ -42,7 +43,8 @@ void main() {
     expect(created.prepMinutes, 15);
     expect(created.servings, 4);
 
-    final detail = ((await repo.getDetail(created.id)) as Ok<RecipeDetail>).value;
+    final detail =
+        ((await repo.getDetail(created.id)) as Ok<RecipeDetail>).value;
     expect(detail.ingredients.map((i) => i.rawText),
         ['500g de frango', '2 dentes de alho']);
     expect(detail.steps.map((s) => s.text), ['Tempere', 'Refogue']);
@@ -61,7 +63,8 @@ void main() {
     expect(created.prepMinutes, isNull);
     expect(created.servings, isNull);
 
-    final detail = ((await repo.getDetail(created.id)) as Ok<RecipeDetail>).value;
+    final detail =
+        ((await repo.getDetail(created.id)) as Ok<RecipeDetail>).value;
     expect(detail.ingredients, isEmpty);
     expect(detail.steps, isEmpty);
   });
@@ -79,14 +82,16 @@ void main() {
     expect(await repo.watchAll().first, isEmpty);
   });
 
-  test('tags: title case pt-BR, espaço colapsado, sem duplicata, vazio ignorado',
+  test(
+      'tags: title case pt-BR, espaço colapsado, sem duplicata, vazio ignorado',
       () async {
     final created = ok(await vm.submit(
       name: 'Frango',
       tagNames: ['  RÁPIDO ', 'frango', 'Rápido', '  ', 'no  forno'],
     ));
 
-    final detail = ((await repo.getDetail(created.id)) as Ok<RecipeDetail>).value;
+    final detail =
+        ((await repo.getDetail(created.id)) as Ok<RecipeDetail>).value;
     expect(detail.tags.map((t) => t.name), ['Frango', 'No Forno', 'Rápido']);
   });
 
@@ -113,7 +118,8 @@ void main() {
     expect(edited.updatedAt, clock);
     expect(edited.about, isNull);
 
-    final detail = ((await repo.getDetail(original.id)) as Ok<RecipeDetail>).value;
+    final detail =
+        ((await repo.getDetail(original.id)) as Ok<RecipeDetail>).value;
     expect(detail.recipe.name, 'Caldo verde');
     expect(detail.ingredients.map((i) => i.rawText),
         ['batata', 'couve', 'linguiça']);

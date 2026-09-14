@@ -4,42 +4,7 @@
 library;
 
 import '../../data/database/seed_data.dart';
-
-const _accentMap = {
-  'á': 'a',
-  'à': 'a',
-  'ã': 'a',
-  'â': 'a',
-  'ä': 'a',
-  'é': 'e',
-  'è': 'e',
-  'ê': 'e',
-  'ë': 'e',
-  'í': 'i',
-  'ì': 'i',
-  'î': 'i',
-  'ï': 'i',
-  'ó': 'o',
-  'ò': 'o',
-  'õ': 'o',
-  'ô': 'o',
-  'ö': 'o',
-  'ú': 'u',
-  'ù': 'u',
-  'û': 'u',
-  'ü': 'u',
-  'ç': 'c',
-  'ñ': 'n',
-};
-
-String _stripAccents(String s) {
-  final buffer = StringBuffer();
-  for (final rune in s.runes) {
-    final ch = String.fromCharCode(rune);
-    buffer.write(_accentMap[ch] ?? ch);
-  }
-  return buffer.toString();
-}
+import 'text_normalize.dart';
 
 String _singularize(String word) {
   if (word.length <= 3) return word;
@@ -62,7 +27,7 @@ String _singularize(String word) {
 }
 
 String normalize(String input) {
-  final cleaned = _stripAccents(input.toLowerCase())
+  final cleaned = stripAccents(input.toLowerCase())
       .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
   final rawTokens =
       cleaned.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
@@ -70,7 +35,7 @@ String normalize(String input) {
   final singleTerms = <String>{};
   final multiTerms = <String>{};
   for (final t in kSeedNormalizerTerms) {
-    final term = _stripAccents(t.term.toLowerCase());
+    final term = stripAccents(t.term.toLowerCase());
     if (term.contains(' ')) {
       multiTerms.add(term);
     } else {

@@ -15,7 +15,8 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     clock = DateTime.utc(2026, 1, 1, 12);
-    repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
+    repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
+        clock: () => clock);
   });
 
   tearDown(() => db.close());
@@ -35,13 +36,15 @@ void main() {
     ));
 
     expect(recipe.name, '  Bolo de fubá  ');
-    expect(recipe.id, matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-')));
+    expect(
+        recipe.id, matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-')));
     expect(recipe.createdAt, clock);
 
     final detail = unwrapDetail(await repo.getDetail(recipe.id));
-    expect(detail.ingredients.map((i) => i.rawText), ['2 xícaras de fubá', '3 ovos']);
+    expect(detail.ingredients.map((i) => i.rawText),
+        ['2 xícaras de fubá', '3 ovos']);
     expect(detail.ingredients.map((i) => i.position), [0, 1]);
-    expect(detail.ingredients.every((i) => i.ingredientId == null), isTrue);
+    expect(detail.ingredients.every((i) => i.ingredientId != null), isTrue);
     expect(detail.steps.map((s) => s.text), ['Misture tudo', 'Asse 40 min']);
   });
 
@@ -67,17 +70,19 @@ void main() {
     final detail = unwrapDetail(await repo.getDetail(created.id));
     expect(detail.recipe.name, 'Caldo verde');
     expect(detail.ingredients.map((i) => i.rawText), ['batata', 'couve']);
-    expect(detail.steps.map((s) => s.text),
-        ['Cozinhe a batata', 'Junte a couve']);
+    expect(
+        detail.steps.map((s) => s.text), ['Cozinhe a batata', 'Junte a couve']);
   });
 
   test('watchDetail reemite quando a receita é salva de novo', () async {
-    final created = unwrap(await repo.saveDetail(name: 'A', ingredientLines: ['x']));
+    final created =
+        unwrap(await repo.saveDetail(name: 'A', ingredientLines: ['x']));
 
     final stream = repo.watchDetail(created.id);
     expect((await stream.first)!.ingredients.map((i) => i.rawText), ['x']);
 
-    await repo.saveDetail(base: created, name: 'A', ingredientLines: ['x', 'y']);
+    await repo
+        .saveDetail(base: created, name: 'A', ingredientLines: ['x', 'y']);
     expect(
       (await stream.first)!.ingredients.map((i) => i.rawText),
       ['x', 'y'],
@@ -205,12 +210,14 @@ void main() {
       ['Rápido', 'Vegano'],
     );
 
-    final rows = await db.customSelect('SELECT COUNT(*) c FROM tags').getSingle();
+    final rows =
+        await db.customSelect('SELECT COUNT(*) c FROM tags').getSingle();
     expect(rows.read<int>('c'), 3);
   });
 
   test('saveDetail edita: substitui as tags, não acumula', () async {
-    final r = unwrap(await repo.saveDetail(name: 'X', tagNames: ['Ana', 'Boa']));
+    final r =
+        unwrap(await repo.saveDetail(name: 'X', tagNames: ['Ana', 'Boa']));
     await repo.saveDetail(base: r, name: 'X', tagNames: ['Boa', 'Céu']);
 
     expect(
@@ -232,8 +239,7 @@ void main() {
         .firstWhere((t) => t.name == 'Rápido')
         .id;
 
-    final filtered =
-        await repo.watchAll(anyOfTagIds: {rapido}).first;
+    final filtered = await repo.watchAll(anyOfTagIds: {rapido}).first;
     expect(filtered.map((r) => r.name).toSet(), {'Curry', 'Sopa'});
 
     await repo.softDelete(sopa.id);
@@ -246,10 +252,33 @@ void main() {
       name: 'X',
       ingredientLines: ['a', 'b'],
     ));
-    final count = await db
-        .customSelect('SELECT COUNT(*) c FROM recipe_ingredients WHERE recipe_id = ?',
-            variables: [Variable<String>(r.id)])
-        .getSingle();
+    final count = await db.customSelect(
+        'SELECT COUNT(*) c FROM recipe_ingredients WHERE recipe_id = ?',
+        variables: [Variable<String>(r.id)]).getSingle();
     expect(count.read<int>('c'), 2);
+  });
+
+  test('saveDetail roda o parser e resolve o catálogo de ingredientes',
+      () async {
+    final recipe = unwrap(await repo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['2 xícaras de farinha de trigo', '3 ovos'],
+    ));
+    final detail = unwrapDetail(await repo.getDetail(recipe.id));
+
+    expect(detail.ingredients[0].quantity, 2);
+    expect(detail.ingredients[0].unitId, 'xicara');
+    expect(detail.ingredients[0].ingredientId, isNotNull);
+    expect(detail.ingredients[1].quantity, 3);
+
+    final again = unwrap(await repo.saveDetail(
+      name: 'Bolo2',
+      ingredientLines: ['3 tomates', '1 tomate'],
+    ));
+    final detailAgain = unwrapDetail(await repo.getDetail(again.id));
+    expect(
+      detailAgain.ingredients[0].ingredientId,
+      detailAgain.ingredients[1].ingredientId,
+    );
   });
 }

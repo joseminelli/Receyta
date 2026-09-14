@@ -5,6 +5,7 @@
 library;
 
 import '../../data/database/seed_data.dart';
+import 'text_normalize.dart';
 
 /// Resultado do parser para uma linha de ingrediente.
 class ParsedIngredientLine {
@@ -32,6 +33,11 @@ class ParsedIngredientLine {
 
 const _connectors = {'de', 'da', 'do'};
 
+const _unitSynonyms = {
+  'colher': 'colher_sopa',
+  'colheres': 'colher_sopa',
+};
+
 const _fractionChars = {
   '½': 1 / 2,
   '⅓': 1 / 3,
@@ -50,8 +56,8 @@ const _fractionChars = {
   '⅞': 7 / 8,
 };
 
-final _rangeRegex =
-    RegExp(r'^(\d+(?:[.,]\d+)?)\s+a\s+(\d+(?:[.,]\d+)?)\s*', caseSensitive: false);
+final _rangeRegex = RegExp(r'^(\d+(?:[.,]\d+)?)\s+a\s+(\d+(?:[.,]\d+)?)\s*',
+    caseSensitive: false);
 final _mixedAsciiFractionRegex = RegExp(r'^(\d+)\s+(\d+)\s*/\s*(\d+)\s*');
 final _asciiFractionRegex = RegExp(r'^(\d+)\s*/\s*(\d+)\s*');
 final _mixedUnicodeFractionRegex =
@@ -137,13 +143,17 @@ ParsedIngredientLine parseIngredientLine(
 
 (String?, String) _matchUnit(String text, List<SeedUnit> units) {
   final rest = text.trimLeft();
-  final lowerRest = rest.toLowerCase();
+  final lowerRest = stripAccents(rest.toLowerCase());
 
   final candidates = <String, String>{};
+
   for (final u in units) {
-    candidates[u.displayName.toLowerCase()] = u.code;
-    candidates[u.plural.toLowerCase()] = u.code;
+    candidates[stripAccents(u.displayName.toLowerCase())] = u.code;
+    candidates[stripAccents(u.plural.toLowerCase())] = u.code;
   }
+
+  candidates.addAll(_unitSynonyms);
+
   final sortedKeys = candidates.keys.toList()
     ..sort((a, b) => b.length.compareTo(a.length));
 
@@ -163,6 +173,7 @@ String _stripLeadingConnector(String text) {
   final rest = text.trimLeft();
   final lowerRest = rest.toLowerCase();
   for (final c in _connectors) {
+    if (lowerRest == c) return '';
     if (lowerRest.startsWith('$c ')) {
       return rest.substring(c.length).trimLeft();
     }
@@ -183,17 +194,20 @@ String _stripLeadingConnector(String text) {
 
   final qualifierTerms = terms
       .where((t) => t.kind == 'qualifier')
-      .map((t) => t.term)
+      .map((t) => stripAccents(t.term.toLowerCase()))
       .toList()
     ..sort((a, b) => b.length.compareTo(a.length));
 
-  final lowerText = text.toLowerCase();
+  final lowerText = stripAccents(text.toLowerCase());
   for (final term in qualifierTerms) {
     if (lowerText == term) continue;
     if (!lowerText.endsWith(term)) continue;
     final boundaryIndex = lowerText.length - term.length;
     if (boundaryIndex > 0 && lowerText[boundaryIndex - 1] == ' ') {
-      return (term, text.substring(0, boundaryIndex).trim());
+      return (
+        text.substring(boundaryIndex).trim(),
+        text.substring(0, boundaryIndex).trim(),
+      );
     }
   }
   return (null, text);

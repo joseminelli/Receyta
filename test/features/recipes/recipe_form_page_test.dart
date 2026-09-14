@@ -20,7 +20,8 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => DateTime.utc(2026));
+    repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
+        clock: () => DateTime.utc(2026));
   });
   tearDown(() => db.close());
 
@@ -97,7 +98,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(addIngrediente);
     await tester.pumpAndSettle();
-    await tester.enterText(hintField('ex.: 2 xícaras de farinha'), '2 xíc fubá');
+    await tester.enterText(
+        hintField('ex.: 2 xícaras de farinha'), '2 xíc fubá');
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Salvar'));

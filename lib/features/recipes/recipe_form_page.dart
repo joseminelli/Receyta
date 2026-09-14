@@ -16,6 +16,8 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/domain/engine/ingredient_parser.dart';
+import 'package:receyta/domain/models/ingredient.dart';
 
 /// Formulário de receita (RF-01.2–01.5): nome, sobre, tempos, rendimento,
 /// notas, e as listas de ingredientes e passos como texto livre. Cria quando
@@ -50,10 +52,9 @@ class RecipeFormPage extends ConsumerWidget {
 /// separador de seção ("Para a massa") e não vira uma linha própria no banco —
 /// vira o `groupLabel` das linhas abaixo dela.
 class _Line {
-  _Line(String text, {this.heading = false})
-      : controller = TextEditingController(text: text) {
-    // Ao ganhar foco (não a cada letra) centraliza a linha na tela — listas
-    // longas de ingrediente/passo senão ficam embaixo do teclado.
+  _Line(String text, {this.heading = false, this.ingredientId})
+      : controller = TextEditingController(text: text),
+        _appliedText = ingredientId != null ? text : null {
     focusNode.addListener(() {
       if (!focusNode.hasFocus) return;
       final ctx = focusNode.context;
@@ -70,12 +71,39 @@ class _Line {
   final FocusNode focusNode = FocusNode();
   final bool heading;
   final key = UniqueKey();
+
+  /// Ingrediente escolhido no autocomplete (C3). Só vale enquanto o texto da
+  /// linha não muda depois da escolha (ver [_appliedText]).
+  String? ingredientId;
+  String? _appliedText;
+
+  bool get hasValidIngredientId =>
+      ingredientId != null && controller.text == _appliedText;
+
+  void applyIngredientSuggestion(Ingredient picked, String originalText) {
+    final parsed = parseIngredientLine(originalText);
+    final newText = parsed.name.isEmpty
+        ? picked.displayName
+        : _replaceLast(originalText, parsed.name, picked.displayName);
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+    ingredientId = picked.id;
+    _appliedText = newText;
+  }
+
+  static String _replaceLast(String text, String target, String replacement) {
+    final idx = text.lastIndexOf(target);
+    if (idx == -1) return replacement;
+    return text.replaceRange(idx, idx + target.length, replacement);
+  }
 }
 
 /// Reconstrói as linhas do formulário a partir das linhas do banco, inserindo
 /// um separador sempre que o `groupLabel` muda pra um rótulo não nulo.
 List<_Line> _linesWithHeadings(
-  Iterable<({String text, String? group})> items,
+  Iterable<({String text, String? group, String? ingredientId})> items,
 ) {
   final out = <_Line>[];
   String? current;
@@ -84,7 +112,7 @@ List<_Line> _linesWithHeadings(
       out.add(_Line(it.group!, heading: true));
     }
     current = it.group;
-    out.add(_Line(it.text));
+    out.add(_Line(it.text, ingredientId: it.ingredientId));
   }
   return out;
 }
@@ -116,11 +144,11 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
   late final List<_Line> _ingredients = _linesWithHeadings([
     for (final RecipeIngredient i
         in widget.original?.ingredients ?? const <RecipeIngredient>[])
-      (text: i.rawText, group: i.groupLabel),
+      (text: i.rawText, group: i.groupLabel, ingredientId: i.ingredientId),
   ]);
   late final List<_Line> _steps = _linesWithHeadings([
     for (final RecipeStep s in widget.original?.steps ?? const <RecipeStep>[])
-      (text: s.text, group: s.groupLabel),
+      (text: s.text, group: s.groupLabel, ingredientId: null),
   ]);
 
   late final List<String> _tags = [
@@ -170,9 +198,10 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
 
   /// Achata a lista do formulário em (textos, rótulos de grupo). Um separador
   /// vira o rótulo das linhas seguintes; ele mesmo não entra.
-  (List<String>, List<String?>) _collect(List<_Line> lines) {
+  (List<String>, List<String?>, List<String?>) _collect(List<_Line> lines) {
     final texts = <String>[];
     final groups = <String?>[];
+    final ids = <String?>[];
     String? current;
     for (final l in lines) {
       final text = l.controller.text;
@@ -183,14 +212,15 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
       }
       texts.add(text);
       groups.add(current);
+      ids.add(l.hasValidIngredientId ? l.ingredientId : null);
     }
-    return (texts, groups);
+    return (texts, groups, ids);
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    final (ingLines, ingGroups) = _collect(_ingredients);
-    final (stepLines, stepGroups) = _collect(_steps);
+    final (ingLines, ingGroups, ingIds) = _collect(_ingredients);
+    final (stepLines, stepGroups, _) = _collect(_steps);
     final result = await ref.read(recipeFormViewModelProvider).submit(
       original: _recipe,
       name: _name.text,
@@ -203,8 +233,10 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
       stepLines: stepLines,
       ingredientGroups: ingGroups,
       stepGroups: stepGroups,
+      ingredientIds: ingIds,
       tagNames: [..._tags, _tagInput.text],
     );
+
     if (!mounted) return;
     result.when(
       ok: (_) => context.pop(),
@@ -230,6 +262,8 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
   Widget build(BuildContext context) {
     final canSave = _name.text.trim().isNotEmpty && !_saving;
     final blocked = _isCoverScreenSize(context);
+    final ingredientSuggestions =
+        ref.watch(allIngredientsProvider).valueOrNull ?? const <Ingredient>[];
 
     return _Frame(
       child: Column(
@@ -300,6 +334,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
                   addLabel: 'Adicionar ingrediente',
                   hintFor: (i) => 'ex.: 2 xícaras de farinha',
                   lines: _ingredients,
+                  suggestions: ingredientSuggestions,
                   onAdd: () => setState(() => _ingredients.add(_Line(''))),
                   onAddHeading: () => setState(
                     () => _ingredients.add(_Line('', heading: true)),
@@ -773,6 +808,7 @@ class _LineList extends StatelessWidget {
     required this.onAddHeading,
     required this.onRemove,
     required this.onReorder,
+    this.suggestions,
   });
 
   final String title;
@@ -783,6 +819,7 @@ class _LineList extends StatelessWidget {
   final VoidCallback onAddHeading;
   final void Function(int index) onRemove;
   final void Function(int oldIndex, int newIndex) onReorder;
+  final List<Ingredient>? suggestions;
 
   @override
   Widget build(BuildContext context) {
@@ -831,26 +868,32 @@ class _LineList extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpacing.xs / 2),
                     Expanded(
-                      child: TextField(
-                        controller: line.controller,
-                        focusNode: line.focusNode,
-                        textCapitalization: TextCapitalization.sentences,
-                        minLines: 1,
-                        maxLines: line.heading ? 1 : 4,
-                        style: line.heading
-                            ? context.texts.labelLarge?.copyWith(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.3,
-                                color: colors.coral,
-                              )
-                            : null,
-                        decoration: InputDecoration(
-                          hintText: line.heading
-                              ? 'Nome da seção (ex.: Para a massa)'
-                              : hintFor(i),
-                        ),
-                      ),
+                      child: (suggestions != null && !line.heading)
+                          ? _IngredientAutocompleteField(
+                              line: line,
+                              suggestions: suggestions!,
+                              hintText: hintFor(i),
+                            )
+                          : TextField(
+                              controller: line.controller,
+                              focusNode: line.focusNode,
+                              textCapitalization: TextCapitalization.sentences,
+                              minLines: 1,
+                              maxLines: line.heading ? 1 : 4,
+                              style: line.heading
+                                  ? context.texts.labelLarge?.copyWith(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.3,
+                                      color: colors.coral,
+                                    )
+                                  : null,
+                              decoration: InputDecoration(
+                                hintText: line.heading
+                                    ? 'Nome da seção (ex.: Para a massa)'
+                                    : hintFor(i),
+                              ),
+                            ),
                     ),
                     IconButton(
                       onPressed: () => onRemove(i),
@@ -885,6 +928,85 @@ class _LineList extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Campo de ingrediente com sugestões do catálogo (C3). Filtra pelo nome já
+/// extraído pelo parser (C1) — não pela linha inteira — e, ao escolher, troca
+/// só a parte do nome, preservando quantidade/unidade/qualificador digitados.
+class _IngredientAutocompleteField extends StatelessWidget {
+  const _IngredientAutocompleteField({
+    required this.line,
+    required this.suggestions,
+    required this.hintText,
+  });
+
+  final _Line line;
+  final List<Ingredient> suggestions;
+  final String hintText;
+
+  @override
+  Widget build(BuildContext context) {
+    var pendingPickText = line.controller.text;
+
+    return RawAutocomplete<Ingredient>(
+      textEditingController: line.controller,
+      focusNode: line.focusNode,
+      displayStringForOption: (i) => i.displayName,
+      optionsBuilder: (value) {
+        final query = parseIngredientLine(value.text).name.trim().toLowerCase();
+        if (query.isEmpty) return const Iterable<Ingredient>.empty();
+        return suggestions
+            .where((s) => s.displayName.toLowerCase().contains(query));
+      },
+      onSelected: (picked) =>
+          line.applyIngredientSuggestion(picked, pendingPickText),
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
+          textCapitalization: TextCapitalization.sentences,
+          minLines: 1,
+          maxLines: 4,
+          decoration: InputDecoration(hintText: hintText),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            color: context.colors.paperSoft,
+            borderRadius: BorderRadius.circular(AppRadii.sm),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 180, maxWidth: 280),
+              child: ListView(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                children: [
+                  for (final option in options)
+                    InkWell(
+                      onTap: () {
+                        pendingPickText = line.controller.text;
+                        onSelected(option);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
+                        child: Text(
+                          option.displayName,
+                          style: context.texts.bodyMedium,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

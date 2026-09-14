@@ -27,6 +27,9 @@ class IngredientRepository {
     }
   }
 
+  Stream<List<Ingredient>> watchAll() =>
+      _dao.watchAll().map((rows) => rows.map(_toDomain).toList());
+
   Ingredient _toDomain(IngredientRow r) => Ingredient(
         id: r.id,
         displayName: r.displayName,

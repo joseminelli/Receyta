@@ -11,7 +11,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    repo = RecipeRepository(db.recipeDao, db.tagDao,
+    repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
         clock: () => DateTime.utc(2026));
   });
   tearDown(() => db.close());

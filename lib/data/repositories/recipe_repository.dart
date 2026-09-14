@@ -13,6 +13,8 @@ import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/domain/models/tag.dart';
+import 'package:receyta/data/database/daos/ingredient_dao.dart';
+import 'package:receyta/domain/engine/ingredient_parser.dart';
 
 /// Fonte de verdade do agregado "receita" (§5): a linha em `recipes` e suas
 /// listas de ingredientes e passos. Converte linha do Drift ↔ model de domínio
@@ -20,7 +22,8 @@ import 'package:receyta/domain/models/tag.dart';
 class RecipeRepository {
   RecipeRepository(
     this._dao,
-    this._tagDao, {
+    this._tagDao,
+    this._ingredientDao, {
     Uuid uuid = const Uuid(),
     DateTime Function() clock = DateTime.now,
   })  : _uuid = uuid,
@@ -28,6 +31,7 @@ class RecipeRepository {
 
   final RecipeDao _dao;
   final TagDao _tagDao;
+  final IngredientDao _ingredientDao;
   final Uuid _uuid;
   final DateTime Function() _clock;
 
@@ -46,9 +50,8 @@ class RecipeRepository {
 
   /// Existe alguma receita ativa favoritada? Decide se o chip "Favoritos"
   /// aparece no filtro da home.
-  Stream<bool> watchHasFavorites() => _dao
-      .watchActive(favoritesOnly: true)
-      .map((rows) => rows.isNotEmpty);
+  Stream<bool> watchHasFavorites() =>
+      _dao.watchActive(favoritesOnly: true).map((rows) => rows.isNotEmpty);
 
   /// Receitas de uma pasta (§RF-02); `folderId` nulo = as soltas na raiz.
   Stream<List<Recipe>> watchInFolder(String? folderId) =>
@@ -107,11 +110,12 @@ class RecipeRepository {
     String? notes,
     List<String> ingredientLines = const [],
     List<String> stepLines = const [],
-
-    /// Rótulo do grupo de cada linha (§RF-01.4 — "Para a massa"), paralelo às
-    /// listas acima. Mais curto ou vazio = sem grupo.
     List<String?> ingredientGroups = const [],
     List<String?> stepGroups = const [],
+
+    /// Id do ingrediente já escolhido no autocomplete (C3), paralelo a
+    /// `ingredientLines`. Nulo = resolve pelo parser (C1) + getOrCreate (C2).
+    List<String?> ingredientIds = const [],
     List<String> tagNames = const [],
   }) async {
     final now = _clock().toUtc();
@@ -141,16 +145,32 @@ class RecipeRepository {
     String? groupAt(List<String?> groups, int i) =>
         i < groups.length ? groups[i] : null;
 
-    final ingredients = [
-      for (var i = 0; i < ingredientLines.length; i++)
+    String? idAt(List<String?> ids, int i) => i < ids.length ? ids[i] : null;
+
+    final ingredients = <RecipeIngredientRow>[];
+    for (var i = 0; i < ingredientLines.length; i++) {
+      final line = ingredientLines[i];
+      final parsed = parseIngredientLine(line);
+      var ingredientId = idAt(ingredientIds, i);
+      if (ingredientId == null && parsed.name.isNotEmpty) {
+        final row = await _ingredientDao.getOrCreate(parsed.name);
+        ingredientId = row.id;
+      }
+      ingredients.add(
         RecipeIngredientRow(
           id: _uuid.v4(),
           recipeId: recipe.id,
-          rawText: ingredientLines[i],
+          rawText: line,
           groupLabel: groupAt(ingredientGroups, i),
           position: i,
+          ingredientId: ingredientId,
+          quantity: parsed.quantity,
+          unitId: parsed.unitCode,
+          qualifier: parsed.qualifier,
         ),
-    ];
+      );
+    }
+
     final steps = [
       for (var i = 0; i < stepLines.length; i++)
         RecipeStepRow(
@@ -315,7 +335,8 @@ class RecipeRepository {
         lastOpenedAt: r.lastOpenedAt,
       );
 
-  RecipeIngredient _ingredientToDomain(RecipeIngredientRow r) => RecipeIngredient(
+  RecipeIngredient _ingredientToDomain(RecipeIngredientRow r) =>
+      RecipeIngredient(
         id: r.id,
         recipeId: r.recipeId,
         rawText: r.rawText,
@@ -338,5 +359,5 @@ class RecipeRepository {
 
 final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return RecipeRepository(db.recipeDao, db.tagDao);
+  return RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
 });

@@ -16,7 +16,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     repo = FolderRepository(db.folderDao, db.recipeDao,
         clock: () => DateTime.utc(2026));
-    recipes = RecipeRepository(db.recipeDao, db.tagDao,
+    recipes = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
         clock: () => DateTime.utc(2026));
   });
   tearDown(() => db.close());

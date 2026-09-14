@@ -6,6 +6,8 @@ import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/tag.dart';
+import 'package:receyta/data/repositories/ingredient_repository.dart';
+import 'package:receyta/domain/models/ingredient.dart';
 
 /// ViewModel do formulário de receita (§5, RF-01.2–01.5). Não conhece Flutter:
 /// recebe o texto cru dos campos, descarta linhas vazias, converte números,
@@ -26,10 +28,9 @@ class RecipeFormViewModel {
     String? notes,
     List<String> ingredientLines = const [],
     List<String> stepLines = const [],
-
-    /// Rótulo do grupo de cada linha (paralelo às listas). Vazio = sem grupos.
     List<String?> ingredientGroups = const [],
     List<String?> stepGroups = const [],
+    List<String?> ingredientIds = const [],
     List<String> tagNames = const [],
   }) {
     final trimmedName = name.trim();
@@ -44,10 +45,10 @@ class RecipeFormViewModel {
     final servings = _parseCount(servingsText, 'O rendimento');
     if (servings is Err<int?>) return Future.value(Err(servings.failure));
 
-    final (ingLines, ingGroups) =
-        _cleanGrouped(ingredientLines, ingredientGroups);
-    final (stepLinesClean, stepGroupsClean) =
-        _cleanGrouped(stepLines, stepGroups);
+    final (ingLines, ingGroups, ingIds) =
+        _cleanGrouped(ingredientLines, ingredientGroups, ingredientIds);
+    final (stepLinesClean, stepGroupsClean, _) =
+        _cleanGrouped(stepLines, stepGroups, const []);
 
     return _repo.saveDetail(
       base: original,
@@ -61,25 +62,29 @@ class RecipeFormViewModel {
       stepLines: stepLinesClean,
       ingredientGroups: ingGroups,
       stepGroups: stepGroupsClean,
+      ingredientIds: ingIds,
       tagNames: tagNames,
     );
   }
 
   /// Tira linhas vazias mantendo o rótulo de grupo alinhado com o que sobrou.
-  (List<String>, List<String?>) _cleanGrouped(
+  (List<String>, List<String?>, List<String?>) _cleanGrouped(
     List<String> lines,
     List<String?> groups,
+    List<String?> ids,
   ) {
     final outLines = <String>[];
     final outGroups = <String?>[];
+    final outIds = <String?>[];
     for (var i = 0; i < lines.length; i++) {
       final text = lines[i].trim();
       if (text.isEmpty) continue;
       outLines.add(text);
       final g = i < groups.length ? groups[i]?.trim() : null;
       outGroups.add((g == null || g.isEmpty) ? null : g);
+      outIds.add(i < ids.length ? ids[i] : null);
     }
-    return (outLines, outGroups);
+    return (outLines, outGroups, outIds);
   }
 
   Result<int?> _parseCount(String? raw, String field) {
@@ -123,4 +128,10 @@ final recipeDetailProvider =
 /// Todas as tags já cadastradas — o campo de tags do formulário sugere daqui.
 final allTagsProvider = StreamProvider<List<Tag>>(
   (ref) => ref.watch(tagRepositoryProvider).watchAll(),
+);
+
+/// Todos os ingredientes já cadastrados — o autocomplete do formulário
+/// sugere daqui (C3).
+final allIngredientsProvider = StreamProvider<List<Ingredient>>(
+  (ref) => ref.watch(ingredientRepositoryProvider).watchAll(),
 );

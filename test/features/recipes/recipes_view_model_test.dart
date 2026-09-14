@@ -15,7 +15,9 @@ void main() {
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     clock = DateTime.utc(2026);
-    vm = RecipesViewModel(RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock));
+    vm = RecipesViewModel(RecipeRepository(
+        db.recipeDao, db.tagDao, db.ingredientDao,
+        clock: () => clock));
   });
 
   tearDown(() => db.close());
@@ -25,7 +27,8 @@ void main() {
   });
 
   test('watchRecipes traz o mais recente primeiro', () async {
-    final repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
+        clock: () => clock);
     await repo.saveDetail(name: 'A');
     clock = clock.add(const Duration(minutes: 1));
     await repo.saveDetail(name: 'B');
@@ -37,7 +40,8 @@ void main() {
   });
 
   test('watchRecipes(tagIds): filtra pelas tags marcadas', () async {
-    final repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
+        clock: () => clock);
     await repo.saveDetail(name: 'Curry', tagNames: ['rápido']);
     await repo.saveDetail(name: 'Bolo', tagNames: ['doce']);
 
@@ -54,8 +58,10 @@ void main() {
   });
 
   test('watchRecipes(rootOnly): esconde receita que está numa pasta', () async {
-    final repo = RecipeRepository(db.recipeDao, db.tagDao, clock: () => clock);
-    final folders = FolderRepository(db.folderDao, db.recipeDao, clock: () => clock);
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
+        clock: () => clock);
+    final folders =
+        FolderRepository(db.folderDao, db.recipeDao, clock: () => clock);
     final na = (await repo.saveDetail(name: 'Na pasta') as Ok).value;
     await repo.saveDetail(name: 'Na raiz');
     final f = (await folders.create(name: 'Pasta') as Ok<Folder>).value;

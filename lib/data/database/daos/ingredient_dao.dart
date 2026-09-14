@@ -45,4 +45,10 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
       return row;
     });
   }
+
+  Stream<List<IngredientRow>> watchAll() {
+    return (select(ingredients)
+          ..orderBy([(i) => OrderingTerm.asc(i.displayName)]))
+        .watch();
+  }
 }

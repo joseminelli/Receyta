@@ -12,7 +12,7 @@ void main() {
 
   setUp(() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    recipes = RecipeRepository(db.recipeDao, db.tagDao,
+    recipes = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
         clock: () => DateTime.utc(2026));
   });
   tearDown(() => db.close());
@@ -49,8 +49,8 @@ void main() {
         .value;
     await recipes.saveDetail(name: 'Sopa', tagNames: ['rápido']);
 
-    final rapido =
-        (await db.tagDao.watchAll().first).firstWhere((t) => t.name == 'Rápido');
+    final rapido = (await db.tagDao.watchAll().first)
+        .firstWhere((t) => t.name == 'Rápido');
     expect(await db.tagDao.usageCount(rapido.id), 2);
 
     await db.tagDao.deleteTag(rapido.id);

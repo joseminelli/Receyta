@@ -17,6 +17,12 @@ void main() {
     expect(r.name, 'sal');
   });
 
+  test('conectivo sozinho no fim não vira nome nem quebra a sugestão', () {
+    final r = parseIngredientLine('7 colheres de');
+    expect(r.name, isNot('de'));
+    expect(r.unitCode, 'colher_sopa');
+  });
+
   test('fração unicode', () {
     final r = parseIngredientLine('½ limão');
     expect(r.quantity, 0.5);
@@ -87,5 +93,17 @@ void main() {
     expect(r.quantity, 1.5);
     expect(r.unitCode, 'xicara');
     expect(r.name, 'leite');
+  });
+
+  test('unidade sem acento ainda casa (usuário digita "xicaras")', () {
+    final r = parseIngredientLine('2 xicaras de farinha');
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'farinha');
+  });
+
+  test('qualificador sem acento ainda casa e preserva o que foi digitado', () {
+    final r = parseIngredientLine('cebola media');
+    expect(r.qualifier, 'media');
+    expect(r.name, 'cebola');
   });
 }
