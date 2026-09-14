@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/bootstrap.dart';
+import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/features/folders/all_folders_page.dart';
 import 'package:receyta/features/folders/folder_page.dart';
 import 'package:receyta/features/recipes/cooking_mode_page.dart';
@@ -34,7 +35,8 @@ final router = GoRouter(
     GoRoute(
       path: '/recipe/new',
       name: 'recipe-new',
-      builder: (context, state) => const RecipeFormPage(),
+      builder: (context, state) =>
+          RecipeFormPage(draft: state.extra as ImportedRecipe?),
     ),
     GoRoute(
       path: '/recipe/:id',

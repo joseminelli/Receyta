@@ -21,20 +21,26 @@ import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/data/repositories/ingredient_repository.dart';
 import 'package:receyta/domain/engine/fuzzy_match.dart';
 import 'package:receyta/domain/engine/ingredient_normalizer.dart';
+import 'package:receyta/domain/engine/recipe_import.dart';
 
 /// Formulário de receita (RF-01.2–01.5): nome, sobre, tempos, rendimento,
 /// notas, e as listas de ingredientes e passos como texto livre. Cria quando
 /// [recipeId] é nulo, edita caso contrário. Superfície sóbria, sem azulejo
 /// nem número ilustrativo (§9.1).
 class RecipeFormPage extends ConsumerWidget {
-  const RecipeFormPage({super.key, this.recipeId});
+  const RecipeFormPage({super.key, this.recipeId, this.draft});
 
   final String? recipeId;
+
+  /// Rascunho de uma importação por URL (C7) ou foto (C8) — pré-preenche o
+  /// formulário de uma receita nova; nada é salvo até o usuário tocar em
+  /// salvar, igual à digitação manual.
+  final ImportedRecipe? draft;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final id = recipeId;
-    if (id == null) return const _RecipeForm(original: null);
+    if (id == null) return _RecipeForm(original: null, draft: draft);
 
     return ref.watch(recipeDetailFutureProvider(id)).when(
           loading: () => const _Frame(child: SizedBox.shrink()),
@@ -103,6 +109,26 @@ class _Line {
   }
 }
 
+/// Linhas de um rascunho importado (C7) pro mesmo formato de
+/// `_linesWithHeadings`. Alguns sites embutem o cabeçalho da seção como se
+/// fosse mais um item da lista ("Para o arroz de sushi:") — uma linha
+/// curta terminando em ":" vira `group` das linhas seguintes, igual ao
+/// separador que o usuário cria manualmente, em vez de aparecer como
+/// ingrediente/passo comum.
+Iterable<({String text, String? group, String? ingredientId})>
+    _headingAwareDraftLines(List<String>? lines) sync* {
+  String? currentGroup;
+  for (final raw in lines ?? const <String>[]) {
+    final line = raw.trim();
+    if (line.isEmpty) continue;
+    if (line.endsWith(':') && line.length <= 60) {
+      currentGroup = line.substring(0, line.length - 1).trim();
+      continue;
+    }
+    yield (text: line, group: currentGroup, ingredientId: null);
+  }
+}
+
 /// Reconstrói as linhas do formulário a partir das linhas do banco, inserindo
 /// um separador sempre que o `groupLabel` muda pra um rótulo não nulo.
 List<_Line> _linesWithHeadings(
@@ -121,9 +147,10 @@ List<_Line> _linesWithHeadings(
 }
 
 class _RecipeForm extends ConsumerStatefulWidget {
-  const _RecipeForm({required this.original});
+  const _RecipeForm({required this.original, this.draft});
 
   final RecipeDetail? original;
+  final ImportedRecipe? draft;
 
   @override
   ConsumerState<_RecipeForm> createState() => _RecipeFormState();
@@ -131,16 +158,21 @@ class _RecipeForm extends ConsumerStatefulWidget {
 
 class _RecipeFormState extends ConsumerState<_RecipeForm> {
   late final _recipe = widget.original?.recipe;
-  late final _name = TextEditingController(text: _recipe?.name ?? '');
-  late final _about = TextEditingController(text: _recipe?.about ?? '');
+  late final _draft = widget.original == null ? widget.draft : null;
+  late final _name = TextEditingController(
+    text: _recipe?.name ?? _draft?.name ?? '',
+  );
+  late final _about = TextEditingController(
+    text: _recipe?.about ?? _draft?.about ?? '',
+  );
   late final _prep = TextEditingController(
-    text: _recipe?.prepMinutes?.toString() ?? '',
+    text: (_recipe?.prepMinutes ?? _draft?.prepMinutes)?.toString() ?? '',
   );
   late final _cook = TextEditingController(
-    text: _recipe?.cookMinutes?.toString() ?? '',
+    text: (_recipe?.cookMinutes ?? _draft?.cookMinutes)?.toString() ?? '',
   );
   late final _servings = TextEditingController(
-    text: _recipe?.servings?.toString() ?? '',
+    text: (_recipe?.servings ?? _draft?.servings)?.toString() ?? '',
   );
   late final _notes = TextEditingController(text: _recipe?.notes ?? '');
 
@@ -148,14 +180,18 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
     for (final RecipeIngredient i
         in widget.original?.ingredients ?? const <RecipeIngredient>[])
       (text: i.rawText, group: i.groupLabel, ingredientId: i.ingredientId),
+    ..._headingAwareDraftLines(_draft?.ingredientLines),
   ]);
   late final List<_Line> _steps = _linesWithHeadings([
     for (final RecipeStep s in widget.original?.steps ?? const <RecipeStep>[])
       (text: s.text, group: s.groupLabel, ingredientId: null),
+    ..._headingAwareDraftLines(_draft?.stepLines),
   ]);
 
+  late final _siteTag = siteTagFromUrl(_draft?.sourceUrl);
   late final List<String> _tags = [
     for (final Tag t in widget.original?.tags ?? const <Tag>[]) t.name,
+    if (_siteTag != null) _siteTag,
   ];
   final _tagInput = TextEditingController();
   final _tagFocus = FocusNode();
@@ -238,6 +274,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
       stepGroups: stepGroups,
       ingredientIds: ingIds,
       tagNames: [..._tags, _tagInput.text],
+      sourceUrl: _draft?.sourceUrl,
     );
 
     if (!mounted) return;

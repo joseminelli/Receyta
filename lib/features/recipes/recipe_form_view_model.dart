@@ -32,6 +32,9 @@ class RecipeFormViewModel {
     List<String?> stepGroups = const [],
     List<String?> ingredientIds = const [],
     List<String> tagNames = const [],
+
+    /// De onde a receita foi importada (C7) — só usado na criação.
+    String? sourceUrl,
   }) {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
@@ -64,6 +67,7 @@ class RecipeFormViewModel {
       stepGroups: stepGroupsClean,
       ingredientIds: ingIds,
       tagNames: tagNames,
+      sourceUrl: sourceUrl,
     );
   }
 

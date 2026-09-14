@@ -119,4 +119,26 @@ void main() {
     expect(byName['alho'], 1);
     expect(byName['Sal'], 0);
   });
+
+  test('deleteIngredient apaga quando não está em uso', () async {
+    final sal = await db.ingredientDao.getOrCreate('Sal');
+    await db.ingredientDao.deleteIngredient(sal.id);
+
+    final all = await db.select(db.ingredients).get();
+    expect(all, isEmpty);
+  });
+
+  test('deleteIngredient falha quando alguma receita ainda usa', () async {
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
+    await repo.saveDetail(name: 'Sopa', ingredientLines: ['1 cebola']);
+    final cebola = await db.ingredientDao.getOrCreate('cebola');
+
+    expect(
+      () => db.ingredientDao.deleteIngredient(cebola.id),
+      throwsA(anything),
+    );
+
+    final all = await db.select(db.ingredients).get();
+    expect(all.length, 1);
+  });
 }

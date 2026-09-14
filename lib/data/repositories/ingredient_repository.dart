@@ -57,6 +57,18 @@ class IngredientRepository {
     }
   }
 
+  /// Apaga um ingrediente (C6). Só funciona se ele não estiver em nenhuma
+  /// receita — o banco recusa a exclusão nesse caso e devolve `Err`; a UI só
+  /// mostra o botão de apagar quando já sabe que o uso é 0.
+  Future<Result<void>> delete(String id) async {
+    try {
+      await _dao.deleteIngredient(id);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao apagar o ingrediente', cause: e));
+    }
+  }
+
   Future<Result<void>> confirmAlias(
       String ingredientId, String aliasText) async {
     final key = normalize(aliasText);

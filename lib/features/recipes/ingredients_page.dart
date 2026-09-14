@@ -15,17 +15,25 @@ import 'package:receyta/widgets/state_badge.dart';
 
 /// Gerenciar ingredientes (C6): lista o catálogo com contagem de uso, aponta
 /// pares parecidos (fuzzy match do C4) prováveis de serem duplicata, e deixa
-/// mesclar. Mesclar nunca é automático — sempre passa por confirmação
-/// (§8.2: "nunca funde sozinho; sempre pergunta").
-class IngredientsPage extends ConsumerWidget {
+/// mesclar ou apagar. Mesclar nunca é automático — sempre passa por
+/// confirmação (§8.2: "nunca funde sozinho; sempre pergunta").
+class IngredientsPage extends ConsumerStatefulWidget {
   const IngredientsPage({super.key});
 
-  Future<void> _merge(
-    BuildContext context,
-    WidgetRef ref,
-    Ingredient source,
-    Ingredient target,
-  ) async {
+  @override
+  ConsumerState<IngredientsPage> createState() => _IngredientsPageState();
+}
+
+class _IngredientsPageState extends ConsumerState<IngredientsPage> {
+  final _query = TextEditingController();
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  Future<void> _merge(Ingredient source, Ingredient target) async {
     final ok = await AppDialog.confirm(
       context,
       icon: Icons.call_merge,
@@ -40,19 +48,29 @@ class IngredientsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _pickAndMerge(
-    BuildContext context,
-    WidgetRef ref,
-    Ingredient source,
-  ) async {
+  Future<void> _pickAndMerge(Ingredient source) async {
     final target = await pickIngredient(context, ref, excludeId: source.id);
     if (target == null) return;
     if (!context.mounted) return;
-    await _merge(context, ref, source, target);
+    await _merge(source, target);
+  }
+
+  Future<void> _delete(Ingredient ingredient) async {
+    final ok = await AppDialog.confirm(
+      context,
+      icon: Icons.delete_outline,
+      accent: context.colors.danger,
+      title: 'Apagar "${ingredient.displayName}"?',
+      message: 'Não está em nenhuma receita. Não dá pra desfazer.',
+      confirmLabel: 'Apagar',
+    );
+    if (ok) {
+      await ref.read(ingredientRepositoryProvider).delete(ingredient.id);
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final items = ref.watch(ingredientsWithCountsProvider);
 
@@ -111,23 +129,79 @@ class IngredientsPage extends ConsumerWidget {
 
           final duplicateOf =
               _detectDuplicates([for (final r in rows) r.ingredient]);
+          final query = _query.text.trim().toLowerCase();
+          final filtered = query.isEmpty
+              ? rows
+              : [
+                  for (final r in rows)
+                    if (r.ingredient.displayName.toLowerCase().contains(query))
+                      r,
+                ];
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.screen),
-            itemCount: rows.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-            itemBuilder: (context, i) {
-              final (:ingredient, :count) = rows[i];
-              final dup = duplicateOf[ingredient.id];
-              return _IngredientRow(
-                ingredient: ingredient,
-                count: count,
-                duplicateOf: dup,
-                onMergeDuplicate:
-                    dup == null ? null : () => _merge(context, ref, ingredient, dup),
-                onPickMerge: () => _pickAndMerge(context, ref, ingredient),
-              );
-            },
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.sm,
+                  AppSpacing.screen,
+                  AppSpacing.sm,
+                ),
+                child: TextField(
+                  controller: _query,
+                  onChanged: (_) => setState(() {}),
+                  textCapitalization: TextCapitalization.none,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar ingrediente',
+                    prefixIcon: Icon(Icons.search, color: colors.textMuted),
+                    filled: true,
+                    fillColor: colors.paperSoft,
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Nada encontrado pra "$query".',
+                          style: context.texts.bodyMedium
+                              ?.copyWith(color: colors.textMuted),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.screen,
+                          0,
+                          AppSpacing.screen,
+                          AppSpacing.screen,
+                        ),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: AppSpacing.xs),
+                        itemBuilder: (context, i) {
+                          final (:ingredient, :count) = filtered[i];
+                          final dup = duplicateOf[ingredient.id];
+                          return _IngredientRow(
+                            ingredient: ingredient,
+                            count: count,
+                            duplicateOf: dup,
+                            onMergeDuplicate: dup == null
+                                ? null
+                                : () => _merge(ingredient, dup),
+                            onPickMerge: () => _pickAndMerge(ingredient),
+                            onDelete:
+                                count == 0 ? () => _delete(ingredient) : null,
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
@@ -159,6 +233,7 @@ class _IngredientRow extends StatelessWidget {
     required this.duplicateOf,
     required this.onMergeDuplicate,
     required this.onPickMerge,
+    required this.onDelete,
   });
 
   final Ingredient ingredient;
@@ -166,6 +241,11 @@ class _IngredientRow extends StatelessWidget {
   final Ingredient? duplicateOf;
   final VoidCallback? onMergeDuplicate;
   final VoidCallback onPickMerge;
+
+  /// Nulo quando o ingrediente está em uso — `RecipeIngredients.ingredientId`
+  /// é `onDelete: restrict`, então apagar falharia; some o botão em vez de
+  /// deixar um botão que sempre dá erro.
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +301,15 @@ class _IngredientRow extends StatelessWidget {
               ],
             ),
           ),
+          if (onDelete != null) ...[
+            const SizedBox(width: AppSpacing.xs),
+            CircleIconButton(
+              icon: Icons.delete_outline,
+              background: colors.danger,
+              onTap: onDelete,
+              tooltip: 'Apagar',
+            ),
+          ],
           const SizedBox(width: AppSpacing.sm),
           CircleIconButton(
             icon: Icons.call_merge,

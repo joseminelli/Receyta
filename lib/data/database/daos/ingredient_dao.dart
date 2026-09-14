@@ -124,6 +124,14 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Apaga um ingrediente do catálogo (C6). `RecipeIngredients.ingredientId`
+  /// é `onDelete: restrict` — se alguma receita ainda usa esse ingrediente,
+  /// o banco recusa (`SqliteException`); quem chama confere a contagem de
+  /// uso antes (a UI só mostra o botão de apagar pros que têm uso 0).
+  Future<void> deleteIngredient(String id) {
+    return (delete(ingredients)..where((i) => i.id.equals(id))).go();
+  }
+
   /// Grava o alias confirmado pelo usuário (§8.2 passo 3) — próxima vez que
   /// esse nome aparecer, bate direto por `normalized_alias`, sem fuzzy.
   Future<void> addAlias(String ingredientId, String normalizedAlias) {

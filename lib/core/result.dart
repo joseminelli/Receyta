@@ -55,3 +55,9 @@ final class NotFoundFailure extends Failure {
 final class ValidationFailure extends Failure {
   const ValidationFailure(super.message);
 }
+
+/// Falha de rede — busca de URL (import, bloco C/D), sem conexão, timeout,
+/// site fora do ar.
+final class NetworkFailure extends Failure {
+  const NetworkFailure(super.message, {super.cause});
+}
