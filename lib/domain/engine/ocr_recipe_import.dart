@@ -8,14 +8,18 @@ library;
 
 import 'recipe_import.dart';
 
+/// Aceita dois-pontos no fim ("Ingredientes:") — quase toda receita de
+/// verdade escreve o cabeçalho assim; exigir a linha inteira sem pontuação
+/// nenhuma fazia o cabeçalho passar batido e tudo (inclusive o preparo)
+/// cair no fallback de "não achei seção nenhuma".
 final _ingredientsHeading = RegExp(
-  r'^ingredientes?$',
+  r'^ingredientes?\s*:?$',
   caseSensitive: false,
 );
 
 final _stepsHeading = RegExp(
   r'^(modo de preparo|modo de fazer|preparo|instru(ç|c)(õ|o)es|como fazer|'
-  r'm(é|e)todo|instructions|directions)$',
+  r'm(é|e)todo|instructions|directions)\s*:?$',
   caseSensitive: false,
 );
 
@@ -45,9 +49,15 @@ final _leadingBullet = RegExp(r'^[•●○◦▪‣∙·*\-–—»>]+\s*');
 /// grudada no nome de verdade. Tira só o pedaço da legenda.
 final _photoCaptionSuffix = RegExp(r'\s*[—–-]\s*foto:.*$', caseSensitive: false);
 
+/// Ícone (compartilhar/link) que sobra colado no fim de um título de card
+/// ("Cookie Saudável de Maçã e Aveia (Sem Açúcar) •"). Só no fim da linha —
+/// bullet no meio já é tratado como ruído por [_midLineBulletSeparator].
+final _trailingIconGlyph = RegExp(r'\s*[•●○◦]\s*$');
+
 String _cleanLine(String line) {
   var l = line.trim().replaceFirst(_leadingBullet, '').trim();
   l = l.replaceFirst(_photoCaptionSuffix, '').trim();
+  l = l.replaceFirst(_trailingIconGlyph, '').trim();
   return l;
 }
 
@@ -143,6 +153,22 @@ bool _looksLikeNavTabBar(String line) {
   return false;
 }
 
+/// Barra de abas de busca do Google ("Modo IA", "Tudo", "Shopping",
+/// "Vídeos curtos"...) — aparece em print de tela de resultado de busca,
+/// não é conteúdo da receita.
+final _searchTabBar = RegExp(
+  r'^(modo ia|tudo(\s+shopp\w*)?|imagens|v[ií]deos(\s+curtos)?|'
+  r'not[ií]cias|shopping|maps)$',
+  caseSensitive: false,
+);
+
+/// Selo "Visão geral criada por IA" do Google (AI Overview) — não é texto
+/// da receita, é rótulo da interface de busca.
+final _aiOverviewBadge = RegExp(
+  r'^vis[ãa]o geral criada por ia$',
+  caseSensitive: false,
+);
+
 bool _isChromeNoise(String line) =>
     _socialUiButton.hasMatch(line) ||
     _handleOrHashtag.hasMatch(line) ||
@@ -158,7 +184,33 @@ bool _isChromeNoise(String line) =>
     _bareInteractionCount.hasMatch(line) ||
     _usernameLikeToken.hasMatch(line) ||
     _strayGlyph.hasMatch(line) ||
-    _midLineBulletSeparator.hasMatch(line);
+    _midLineBulletSeparator.hasMatch(line) ||
+    _searchTabBar.hasMatch(line) ||
+    _aiOverviewBadge.hasMatch(line);
+
+/// Entre as linhas antes da 1ª seção reconhecida, o nome de verdade
+/// normalmente é a primeira linha (ex.: "Torta de limão" / "Rende 8
+/// porções", onde a 2ª linha é só um detalhe extra). Mas em print de
+/// "Visão geral" de IA (Google) tem frase de verdade (o resumo gerado)
+/// ANTES do título real, com o título sanduichado entre esse resumo e a
+/// descrição do card. Só desvia do padrão "1ª linha é o nome" quando dá
+/// pra ver frase de verdade ali perto (alguma linha termina em ponto) —
+/// aí procura, de trás pra frente, a última linha que não é fim de frase
+/// mas vem logo antes de uma que é.
+bool _looksLikeSentenceEnd(String l) => l.endsWith('.');
+
+int _titleLineIndex(List<String> titleLines) {
+  final hasProse = titleLines.any(_looksLikeSentenceEnd);
+  if (hasProse) {
+    for (var i = titleLines.length - 2; i >= 0; i--) {
+      if (!_looksLikeSentenceEnd(titleLines[i]) &&
+          _looksLikeSentenceEnd(titleLines[i + 1])) {
+        return i;
+      }
+    }
+  }
+  return 0;
+}
 
 /// Recebe as linhas de texto reconhecidas (em ordem de leitura) e monta um
 /// rascunho pro formulário — sempre revisado pelo usuário antes de salvar,
@@ -195,8 +247,20 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     if (stepsAt != -1) stepsAt,
   ].reduce((a, b) => a < b ? a : b);
   final titleLines = lines.sublist(0, titleEnd);
-  final name = titleLines.isEmpty ? 'Receita importada' : titleLines.first;
-  final about = titleLines.length > 1 ? titleLines.skip(1).join(' ') : null;
+  String name;
+  String? about;
+  if (titleLines.isEmpty) {
+    name = 'Receita importada';
+    about = null;
+  } else {
+    final titleIdx = _titleLineIndex(titleLines);
+    name = titleLines[titleIdx];
+    final aboutLines = [
+      ...titleLines.take(titleIdx),
+      ...titleLines.skip(titleIdx + 1),
+    ];
+    about = aboutLines.isEmpty ? null : aboutLines.join(' ');
+  }
 
   final ingredientsEnd = [
     if (stepsAt > ingredientsAt) stepsAt,

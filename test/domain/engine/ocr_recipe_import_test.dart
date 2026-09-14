@@ -237,4 +237,54 @@ void main() {
       'Modo de preparo: no vídeo',
     ]);
   });
+
+  test('cabeçalho "Ingredientes:"/"Modo de Preparo:" com dois-pontos ainda '
+      'divide as seções (sem isso tudo cai dentro de ingredientes)', () {
+    final r = parseOcrLines([
+      'Bolo',
+      'Ingredientes:',
+      'Farinha',
+      'Modo de Preparo:',
+      'Asse.',
+    ]);
+    expect(r!.ingredientLines, ['Farinha']);
+    expect(r.stepLines, ['Asse.']);
+  });
+
+  test('print de "Visão geral" de IA do Google: aba de busca e selo de IA '
+      'somem, nome vira o título de verdade (não o resumo gerado por IA, '
+      'nem a aba "Modo IA"), e o resumo + descrição do card viram sobre',
+      () {
+    final r = parseOcrLines([
+      'Modo IA',
+      'Tudo Shopping',
+      'Visão geral criada por IA',
+      'Esta é uma receita de cookie de maçã com farinha de aveia, focada em '
+          'ser saudável, sem açúcar refinado e sem farinha de trigo.',
+      'Cookie Saudável de Maçã e Aveia (Sem Açúcar) •',
+      'Esta versão utiliza a própria maçã e tâmaras/passas para adoçar.',
+      'Ingredientes:',
+      '2 maçãs médias descascadas e picadas ou raladas.',
+      '150g de farinha de aveia.',
+      'Modo de Preparo:',
+      '1. Prepare a maçã: rale ou corte em cubos.',
+      '2. Misture os ingredientes.',
+    ]);
+
+    expect(r!.name, 'Cookie Saudável de Maçã e Aveia (Sem Açúcar)');
+    expect(
+      r.about,
+      'Esta é uma receita de cookie de maçã com farinha de aveia, focada em '
+      'ser saudável, sem açúcar refinado e sem farinha de trigo. Esta '
+      'versão utiliza a própria maçã e tâmaras/passas para adoçar.',
+    );
+    expect(r.ingredientLines, [
+      '2 maçãs médias descascadas e picadas ou raladas.',
+      '150g de farinha de aveia.',
+    ]);
+    expect(r.stepLines, [
+      'Prepare a maçã: rale ou corte em cubos.',
+      'Misture os ingredientes.',
+    ]);
+  });
 }
