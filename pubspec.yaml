@@ -38,6 +38,10 @@ dependencies:
   image_picker: ^1.0.0
   flutter_image_compress: ^2.2.0
 
+  # OCR on-device (C8, RF-06.10) — a foto só existe em memória durante o
+  # reconhecimento, nunca é salva.
+  google_mlkit_text_recognition: ^0.13.0
+
   # File sharing
   share_plus: ^8.0.0
   file_picker: ^5.5.0

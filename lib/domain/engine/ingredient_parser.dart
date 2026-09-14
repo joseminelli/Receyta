@@ -84,7 +84,19 @@ ParsedIngredientLine parseIngredientLine(
     return ParsedIngredientLine(rawText: rawText, name: '');
   }
 
-  final (quantity, afterQuantity) = _extractQuantity(trimmed);
+  var (quantity, afterQuantity) = _extractQuantity(trimmed);
+  var prefix = '';
+  if (quantity == null) {
+    // Não achou no início — tenta achar em qualquer ponto da linha (comum
+    // em OCR, C8: "Farinha de trigo 1/4 xícara", quantidade no fim).
+    final elsewhere = _extractQuantityAnywhere(trimmed);
+    if (elsewhere != null) {
+      quantity = elsewhere.quantity;
+      prefix = elsewhere.before;
+      afterQuantity = elsewhere.after;
+    }
+  }
+
   final (unitCode, afterUnit) = _matchUnit(afterQuantity, units);
   final afterConnector = _stripLeadingConnector(afterUnit);
   final (qualifier, afterQualifier) = _extractQualifier(
@@ -92,7 +104,8 @@ ParsedIngredientLine parseIngredientLine(
     normalizerTerms ?? kSeedNormalizerTerms,
   );
 
-  final name = afterQualifier.trim();
+  final rest = afterQualifier.trim();
+  final name = [prefix, rest].where((s) => s.isNotEmpty).join(' ');
   return ParsedIngredientLine(
     rawText: rawText,
     quantity: quantity,
@@ -159,6 +172,28 @@ ParsedIngredientLine parseIngredientLine(
   }
 
   return (null, text);
+}
+
+final _wordStart = RegExp(r'\S+');
+
+/// Quantidade fora do início da linha — testa cada palavra como possível
+/// começo de número (assim "1 / 4" com espaço na barra ainda casa inteiro,
+/// já que a partir do "1" a mesma `_extractQuantity` consome "1 / 4"). Pega
+/// a primeira que bater, senão devolve `null`.
+({double quantity, String before, String after})? _extractQuantityAnywhere(
+  String text,
+) {
+  for (final m in _wordStart.allMatches(text)) {
+    final (qty, after) = _extractQuantity(text.substring(m.start));
+    if (qty != null) {
+      return (
+        quantity: qty,
+        before: text.substring(0, m.start).trim(),
+        after: after,
+      );
+    }
+  }
+  return null;
 }
 
 (String?, String) _matchUnit(String text, List<SeedUnit> units) {

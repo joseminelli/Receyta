@@ -8,6 +8,7 @@ import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipe_form_page.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
@@ -50,6 +51,8 @@ void main() {
       overrides: [
         recipeRepositoryProvider.overrideWithValue(repo),
         allTagsProvider.overrideWith((ref) => Stream.value(const <Tag>[])),
+        allIngredientsProvider
+            .overrideWith((ref) => Stream.value(const <Ingredient>[])),
       ],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
     );

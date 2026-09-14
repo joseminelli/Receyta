@@ -61,3 +61,9 @@ final class ValidationFailure extends Failure {
 final class NetworkFailure extends Failure {
   const NetworkFailure(super.message, {super.cause});
 }
+
+/// Falha de processamento local — OCR (C8), leitura de arquivo, o que não é
+/// nem banco nem rede.
+final class ProcessingFailure extends Failure {
+  const ProcessingFailure(super.message, {super.cause});
+}

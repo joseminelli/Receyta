@@ -120,4 +120,31 @@ void main() {
     expect(r.qualifier, 'media');
     expect(r.name, 'cebola');
   });
+
+  test('fração com espaço em volta da barra ("1 / 4") no início', () {
+    final r = parseIngredientLine('1 / 4 xícara de farinha');
+    expect(r.quantity, 0.25);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'farinha');
+  });
+
+  test('quantidade no fim da linha (comum em OCR, C8)', () {
+    final r = parseIngredientLine('farinha de trigo 1/4 xícara');
+    expect(r.quantity, 0.25);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'farinha de trigo');
+  });
+
+  test('quantidade no meio, com espaço na barra', () {
+    final r = parseIngredientLine('farinha 1 / 4 xícara');
+    expect(r.quantity, 0.25);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'farinha');
+  });
+
+  test('sem quantidade em lugar nenhum continua caindo no fallback', () {
+    final r = parseIngredientLine('farinha de trigo integral');
+    expect(r.quantity, isNull);
+    expect(r.name, 'farinha de trigo integral');
+  });
 }

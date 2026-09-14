@@ -10,6 +10,7 @@ import 'package:receyta/features/folders/folders_strip.dart';
 import 'package:receyta/features/folders/recipe_drag.dart';
 import 'package:receyta/features/recipes/ingredients_page.dart';
 import 'package:receyta/features/recipes/recipe_import_flow.dart';
+import 'package:receyta/features/recipes/recipe_ocr_flow.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/features/recipes/tags_page.dart';
 import 'package:receyta/features/recipes/trash_page.dart';
@@ -397,6 +398,12 @@ class _Header extends ConsumerWidget {
                                       label: 'Importar de link',
                                       onSelected: () =>
                                           importRecipeFromUrlFlow(context, ref),
+                                    ),
+                                    CreateMenuAction(
+                                      icon: Icons.camera_alt_outlined,
+                                      label: 'Importar de foto',
+                                      onSelected: () =>
+                                          importRecipeFromPhotoFlow(context, ref),
                                     ),
                                   ],
                                 ),
