@@ -39,4 +39,24 @@ void main() {
     final b = await db.ingredientDao.getOrCreate('Alho');
     expect(a.id, isNot(b.id));
   });
+
+  test('addAlias grava e getOrCreate passa a bater direto por ele', () async {
+    final tomato = await db.ingredientDao.getOrCreate('Tomate');
+    await db.ingredientDao.addAlias(tomato.id, 'tomatee');
+
+    final byAlias = await db.ingredientDao.getOrCreate('tomatee');
+    expect(byAlias.id, tomato.id);
+
+    final all = await db.select(db.ingredients).get();
+    expect(all.length, 1);
+  });
+
+  test('addAlias não duplica se o alias já existe', () async {
+    final tomato = await db.ingredientDao.getOrCreate('Tomate');
+    await db.ingredientDao.addAlias(tomato.id, 'tomatee');
+    await db.ingredientDao.addAlias(tomato.id, 'tomatee');
+
+    final aliases = await db.select(db.ingredientAliases).get();
+    expect(aliases.length, 1);
+  });
 }

@@ -51,4 +51,22 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
           ..orderBy([(i) => OrderingTerm.asc(i.displayName)]))
         .watch();
   }
+
+  /// Grava o alias confirmado pelo usuário (§8.2 passo 3) — próxima vez que
+  /// esse nome aparecer, bate direto por `normalized_alias`, sem fuzzy.
+  Future<void> addAlias(String ingredientId, String normalizedAlias) {
+    return transaction(() async {
+      final existing = await (select(ingredientAliases)
+            ..where((a) => a.normalizedAlias.equals(normalizedAlias)))
+          .getSingleOrNull();
+      if (existing != null) return;
+      await into(ingredientAliases).insert(
+        IngredientAliasRow(
+          id: _uuid.v4(),
+          ingredientId: ingredientId,
+          normalizedAlias: normalizedAlias,
+        ),
+      );
+    });
+  }
 }

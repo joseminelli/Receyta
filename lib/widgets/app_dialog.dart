@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/pill_button.dart';
-import 'package:receyta/widgets/state_badge.dart';
 
-/// Diálogo padrão do app: cantos bem arredondados (§9.8), medalhão de ícone
-/// no topo (mesma linguagem do `AppSnackBar`/`StateBadge`/`PillNavBar`) e
-/// ações em `PillButton` — em vez do `AlertDialog` cru do Material, que não
-/// carrega nenhum traço do design system.
+/// Diálogo padrão do app: cantos bem arredondados (§9.8), título com ícone
+/// de destaque ao lado e ações em `PillButton` — em vez do `AlertDialog` cru
+/// do Material, que não carrega nenhum traço do design system.
 abstract class AppDialog {
   /// Diálogo genérico: ícone + título + corpo (texto ou widget livre, como um
   /// `TextField`) + ações.
@@ -22,12 +20,12 @@ abstract class AppDialog {
     required List<Widget> actions,
   }) {
     final colors = context.colors;
-    final iconForeground =
-        accent.computeLuminance() > 0.5 ? colors.ink : colors.onSaturated;
 
     return showDialog<T>(
       context: context,
+      barrierColor: colors.ink.withValues(alpha: 0.5),
       builder: (dialog) => AlertDialog(
+        backgroundColor: colors.paper,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.lg),
         ),
@@ -37,18 +35,12 @@ abstract class AppDialog {
           AppSpacing.lg,
           0,
         ),
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: icon,
-              background: accent,
-              foreground: iconForeground,
-              size: 56,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(title, style: context.texts.displaySmall),
+            Icon(icon, size: 28, color: accent),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: Text(title, style: context.texts.displaySmall)),
           ],
         ),
         content: content ??

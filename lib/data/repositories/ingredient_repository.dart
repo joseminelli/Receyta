@@ -5,6 +5,7 @@ import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/ingredient_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/domain/models/ingredient.dart';
+import 'package:receyta/domain/engine/ingredient_normalizer.dart';
 
 /// Fonte de verdade do catálogo de ingredientes (§8.2). `getOrCreate` é o
 /// ponto de entrada que o parser (C1) usa pra resolver o nome de uma linha
@@ -29,6 +30,18 @@ class IngredientRepository {
 
   Stream<List<Ingredient>> watchAll() =>
       _dao.watchAll().map((rows) => rows.map(_toDomain).toList());
+
+  Future<Result<void>> confirmAlias(
+      String ingredientId, String aliasText) async {
+    final key = normalize(aliasText);
+    if (key.isEmpty) return const Ok(null);
+    try {
+      await _dao.addAlias(ingredientId, key);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao gravar o alias', cause: e));
+    }
+  }
 
   Ingredient _toDomain(IngredientRow r) => Ingredient(
         id: r.id,

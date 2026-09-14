@@ -18,6 +18,9 @@ import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
 import 'package:receyta/domain/models/ingredient.dart';
+import 'package:receyta/data/repositories/ingredient_repository.dart';
+import 'package:receyta/domain/engine/fuzzy_match.dart';
+import 'package:receyta/domain/engine/ingredient_normalizer.dart';
 
 /// Formulário de receita (RF-01.2–01.5): nome, sobre, tempos, rendimento,
 /// notas, e as listas de ingredientes e passos como texto livre. Cria quando
@@ -935,7 +938,7 @@ class _LineList extends StatelessWidget {
 /// Campo de ingrediente com sugestões do catálogo (C3). Filtra pelo nome já
 /// extraído pelo parser (C1) — não pela linha inteira — e, ao escolher, troca
 /// só a parte do nome, preservando quantidade/unidade/qualificador digitados.
-class _IngredientAutocompleteField extends StatelessWidget {
+class _IngredientAutocompleteField extends ConsumerWidget {
   const _IngredientAutocompleteField({
     required this.line,
     required this.suggestions,
@@ -947,8 +950,10 @@ class _IngredientAutocompleteField extends StatelessWidget {
   final String hintText;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     var pendingPickText = line.controller.text;
+    var pendingWasFuzzy = false;
+    var isFuzzy = false;
 
     return RawAutocomplete<Ingredient>(
       textEditingController: line.controller,
@@ -956,12 +961,43 @@ class _IngredientAutocompleteField extends StatelessWidget {
       displayStringForOption: (i) => i.displayName,
       optionsBuilder: (value) {
         final query = parseIngredientLine(value.text).name.trim().toLowerCase();
-        if (query.isEmpty) return const Iterable<Ingredient>.empty();
-        return suggestions
+        if (query.isEmpty) {
+          isFuzzy = false;
+          return const Iterable<Ingredient>.empty();
+        }
+
+        final exact = suggestions
             .where((s) => s.displayName.toLowerCase().contains(query));
+        if (exact.isNotEmpty) {
+          isFuzzy = false;
+          return exact;
+        }
+
+        final key = normalize(query);
+        if (key.isEmpty) {
+          isFuzzy = false;
+          return const Iterable<Ingredient>.empty();
+        }
+        final best = [
+          for (final s in suggestions)
+            (ingredient: s, score: normalizedSimilarity(key, s.normalizedKey)),
+        ]..sort((a, b) => b.score.compareTo(a.score));
+        final fuzzy = best
+            .where((s) => isCloseMatch(key, s.ingredient.normalizedKey))
+            .take(1);
+
+        isFuzzy = fuzzy.isNotEmpty;
+        return fuzzy.map((s) => s.ingredient);
       },
-      onSelected: (picked) =>
-          line.applyIngredientSuggestion(picked, pendingPickText),
+      onSelected: (picked) {
+        line.applyIngredientSuggestion(picked, pendingPickText);
+        if (pendingWasFuzzy) {
+          ref.read(ingredientRepositoryProvider).confirmAlias(
+                picked.id,
+                parseIngredientLine(pendingPickText).name,
+              );
+        }
+      },
       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
         return TextField(
           controller: controller,
@@ -979,15 +1015,27 @@ class _IngredientAutocompleteField extends StatelessWidget {
             color: context.colors.paperSoft,
             borderRadius: BorderRadius.circular(AppRadii.sm),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 180, maxWidth: 280),
+              constraints: const BoxConstraints(maxHeight: 220, maxWidth: 280),
               child: ListView(
                 padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 children: [
+                  if (isFuzzy)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.xs / 2,
+                      ),
+                      child: Text(
+                        'Você quis dizer:',
+                        style: context.texts.labelSmall,
+                      ),
+                    ),
                   for (final option in options)
                     InkWell(
                       onTap: () {
                         pendingPickText = line.controller.text;
+                        pendingWasFuzzy = isFuzzy;
                         onSelected(option);
                       },
                       child: Padding(
