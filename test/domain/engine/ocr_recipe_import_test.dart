@@ -190,4 +190,51 @@ void main() {
     expect(r!.name, 'Bolo simples');
     expect(r.ingredientLines, ['farinha', 'açúcar']);
   });
+
+  test('print de post do Instagram: nome de conta, tempo, local, botão '
+      '"Seguir", contadores e "Responder" não entram no resultado', () {
+    final r = parseOcrLines([
+      '18:52',
+      'Você',
+      'há 3 d',
+      'mais_receitas_',
+      'Seguir',
+      'Neightbours • Home (s',
+      'Pão de batata',
+      'Ingredientes',
+      '2 ovos',
+      '1 xícara de leite morno (xícara de 240ml)',
+      '50ml de óleo',
+      '10g de fermento biológico seco',
+      '1 e 1/2 colher de sopa de açúcar',
+      '1 colher de manteiga ou margarina',
+      '1 batata cozida e amassada',
+      'mais ou menos 500 g de farinha de trigo',
+      '1/2 colher de sopa de sal',
+      '1 gema de ovo para pincelar por cima',
+      'Modo de preparo: no vídeo',
+      '859 mil',
+      '3.854',
+      '6.940',
+      '365 mil',
+      'Responder a você',
+      'Curtido por profkarina_geo e outras 859.063',
+      'pessoas',
+    ]);
+
+    expect(r!.name, 'Pão de batata');
+    expect(r.ingredientLines, [
+      '2 ovos',
+      '1 xícara de leite morno (xícara de 240ml)',
+      '50ml de óleo',
+      '10g de fermento biológico seco',
+      '1 e 1/2 colher de sopa de açúcar',
+      '1 colher de manteiga ou margarina',
+      '1 batata cozida e amassada',
+      'mais ou menos 500 g de farinha de trigo',
+      '1/2 colher de sopa de sal',
+      '1 gema de ovo para pincelar por cima',
+      'Modo de preparo: no vídeo',
+    ]);
+  });
 }

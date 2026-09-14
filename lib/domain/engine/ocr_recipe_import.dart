@@ -78,6 +78,50 @@ final _clockLike = RegExp(r'^\d{1,2}:\d{2}(\s+\S{1,3})?$');
 /// Bateria/sinal da barra de status ("59%", "I 59%").
 final _batteryLike = RegExp(r'^\S{0,3}\s*\d{1,3}\s*%$');
 
+/// "Você" sozinho na linha — é como o Instagram identifica o autor quando o
+/// post é seu, aparece no lugar do nome de usuário. Nunca é nome de receita.
+final _selfProfileName = RegExp(r'^voc[eê]$', caseSensitive: false);
+
+/// "há 3 d", "há 2 horas" — quando o post foi publicado, não a receita.
+final _relativeTime = RegExp(
+  r'^h[áa]\s+\d+\s*'
+  r'(s|seg(undos?)?|min(utos?)?|h|horas?|d|dias?|sem(anas?)?|'
+  r'm[êe]s(es)?|anos?)$',
+  caseSensitive: false,
+);
+
+/// Placeholder do campo de comentário ("Responder a você", "Responder").
+final _replyPlaceholder = RegExp(r'^responder( a .+)?$', caseSensitive: false);
+
+/// "Curtido por fulano e outras 859.063 pessoas" — pode vir quebrado em
+/// duas linhas, com "pessoas" sozinho continuando.
+final _likedBySentence = RegExp(r'^curtido por .+$', caseSensitive: false);
+final _peopleContinuation = RegExp(r'^pessoas$', caseSensitive: false);
+
+/// Contador de curtida/comentário/compartilhamento só com o número, sem
+/// palavra nenhuma do lado (fica ao lado do ícone no Instagram/TikTok:
+/// "859 mil", "3.854", "6.940"). Mais arriscado que [_socialCount] (que
+/// exige a palavra), por isso só entra como número + opcional
+/// "mil"/"mi"/"k" — nada mais na linha.
+final _bareInteractionCount = RegExp(
+  r'^\d[\d.,]*\s*(mil|mi|k)?$',
+  caseSensitive: false,
+);
+
+/// Nome de usuário sem @ (o Instagram mostra só o texto no cabeçalho do
+/// post) — um token só, sem espaço, com underscore ("mais_receitas_").
+/// Ingrediente/passo real não tem esse formato.
+final _usernameLikeToken = RegExp(r'^\S*_\S*$');
+
+/// Ícone isolado que o OCR leu como um caractere solto sozinho na linha.
+final _strayGlyph = RegExp(r'^[+*#~•●]$');
+
+/// "•" no meio da linha (não só no começo, esse já é tirado por
+/// [_leadingBullet]) é quase sempre separador de UI — local + categoria
+/// ("Neighbours • Home"), tag + tag. Ingrediente/passo de verdade não usa
+/// esse caractere pra separar palavra.
+final _midLineBulletSeparator = RegExp(r'\S\s*[•●]\s*\S');
+
 /// Barra de abas do site grudada numa linha só ("Resumo Ingredientes Modo
 /// de preparo Comentários") — tem palavra de seção, mas não É uma seção;
 /// pra contar como aba teria que ter pelo menos duas dessas palavras juntas
@@ -105,7 +149,16 @@ bool _isChromeNoise(String line) =>
     _socialCount.hasMatch(line) ||
     _clockLike.hasMatch(line) ||
     _batteryLike.hasMatch(line) ||
-    _looksLikeNavTabBar(line);
+    _looksLikeNavTabBar(line) ||
+    _selfProfileName.hasMatch(line) ||
+    _relativeTime.hasMatch(line) ||
+    _replyPlaceholder.hasMatch(line) ||
+    _likedBySentence.hasMatch(line) ||
+    _peopleContinuation.hasMatch(line) ||
+    _bareInteractionCount.hasMatch(line) ||
+    _usernameLikeToken.hasMatch(line) ||
+    _strayGlyph.hasMatch(line) ||
+    _midLineBulletSeparator.hasMatch(line);
 
 /// Recebe as linhas de texto reconhecidas (em ordem de leitura) e monta um
 /// rascunho pro formulário — sempre revisado pelo usuário antes de salvar,

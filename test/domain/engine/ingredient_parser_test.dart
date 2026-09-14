@@ -142,6 +142,20 @@ void main() {
     expect(r.name, 'farinha');
   });
 
+  test('"xícara de chá" casa como unidade própria, não sobra "chá" no nome',
+      () {
+    final r = parseIngredientLine('2 xícaras de chá de farinha de trigo');
+    expect(r.quantity, 2);
+    expect(r.unitCode, 'xicara_cha');
+    expect(r.name, 'farinha de trigo');
+  });
+
+  test('"xícara de café" também casa como unidade própria', () {
+    final r = parseIngredientLine('1 xícara de café de leite');
+    expect(r.unitCode, 'xicara_cafe');
+    expect(r.name, 'leite');
+  });
+
   test('sem quantidade em lugar nenhum continua caindo no fallback', () {
     final r = parseIngredientLine('farinha de trigo integral');
     expect(r.quantity, isNull);
