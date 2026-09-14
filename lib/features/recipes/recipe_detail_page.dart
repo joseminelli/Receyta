@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/data/database/seed_data.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/domain/engine/ingredient_parser.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/folder_actions.dart';
 import 'package:receyta/features/recipes/recipe_form_view_model.dart';
@@ -232,14 +235,7 @@ class _Detail extends StatelessWidget {
                         ..._grouped(
                           detail.ingredients,
                           (i) => i.groupLabel,
-                          (idx, i) => Padding(
-                            padding:
-                                const EdgeInsets.only(bottom: AppSpacing.xs),
-                            child: Text(
-                              i.rawText,
-                              style: context.texts.bodyLarge,
-                            ),
-                          ),
+                          (idx, i) => _IngredientRow(i),
                         ),
                       ],
                       if (hasSteps) ...[
@@ -480,6 +476,87 @@ class _Hero extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Linha de ingrediente estruturada: quantidade em destaque + unidade (mais
+/// clara) numa coluna fixa, nome + qualificador (cinza) no resto da linha.
+/// Sem quantidade reconhecida (linha que o parser não deu conta), cai pro
+/// `rawText` cru — nunca esconde o que o usuário digitou.
+class _IngredientRow extends StatelessWidget {
+  const _IngredientRow(this.ingredient);
+
+  final RecipeIngredient ingredient;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final qty = ingredient.quantity;
+
+    if (qty == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+        child: Text(ingredient.rawText, style: context.texts.bodyLarge),
+      );
+    }
+
+    final parsed = parseIngredientLine(ingredient.rawText);
+    final unit = _unitLabel(ingredient.unitId, qty);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 68,
+            child: RichText(
+              text: TextSpan(
+                style: AppTextStyles.display(19).copyWith(color: colors.ink),
+                children: [
+                  TextSpan(text: _formatQuantity(qty)),
+                  if (unit != null)
+                    TextSpan(
+                      text: ' $unit',
+                      style: AppTextStyles.display(13)
+                          .copyWith(color: colors.textMuted),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: context.texts.bodyLarge?.copyWith(color: colors.ink),
+                children: [
+                  TextSpan(text: parsed.name),
+                  if (parsed.qualifier != null)
+                    TextSpan(
+                      text: ' ${parsed.qualifier}',
+                      style: context.texts.bodyLarge
+                          ?.copyWith(color: colors.textMuted),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatQuantity(double q) {
+  if (q == q.roundToDouble()) return q.toInt().toString();
+  return q.toString().replaceAll('.', ',');
+}
+
+String? _unitLabel(String? unitCode, double quantity) {
+  if (unitCode == null) return null;
+  for (final u in kSeedUnits) {
+    if (u.code == unitCode) return quantity == 1 ? u.displayName : u.plural;
+  }
+  return null;
 }
 
 /// Intercala subtítulos de grupo (§RF-01.4) numa lista de ingredientes ou

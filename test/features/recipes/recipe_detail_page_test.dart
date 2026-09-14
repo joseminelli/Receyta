@@ -27,9 +27,21 @@ RecipeDetail _detail() {
     ),
     ingredients: const [
       RecipeIngredient(
-          id: 'i1', recipeId: 'r1', rawText: '500g de frango', position: 0),
+        id: 'i1',
+        recipeId: 'r1',
+        rawText: '500g de frango',
+        position: 0,
+        quantity: 500,
+        unitId: 'g',
+      ),
       RecipeIngredient(
-          id: 'i2', recipeId: 'r1', rawText: '2 dentes de alho', position: 1),
+        id: 'i2',
+        recipeId: 'r1',
+        rawText: '2 dentes de alho',
+        position: 1,
+        quantity: 2,
+        unitId: 'dente',
+      ),
     ],
     steps: const [
       RecipeStep(id: 's1', recipeId: 'r1', text: 'Tempere o frango', position: 0),
@@ -74,8 +86,10 @@ void main() {
     expect(find.text('rápido para a semana'), findsOneWidget);
     expect(find.text('Ingredientes'), findsOneWidget);
     expect(find.text('2 itens'), findsOneWidget);
-    expect(find.text('500g de frango'), findsOneWidget);
-    expect(find.text('2 dentes de alho'), findsOneWidget);
+    expect(find.text('500 g', findRichText: true), findsOneWidget);
+    expect(find.text('frango', findRichText: true), findsOneWidget);
+    expect(find.text('2 dentes', findRichText: true), findsOneWidget);
+    expect(find.text('alho', findRichText: true), findsOneWidget);
     expect(find.text('Preparo'), findsOneWidget);
     expect(find.text('Tempere o frango'), findsOneWidget);
     expect(find.text('melhor no dia seguinte'), findsOneWidget);
