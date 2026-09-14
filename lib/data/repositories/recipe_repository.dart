@@ -117,6 +117,10 @@ class RecipeRepository {
     /// `ingredientLines`. Nulo = resolve pelo parser (C1) + getOrCreate (C2).
     List<String?> ingredientIds = const [],
     List<String> tagNames = const [],
+
+    /// De onde a receita foi importada (C7) — só entra na criação; editar
+    /// não mexe nele.
+    String? sourceUrl,
   }) async {
     final now = _clock().toUtc();
     final recipe = base == null
@@ -131,6 +135,7 @@ class RecipeRepository {
             cookMinutes: cookMinutes,
             servings: servings,
             notes: notes,
+            sourceUrl: sourceUrl,
           )
         : base.copyWith(
             name: name,
