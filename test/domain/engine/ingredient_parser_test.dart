@@ -95,6 +95,20 @@ void main() {
     expect(r.name, 'leite');
   });
 
+  test('mistura com "e" por extenso ("1 e 1/2")', () {
+    final r = parseIngredientLine('1 e 1/2 xícaras de farinha de trigo');
+    expect(r.quantity, 1.5);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'farinha de trigo');
+  });
+
+  test('mistura com "e" e fração unicode ("2 e ½")', () {
+    final r = parseIngredientLine('2 e ½ colheres de sopa de açúcar');
+    expect(r.quantity, 2.5);
+    expect(r.unitCode, 'colher_sopa');
+    expect(r.name, 'açúcar');
+  });
+
   test('unidade sem acento ainda casa (usuário digita "xicaras")', () {
     final r = parseIngredientLine('2 xicaras de farinha');
     expect(r.unitCode, 'xicara');

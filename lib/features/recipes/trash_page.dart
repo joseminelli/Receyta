@@ -289,16 +289,16 @@ class TrashLink extends ConsumerWidget {
     final count = ref.watch(trashedRecipesProvider).valueOrNull?.length ?? 0;
     if (count == 0) return const SizedBox.shrink();
 
-    return Center(
-      child: TextButton.icon(
-        onPressed: () => context.push('/trash'),
-        icon: Icon(Icons.delete_outline,
-            size: 18, color: context.colors.textMuted),
-        label: Text(
-          'Lixeira · $count',
-          style: context.texts.labelLarge
-              ?.copyWith(color: context.colors.textMuted),
-        ),
+    return TextButton.icon(
+      onPressed: () => context.push('/trash'),
+      icon:
+          Icon(Icons.delete_outline, size: 18, color: context.colors.textMuted),
+      label: Text(
+        'Lixeira · $count',
+        style:
+            context.texts.labelLarge?.copyWith(color: context.colors.textMuted),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

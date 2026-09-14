@@ -6,6 +6,7 @@ import 'package:receyta/bootstrap.dart';
 import 'package:receyta/features/folders/all_folders_page.dart';
 import 'package:receyta/features/folders/folder_page.dart';
 import 'package:receyta/features/recipes/cooking_mode_page.dart';
+import 'package:receyta/features/recipes/ingredients_page.dart';
 import 'package:receyta/features/recipes/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/recipe_form_page.dart';
 import 'package:receyta/features/recipes/search_page.dart';
@@ -73,6 +74,11 @@ final router = GoRouter(
       path: '/tags',
       name: 'tags',
       builder: (context, state) => const TagsPage(),
+    ),
+    GoRoute(
+      path: '/ingredients',
+      name: 'ingredients',
+      builder: (context, state) => const IngredientsPage(),
     ),
     GoRoute(
       path: '/search',

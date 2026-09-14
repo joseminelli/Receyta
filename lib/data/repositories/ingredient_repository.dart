@@ -31,6 +31,32 @@ class IngredientRepository {
   Stream<List<Ingredient>> watchAll() =>
       _dao.watchAll().map((rows) => rows.map(_toDomain).toList());
 
+  /// Catálogo com contagem de uso — a tela de gerenciar (C6).
+  Stream<List<IngredientWithCount>> watchAllWithCounts() {
+    return _dao.watchAllWithCounts().map(
+          (rows) => [
+            for (final row in rows)
+              (ingredient: _toDomain(row.ingredient), count: row.count),
+          ],
+        );
+  }
+
+  /// Junta [sourceId] em [targetId] (C6) — nunca automático, sempre a partir
+  /// de uma confirmação explícita na tela de gerenciar.
+  Future<Result<void>> merge(String sourceId, String targetId) async {
+    if (sourceId == targetId) {
+      return const Err(
+        ValidationFailure('Escolha um ingrediente diferente pra mesclar.'),
+      );
+    }
+    try {
+      await _dao.merge(sourceId, targetId);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao mesclar ingredientes', cause: e));
+    }
+  }
+
   Future<Result<void>> confirmAlias(
       String ingredientId, String aliasText) async {
     final key = normalize(aliasText);

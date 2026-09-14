@@ -200,16 +200,15 @@ class TagsLink extends ConsumerWidget {
     final count = ref.watch(tagsWithCountsProvider).valueOrNull?.length ?? 0;
     if (count == 0) return const SizedBox.shrink();
 
-    return Center(
-      child: TextButton.icon(
-        onPressed: () => context.push('/tags'),
-        icon: Icon(Icons.sell_outlined,
-            size: 18, color: context.colors.textMuted),
-        label: Text(
-          'Gerenciar tags',
-          style: context.texts.labelLarge
-              ?.copyWith(color: context.colors.textMuted),
-        ),
+    return TextButton.icon(
+      onPressed: () => context.push('/tags'),
+      icon: Icon(Icons.sell_outlined, size: 18, color: context.colors.textMuted),
+      label: Text(
+        'Tags',
+        style:
+            context.texts.labelLarge?.copyWith(color: context.colors.textMuted),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

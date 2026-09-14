@@ -8,6 +8,7 @@ import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/folder_actions.dart';
 import 'package:receyta/features/folders/folders_strip.dart';
 import 'package:receyta/features/folders/recipe_drag.dart';
+import 'package:receyta/features/recipes/ingredients_page.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/features/recipes/tags_page.dart';
 import 'package:receyta/features/recipes/trash_page.dart';
@@ -277,17 +278,20 @@ class _RecipeList extends StatelessWidget {
   }
 }
 
-/// Rodapé da lista: acessos discretos a gerenciar tags e à lixeira, cada um
-/// só aparece quando tem algo lá.
+/// Rodapé da lista: acessos discretos a gerenciar tags, ingredientes e à
+/// lixeira, lado a lado — cada um só aparece quando tem algo lá.
 class _HomeFooter extends StatelessWidget {
   const _HomeFooter();
 
   @override
   Widget build(BuildContext context) {
-    return const Wrap(
-      alignment: WrapAlignment.center,
-      spacing: AppSpacing.sm,
-      children: [TagsLink(), TrashLink()],
+    return const Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Flexible(child: TagsLink()),
+        Flexible(child: IngredientsLink()),
+        Flexible(child: TrashLink()),
+      ],
     );
   }
 }

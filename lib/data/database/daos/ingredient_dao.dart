@@ -11,7 +11,9 @@ part 'ingredient_dao.g.dart';
 /// Catálogo de ingredientes (§8.2). `getOrCreate` resolve por match exato do
 /// `normalized_key`, depois por alias confirmado; sem bater nenhum, cria um
 /// ingrediente novo. Fuzzy match com confirmação do usuário é o C4.
-@DriftAccessor(tables: [Ingredients, IngredientAliases])
+@DriftAccessor(
+  tables: [Ingredients, IngredientAliases, RecipeIngredients, ShoppingListItems],
+)
 class IngredientDao extends DatabaseAccessor<AppDatabase>
     with _$IngredientDaoMixin {
   IngredientDao(super.db, {Uuid uuid = const Uuid()}) : _uuid = uuid;
@@ -50,6 +52,76 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
     return (select(ingredients)
           ..orderBy([(i) => OrderingTerm.asc(i.displayName)]))
         .watch();
+  }
+
+  /// Catálogo inteiro com quantas linhas de receita usam cada ingrediente —
+  /// o que a tela de gerenciar (C6) lista.
+  Stream<List<({IngredientRow ingredient, int count})>> watchAllWithCounts() {
+    final count = recipeIngredients.recipeId.count();
+    final query = select(ingredients).join([
+      leftOuterJoin(
+        recipeIngredients,
+        recipeIngredients.ingredientId.equalsExp(ingredients.id),
+      ),
+    ])
+      ..addColumns([count])
+      ..groupBy([ingredients.id])
+      ..orderBy([OrderingTerm.asc(ingredients.displayName)]);
+    return query.watch().map(
+          (rows) => [
+            for (final row in rows)
+              (
+                ingredient: row.readTable(ingredients),
+                count: row.read(count) ?? 0,
+              ),
+          ],
+        );
+  }
+
+  /// Junta [sourceId] em [targetId] (C6): reaponta as linhas de receita e de
+  /// lista de compras que usavam a origem, preserva o nome e os aliases dela
+  /// como aliases do destino (nunca perde a capacidade de achar por esse
+  /// nome de novo) e apaga a linha de origem. `RecipeIngredients.ingredientId`
+  /// é `onDelete: restrict` — por isso reapontar tem que vir antes do apagar.
+  Future<void> merge(String sourceId, String targetId) {
+    if (sourceId == targetId) return Future.value();
+    return transaction(() async {
+      final source = await (select(ingredients)
+            ..where((i) => i.id.equals(sourceId)))
+          .getSingleOrNull();
+      if (source == null) return;
+
+      await (update(recipeIngredients)
+            ..where((i) => i.ingredientId.equals(sourceId)))
+          .write(RecipeIngredientsCompanion(ingredientId: Value(targetId)));
+      await (update(shoppingListItems)
+            ..where((i) => i.ingredientId.equals(sourceId)))
+          .write(ShoppingListItemsCompanion(ingredientId: Value(targetId)));
+
+      final sourceAliases = await (select(ingredientAliases)
+            ..where((a) => a.ingredientId.equals(sourceId)))
+          .get();
+      final keysToKeep = {
+        source.normalizedKey,
+        for (final a in sourceAliases) a.normalizedAlias,
+      };
+      for (final key in keysToKeep) {
+        final exists = await (select(ingredientAliases)
+              ..where((a) => a.normalizedAlias.equals(key)))
+            .getSingleOrNull();
+        if (exists == null) {
+          await into(ingredientAliases).insert(
+            IngredientAliasRow(
+              id: _uuid.v4(),
+              ingredientId: targetId,
+              normalizedAlias: key,
+            ),
+          );
+        }
+      }
+
+      await (delete(ingredients)..where((i) => i.id.equals(sourceId))).go();
+    });
   }
 
   /// Grava o alias confirmado pelo usuário (§8.2 passo 3) — próxima vez que

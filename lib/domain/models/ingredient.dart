@@ -14,3 +14,7 @@ class Ingredient with _$Ingredient {
     @Default(0) int usageCount,
   }) = _Ingredient;
 }
+
+/// Ingrediente com quantas linhas de receita usam ele — a tela de gerenciar
+/// (C6) lista assim.
+typedef IngredientWithCount = ({Ingredient ingredient, int count});

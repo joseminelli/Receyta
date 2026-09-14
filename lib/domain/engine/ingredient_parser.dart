@@ -58,8 +58,14 @@ const _fractionChars = {
 
 final _rangeRegex = RegExp(r'^(\d+(?:[.,]\d+)?)\s+a\s+(\d+(?:[.,]\d+)?)\s*',
     caseSensitive: false);
+final _mixedAsciiFractionWithERegex =
+    RegExp(r'^(\d+)\s+e\s+(\d+)\s*/\s*(\d+)\s*', caseSensitive: false);
 final _mixedAsciiFractionRegex = RegExp(r'^(\d+)\s+(\d+)\s*/\s*(\d+)\s*');
 final _asciiFractionRegex = RegExp(r'^(\d+)\s*/\s*(\d+)\s*');
+final _mixedUnicodeFractionWithERegex = RegExp(
+  '^(\\d+)\\s+e\\s+([${_fractionChars.keys.join()}])\\s*',
+  caseSensitive: false,
+);
 final _mixedUnicodeFractionRegex =
     RegExp('^(\\d+)\\s*([${_fractionChars.keys.join()}])\\s*');
 final _unicodeFractionRegex = RegExp('^([${_fractionChars.keys.join()}])\\s*');
@@ -102,6 +108,14 @@ ParsedIngredientLine parseIngredientLine(
     return (_parseDecimal(m.group(1)!), text.substring(m.end));
   }
 
+  m = _mixedAsciiFractionWithERegex.firstMatch(text);
+  if (m != null) {
+    final whole = int.parse(m.group(1)!);
+    final num = int.parse(m.group(2)!);
+    final den = int.parse(m.group(3)!);
+    return (den == 0 ? null : whole + num / den, text.substring(m.end));
+  }
+
   m = _mixedAsciiFractionRegex.firstMatch(text);
   if (m != null) {
     final whole = int.parse(m.group(1)!);
@@ -115,6 +129,12 @@ ParsedIngredientLine parseIngredientLine(
     final num = int.parse(m.group(1)!);
     final den = int.parse(m.group(2)!);
     return (den == 0 ? null : num / den, text.substring(m.end));
+  }
+
+  m = _mixedUnicodeFractionWithERegex.firstMatch(text);
+  if (m != null) {
+    final whole = int.parse(m.group(1)!);
+    return (whole + _fractionChars[m.group(2)!]!, text.substring(m.end));
   }
 
   m = _mixedUnicodeFractionRegex.firstMatch(text);

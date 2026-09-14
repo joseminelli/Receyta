@@ -502,6 +502,7 @@ class _IngredientRow extends StatelessWidget {
     final parsed = parseIngredientLine(ingredient.rawText);
     final unit = _unitLabel(ingredient.unitId, qty);
     final base = context.texts.bodyLarge?.copyWith(color: colors.ink);
+    final quantityStyle = AppTextStyles.metric.copyWith(color: colors.ink);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -509,10 +510,7 @@ class _IngredientRow extends StatelessWidget {
         text: TextSpan(
           style: base,
           children: [
-            TextSpan(
-              text: _formatQuantity(qty),
-              style: AppTextStyles.metric.copyWith(color: colors.ink),
-            ),
+            ..._quantitySpans(qty, quantityStyle, colors.textMuted),
             if (unit != null) ...[
               TextSpan(
                 text: '   $unit',
@@ -535,9 +533,109 @@ class _IngredientRow extends StatelessWidget {
   }
 }
 
-String _formatQuantity(double q) {
-  if (q == q.roundToDouble()) return q.toInt().toString();
-  return q.toString().replaceAll('.', ',');
+/// Frações comuns de cozinha reconhecidas na parte decimal — mostra "2 e ½"
+/// com fração de verdade (numerador sobre denominador) em vez de decimal
+/// ("2,5", ou pior, "2,3333333333333335" pra 1/3).
+final _fractionTable = [
+  (0.5, 1, 2),
+  (1 / 3, 1, 3),
+  (2 / 3, 2, 3),
+  (0.25, 1, 4),
+  (0.75, 3, 4),
+  (0.2, 1, 5),
+  (0.4, 2, 5),
+  (0.6, 3, 5),
+  (0.8, 4, 5),
+  (1 / 6, 1, 6),
+  (5 / 6, 5, 6),
+  (0.125, 1, 8),
+  (0.375, 3, 8),
+  (0.625, 5, 8),
+  (0.875, 7, 8),
+];
+
+/// Spans da quantidade: número inteiro, opcionalmente seguido de "e" + a
+/// fração empilhada. Sem fração reconhecida, cai num decimal arredondado.
+List<InlineSpan> _quantitySpans(double q, TextStyle style, Color eColor) {
+  final whole = q.floor();
+  final frac = q - whole;
+  if (frac < 0.005) {
+    return [TextSpan(text: '$whole', style: style)];
+  }
+
+  for (final (value, num, den) in _fractionTable) {
+    if ((frac - value).abs() < 0.02) {
+      return [
+        if (whole > 0) ...[
+          TextSpan(text: '$whole', style: style),
+          TextSpan(
+            text: '   e ',
+            style: style.copyWith(
+              fontSize: (style.fontSize ?? 16) * 0.6,
+              color: eColor,
+            ),
+          ),
+        ],
+        WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: _StackedFraction(
+            numerator: num,
+            denominator: den,
+            style: style,
+          ),
+        ),
+      ];
+    }
+  }
+  return [TextSpan(text: _trimDecimal(q), style: style)];
+}
+
+String _trimDecimal(double q) {
+  var s = q.toStringAsFixed(2);
+  if (s.contains('.')) {
+    s = s.replaceFirst(RegExp(r'0+$'), '');
+    s = s.replaceFirst(RegExp(r'\.$'), '');
+  }
+  return s.replaceAll('.', ',');
+}
+
+/// Fração de verdade: numerador em cima, traço, denominador embaixo — em
+/// vez do caractere unicode (½, ⅓...), que a fonte display não tem no
+/// conjunto de glyphs e cai pra fonte do sistema no meio do texto.
+class _StackedFraction extends StatelessWidget {
+  const _StackedFraction({
+    required this.numerator,
+    required this.denominator,
+    required this.style,
+  });
+
+  final int numerator;
+  final int denominator;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final digitSize = (style.fontSize ?? 16) * 0.68;
+    final digitStyle = style.copyWith(fontSize: digitSize, height: 1);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text('$numerator', style: digitStyle),
+          Container(
+            width: digitSize,
+            height: 1.4,
+            margin: const EdgeInsets.symmetric(vertical: 1),
+            color: style.color,
+          ),
+          Text('$denominator', style: digitStyle),
+        ],
+      ),
+    );
+  }
 }
 
 String? _unitLabel(String? unitCode, double quantity) {
