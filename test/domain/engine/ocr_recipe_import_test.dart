@@ -117,4 +117,30 @@ void main() {
     expect(parseOcrLines([]), isNull);
     expect(parseOcrLines(['', '  ']), isNull);
   });
+
+  test('descarta ruído de interface de rede social (print de TikTok)', () {
+    final r = parseOcrLines([
+      '@chefreceitas',
+      'Bolo de fubá',
+      'Seguir',
+      '1,2 mil curtidas',
+      'Ingredientes',
+      '2 xícaras de fubá',
+      '#receitafacil',
+      '340 comentários',
+      'Modo de preparo',
+      'Misture tudo',
+      'Compartilhar',
+    ]);
+
+    expect(r!.name, 'Bolo de fubá');
+    expect(r.ingredientLines, ['2 xícaras de fubá']);
+    expect(r.stepLines, ['Misture tudo']);
+  });
+
+  test('ruído de rede social sozinho não quebra nada (só some)', () {
+    final r = parseOcrLines(['Seguir', '@fulano', 'Bolo', 'Farinha']);
+    expect(r!.name, 'Bolo');
+    expect(r.ingredientLines, ['Farinha']);
+  });
 }

@@ -24,7 +24,9 @@ class RecipeOcrService {
   Future<Result<ImportedRecipe>> importFromPhoto(ImageSource source) async {
     XFile? file;
     try {
-      file = await _picker.pickImage(source: source, imageQuality: 85);
+      // Sem compressão: OCR lê melhor com a imagem em qualidade original
+      // (comprimir demais é a diferença entre reconhecer certo e não).
+      file = await _picker.pickImage(source: source, imageQuality: 100);
       if (file == null) {
         return const Err(ValidationFailure('Nenhuma foto escolhida.'));
       }

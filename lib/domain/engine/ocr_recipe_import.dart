@@ -31,14 +31,40 @@ final _leadingBullet = RegExp(r'^[•●○◦▪‣∙·*\-–—»>]+\s*');
 
 String _cleanLine(String line) => line.trim().replaceFirst(_leadingBullet, '').trim();
 
+/// Botão/rótulo de interface que aparece inteiro de rede social (print de
+/// vídeo do TikTok/Instagram, não da receita em si).
+final _socialUiButton = RegExp(
+  r'^(seguir|seguindo|curtir|curtido|denunciar|compartilhar|comentar|'
+  r'coment[aá]rios?|enviar|salvar|traduzir|ver tradu[cç][aã]o|ver mais|'
+  r'toque para (pausar|reproduzir)|adicionar coment[aá]rio)$',
+  caseSensitive: false,
+);
+
+/// "@fulano123" ou "#receitafacil" — nunca é ingrediente/passo.
+final _handleOrHashtag = RegExp(r'^[@#]\S+$');
+
+/// "1,2 mil curtidas", "340 comentários", "89k visualizações".
+final _socialCount = RegExp(
+  r'^\d[\d.,]*\s*(mil|mi|k)?\s*'
+  r'(curtidas?|coment[aá]rios?|compartilhamentos?|visualiza[cç][oõ]es|'
+  r'seguidores)$',
+  caseSensitive: false,
+);
+
+bool _isSocialNoise(String line) =>
+    _socialUiButton.hasMatch(line) ||
+    _handleOrHashtag.hasMatch(line) ||
+    _socialCount.hasMatch(line);
+
 /// Recebe as linhas de texto reconhecidas (em ordem de leitura) e monta um
 /// rascunho pro formulário — sempre revisado pelo usuário antes de salvar,
 /// nunca cria a receita sozinha. Sem nenhum texto reconhecível, devolve
-/// `null`.
+/// `null`. Descarta de cara ruído de interface de rede social (print de
+/// vídeo do TikTok/Instagram: "Seguir", contador de curtidas, @usuário...).
 ImportedRecipe? parseOcrLines(List<String> rawLines) {
   final lines = [
     for (final l in rawLines) _cleanLine(l),
-  ].where((l) => l.isNotEmpty).toList();
+  ].where((l) => l.isNotEmpty && !_isSocialNoise(l)).toList();
   if (lines.isEmpty) return null;
 
   final ingredientsAt = lines.indexWhere(_ingredientsHeading.hasMatch);
