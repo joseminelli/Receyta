@@ -143,4 +143,51 @@ void main() {
     expect(r!.name, 'Bolo');
     expect(r.ingredientLines, ['Farinha']);
   });
+
+  test('print de site de receita: barra de status, abas, legenda e anúncio '
+      'no fim não entram no resultado', () {
+    final r = parseOcrLines([
+      '22:11 O',
+      'Resumo Ingredientes Modo de preparo Comentários',
+      'Bolo de nozes — Foto: Receitas',
+      'Ingredientes',
+      '3 claras',
+      '3 gemas',
+      '2 xícaras de chá de açúcar',
+      '2 xícaras de chá de farinha de trigo',
+      '1 xícara de chá de leite',
+      '1 colher de sopa de fermento em pó',
+      '1 xícara de chá de nozes trituradas',
+      'Faltou algo? Tenta essas',
+      'globoplay',
+      'BELEZA VERDADEIRA',
+      'Assista',
+      'I 59%',
+    ]);
+
+    expect(r!.name, 'Bolo de nozes');
+    expect(r.about, isNull);
+    expect(r.ingredientLines, [
+      '3 claras',
+      '3 gemas',
+      '2 xícaras de chá de açúcar',
+      '2 xícaras de chá de farinha de trigo',
+      '1 xícara de chá de leite',
+      '1 colher de sopa de fermento em pó',
+      '1 xícara de chá de nozes trituradas',
+    ]);
+  });
+
+  test('cabeçalho de anúncio ("Faltou algo?") sozinho, sem "Ingredientes" '
+      'nenhum, ainda corta a lista no melhor esforço', () {
+    final r = parseOcrLines([
+      'Bolo simples',
+      'farinha',
+      'açúcar',
+      'Faltou algo? Tenta essas',
+      'globoplay',
+    ]);
+    expect(r!.name, 'Bolo simples');
+    expect(r.ingredientLines, ['farinha', 'açúcar']);
+  });
 }

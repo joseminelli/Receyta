@@ -19,6 +19,18 @@ final _stepsHeading = RegExp(
   caseSensitive: false,
 );
 
+/// Widget de "sugestões"/anúncio que sites de receita costumam pôr logo
+/// depois da lista de ingredientes ("Faltou algo? Tenta essas", receitas
+/// relacionadas, banner de propaganda). Não é passo nenhum — é onde a
+/// lista de ingredientes para, mesmo sem achar "Modo de preparo" depois
+/// (comum em print de tela que corta antes de chegar lá).
+final _sectionStopMarker = RegExp(
+  r'^(falt(ou|a) algo\??( tenta essas)?|tenta essas|'
+  r'voc[eê] tamb[eé]m pode gostar|receitas relacionadas|mais receitas|'
+  r'publicidade|an[uú]ncio|globoplay|assista( agora)?)$',
+  caseSensitive: false,
+);
+
 final _numberedStepPrefix = RegExp(
   r'^(?:\d+\s*[.\)]|passo\s*\d+\s*[:.]?|step\s*\d+\s*[:.]?)\s*',
   caseSensitive: false,
@@ -29,7 +41,15 @@ final _numberedStepPrefix = RegExp(
 /// a barra da fração ("1/4") nunca é tocada.
 final _leadingBullet = RegExp(r'^[•●○◦▪‣∙·*\-–—»>]+\s*');
 
-String _cleanLine(String line) => line.trim().replaceFirst(_leadingBullet, '').trim();
+/// "Bolo de nozes — Foto: Receitas" — legenda de foto de site, comum vir
+/// grudada no nome de verdade. Tira só o pedaço da legenda.
+final _photoCaptionSuffix = RegExp(r'\s*[—–-]\s*foto:.*$', caseSensitive: false);
+
+String _cleanLine(String line) {
+  var l = line.trim().replaceFirst(_leadingBullet, '').trim();
+  l = l.replaceFirst(_photoCaptionSuffix, '').trim();
+  return l;
+}
 
 /// Botão/rótulo de interface que aparece inteiro de rede social (print de
 /// vídeo do TikTok/Instagram, não da receita em si).
@@ -51,31 +71,69 @@ final _socialCount = RegExp(
   caseSensitive: false,
 );
 
-bool _isSocialNoise(String line) =>
+/// Relógio da barra de status ("22:11", às vezes com um glyph de ícone
+/// vizinho mal lido grudado, tipo "22:11 O").
+final _clockLike = RegExp(r'^\d{1,2}:\d{2}(\s+\S{1,3})?$');
+
+/// Bateria/sinal da barra de status ("59%", "I 59%").
+final _batteryLike = RegExp(r'^\S{0,3}\s*\d{1,3}\s*%$');
+
+/// Barra de abas do site grudada numa linha só ("Resumo Ingredientes Modo
+/// de preparo Comentários") — tem palavra de seção, mas não É uma seção;
+/// pra contar como aba teria que ter pelo menos duas dessas palavras juntas
+/// (uma só, sozinha na linha, já é pega por [_ingredientsHeading]/
+/// [_stepsHeading] normalmente).
+final _navTabWords = [
+  RegExp(r'\bresumo\b', caseSensitive: false),
+  RegExp(r'\bingredientes?\b', caseSensitive: false),
+  RegExp(r'\bmodo de preparo\b', caseSensitive: false),
+  RegExp(r'\bcoment[aá]rios?\b', caseSensitive: false),
+];
+
+bool _looksLikeNavTabBar(String line) {
+  var hits = 0;
+  for (final w in _navTabWords) {
+    if (w.hasMatch(line)) hits++;
+    if (hits >= 2) return true;
+  }
+  return false;
+}
+
+bool _isChromeNoise(String line) =>
     _socialUiButton.hasMatch(line) ||
     _handleOrHashtag.hasMatch(line) ||
-    _socialCount.hasMatch(line);
+    _socialCount.hasMatch(line) ||
+    _clockLike.hasMatch(line) ||
+    _batteryLike.hasMatch(line) ||
+    _looksLikeNavTabBar(line);
 
 /// Recebe as linhas de texto reconhecidas (em ordem de leitura) e monta um
 /// rascunho pro formulário — sempre revisado pelo usuário antes de salvar,
 /// nunca cria a receita sozinha. Sem nenhum texto reconhecível, devolve
-/// `null`. Descarta de cara ruído de interface de rede social (print de
-/// vídeo do TikTok/Instagram: "Seguir", contador de curtidas, @usuário...).
+/// `null`. Descarta de cara ruído de interface — barra de status do
+/// celular, abas do site, botão/contador de rede social (print de vídeo do
+/// TikTok/Instagram: "Seguir", curtidas, @usuário...).
 ImportedRecipe? parseOcrLines(List<String> rawLines) {
   final lines = [
     for (final l in rawLines) _cleanLine(l),
-  ].where((l) => l.isNotEmpty && !_isSocialNoise(l)).toList();
+  ].where((l) => l.isNotEmpty && !_isChromeNoise(l)).toList();
   if (lines.isEmpty) return null;
 
   final ingredientsAt = lines.indexWhere(_ingredientsHeading.hasMatch);
   final stepsAt = lines.indexWhere(_stepsHeading.hasMatch);
+  final stopAt = lines.indexWhere(
+    _sectionStopMarker.hasMatch,
+    ingredientsAt == -1 ? 0 : ingredientsAt + 1,
+  );
 
   if (ingredientsAt == -1 && stepsAt == -1) {
     // Sem nenhum marcador de seção — melhor esforço: 1ª linha é o nome, o
-    // resto vira ingredientes (o usuário reorganiza na revisão).
+    // resto vira ingredientes (o usuário reorganiza na revisão), parando
+    // num widget de sugestão/anúncio se achar um.
+    final cut = stopAt == -1 ? lines.length : stopAt;
     return ImportedRecipe(
       name: lines.first,
-      ingredientLines: lines.skip(1).toList(),
+      ingredientLines: lines.sublist(1, cut < 1 ? 1 : cut),
     );
   }
 
@@ -87,12 +145,15 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
   final name = titleLines.isEmpty ? 'Receita importada' : titleLines.first;
   final about = titleLines.length > 1 ? titleLines.skip(1).join(' ') : null;
 
+  final ingredientsEnd = [
+    if (stepsAt > ingredientsAt) stepsAt,
+    if (stopAt != -1 && stopAt > ingredientsAt) stopAt,
+    lines.length,
+  ].reduce((a, b) => a < b ? a : b);
+
   final ingredientLines = ingredientsAt == -1
       ? const <String>[]
-      : lines.sublist(
-          ingredientsAt + 1,
-          stepsAt > ingredientsAt ? stepsAt : lines.length,
-        );
+      : lines.sublist(ingredientsAt + 1, ingredientsEnd);
 
   final stepLines = stepsAt == -1
       ? const <String>[]

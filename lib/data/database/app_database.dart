@@ -177,9 +177,14 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Força a abertura preguiçosa do banco, rodando migração e seed. É o que
-  /// `appBootstrapProvider` aguarda antes de liberar a home.
+  /// `appBootstrapProvider` aguarda antes de liberar a home. `_seed()` roda
+  /// de novo aqui (além do `onCreate`) porque é `insertOrIgnore` — banco já
+  /// existente só ganha as linhas novas que entrarem em `kSeedUnits`/
+  /// `kSeedCategories`/`kSeedNormalizerTerms` depois da instalação original,
+  /// sem duplicar o que já tinha.
   Future<void> ensureReady() async {
     await customSelect('SELECT 1').get();
+    await _seed();
     await _backfillLastOpenedAt();
   }
 
