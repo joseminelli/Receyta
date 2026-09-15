@@ -16,6 +16,7 @@ import 'package:receyta/features/recipes/tags_page.dart';
 import 'package:receyta/features/recipes/trash_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/featured_recipe_card.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/expanding_create_menu.dart';
@@ -81,7 +82,10 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
         controller: _controller,
         count: totalCount,
         onCreate: openNew,
-        body: const SliverToBoxAdapter(child: SizedBox.shrink()),
+        body: const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: BrandLoader()),
+        ),
       ),
       error: (_, __) => _Scaffold(
         controller: _controller,

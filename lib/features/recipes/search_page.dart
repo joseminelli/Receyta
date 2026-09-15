@@ -9,6 +9,7 @@ import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -75,7 +76,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             child: query.isEmpty
                 ? _Browse(onPickTag: _setQuery)
                 : results.when(
-                    loading: () => const SizedBox.shrink(),
+                    loading: () => const Center(child: BrandLoader()),
                     error: (_, __) => const _Message('Não deu para buscar.'),
                     data: (list) => list.isEmpty
                         ? _Message('Nada encontrado para "$query".')

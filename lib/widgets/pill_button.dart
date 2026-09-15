@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 
 /// Papel visual do botão. Define o par fundo/texto — nunca combine cores à mão,
 /// porque as regras de pareamento da §9.2 não são simétricas.
@@ -38,6 +39,7 @@ class PillButton extends StatelessWidget {
     this.variant = PillButtonVariant.primary,
     this.icon,
     this.dense = false,
+    this.loading = false,
   });
 
   final String label;
@@ -51,10 +53,16 @@ class PillButton extends StatelessWidget {
   /// Reduz o padding horizontal. A altura mínima de toque é preservada.
   final bool dense;
 
+  /// Ação em andamento (ex.: salvando) — mantém a cor "ligada" (não é erro
+  /// nem estado inválido, só ocupado) mas bloqueia o toque, e troca o ícone
+  /// por um [BrandLoader] pequeno sem mudar a largura do botão.
+  final bool loading;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final enabled = onPressed != null;
+    final looksEnabled = onPressed != null;
+    final interactive = looksEnabled && !loading;
 
     final (background, foreground) = switch (variant) {
       PillButtonVariant.primary => (colors.ink, colors.lime),
@@ -65,15 +73,18 @@ class PillButton extends StatelessWidget {
     };
 
     // Desabilitado perde saturação sem virar cinza: mistura com a superfície.
-    final effectiveBackground =
-        enabled ? background : Color.alphaBlend(background.withValues(alpha: 0.35), colors.paper);
-    final effectiveForeground = enabled ? foreground : colors.textMuted;
+    // "Carregando" não conta como desabilitado aqui — continua com a cor
+    // cheia, só sem toque.
+    final effectiveBackground = looksEnabled
+        ? background
+        : Color.alphaBlend(background.withValues(alpha: 0.35), colors.paper);
+    final effectiveForeground = looksEnabled ? foreground : colors.textMuted;
 
     return Material(
       color: effectiveBackground,
       borderRadius: BorderRadius.circular(AppRadii.pill),
       child: InkWell(
-        onTap: onPressed,
+        onTap: interactive ? onPressed : null,
         borderRadius: BorderRadius.circular(AppRadii.pill),
         child: ConstrainedBox(
           constraints: const BoxConstraints(
@@ -86,7 +97,10 @@ class PillButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (icon != null) ...[
+                if (loading) ...[
+                  BrandLoader(size: 18, color: effectiveForeground),
+                  const SizedBox(width: AppSpacing.xs),
+                ] else if (icon != null) ...[
                   Icon(icon, size: 18, color: effectiveForeground),
                   const SizedBox(width: AppSpacing.xs),
                 ],

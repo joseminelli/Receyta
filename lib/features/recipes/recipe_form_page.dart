@@ -319,7 +319,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
 
   @override
   Widget build(BuildContext context) {
-    final canSave = _name.text.trim().isNotEmpty && !_saving;
+    final hasName = _name.text.trim().isNotEmpty;
     final blocked = _isCoverScreenSize(context);
     final ingredientSuggestions =
         ref.watch(allIngredientsProvider).valueOrNull ?? const <Ingredient>[];
@@ -330,7 +330,8 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
         children: [
           _TopBar(
             title: _isEditing ? 'Editar receita' : 'Nova receita',
-            onSave: canSave ? _save : null,
+            onSave: hasName ? _save : null,
+            saving: _saving,
           ),
           Expanded(
             child: ListView(
@@ -630,10 +631,15 @@ class _PhoneHalf extends StatelessWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.title, required this.onSave});
+  const _TopBar({
+    required this.title,
+    required this.onSave,
+    this.saving = false,
+  });
 
   final String title;
   final VoidCallback? onSave;
+  final bool saving;
 
   @override
   Widget build(BuildContext context) {
@@ -652,7 +658,7 @@ class _TopBar extends StatelessWidget {
             color: context.colors.ink,
           ),
           Expanded(child: Text(title, style: context.texts.displaySmall)),
-          PillButton(label: 'Salvar', onPressed: onSave),
+          PillButton(label: 'Salvar', onPressed: onSave, loading: saving),
         ],
       ),
     );
