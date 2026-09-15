@@ -1,0 +1,5 @@
+# Padrão fica "compact" (linha única sobrescrevendo, colorida, detalha
+# sozinha quando algo falha) — "expanded" (uma linha por teste) é ótimo pra
+# rodar um arquivo só, mas vira parede de texto na suíte inteira. Pra ligar
+# na hora: `flutter test --reporter expanded <arquivo>`.
+reporter: compact

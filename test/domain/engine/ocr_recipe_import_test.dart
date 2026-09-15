@@ -234,8 +234,10 @@ void main() {
       'mais ou menos 500 g de farinha de trigo',
       '1/2 colher de sopa de sal',
       '1 gema de ovo para pincelar por cima',
-      'Modo de preparo: no vídeo',
     ]);
+    // "Modo de preparo: no vídeo" tem texto colado depois dos dois-pontos —
+    // esse texto vira o passo (não uma linha de ingrediente perdida).
+    expect(r.stepLines, ['no vídeo']);
   });
 
   test('cabeçalho "Ingredientes:"/"Modo de Preparo:" com dois-pontos ainda '
@@ -286,5 +288,86 @@ void main() {
       'Prepare a maçã: rale ou corte em cubos.',
       'Misture os ingredientes.',
     ]);
+  });
+
+  test('caderno de receita: ingredientes direto embaixo do nome, sem '
+      'heading "Ingredientes" nenhum, ainda vão pro campo certo (achado por '
+      'onde o "Preparo:" começa)', () {
+    final r = parseOcrLines([
+      '10) Pão sem queijo',
+      '600g de batata baroa',
+      '2 xícaras de polvilho azedo',
+      'Sal a gosto',
+      'Preparo:',
+      'Descasque a batata e cozinhe no vapor.',
+      'Asse em forno quente.',
+    ]);
+
+    expect(r!.name, '10) Pão sem queijo');
+    expect(r.about, isNull);
+    expect(r.ingredientLines, [
+      '600g de batata baroa',
+      '2 xícaras de polvilho azedo',
+      'Sal a gosto',
+    ]);
+    expect(r.stepLines, [
+      'Descasque a batata e cozinhe no vapor.',
+      'Asse em forno quente.',
+    ]);
+  });
+
+  test('caderno de receita sem heading nenhum (nem ingrediente, nem '
+      'preparo): a lista para onde a instrução de preparo começa, não onde '
+      'a foto acaba', () {
+    final r = parseOcrLines([
+      'Pão de aveia',
+      '4 ovos',
+      '170g de iogurte natural',
+      'Sal a gosto',
+      'No liquidificador coloque todos os ingredientes menos o fermento.',
+      'Asse por 25 minutos.',
+    ]);
+
+    expect(r!.name, 'Pão de aveia');
+    expect(r.ingredientLines, [
+      '4 ovos',
+      '170g de iogurte natural',
+      'Sal a gosto',
+    ]);
+    expect(r.stepLines, [
+      'No liquidificador coloque todos os ingredientes menos o fermento.',
+      'Asse por 25 minutos.',
+    ]);
+  });
+
+  test('nome vem depois da lista de ingredientes (recorte de post com nome '
+      'estilizado no fim, "Ingredientes" já é a 1ª linha)', () {
+    final r = parseOcrLines([
+      'Ingredientes',
+      '2 ovos',
+      '1 xícara de farinha',
+      'bolo de iogurte',
+    ]);
+
+    expect(r!.name, 'bolo de iogurte');
+    expect(r.ingredientLines, ['2 ovos', '1 xícara de farinha']);
+  });
+
+  test('barra de abas do site com cada aba em linha separada some inteira '
+      '(sem confundir com o heading "Ingredientes" de verdade mais abaixo)',
+      () {
+    final r = parseOcrLines([
+      'Resumo',
+      'Ingredientes',
+      'Modo de preparo',
+      'Comentários',
+      'Bolo de nozes',
+      'Ingredientes',
+      '3 claras',
+      '3 gemas',
+    ]);
+
+    expect(r!.name, 'Bolo de nozes');
+    expect(r.ingredientLines, ['3 claras', '3 gemas']);
   });
 }

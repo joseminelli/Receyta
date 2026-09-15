@@ -11,15 +11,20 @@ import 'recipe_import.dart';
 /// Aceita dois-pontos no fim ("Ingredientes:") — quase toda receita de
 /// verdade escreve o cabeçalho assim; exigir a linha inteira sem pontuação
 /// nenhuma fazia o cabeçalho passar batido e tudo (inclusive o preparo)
-/// cair no fallback de "não achei seção nenhuma".
+/// cair no fallback de "não achei seção nenhuma". Também aceita texto colado
+/// depois dos dois-pontos ("Modo de preparo: no vídeo") — o grupo nomeado
+/// `rest` guarda esse texto pra virar conteúdo da seção em vez de vazar pra
+/// seção errada (sem os dois-pontos não aceita colado, só o cabeçalho
+/// sozinho — senão qualquer frase começando com "ingredientes" viraria
+/// cabeçalho).
 final _ingredientsHeading = RegExp(
-  r'^ingredientes?\s*:?$',
+  r'^ingredientes?(\s*:\s*(?<rest>\S.*)|\s*:?)$',
   caseSensitive: false,
 );
 
 final _stepsHeading = RegExp(
   r'^(modo de preparo|modo de fazer|preparo|instru(ç|c)(õ|o)es|como fazer|'
-  r'm(é|e)todo|instructions|directions)\s*:?$',
+  r'm(é|e)todo|instructions|directions)(\s*:\s*(?<rest>\S.*)|\s*:?)$',
   caseSensitive: false,
 );
 
@@ -153,6 +158,42 @@ bool _looksLikeNavTabBar(String line) {
   return false;
 }
 
+/// Mesma barra de abas de [_looksLikeNavTabBar], mas pro caso do OCR ler
+/// cada aba como uma linha separada (comum quando são botões espacialmente
+/// afastados na tela) — aí nenhuma linha sozinha tem duas palavras de aba
+/// juntas. "Ingredientes" ou "Comentários" sozinhos na linha só contam como
+/// ruído quando vêm GRUDADOS a outra aba (2+ seguidas); um "Ingredientes"
+/// isolado, longe de qualquer outra aba, é o cabeçalho de verdade.
+final _soloNavTabWord = RegExp(
+  r'^(resumo|ingredientes?|modo de preparo|coment[aá]\w*)$',
+  caseSensitive: false,
+);
+
+List<String> _dropNavTabRuns(List<String> lines) {
+  final drop = List<bool>.filled(lines.length, false);
+  var i = 0;
+  while (i < lines.length) {
+    if (!_soloNavTabWord.hasMatch(lines[i])) {
+      i++;
+      continue;
+    }
+    var j = i + 1;
+    while (j < lines.length && _soloNavTabWord.hasMatch(lines[j])) {
+      j++;
+    }
+    if (j - i >= 2) {
+      for (var k = i; k < j; k++) {
+        drop[k] = true;
+      }
+    }
+    i = j;
+  }
+  return [
+    for (var k = 0; k < lines.length; k++)
+      if (!drop[k]) lines[k],
+  ];
+}
+
 /// Barra de abas de busca do Google ("Modo IA", "Tudo", "Shopping",
 /// "Vídeos curtos"...) — aparece em print de tela de resultado de busca,
 /// não é conteúdo da receita.
@@ -219,9 +260,10 @@ int _titleLineIndex(List<String> titleLines) {
 /// celular, abas do site, botão/contador de rede social (print de vídeo do
 /// TikTok/Instagram: "Seguir", curtidas, @usuário...).
 ImportedRecipe? parseOcrLines(List<String> rawLines) {
-  final lines = [
+  var lines = [
     for (final l in rawLines) _cleanLine(l),
   ].where((l) => l.isNotEmpty && !_isChromeNoise(l)).toList();
+  lines = _dropNavTabRuns(lines);
   if (lines.isEmpty) return null;
 
   final ingredientsAt = lines.indexWhere(_ingredientsHeading.hasMatch);
@@ -230,15 +272,24 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     _sectionStopMarker.hasMatch,
     ingredientsAt == -1 ? 0 : ingredientsAt + 1,
   );
+  // Texto colado depois do heading ("Modo de preparo: no vídeo") vira 1º
+  // conteúdo da seção em vez de vazar pra fora dela — ver [_stepsHeading].
+  final stepsRest = stepsAt == -1
+      ? null
+      : _stepsHeading.firstMatch(lines[stepsAt])?.namedGroup('rest');
 
   if (ingredientsAt == -1 && stepsAt == -1) {
-    // Sem nenhum marcador de seção — melhor esforço: 1ª linha é o nome, o
-    // resto vira ingredientes (o usuário reorganiza na revisão), parando
-    // num widget de sugestão/anúncio se achar um.
+    // Sem nenhum marcador de seção — 1ª linha é o nome; dali em diante,
+    // enquanto a linha tiver cara de ingrediente (e não de instrução de
+    // preparo), continua na lista de ingredientes — daí pra frente já é
+    // preparo. Também para num widget de sugestão/anúncio se achar um.
     final cut = stopAt == -1 ? lines.length : stopAt;
+    final body = lines.sublist(1, cut < 1 ? 1 : cut);
+    final ingredientsEnd = _ingredientRunEnd(body, 0, body.length);
     return ImportedRecipe(
       name: lines.first,
-      ingredientLines: lines.sublist(1, cut < 1 ? 1 : cut),
+      ingredientLines: body.sublist(0, ingredientsEnd),
+      stepLines: _splitSteps(body.sublist(ingredientsEnd)),
     );
   }
 
@@ -247,34 +298,65 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     if (stepsAt != -1) stepsAt,
   ].reduce((a, b) => a < b ? a : b);
   final titleLines = lines.sublist(0, titleEnd);
-  String name;
+
+  var name = 'Receita importada';
   String? about;
-  if (titleLines.isEmpty) {
-    name = 'Receita importada';
-    about = null;
-  } else {
+  var ingredientLinesFromTitleBlock = const <String>[];
+  if (titleLines.isNotEmpty) {
     final titleIdx = _titleLineIndex(titleLines);
     name = titleLines[titleIdx];
-    final aboutLines = [
-      ...titleLines.take(titleIdx),
-      ...titleLines.skip(titleIdx + 1),
-    ];
-    about = aboutLines.isEmpty ? null : aboutLines.join(' ');
+    final beforeName = titleLines.take(titleIdx).toList();
+    final afterName = titleLines.skip(titleIdx + 1).toList();
+
+    if (ingredientsAt == -1) {
+      // Achou heading de preparo mas não de "Ingredientes:" — a lista está
+      // misturada no bloco do título, sem rótulo na frente (comum em
+      // caderno/livro de receita). Mesma heurística de formato usada acima.
+      final run = _ingredientRunEnd(afterName, 0, afterName.length);
+      ingredientLinesFromTitleBlock = afterName.sublist(0, run);
+      final aboutLines = [...beforeName, ...afterName.sublist(run)];
+      about = aboutLines.isEmpty ? null : aboutLines.join(' ');
+    } else {
+      final aboutLines = [...beforeName, ...afterName];
+      about = aboutLines.isEmpty ? null : aboutLines.join(' ');
+    }
   }
 
-  final ingredientsEnd = [
-    if (stepsAt > ingredientsAt) stepsAt,
-    if (stopAt != -1 && stopAt > ingredientsAt) stopAt,
-    lines.length,
-  ].reduce((a, b) => a < b ? a : b);
+  final List<String> ingredientLines;
+  if (ingredientsAt == -1) {
+    ingredientLines = ingredientLinesFromTitleBlock;
+  } else {
+    final ingredientsEnd = [
+      if (stepsAt > ingredientsAt) stepsAt,
+      if (stopAt != -1 && stopAt > ingredientsAt) stopAt,
+      lines.length,
+    ].reduce((a, b) => a < b ? a : b);
+    final ingredientsRest =
+        _ingredientsHeading.firstMatch(lines[ingredientsAt])?.namedGroup(
+      'rest',
+    );
+    final rawIngredientLines = [
+      if (ingredientsRest != null) ingredientsRest,
+      ...lines.sublist(ingredientsAt + 1, ingredientsEnd),
+    ];
 
-  final ingredientLines = ingredientsAt == -1
-      ? const <String>[]
-      : lines.sublist(ingredientsAt + 1, ingredientsEnd);
+    // "Ingredientes" é a 1ª linha (sem nome nenhum antes) e a última linha
+    // da lista não tem cara de ingrediente: em alguns prints (recorte de
+    // post, texto estilizado) o nome da receita vem DEPOIS da lista.
+    if (titleLines.isEmpty &&
+        rawIngredientLines.isNotEmpty &&
+        !_hasQuantityOrUnit(rawIngredientLines.last)) {
+      name = rawIngredientLines.removeLast();
+    }
+    ingredientLines = rawIngredientLines;
+  }
 
   final stepLines = stepsAt == -1
       ? const <String>[]
-      : _splitSteps(lines.sublist(stepsAt + 1));
+      : _splitSteps([
+          if (stepsRest != null) stepsRest,
+          ...lines.sublist(stepsAt + 1),
+        ]);
 
   return ImportedRecipe(
     name: name,
@@ -283,6 +365,57 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     stepLines: stepLines,
   );
 }
+
+/// Verbo/frase que só aparece no início de instrução de preparo — nunca em
+/// linha de ingrediente. Usado pra achar onde a lista de ingrediente acaba
+/// quando a receita não tem heading nenhum separando ingrediente de preparo
+/// (comum em caderno/livro de receita: a lista vem direto embaixo do nome).
+final _prepInstructionStart = RegExp(
+  r'^(descasque|corte|cozinhe|amasse|misture|coloque|adicione|asse|assar|'
+  r'leve|despeje|acrescente|bata|unte|molde|pr[ée]-?aque[çc]a|deixe|'
+  r'tempere|sirva|retire|junte|esprema|pique|rale|prepare|esquente|'
+  r'aque[çc]a|ferva|doure|frite|reserve|escorra|forre|disponha|espalhe|'
+  r'polvilhe|cubra|transfira|no liquidificador|no processador|'
+  r'em uma tigela|numa tigela|em uma panela|numa panela)\b',
+  caseSensitive: false,
+);
+
+/// Linha de ingrediente raramente passa de 8~10 palavras e quase nunca
+/// termina em ponto final — frase de preparo de verdade, sim.
+bool _looksLikePrepProse(String line) {
+  if (_prepInstructionStart.hasMatch(line)) return true;
+  if (_numberedStepPrefix.hasMatch(line)) return true;
+  if (!line.endsWith('.')) return false;
+  return line.trim().split(RegExp(r'\s+')).length >= 6;
+}
+
+/// Acha, a partir de `start`, até onde vai o trecho contínuo de linha com
+/// cara de preparo — pra separar ingrediente (sem heading) do que vem
+/// embaixo sem virar tudo "sobre" ou tudo "ingrediente".
+int _ingredientRunEnd(List<String> lines, int start, int end) {
+  var i = start;
+  while (i < end && !_looksLikePrepProse(lines[i])) {
+    i++;
+  }
+  return i;
+}
+
+/// Quantidade/medida no começo ou no meio da linha — número, fração unicode
+/// ("½", "¼"...) ou palavra de unidade comum (xícara, colher, dente...).
+/// Diferente de [_looksLikePrepProse] (que acha onde o preparo COMEÇA), esse
+/// aqui confirma se uma linha específica TEM cara de ingrediente — usado só
+/// pra decidir se a última linha antes do fim é ingrediente de verdade ou o
+/// nome da receita, que em alguns prints vem depois da lista, não antes.
+final _quantityOrUnit = RegExp(
+  r'^(\d+([.,/]\d+)?|[½¼¾⅓⅔])|\b(x[ií]caras?|colh(eres?|\.)?|dentes?|'
+  r'pitadas?|gramas?|fatias?|unidades?|latas?|copos?|pun(h|g)ado|'
+  r'a\s+(gosto|vontade)|[ãa]\s+vontade)\b',
+  caseSensitive: false,
+);
+
+bool _hasQuantityOrUnit(String line) =>
+    _quantityOrUnit.hasMatch(line) ||
+    RegExp(r'^(sal|opcional)\b', caseSensitive: false).hasMatch(line);
 
 /// Junta linhas quebradas do mesmo passo quando dá pra achar numeração
 /// ("1.", "Passo 2"); sem numeração nenhuma, cada linha vira um passo —
