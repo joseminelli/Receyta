@@ -54,6 +54,11 @@ android/captures/
 android/gradlew
 android/gradlew.bat
 
+# Release signing (never commit)
+android/key.properties
+*.jks
+*.keystore
+
 # Environment
 .env
 .env.local
