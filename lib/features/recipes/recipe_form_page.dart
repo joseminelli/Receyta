@@ -725,10 +725,14 @@ class _TagsField extends ConsumerWidget {
               );
             },
             optionsViewBuilder: (context, onSelected, options) {
+              final colors = context.colors;
+              final items = options.toList();
               return Align(
                 alignment: Alignment.topLeft,
                 child: Material(
-                  color: context.colors.paperSoft,
+                  color: colors.paper,
+                  elevation: 6,
+                  shadowColor: colors.ink.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(AppRadii.sm),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
@@ -739,20 +743,23 @@ class _TagsField extends ConsumerWidget {
                       padding: EdgeInsets.zero,
                       shrinkWrap: true,
                       children: [
-                        for (final option in options)
+                        for (var i = 0; i < items.length; i++) ...[
+                          if (i > 0)
+                            Divider(height: 1, color: colors.paperSoft),
                           InkWell(
-                            onTap: () => onSelected(option),
+                            onTap: () => onSelected(items[i]),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.sm,
-                                vertical: AppSpacing.xs,
+                                vertical: AppSpacing.sm,
                               ),
                               child: Text(
-                                option,
+                                items[i],
                                 style: context.texts.bodyMedium,
                               ),
                             ),
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -1070,10 +1077,14 @@ class _IngredientAutocompleteField extends ConsumerWidget {
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
+        final colors = context.colors;
+        final items = options.toList();
         return Align(
           alignment: Alignment.topLeft,
           child: Material(
-            color: context.colors.paperSoft,
+            color: colors.paper,
+            elevation: 6,
+            shadowColor: colors.ink.withValues(alpha: 0.25),
             borderRadius: BorderRadius.circular(AppRadii.sm),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220, maxWidth: 280),
@@ -1092,24 +1103,26 @@ class _IngredientAutocompleteField extends ConsumerWidget {
                         style: context.texts.labelSmall,
                       ),
                     ),
-                  for (final option in options)
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) Divider(height: 1, color: colors.paperSoft),
                     InkWell(
                       onTap: () {
                         pendingPickText = line.controller.text;
                         pendingWasFuzzy = isFuzzy;
-                        onSelected(option);
+                        onSelected(items[i]);
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.xs,
+                          vertical: AppSpacing.sm,
                         ),
                         child: Text(
-                          option.displayName,
+                          items[i].displayName,
                           style: context.texts.bodyMedium,
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
