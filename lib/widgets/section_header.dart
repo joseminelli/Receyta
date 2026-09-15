@@ -15,6 +15,7 @@ class SectionHeader extends StatelessWidget {
     required this.title,
     this.eyebrow,
     this.action,
+    this.titleColor,
   });
 
   final String title;
@@ -25,6 +26,11 @@ class SectionHeader extends StatelessWidget {
 
   /// Normalmente um [PillButton] pequeno ou um `IconButton`.
   final Widget? action;
+
+  /// Cor do título — só quando a seção tem identidade própria (ex.:
+  /// Ingredientes/Passos no formulário de receita, §9.2). `null` mantém o
+  /// `ink` padrão.
+  final Color? titleColor;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +50,7 @@ class SectionHeader extends StatelessWidget {
               ],
               Text(
                 title,
-                style: context.texts.displaySmall,
+                style: context.texts.displaySmall?.copyWith(color: titleColor),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

@@ -390,6 +390,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
                 const SizedBox(height: AppSpacing.md),
                 _LineList(
                   title: 'Ingredientes',
+                  accentColor: context.colors.coral,
                   addLabel: 'Adicionar ingrediente',
                   hintFor: (i) => 'ex.: 2 xícaras de farinha',
                   lines: _ingredients,
@@ -406,6 +407,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
                 const SizedBox(height: AppSpacing.lg),
                 _LineList(
                   title: 'Passos',
+                  accentColor: context.colors.violet,
                   addLabel: 'Adicionar passo',
                   hintFor: (i) => 'Passo ${i + 1}',
                   lines: _steps,
@@ -867,6 +869,7 @@ class _Field extends StatelessWidget {
 class _LineList extends StatelessWidget {
   const _LineList({
     required this.title,
+    required this.accentColor,
     required this.addLabel,
     required this.hintFor,
     required this.lines,
@@ -878,6 +881,11 @@ class _LineList extends StatelessWidget {
   });
 
   final String title;
+
+  /// Identidade da seção (§9.2) — coral pra Ingredientes, violeta pra Passos.
+  /// Só entra em ícone/texto/borda, nunca como fundo de campo (§9.1 segue
+  /// chapado em `paperSoft`).
+  final Color accentColor;
   final String addLabel;
   final String Function(int index) hintFor;
   final List<_Line> lines;
@@ -893,7 +901,7 @@ class _LineList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SectionHeader(title: title),
+        SectionHeader(title: title, titleColor: accentColor),
         const SizedBox(height: AppSpacing.sm),
         if (lines.isEmpty)
           Padding(
@@ -917,9 +925,9 @@ class _LineList extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: AppSpacing.xs),
                 decoration: line.heading
                     ? BoxDecoration(
-                        color: colors.coral.withValues(alpha: 0.06),
+                        color: accentColor.withValues(alpha: 0.06),
                         border: Border(
-                          left: BorderSide(color: colors.coral, width: 3),
+                          left: BorderSide(color: accentColor, width: 3),
                         ),
                       )
                     : null,
@@ -929,7 +937,9 @@ class _LineList extends StatelessWidget {
                       index: i,
                       child: Icon(
                         line.heading ? Icons.segment : Icons.drag_indicator,
-                        color: line.heading ? colors.coral : colors.textMuted,
+                        color: line.heading
+                            ? accentColor
+                            : accentColor.withValues(alpha: 0.55),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.xs / 2),
