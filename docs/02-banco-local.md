@@ -1,6 +1,6 @@
 # O banco local
 
-> Parte 2 de 5 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
+> Parte 2 de 7 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
 > anterior: [Visão geral e MVVM](01-visao-geral-e-mvvm.md).
 
 ## O que é, de fato
@@ -58,12 +58,14 @@ todas registradas no `@DriftDatabase` de
   customizado, §9.4 do plano).
 - `recipe_ingredients` / `recipe_steps` — listas ordenadas (`position`) e
   agrupáveis (`groupLabel`, ex. "Para a massa"), sempre com `recipeId`.
-  `ingredientId` já existe na tabela mas fica nulo até o bloco C (parser)
-  preenchê-lo — hoje só `rawText` é gravado.
+  `ingredientId` existe na tabela e, desde o bloco C, é preenchido de
+  verdade toda vez que uma receita é salva (ver
+  [motor de ingredientes](06-motor-de-ingredientes.md)).
 - `ingredients` / `ingredient_aliases` / `units` / `categories` /
-  `normalizer_terms` — o esqueleto do motor de normalização do bloco C.
-  Existem no schema desde o bloco A, mas ainda não têm dado de receita real
-  ligado a eles.
+  `normalizer_terms` — o catálogo e o vocabulário do motor de normalização
+  do bloco C. `units`/`categories`/`normalizer_terms` são semeados no
+  primeiro boot; `ingredients`/`ingredient_aliases` nascem do uso (ninguém
+  semeia ingrediente de propósito, ver [seed](#seed) abaixo).
 - `tags` / `recipe_tags` — tabela de junção N:N clássica.
 - `meal_plan_entries`, `shopping_lists`, `shopping_list_items`,
   `shopping_item_sources` — reservadas para os blocos F e E; existem no schema
@@ -75,7 +77,7 @@ sem sync, porque adicionar essas colunas depois seria uma migração dolorosa.
 
 ## Migrações — como o schema evolui sem perder dado do usuário
 
-`AppDatabase.schemaVersion` está em `3` agora. Cada vez que uma tabela muda,
+`AppDatabase.schemaVersion` está em `4` agora. Cada vez que uma tabela muda,
 esse número sobe, e o bloco `migration.onUpgrade` em
 [`app_database.dart:87`](../lib/data/database/app_database.dart) descreve,
 passo a passo, como sair da versão anterior:
@@ -84,6 +86,7 @@ passo a passo, como sair da versão anterior:
 onUpgrade: (m, from, to) async {
   if (from < 2) { /* recipe_ingredients.ingredient_id vira nullable */ }
   if (from < 3) { /* recipes/folders ganham tile_color, tile_motif */ }
+  if (from < 4) { /* recipes/folders ganham last_opened_at */ }
 },
 ```
 
@@ -91,6 +94,16 @@ Isso roda automaticamente na abertura do banco, na versão instalada do
 usuário — é o motivo de nunca poder simplesmente apagar/recriar uma tabela em
 produção. `A8` no plano cobre o teste automatizado disso (migração N→N+1 com
 dado de exemplo, verificando que nada se perde).
+
+Nem toda mudança de dado cabe num `onUpgrade`/`beforeOpen`: nesses pontos a
+conexão ainda não enxerga com certeza dado já commitado por outra conexão.
+O backfill de `last_opened_at` (a partir de `updated_at`, pra dado
+pré-existente) mora em `AppDatabase._backfillLastOpenedAt()`, chamado de
+`ensureReady()` de forma idempotente (`WHERE last_opened_at IS NULL`) — o
+mesmo `ensureReady()` também roda o `_seed()` de novo (idempotente via
+`insertOrIgnore`) pra qualquer entrada nova em `kSeedUnits`/`kSeedCategories`/
+`kSeedNormalizerTerms` chegar em quem já tinha o app instalado antes da
+mudança.
 
 ## Busca por texto (FTS5)
 

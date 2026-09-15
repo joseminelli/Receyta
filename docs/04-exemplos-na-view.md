@@ -1,6 +1,6 @@
 # Exemplos reais na View
 
-> Parte 4 de 5 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
+> Parte 4 de 7 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
 > anterior: [Riverpod e o fluxo](03-riverpod-e-fluxo.md).
 
 O arquivo anterior trilhou "salvar uma receita" partindo do ViewModel. Este

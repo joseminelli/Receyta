@@ -1,6 +1,6 @@
 # Visão geral e MVVM
 
-> Parte 1 de 5 do guia técnico. [Índice](../arquitetura-e-fluxo.md).
+> Parte 1 de 7 do guia técnico. [Índice](../arquitetura-e-fluxo.md).
 
 ## A stack, em uma frase cada
 
@@ -122,16 +122,26 @@ lib/
       connection.dart       abre o arquivo .sqlite (nativo)
       database_provider.dart  Provider<AppDatabase>
       seed_data.dart        listas de unidades/categorias/termos semeados
-      daos/                 RecipeDao, FolderDao, TagDao (+ .g.dart gerados)
+      daos/                 RecipeDao, FolderDao, TagDao, IngredientDao (+ .g.dart gerados)
     repositories/
-      recipe_repository.dart, folder_repository.dart, tag_repository.dart
+      recipe_repository.dart, folder_repository.dart, tag_repository.dart,
+      ingredient_repository.dart
+    services/
+      recipe_import_service.dart   busca URL + extrai receita (C7)
+      recipe_ocr_service.dart      foto → OCR → receita (C8)
 
-  domain/models/            Recipe, RecipeDetail, RecipeIngredient, RecipeStep,
-                            Tag, Folder — todos @freezed (+ .freezed.dart gerados)
+  domain/
+    models/                Recipe, RecipeDetail, RecipeIngredient, RecipeStep,
+                            Tag, Folder, Ingredient — todos @freezed (+ .freezed.dart gerados)
+    engine/                parser/normalizer/fuzzy match de ingrediente (C1-C4)
+                            + extração de receita de HTML/OCR (C7-C8), Dart
+                            puro — ver [motor de ingredientes](../docs/06-motor-de-ingredientes.md)
+                            e [importação](../docs/07-importacao-de-receitas.md)
 
   features/
     recipes/                lista, detalhe, formulário, busca, tags, lixeira,
-                            modo cozinha — view + view_model por tela
+                            modo cozinha, gerenciar ingredientes, import de
+                            link/foto — view + view_model por tela
     folders/                pasta, drag-and-drop, seletor de pasta
 
   theme/                    tokens.dart, typography.dart, app_theme.dart
@@ -139,11 +149,11 @@ lib/
   gallery_app.dart          entrypoint alternativo: galeria de componentes fora do app
 ```
 
-Note que `domain/engine/` (parser, normalizer, matcher — bloco C) e
-`features/planner/`, `features/shopping/`, `features/io/` **ainda não
-existem**. Eles nascem quando o primeiro arquivo de cada bloco for escrito —
-não crie a pasta vazia antes disso (convenção do projeto de não criar
-estrutura especulativa).
+`domain/engine/` nasceu no bloco C (primeiro arquivo: `ingredient_parser.dart`,
+C1). `features/planner/`, `features/shopping/`, `features/io/` **ainda não
+existem** — nascem quando o primeiro arquivo do bloco correspondente for
+escrito, não antes (convenção do projeto de não criar estrutura
+especulativa).
 
 ---
 

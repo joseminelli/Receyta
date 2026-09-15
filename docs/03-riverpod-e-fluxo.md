@@ -1,6 +1,6 @@
 # Riverpod, navegação e o fluxo ponta a ponta
 
-> Parte 3 de 5 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
+> Parte 3 de 7 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
 > anterior: [O banco local](02-banco-local.md).
 
 ## Riverpod: os quatro tipos de `Provider` que aparecem no código

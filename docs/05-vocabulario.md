@@ -1,6 +1,6 @@
 # Vocabulário rápido
 
-> Parte 5 de 5 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
+> Parte 5 de 7 do guia técnico. [Índice](../arquitetura-e-fluxo.md) ·
 > anterior: [Exemplos reais na View](04-exemplos-na-view.md).
 
 Pra quem está enferrujado e só quer destravar um termo específico:
@@ -24,4 +24,5 @@ Pra quem está enferrujado e só quer destravar um termo específico:
 
 ---
 
-Voltar ao [índice](../arquitetura-e-fluxo.md).
+**Próximo:** [O motor de ingredientes](06-motor-de-ingredientes.md) — parser,
+normalizador, catálogo e fuzzy match (bloco C).
