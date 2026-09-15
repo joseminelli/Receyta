@@ -156,7 +156,8 @@ class _RecipeForm extends ConsumerStatefulWidget {
   ConsumerState<_RecipeForm> createState() => _RecipeFormState();
 }
 
-class _RecipeFormState extends ConsumerState<_RecipeForm> {
+class _RecipeFormState extends ConsumerState<_RecipeForm>
+    with WidgetsBindingObserver {
   late final _recipe = widget.original?.recipe;
   late final _draft = widget.original == null ? widget.draft : null;
   late final _name = TextEditingController(
@@ -202,14 +203,32 @@ class _RecipeFormState extends ConsumerState<_RecipeForm> {
 
   bool get _isEditing => _recipe != null;
 
+  double get _keyboardInset =>
+      WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom;
+  late double _lastKeyboardInset = _keyboardInset;
+
   @override
   void initState() {
     super.initState();
     _name.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeMetrics() {
+    final inset = _keyboardInset;
+    if (_lastKeyboardInset > 0 && inset == 0) {
+      // Teclado fechou (botão de esconder, arrastar pra baixo, gesto de
+      // voltar) — tira o foco do campo pra sumir junto qualquer sugestão de
+      // autocomplete (ingrediente/tag) que ainda estivesse flutuando.
+      FocusManager.instance.primaryFocus?.unfocus();
+    }
+    _lastKeyboardInset = inset;
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     for (final c in [_name, _about, _prep, _cook, _servings, _notes]) {
       c.dispose();
     }
@@ -1034,6 +1053,11 @@ class _IngredientAutocompleteField extends ConsumerWidget {
                 parseIngredientLine(pendingPickText).name,
               );
         }
+        // applyIngredientSuggestion troca o texto de novo depois que o
+        // RawAutocomplete já tinha marcado a seleção — sem tirar o foco à
+        // força aqui, essa 2ª troca de texto invalida a seleção interna dele
+        // e as sugestões reabrem sozinhas na hora, mesmo já tendo escolhido.
+        line.focusNode.unfocus();
       },
       fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
         return TextField(
