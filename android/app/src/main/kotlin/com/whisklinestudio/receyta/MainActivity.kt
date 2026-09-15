@@ -1,4 +1,4 @@
-package com.receyta.receyta
+package com.whisklinestudio.receyta
 
 import io.flutter.embedding.android.FlutterActivity
 
