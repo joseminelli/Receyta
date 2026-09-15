@@ -370,4 +370,91 @@ void main() {
     expect(r!.name, 'Bolo de nozes');
     expect(r.ingredientLines, ['3 claras', '3 gemas']);
   });
+
+  group('parseOcrLinesMulti', () {
+    test('foto com 2 receitas numeradas (livro/caderno) vira 2 receitas '
+        'separadas, sem misturar ingrediente/preparo de uma na outra', () {
+      final recipes = parseOcrLinesMulti([
+        '1) Toast',
+        '1 colher de sopa de farinha de aveia',
+        '1 colher de sopa de azeite',
+        'Preparo:',
+        'Misture tudo e leve à frigideira.',
+        '2) Pasta de grão de bico (homus)',
+        '1 xícara de grão de bico cozido',
+        '4 colheres de sopa de água',
+        'Preparo:',
+        'Bata tudo no processador até virar purê.',
+      ]);
+
+      expect(recipes, hasLength(2));
+      expect(recipes[0].name, 'Toast');
+      expect(recipes[0].ingredientLines, [
+        '1 colher de sopa de farinha de aveia',
+        '1 colher de sopa de azeite',
+      ]);
+      expect(recipes[0].stepLines, ['Misture tudo e leve à frigideira.']);
+
+      expect(recipes[1].name, 'Pasta de grão de bico (homus)');
+      expect(recipes[1].ingredientLines, [
+        '1 xícara de grão de bico cozido',
+        '4 colheres de sopa de água',
+      ]);
+      expect(recipes[1].stepLines, ['Bata tudo no processador até virar purê.']);
+    });
+
+    test('marcador "1)" lido pelo OCR como "I)" (fonte sem serifa, "1" e '
+        '"I" maiúsculo idênticos) ainda conta como separador de receita', () {
+      final recipes = parseOcrLinesMulti([
+        'I) Toast',
+        'I colher de sopa de farinha de aveia',
+        'I colher de sopa de azeite',
+        'Preparo:',
+        'Misture tudo e leve à frigideira.',
+        '2) Pasta de grão de bico (homus)',
+        '1 xícara de grão de bico cozido',
+        'Preparo:',
+        'Bata tudo no processador até virar purê.',
+      ]);
+
+      expect(recipes, hasLength(2));
+      expect(recipes[0].name, 'Toast');
+      expect(recipes[0].ingredientLines, [
+        'I colher de sopa de farinha de aveia',
+        'I colher de sopa de azeite',
+      ]);
+      expect(recipes[1].name, 'Pasta de grão de bico (homus)');
+    });
+
+    test('só um marcador numerado (não é lista de receitas) continua caindo '
+        'no parser de receita única', () {
+      final recipes = parseOcrLinesMulti([
+        '10) Pão sem queijo',
+        '600g de batata',
+        'Preparo:',
+        'Asse tudo.',
+      ]);
+
+      expect(recipes, hasLength(1));
+      expect(recipes.first.name, '10) Pão sem queijo');
+    });
+
+    test('sem marcador nenhum, funciona igual ao parseOcrLines', () {
+      final recipes = parseOcrLinesMulti([
+        'Bolo de fubá',
+        'Ingredientes',
+        'Fubá',
+        'Modo de preparo',
+        'Asse.',
+      ]);
+
+      expect(recipes, hasLength(1));
+      expect(recipes.first.name, 'Bolo de fubá');
+      expect(recipes.first.ingredientLines, ['Fubá']);
+    });
+
+    test('sem texto nenhum devolve lista vazia', () {
+      expect(parseOcrLinesMulti([]), isEmpty);
+    });
+  });
 }

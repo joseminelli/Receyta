@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:receyta/data/services/recipe_ocr_service.dart';
+import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -32,10 +33,82 @@ Future<void> importRecipeFromPhotoFlow(BuildContext context, WidgetRef ref) asyn
   if (!context.mounted) return;
 
   result.when(
-    ok: (recipe) => context.push('/recipe/new', extra: recipe),
+    ok: (recipes) => _reviewRecipesOneByOne(context, recipes),
     err: (f) => showAppSnackBar(
       message: f.message,
       variant: AppSnackBarVariant.error,
+    ),
+  );
+}
+
+/// Abre o formulário de revisão receita por receita — uma foto só vira mais
+/// de uma quando é página de livro/caderno numerado (C8). Com uma única
+/// receita, pula a folha de escolha e abre direto, igual sempre foi. Com
+/// várias, mostra o nome de cada uma pra escolher a próxima; a folha some
+/// de vez quando não sobrar nenhuma ou se o usuário fechar sem escolher.
+Future<void> _reviewRecipesOneByOne(
+  BuildContext context,
+  List<ImportedRecipe> recipes,
+) async {
+  final remaining = [...recipes];
+  while (remaining.isNotEmpty) {
+    if (!context.mounted) return;
+    final chosen = remaining.length == 1
+        ? remaining.first
+        : await _pickRecipeToReview(context, remaining);
+    if (chosen == null) return;
+    remaining.remove(chosen);
+    if (!context.mounted) return;
+    await context.push('/recipe/new', extra: chosen);
+  }
+}
+
+Future<ImportedRecipe?> _pickRecipeToReview(
+  BuildContext context,
+  List<ImportedRecipe> recipes,
+) {
+  final colors = context.colors;
+  return showModalBottomSheet<ImportedRecipe>(
+    context: context,
+    backgroundColor: colors.paper,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              0,
+              AppSpacing.screen,
+              AppSpacing.sm,
+            ),
+            child: Text(
+              'Achamos ${recipes.length} receitas nessa foto',
+              style: sheet.texts.displaySmall,
+            ),
+          ),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                for (final recipe in recipes)
+                  ListTile(
+                    leading: Icon(
+                      Icons.restaurant_menu_outlined,
+                      color: colors.textMuted,
+                    ),
+                    title: Text(recipe.name, style: sheet.texts.bodyLarge),
+                    onTap: () =>
+                        Navigator.of(sheet).pop<ImportedRecipe>(recipe),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }

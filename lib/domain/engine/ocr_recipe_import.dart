@@ -366,6 +366,55 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
   );
 }
 
+/// Marca início de receita em livro/caderno numerado ("1) Toast", "10) Pão
+/// sem queijo") — é assim que uma foto acaba trazendo mais de uma receita
+/// (a página inteira do livro numa foto só). Aceita "I)"/"l)" além de "1)" —
+/// em fonte sem serifa o "1" fica idêntico ao "I" maiúsculo, e é comum o OCR
+/// ler o "1)" do primeiro título como letra (a lista de ingredientes logo
+/// abaixo, cheia de "1 colher de sopa...", vira a mesma pista: se o OCR leu
+/// "I colher" ali, leu "I)" aqui do mesmo jeito). Só conta como separador
+/// quando aparece 2+ vezes na mesma foto; uma vez só é o número da receita
+/// atual, não um separador (uma foto raramente tem só um fiapo de outra).
+final _multiRecipeMarker = RegExp(r'^(?:\d+|[Il])\)\s+\S');
+final _multiRecipeMarkerPrefix = RegExp(r'^(?:\d+|[Il])\)\s+');
+
+/// Mesma extração de [parseOcrLines], mas primeiro checa se a foto trouxe
+/// mais de uma receita (livro/caderno numerado) e, se trouxe, roda a
+/// extração em cada trecho separado — em vez de misturar tudo numa receita
+/// só. Sem marcador repetido, devolve a mesma receita única de
+/// [parseOcrLines] (ou lista vazia se não achar texto nenhum).
+List<ImportedRecipe> parseOcrLinesMulti(List<String> rawLines) {
+  final lines = _dropNavTabRuns([
+    for (final l in rawLines) _cleanLine(l),
+  ].where((l) => l.isNotEmpty && !_isChromeNoise(l)).toList());
+
+  final markerAt = [
+    for (var i = 0; i < lines.length; i++)
+      if (_multiRecipeMarker.hasMatch(lines[i])) i,
+  ];
+
+  if (markerAt.length < 2) {
+    final single = parseOcrLines(rawLines);
+    return single == null ? const [] : [single];
+  }
+
+  final out = <ImportedRecipe>[];
+  for (var i = 0; i < markerAt.length; i++) {
+    final end = i + 1 < markerAt.length ? markerAt[i + 1] : lines.length;
+    final recipe = parseOcrLines(lines.sublist(markerAt[i], end));
+    if (recipe == null) continue;
+    out.add(
+      ImportedRecipe(
+        name: recipe.name.replaceFirst(_multiRecipeMarkerPrefix, ''),
+        about: recipe.about,
+        ingredientLines: recipe.ingredientLines,
+        stepLines: recipe.stepLines,
+      ),
+    );
+  }
+  return out;
+}
+
 /// Verbo/frase que só aparece no início de instrução de preparo — nunca em
 /// linha de ingrediente. Usado pra achar onde a lista de ingrediente acaba
 /// quando a receita não tem heading nenhum separando ingrediente de preparo

@@ -10,11 +10,12 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/domain/engine/ocr_recipe_import.dart';
 import 'package:receyta/domain/engine/recipe_import.dart';
 
-/// Tira/escolhe uma foto, roda OCR on-device (C8, RF-06.10) e monta um
-/// rascunho pro formulário. A foto (original e a versão pré-processada) só
-/// existe em arquivo temporário durante o reconhecimento — apagada assim
-/// que termina, nunca fica salva (guardar a foto da receita em si é outro
-/// recurso, o H0).
+/// Tira/escolhe uma foto, roda OCR on-device (C8, RF-06.10) e monta um ou
+/// mais rascunhos pro formulário — mais de um quando a foto traz várias
+/// receitas (página de livro/caderno numerado). A foto (original e a versão
+/// pré-processada) só existe em arquivo temporário durante o reconhecimento
+/// — apagada assim que termina, nunca fica salva (guardar a foto da receita
+/// em si é outro recurso, o H0).
 class RecipeOcrService {
   RecipeOcrService({ImagePicker? picker, TextRecognizer? recognizer})
       : _picker = picker ?? ImagePicker(),
@@ -24,7 +25,9 @@ class RecipeOcrService {
   final ImagePicker _picker;
   final TextRecognizer _recognizer;
 
-  Future<Result<ImportedRecipe>> importFromPhoto(ImageSource source) async {
+  Future<Result<List<ImportedRecipe>>> importFromPhoto(
+    ImageSource source,
+  ) async {
     XFile? file;
     File? processedFile;
     try {
@@ -50,13 +53,13 @@ class RecipeOcrService {
 
       final recognized =
           await _recognizer.processImage(InputImage.fromFilePath(ocrPath));
-      final recipe = parseOcrLines(recognized.text.split('\n'));
-      if (recipe == null) {
+      final recipes = parseOcrLinesMulti(recognized.text.split('\n'));
+      if (recipes.isEmpty) {
         return const Err(
           ValidationFailure('Não consegui ler texto nessa foto.'),
         );
       }
-      return Ok(recipe);
+      return Ok(recipes);
     } catch (e) {
       return Err(ProcessingFailure('Falha ao processar a foto', cause: e));
     } finally {
