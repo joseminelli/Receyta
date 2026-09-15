@@ -7,6 +7,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/folder_grid_tile.dart';
+import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
 /// Todas as pastas de raiz, em grade — o "Ver todas" da faixa de pastas da
@@ -20,71 +21,94 @@ class AllFoldersPage extends ConsumerWidget {
     final colors = context.colors;
     final folders = ref.watch(rootFoldersProvider);
 
+    Future<void> refresh() async {
+      ref.invalidate(rootFoldersProvider);
+      await ref.read(rootFoldersProvider.future);
+    }
+
     return Scaffold(
       backgroundColor: colors.paper,
       appBar: AppBar(title: const Text('Pastas')),
-      body: folders.when(
-        loading: () => const Center(child: BrandLoader()),
-        error: (_, __) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                StateBadge(
-                  icon: Icons.priority_high_rounded,
-                  background: colors.danger,
-                  foreground: colors.onSaturated,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Não deu para carregar as pastas',
-                  style: context.texts.displaySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-        data: (items) {
-          if (items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    StateBadge(
-                      icon: Icons.folder_outlined,
-                      background: colors.violet,
-                      foreground: colors.onSaturated,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Nenhuma pasta ainda',
-                      style: context.texts.displaySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+      body: PullToRefreshControl(
+        onRefresh: refresh,
+        child: CustomScrollView(
+          slivers: [
+            folders.when(
+              loading: () => const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: BrandLoader()),
+              ),
+              error: (_, __) => SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      StateBadge(
+                        icon: Icons.priority_high_rounded,
+                        background: colors.danger,
+                        foreground: colors.onSaturated,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Não deu para carregar as pastas',
+                        style: context.texts.displaySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            );
-          }
-          return GridView.builder(
-            padding: const EdgeInsets.all(AppSpacing.screen),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: AppSpacing.sm,
-              mainAxisSpacing: AppSpacing.sm,
-              childAspectRatio: 0.78,
+              data: (items) {
+                if (items.isEmpty) {
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          StateBadge(
+                            icon: Icons.folder_outlined,
+                            background: colors.violet,
+                            foreground: colors.onSaturated,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          Text(
+                            'Nenhuma pasta ainda',
+                            style: context.texts.displaySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                return SliverPadding(
+                  padding: const EdgeInsets.all(AppSpacing.screen),
+                  sliver: SliverGrid(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: AppSpacing.sm,
+                      mainAxisSpacing: AppSpacing.sm,
+                      childAspectRatio: 0.78,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => FolderGridTile(
+                        item: items[i],
+                        onTap: () =>
+                            context.push('/folder/${items[i].folder.id}'),
+                      ),
+                      childCount: items.length,
+                    ),
+                  ),
+                );
+              },
             ),
-            itemCount: items.length,
-            itemBuilder: (context, i) => FolderGridTile(
-              item: items[i],
-              onTap: () => context.push('/folder/${items[i].folder.id}'),
-            ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }

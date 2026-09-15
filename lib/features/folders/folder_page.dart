@@ -11,6 +11,7 @@ import 'package:receyta/features/folders/recipe_drag.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/skeleton_box.dart';
@@ -82,82 +83,90 @@ class _FolderPageState extends ConsumerState<FolderPage> {
         backgroundColor: context.colors.paper,
         body: Stack(
           children: [
-            CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(
-                  child: _Header(
-                    folder: folder,
-                    recipeCount: recipes.length,
-                    subfolderCount: subfolders.length,
-                    onMenu: () => showFolderMenu(
-                      context,
-                      ref,
-                      folder,
-                      onDeleted: () => context.pop(),
-                    ),
-                  ),
-                ),
-                if (subfolders.isNotEmpty)
+            PullToRefreshControl(
+              onRefresh: () async {
+                ref.invalidate(folderProvider(folderId));
+                ref.invalidate(subfoldersProvider(folderId));
+                ref.invalidate(folderRecipesProvider(folderId));
+                await ref.read(folderProvider(folderId).future);
+              },
+              child: CustomScrollView(
+                slivers: [
                   SliverToBoxAdapter(
-                    child: _Subfolders(items: subfolders),
-                  ),
-                if (recipes.isNotEmpty)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screen,
-                      AppSpacing.lg,
-                      AppSpacing.screen,
-                      AppSpacing.sm,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: SectionHeader(
-                        title: 'Receitas',
-                        action: Text(
-                          '${recipes.length}',
-                          style: context.texts.displaySmall
-                              ?.copyWith(color: context.colors.textMuted),
-                        ),
+                    child: _Header(
+                      folder: folder,
+                      recipeCount: recipes.length,
+                      subfolderCount: subfolders.length,
+                      onMenu: () => showFolderMenu(
+                        context,
+                        ref,
+                        folder,
+                        onDeleted: () => context.pop(),
                       ),
                     ),
                   ),
-                if (recipes.isEmpty && subfolders.isEmpty)
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: _Empty(
-                      onNewSubfolder: () =>
-                          createFolderFlow(context, ref, parentId: folderId),
+                  if (subfolders.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: _Subfolders(items: subfolders),
                     ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.screen,
-                      0,
-                      AppSpacing.screen,
-                      AppSpacing.xxl,
-                    ),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: AppSpacing.sm,
-                        mainAxisSpacing: AppSpacing.sm,
-                        childAspectRatio: 0.78,
+                  if (recipes.isNotEmpty)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.screen,
+                        AppSpacing.lg,
+                        AppSpacing.screen,
+                        AppSpacing.sm,
                       ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, i) => DraggableRecipe(
-                          recipe: recipes[i],
-                          child: RecipeCard(
-                            recipe: recipes[i],
-                            onTap: () =>
-                                context.push('/recipe/${recipes[i].id}'),
+                      sliver: SliverToBoxAdapter(
+                        child: SectionHeader(
+                          title: 'Receitas',
+                          action: Text(
+                            '${recipes.length}',
+                            style: context.texts.displaySmall
+                                ?.copyWith(color: context.colors.textMuted),
                           ),
                         ),
-                        childCount: recipes.length,
                       ),
                     ),
-                  ),
-              ],
+                  if (recipes.isEmpty && subfolders.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _Empty(
+                        onNewSubfolder: () =>
+                            createFolderFlow(context, ref, parentId: folderId),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.screen,
+                        0,
+                        AppSpacing.screen,
+                        AppSpacing.xxl,
+                      ),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: AppSpacing.sm,
+                          mainAxisSpacing: AppSpacing.sm,
+                          childAspectRatio: 0.78,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => DraggableRecipe(
+                            recipe: recipes[i],
+                            child: RecipeCard(
+                              recipe: recipes[i],
+                              onTap: () =>
+                                  context.push('/recipe/${recipes[i].id}'),
+                            ),
+                          ),
+                          childCount: recipes.length,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             Align(
               alignment: Alignment.bottomRight,

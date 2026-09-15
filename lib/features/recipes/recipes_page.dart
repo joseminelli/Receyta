@@ -7,6 +7,7 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/folder_actions.dart';
 import 'package:receyta/features/folders/folders_strip.dart';
+import 'package:receyta/features/folders/folders_view_model.dart';
 import 'package:receyta/features/folders/recipe_drag.dart';
 import 'package:receyta/features/recipes/ingredients_page.dart';
 import 'package:receyta/features/recipes/recipe_import_flow.dart';
@@ -18,6 +19,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/featured_recipe_card.dart';
+import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/expanding_create_menu.dart';
 import 'package:receyta/widgets/receytas_wordmark.dart';
@@ -77,11 +79,26 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
 
     void openNew() => context.push('/recipe/new');
 
+    Future<void> refresh() async {
+      for (final p in [
+        recipesStreamProvider,
+        recentRecipesProvider,
+        allRecipesProvider,
+        hasFavoritesProvider,
+        inUseTagsProvider,
+        recentFoldersProvider,
+      ]) {
+        ref.invalidate(p);
+      }
+      await ref.read(recipesStreamProvider.future);
+    }
+
     return recipes.when(
       loading: () => _Scaffold(
         controller: _controller,
         count: totalCount,
         onCreate: openNew,
+        onRefresh: refresh,
         body: const SliverFillRemaining(
           hasScrollBody: false,
           child: Center(child: BrandLoader()),
@@ -91,6 +108,7 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
         controller: _controller,
         count: totalCount,
         onCreate: openNew,
+        onRefresh: refresh,
         body: const SliverFillRemaining(
           hasScrollBody: false,
           child: _ErrorState(),
@@ -100,6 +118,7 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
         controller: _controller,
         count: totalCount,
         onCreate: openNew,
+        onRefresh: refresh,
         body: list.isEmpty
             ? SliverFillRemaining(
                 hasScrollBody: false,
@@ -121,22 +140,27 @@ class _Scaffold extends StatelessWidget {
     required this.controller,
     required this.count,
     required this.onCreate,
+    required this.onRefresh,
     required this.body,
   });
 
   final ScrollController controller;
   final int? count;
   final VoidCallback onCreate;
+  final Future<void> Function() onRefresh;
   final Widget body;
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      controller: controller,
-      slivers: [
-        SliverToBoxAdapter(child: _Header(count: count, onCreate: onCreate)),
-        body,
-      ],
+    return PullToRefreshControl(
+      onRefresh: onRefresh,
+      child: CustomScrollView(
+        controller: controller,
+        slivers: [
+          SliverToBoxAdapter(child: _Header(count: count, onCreate: onCreate)),
+          body,
+        ],
+      ),
     );
   }
 }
@@ -407,7 +431,8 @@ class _Header extends ConsumerWidget {
                                       icon: Icons.camera_alt_outlined,
                                       label: 'Importar de foto',
                                       onSelected: () =>
-                                          importRecipeFromPhotoFlow(context, ref),
+                                          importRecipeFromPhotoFlow(
+                                              context, ref),
                                     ),
                                   ],
                                 ),
