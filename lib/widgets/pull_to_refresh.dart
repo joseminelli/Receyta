@@ -45,6 +45,11 @@ class _PullToRefreshControlState extends State<PullToRefreshControl> {
   /// não importa onde o dedo soltou entre o gatilho e o [_maxPull].
   static const _settleDistance = 54.0;
 
+  /// Tempo mínimo parado no [_settleDistance] antes de recolher — sem isso,
+  /// como os dados já são locais/reativos, [onRefresh] resolve quase
+  /// instantâneo e o ícone nem dá tempo de parecer que atualizou de verdade.
+  static const _minRefreshHold = Duration(milliseconds: 1000);
+
   double _pulled = 0;
   bool _dragging = false;
   bool _refreshing = false;
@@ -84,7 +89,10 @@ class _PullToRefreshControlState extends State<PullToRefreshControl> {
       _pulled = _settleDistance;
     });
     try {
-      await widget.onRefresh();
+      await Future.wait([
+        widget.onRefresh(),
+        Future.delayed(_minRefreshHold),
+      ]);
     } finally {
       if (mounted) {
         setState(() {
