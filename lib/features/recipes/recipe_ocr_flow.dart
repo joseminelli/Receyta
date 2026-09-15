@@ -10,6 +10,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
+import 'package:receyta/widgets/pill_button.dart';
 
 /// Tira/escolhe uma foto, roda OCR on-device e abre o formulário já
 /// preenchido pra revisão (C8). Nunca salva sozinho, igual ao C7 — e nunca
@@ -45,36 +46,52 @@ Future<void> importRecipeFromPhotoFlow(BuildContext context, WidgetRef ref) asyn
 /// Abre o formulário de revisão receita por receita — uma foto só vira mais
 /// de uma quando é página de livro/caderno numerado (C8). Com uma única
 /// receita, pula a folha de escolha e abre direto, igual sempre foi. Com
-/// várias, mostra o nome de cada uma pra escolher a próxima; a folha some
-/// de vez quando não sobrar nenhuma ou se o usuário fechar sem escolher.
+/// várias, mostra uma folha de checkbox pra marcar quais entram na revisão;
+/// só as marcadas passam pelo formulário, uma de cada vez.
 Future<void> _reviewRecipesOneByOne(
   BuildContext context,
   List<ImportedRecipe> recipes,
 ) async {
-  final remaining = [...recipes];
-  while (remaining.isNotEmpty) {
+  final toReview = recipes.length == 1
+      ? recipes
+      : await _pickRecipesToInclude(context, recipes);
+  if (toReview == null || toReview.isEmpty) return;
+  for (final recipe in toReview) {
     if (!context.mounted) return;
-    final chosen = remaining.length == 1
-        ? remaining.first
-        : await _pickRecipeToReview(context, remaining);
-    if (chosen == null) return;
-    remaining.remove(chosen);
-    if (!context.mounted) return;
-    await context.push('/recipe/new', extra: chosen);
+    await context.push('/recipe/new', extra: recipe);
   }
 }
 
-Future<ImportedRecipe?> _pickRecipeToReview(
+Future<List<ImportedRecipe>?> _pickRecipesToInclude(
   BuildContext context,
   List<ImportedRecipe> recipes,
 ) {
-  final colors = context.colors;
-  return showModalBottomSheet<ImportedRecipe>(
+  return showModalBottomSheet<List<ImportedRecipe>>(
     context: context,
-    backgroundColor: colors.paper,
+    backgroundColor: context.colors.paper,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (sheet) => SafeArea(
+    builder: (sheet) => _RecipeInclusionSheet(recipes: recipes),
+  );
+}
+
+class _RecipeInclusionSheet extends StatefulWidget {
+  const _RecipeInclusionSheet({required this.recipes});
+
+  final List<ImportedRecipe> recipes;
+
+  @override
+  State<_RecipeInclusionSheet> createState() => _RecipeInclusionSheetState();
+}
+
+class _RecipeInclusionSheetState extends State<_RecipeInclusionSheet> {
+  late final Set<ImportedRecipe> _selected = {...widget.recipes};
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final texts = context.texts;
+    return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -87,31 +104,59 @@ Future<ImportedRecipe?> _pickRecipeToReview(
               AppSpacing.sm,
             ),
             child: Text(
-              'Achamos ${recipes.length} receitas nessa foto',
-              style: sheet.texts.displaySmall,
+              'Achamos ${widget.recipes.length} receitas nessa foto',
+              style: texts.displaySmall,
             ),
           ),
           Flexible(
             child: ListView(
               shrinkWrap: true,
               children: [
-                for (final recipe in recipes)
-                  ListTile(
-                    leading: Icon(
+                for (final recipe in widget.recipes)
+                  CheckboxListTile(
+                    value: _selected.contains(recipe),
+                    onChanged: (checked) => setState(() {
+                      if (checked ?? false) {
+                        _selected.add(recipe);
+                      } else {
+                        _selected.remove(recipe);
+                      }
+                    }),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    activeColor: colors.violet,
+                    secondary: Icon(
                       Icons.restaurant_menu_outlined,
                       color: colors.textMuted,
                     ),
-                    title: Text(recipe.name, style: sheet.texts.bodyLarge),
-                    onTap: () =>
-                        Navigator.of(sheet).pop<ImportedRecipe>(recipe),
+                    title: Text(recipe.name, style: texts.bodyLarge),
                   ),
               ],
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.sm,
+              AppSpacing.screen,
+              AppSpacing.screen,
+            ),
+            child: PillButton(
+              label: _selected.isEmpty
+                  ? 'Selecione ao menos uma'
+                  : 'Incluir ${_selected.length} '
+                      '${_selected.length > 1 ? 'receitas' : 'receita'}',
+              onPressed: _selected.isEmpty
+                  ? null
+                  : () => Navigator.of(context).pop([
+                        for (final recipe in widget.recipes)
+                          if (_selected.contains(recipe)) recipe,
+                      ]),
+            ),
+          ),
         ],
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _OcrLoadingDialog extends StatelessWidget {
