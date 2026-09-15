@@ -10,6 +10,7 @@ import 'package:receyta/features/recipes/ingredients_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_dialog.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
@@ -78,9 +79,7 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
       backgroundColor: colors.paper,
       appBar: AppBar(title: const Text('Ingredientes')),
       body: items.when(
-        loading: () => Center(
-          child: CircularProgressIndicator(color: colors.ink),
-        ),
+        loading: () => const Center(child: BrandLoader()),
         error: (_, __) => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),

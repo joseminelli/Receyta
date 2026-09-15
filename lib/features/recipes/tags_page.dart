@@ -8,6 +8,7 @@ import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_dialog.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
@@ -48,9 +49,7 @@ class TagsPage extends ConsumerWidget {
       backgroundColor: colors.paper,
       appBar: AppBar(title: const Text('Tags')),
       body: tags.when(
-        loading: () => Center(
-          child: CircularProgressIndicator(color: colors.ink),
-        ),
+        loading: () => const Center(child: BrandLoader()),
         error: (_, __) => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),

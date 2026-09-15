@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/features/folders/folders_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/folder_grid_tile.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
@@ -23,9 +24,7 @@ class AllFoldersPage extends ConsumerWidget {
       backgroundColor: colors.paper,
       appBar: AppBar(title: const Text('Pastas')),
       body: folders.when(
-        loading: () => Center(
-          child: CircularProgressIndicator(color: colors.ink),
-        ),
+        loading: () => const Center(child: BrandLoader()),
         error: (_, __) => Center(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xl),

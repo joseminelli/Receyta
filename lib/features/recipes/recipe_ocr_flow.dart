@@ -9,6 +9,7 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 
 /// Tira/escolhe uma foto, roda OCR on-device e abre o formulário já
 /// preenchido pra revisão (C8). Nunca salva sozinho, igual ao C7 — e nunca
@@ -119,21 +120,21 @@ class _OcrLoadingDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    // Sem cartão `paper` por baixo — só o loader flutuando sobre o véu
+    // escuro do próprio `showDialog`, por isso o texto vira branco.
     return Dialog(
-      backgroundColor: colors.paper,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: colors.ink),
-            const SizedBox(height: AppSpacing.md),
+            const BrandLoader(size: 96),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Lendo o texto da foto...',
-              style: context.texts.bodyLarge,
+              style: context.texts.displaySmall?.copyWith(color: colors.onSaturated),
               textAlign: TextAlign.center,
             ),
           ],
