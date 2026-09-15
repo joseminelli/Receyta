@@ -127,6 +127,20 @@ as vezes de identidade visual até lá.
 | RF-07.5 | Resolução de conflito last-write-wins por campo, com histórico | Should |
 | RF-07.6 | Uso do app 100% funcional sem conta | Must |
 
+### RF-08 — Configurações e acessibilidade (bloco G)
+
+Público-alvo inclui pessoas com baixo letramento técnico e idosos — RNF-05
+(escala de fonte do sistema, contraste AA) é a base passiva, mas depende do
+usuário achar isso nas configurações do aparelho. Esta tela expõe os mesmos
+eixos como controle explícito, direto no app.
+
+| ID | Requisito | Prioridade |
+|---|---|---|
+| RF-08.1 | Tela de Configurações (rota própria, acessível do rodapé/menu) | Must |
+| RF-08.2 | Fonte grande: multiplicador de escala próprio do app, independente da escala do sistema | Should |
+| RF-08.3 | Alto contraste: variante do tema com contraste reforçado, validada em AA nos dois modos | Should |
+| RF-08.4 | Limpar dados: apaga tudo do banco local, com confirmação dupla e aviso pra exportar antes (RF-06.1) se ainda não exportou | Must |
+
 ---
 
 ## 3. Requisitos não-funcionais
@@ -842,13 +856,14 @@ Esforço em dias de trabalho focado.
 ---
 
 ### Bloco G — Acabamento
-*Cada item é independente; pegue por ordem de incômodo. ~2,5 dias.*
+*Cada item é independente; pegue por ordem de incômodo. ~3,5 dias.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
 | G1 | Modo cozinha: wakelock, passos grandes, timers | 1 | Cozinhar sem tocar na tela com a mão suja |
 | G2 | Escalar porções | 0,5 | Dobrar a receita recalcula tudo |
 | G3 | Estados vazios e onboarding | 1 | App recém-instalado não parece quebrado |
+| G4 | Configurações (RF-08): fonte grande, alto contraste, limpar dados | 1 | Alguém sem prática com celular acha e usa os três sem ajuda |
 
 ---
 
@@ -875,8 +890,8 @@ Não comece este bloco antes de responder duas coisas com uso real: você de fat
 | D — Import/export | 6 d | Compartilhar (arquivo ou link) e fazer backup |
 | E — Compras | 4 d | **Substitui a lista do mercado** |
 | F — Calendário | 3,5 d | **Fecha o ciclo da semana** |
-| G — Acabamento | 2,5 d | Tira as arestas |
-| **Até G** | **34,5 d** | ~7 semanas de trabalho focado |
+| G — Acabamento | 3,5 d | Tira as arestas |
+| **Até G** | **35,5 d** | ~7 semanas de trabalho focado |
 
 Fora dessa conta: **bloco H** (conta, sync e a foto de receita ex-B7), que só
 entra depois de semanas de uso real.
