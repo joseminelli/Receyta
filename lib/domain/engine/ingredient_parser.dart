@@ -74,6 +74,27 @@ final _integerRegex = RegExp(r'^(\d+)\s*');
 
 double _parseDecimal(String s) => double.parse(s.replaceAll(',', '.'));
 
+/// Reescreve na própria linha o "1" que o OCR (C8) leu como "I"/"l"/"T" —
+/// não só acerta por baixo dos panos a quantidade extraída
+/// ([parseIngredientLine]), mas também limpa o texto bruto que aparece na
+/// tela de revisão ("I dente de alho" → "1 dente de alho"). Usada tanto em
+/// linha de ingrediente quanto de passo (pode repetir a quantidade, "misture
+/// I xícara de farinha..."). Só troca a 1ª ocorrência achada na linha — uma
+/// receita raramente tem duas quantidades erradas na mesma linha.
+String fixOcrDigitLetterConfusion(
+  String text, {
+  List<SeedUnit> units = kSeedUnits,
+}) {
+  for (final m in _wordStart.allMatches(text)) {
+    final tail = text.substring(m.start);
+    final fixed = _fixOcrOneMisreadAsLetter(tail, units);
+    if (fixed != tail) {
+      return text.substring(0, m.start) + fixed;
+    }
+  }
+  return text;
+}
+
 ParsedIngredientLine parseIngredientLine(
   String rawText, {
   List<SeedUnit> units = kSeedUnits,
@@ -84,12 +105,14 @@ ParsedIngredientLine parseIngredientLine(
     return ParsedIngredientLine(rawText: rawText, name: '');
   }
 
-  var (quantity, afterQuantity) = _extractQuantity(trimmed);
+  var (quantity, afterQuantity) = _extractQuantity(
+    _fixOcrOneMisreadAsLetter(trimmed, units),
+  );
   var prefix = '';
   if (quantity == null) {
     // Não achou no início — tenta achar em qualquer ponto da linha (comum
     // em OCR, C8: "Farinha de trigo 1/4 xícara", quantidade no fim).
-    final elsewhere = _extractQuantityAnywhere(trimmed);
+    final elsewhere = _extractQuantityAnywhere(trimmed, units);
     if (elsewhere != null) {
       quantity = elsewhere.quantity;
       prefix = elsewhere.before;
@@ -97,7 +120,18 @@ ParsedIngredientLine parseIngredientLine(
     }
   }
 
-  final (unitCode, afterUnit) = _matchUnit(afterQuantity, units);
+  var (unitCode, afterUnit) = _matchUnit(afterQuantity, units);
+  if (unitCode == null) {
+    // Fração fala "de" antes da unidade ("1/4 DE xícara") — diferente do
+    // "de" que liga unidade e nome ("xícara DE farinha"), já tratado
+    // embaixo. Sem isso a unidade nunca casava e vazava pro nome.
+    final (retryCode, retryAfter) =
+        _matchUnit(_stripLeadingConnector(afterQuantity), units);
+    if (retryCode != null) {
+      unitCode = retryCode;
+      afterUnit = retryAfter;
+    }
+  }
   final afterConnector = _stripLeadingConnector(afterUnit);
   final (qualifier, afterQualifier) = _extractQualifier(
     afterConnector,
@@ -176,15 +210,53 @@ ParsedIngredientLine parseIngredientLine(
 
 final _wordStart = RegExp(r'\S+');
 
+/// "1" vira "I", "l" ou (mais raro) "T" no OCR (C8) — em fonte sem serifa
+/// ficam parecidos ou idênticos, e às vezes a letra ainda cola direto na
+/// unidade ("Icolher") ou na fração ("T/4"). Só troca de volta quando o
+/// resto da palavra, tirando essa letra, ainda parece continuação de
+/// quantidade (unidade reconhecida logo depois, ou fração) — assim
+/// "Iogurte"/"leite"/"laranja"/"Tâmaras" não viram "1ogurte"/"1eite"/
+/// "1aranja"/"1âmaras" à toa.
+const _ocrDigitLetters = {'I', 'l', 'T'};
+
+final _quantityContinuation = RegExp(
+  '^\\s*(e\\s+\\d|[/${_fractionChars.keys.join()}])',
+);
+
+String _fixLeadingLetterDigit(String text, List<SeedUnit> units) {
+  if (text.isEmpty || !_ocrDigitLetters.contains(text[0])) return text;
+  final rest = text.substring(1);
+  final looksLikeQuantity = _quantityContinuation.hasMatch(rest) ||
+      _matchUnit(rest.trimLeft(), units).$1 != null;
+  return looksLikeQuantity ? '1$rest' : text;
+}
+
+/// Número misto ("1 e 1/4") perde o espaço entre o "1" e o "e" quando os
+/// dois viram letra ("Ie l/4xícara") — sem tratar isso à parte, o "e" cola
+/// no número seguinte e o "1 e" inteiro vaza pro nome do ingrediente em vez
+/// de virar quantidade 1.25.
+String _fixOcrOneMisreadAsLetter(String text, List<SeedUnit> units) {
+  if (text.length >= 3 &&
+      _ocrDigitLetters.contains(text[0]) &&
+      text[1] == 'e' &&
+      text[2] == ' ') {
+    final fraction = _fixLeadingLetterDigit(text.substring(3), units);
+    return '1 e $fraction';
+  }
+  return _fixLeadingLetterDigit(text, units);
+}
+
 /// Quantidade fora do início da linha — testa cada palavra como possível
 /// começo de número (assim "1 / 4" com espaço na barra ainda casa inteiro,
 /// já que a partir do "1" a mesma `_extractQuantity` consome "1 / 4"). Pega
 /// a primeira que bater, senão devolve `null`.
 ({double quantity, String before, String after})? _extractQuantityAnywhere(
   String text,
+  List<SeedUnit> units,
 ) {
   for (final m in _wordStart.allMatches(text)) {
-    final (qty, after) = _extractQuantity(text.substring(m.start));
+    final fixed = _fixOcrOneMisreadAsLetter(text.substring(m.start), units);
+    final (qty, after) = _extractQuantity(fixed);
     if (qty != null) {
       return (
         quantity: qty,

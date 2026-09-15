@@ -161,4 +161,68 @@ void main() {
     expect(r.quantity, isNull);
     expect(r.name, 'farinha de trigo integral');
   });
+
+  test('"I" maiúsculo no lugar de "1" (fonte sem serifa, comum em OCR, C8) '
+      'ainda vira quantidade 1', () {
+    final r = parseIngredientLine('I colher de sopa de farinha de aveia');
+    expect(r.quantity, 1);
+    expect(r.unitCode, 'colher_sopa');
+    expect(r.name, 'farinha de aveia');
+  });
+
+  test('"I" colado direto na unidade, sem espaço (também comum em OCR)', () {
+    final r = parseIngredientLine('Icolher de sopa de azeite');
+    expect(r.quantity, 1);
+    expect(r.unitCode, 'colher_sopa');
+    expect(r.name, 'azeite');
+  });
+
+  test('"I e 1/2" (número misto) com o "1" inicial lido como "I"', () {
+    final r = parseIngredientLine('I e 1/2 colher de chá de alho moído');
+    expect(r.quantity, 1.5);
+    expect(r.unitCode, 'colher_cha');
+  });
+
+  test('"I" no fim da linha, junto com a unidade (comum em OCR, C8)', () {
+    final r = parseIngredientLine('sal marinho I colher de chá');
+    expect(r.quantity, 1);
+    expect(r.unitCode, 'colher_cha');
+    expect(r.name, 'sal marinho');
+  });
+
+  test('palavra de verdade começando com "I"/"l" não vira quantidade à toa',
+      () {
+    expect(parseIngredientLine('Iogurte natural').quantity, isNull);
+    expect(parseIngredientLine('leite').quantity, isNull);
+    expect(parseIngredientLine('laranja').quantity, isNull);
+  });
+
+  test('"1" também vira "T" às vezes (mais raro que I/l, mas acontece), '
+      'grudado direto na fração', () {
+    final r = parseIngredientLine('T/4 de xícara de água morna');
+    expect(r.quantity, 0.25);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'água morna');
+  });
+
+  test('palavra de verdade começando com "T" não vira quantidade à toa', () {
+    expect(parseIngredientLine('Tâmaras picadas').quantity, isNull);
+    expect(parseIngredientLine('Trigo sarraceno').quantity, isNull);
+  });
+
+  test('número misto "1 e 1/4" grudado ("Ie l/4xícara", "1" e "e" sem '
+      'espaço entre si e o numerador também virou letra)', () {
+    final r = parseIngredientLine('Ie l/4xícara de polvilho doce');
+    expect(r.quantity, 1.25);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'polvilho doce');
+  });
+
+  test('fração inteira ilegível ("1/3" virou algo como "IB") não trava o '
+      'parser — fica sem quantidade/unidade pro usuário ajustar na revisão',
+      () {
+    final r = parseIngredientLine('IB de xícara de azeite');
+    expect(r.quantity, isNull);
+    expect(() => parseIngredientLine('IB de xícara de azeite'), returnsNormally);
+  });
 }

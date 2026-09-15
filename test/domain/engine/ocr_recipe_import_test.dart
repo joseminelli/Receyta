@@ -371,6 +371,24 @@ void main() {
     expect(r.ingredientLines, ['3 claras', '3 gemas']);
   });
 
+  test('"I"/"l" que o OCR devolve no lugar de "1" já sai corrigido na '
+      'própria linha de ingrediente (não só na quantidade por baixo dos '
+      'panos) — "I dente de alho ralado" vira "1 dente de alho ralado"', () {
+    final r = parseOcrLines([
+      'Pão sem queijo',
+      'Ingredientes',
+      'I dente de alho ralado fininho',
+      'l colher de chá de açafrão em pó',
+      'Preparo:',
+      'Asse tudo.',
+    ]);
+
+    expect(r!.ingredientLines, [
+      '1 dente de alho ralado fininho',
+      '1 colher de chá de açafrão em pó',
+    ]);
+  });
+
   group('parseOcrLinesMulti', () {
     test('foto com 2 receitas numeradas (livro/caderno) vira 2 receitas '
         'separadas, sem misturar ingrediente/preparo de uma na outra', () {
@@ -419,9 +437,11 @@ void main() {
 
       expect(recipes, hasLength(2));
       expect(recipes[0].name, 'Toast');
+      // O "I" (mesma confusão do marcador) também é corrigido na própria
+      // linha de ingrediente — ver fixOcrDigitLetterConfusion.
       expect(recipes[0].ingredientLines, [
-        'I colher de sopa de farinha de aveia',
-        'I colher de sopa de azeite',
+        '1 colher de sopa de farinha de aveia',
+        '1 colher de sopa de azeite',
       ]);
       expect(recipes[1].name, 'Pasta de grão de bico (homus)');
     });

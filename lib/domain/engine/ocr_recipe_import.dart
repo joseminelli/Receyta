@@ -6,6 +6,7 @@
 /// o OCR devolveu, na ordem em que apareceram na foto.
 library;
 
+import 'ingredient_parser.dart';
 import 'recipe_import.dart';
 
 /// Aceita dois-pontos no fim ("Ingredientes:") — quase toda receita de
@@ -288,8 +289,11 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     final ingredientsEnd = _ingredientRunEnd(body, 0, body.length);
     return ImportedRecipe(
       name: lines.first,
-      ingredientLines: body.sublist(0, ingredientsEnd),
-      stepLines: _splitSteps(body.sublist(ingredientsEnd)),
+      ingredientLines:
+          body.sublist(0, ingredientsEnd).map(fixOcrDigitLetterConfusion).toList(),
+      stepLines: _splitSteps(body.sublist(ingredientsEnd))
+          .map(fixOcrDigitLetterConfusion)
+          .toList(),
     );
   }
 
@@ -361,8 +365,8 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
   return ImportedRecipe(
     name: name,
     about: about,
-    ingredientLines: ingredientLines,
-    stepLines: stepLines,
+    ingredientLines: ingredientLines.map(fixOcrDigitLetterConfusion).toList(),
+    stepLines: stepLines.map(fixOcrDigitLetterConfusion).toList(),
   );
 }
 
