@@ -192,6 +192,16 @@ class _Detail extends StatelessWidget {
 
     final colors = context.colors;
     final hasSteps = detail.steps.isNotEmpty;
+    final hasIngredients = detail.ingredients.isNotEmpty;
+    final hasNotes = (recipe.notes ?? '').isNotEmpty;
+
+    // Calculado uma vez por carregamento da receita (não a cada rebuild de
+    // linha): parsear a mesma string toda hora que a linha reconstrói é
+    // trabalho refeito à toa.
+    final parsedIngredients = [
+      for (final i in detail.ingredients)
+        i.quantity == null ? null : parseIngredientLine(i.rawText),
+    ];
 
     return Scaffold(
       backgroundColor: colors.paper,
@@ -214,7 +224,7 @@ class _Detail extends StatelessWidget {
                     AppSpacing.screen,
                     AppSpacing.xl,
                     AppSpacing.screen,
-                    hasSteps ? 120 : AppSpacing.xxl,
+                    0,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -224,7 +234,7 @@ class _Detail extends StatelessWidget {
                         const SizedBox(height: AppSpacing.lg),
                         Text(recipe.about!, style: context.texts.bodyLarge),
                       ],
-                      if (detail.ingredients.isNotEmpty) ...[
+                      if (hasIngredients) ...[
                         const SizedBox(height: AppSpacing.xl),
                         SectionHeader(
                           title: 'Ingredientes',
@@ -232,30 +242,85 @@ class _Detail extends StatelessWidget {
                               detail.ingredients.length, 'item', 'itens'),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        ..._grouped(
-                          detail.ingredients,
-                          (i) => i.groupLabel,
-                          (idx, i) => _IngredientRow(i),
-                        ),
-                      ],
-                      if (hasSteps) ...[
-                        const SizedBox(height: AppSpacing.xl),
-                        _Label('Preparo'),
-                        const SizedBox(height: AppSpacing.sm),
-                        ..._grouped(
-                          detail.steps,
-                          (s) => s.groupLabel,
-                          (idx, s) => _Step(index: idx + 1, text: s.text),
-                        ),
-                      ],
-                      if ((recipe.notes ?? '').isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.xl),
-                        _Label('Notas'),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(recipe.notes!, style: context.texts.bodyLarge),
                       ],
                     ],
                   ),
+                ),
+              ),
+              // Ingredientes e passos entram em slivers lazy próprios (em vez
+              // de dentro do Column acima): receitas longas deixam de montar
+              // todas as linhas de uma vez, só as visíveis (+ cache) chegam a
+              // ser construídas.
+              if (hasIngredients)
+                SliverPadding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _groupedItem(
+                        detail.ingredients,
+                        i,
+                        (x) => x.groupLabel,
+                        (idx, x) => _IngredientRow(x, parsedIngredients[idx]),
+                      ),
+                      childCount: detail.ingredients.length,
+                    ),
+                  ),
+                ),
+              SliverToBoxAdapter(
+                child: Container(
+                  color: colors.paper,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen),
+                  child: hasSteps
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: AppSpacing.xl),
+                            _Label('Preparo'),
+                            const SizedBox(height: AppSpacing.sm),
+                          ],
+                        )
+                      : null,
+                ),
+              ),
+              if (hasSteps)
+                SliverPadding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => _groupedItem(
+                        detail.steps,
+                        i,
+                        (s) => s.groupLabel,
+                        (idx, s) => _Step(index: idx + 1, text: s.text),
+                      ),
+                      childCount: detail.steps.length,
+                    ),
+                  ),
+                ),
+              SliverToBoxAdapter(
+                child: Container(
+                  color: colors.paper,
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    0,
+                    AppSpacing.screen,
+                    hasSteps ? 120 : AppSpacing.xxl,
+                  ),
+                  child: hasNotes
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: AppSpacing.xl),
+                            _Label('Notas'),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(recipe.notes!,
+                                style: context.texts.bodyLarge),
+                          ],
+                        )
+                      : const SizedBox.shrink(),
                 ),
               ),
             ],
@@ -483,9 +548,13 @@ class _Hero extends ConsumerWidget {
 /// texto normal. Sem quantidade reconhecida (linha que o parser não deu
 /// conta), cai pro `rawText` cru — nunca esconde o que o usuário digitou.
 class _IngredientRow extends StatelessWidget {
-  const _IngredientRow(this.ingredient);
+  const _IngredientRow(this.ingredient, this.parsed);
 
   final RecipeIngredient ingredient;
+
+  /// Calculado uma vez por carregamento da receita (ver `build()` da página),
+  /// não a cada rebuild desta linha.
+  final ParsedIngredientLine? parsed;
 
   @override
   Widget build(BuildContext context) {
@@ -499,7 +568,7 @@ class _IngredientRow extends StatelessWidget {
       );
     }
 
-    final parsed = parseIngredientLine(ingredient.rawText);
+    final parsed = this.parsed!;
     final unit = _unitLabel(ingredient.unitId, qty);
     final base = context.texts.bodyLarge?.copyWith(color: colors.ink);
     final quantityStyle = AppTextStyles.metric.copyWith(color: colors.ink);
@@ -646,25 +715,26 @@ String? _unitLabel(String? unitCode, double quantity) {
   return null;
 }
 
-/// Intercala subtítulos de grupo (§RF-01.4) numa lista de ingredientes ou
-/// passos. `index` passado ao builder é a posição só entre os itens de verdade
-/// (numeração dos passos não pula por causa dos separadores).
-List<Widget> _grouped<T>(
+/// Item de uma lista de ingredientes ou passos (§RF-01.4), com o subtítulo de
+/// grupo embutido acima dele quando o grupo muda em relação ao item anterior.
+/// Olha só `items[index]` e `items[index - 1]` — chamado sob demanda por um
+/// `SliverChildBuilderDelegate`, então só os itens visíveis (+ cache) chegam
+/// a ser construídos, ao contrário de intercalar tudo numa lista eager.
+Widget _groupedItem<T>(
   List<T> items,
+  int index,
   String? Function(T item) groupOf,
   Widget Function(int index, T item) row,
 ) {
-  final out = <Widget>[];
-  String? last;
-  var i = 0;
-  for (final item in items) {
-    final g = groupOf(item);
-    if (g != last && g != null && g.isNotEmpty) out.add(_GroupLabel(g));
-    last = g;
-    out.add(row(i, item));
-    i++;
-  }
-  return out;
+  final g = groupOf(items[index]);
+  final prevGroup = index > 0 ? groupOf(items[index - 1]) : null;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (g != prevGroup && g != null && g.isNotEmpty) _GroupLabel(g),
+      row(index, items[index]),
+    ],
+  );
 }
 
 /// Separador de grupo (§RF-01.4): fonte display em `coral` (cor da seção

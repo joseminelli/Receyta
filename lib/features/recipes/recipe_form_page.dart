@@ -1057,16 +1057,35 @@ class _IngredientAutocompleteField extends ConsumerWidget {
           isFuzzy = false;
           return const Iterable<Ingredient>.empty();
         }
-        final best = [
-          for (final s in suggestions)
-            (ingredient: s, score: normalizedSimilarity(key, s.normalizedKey)),
-        ]..sort((a, b) => b.score.compareTo(a.score));
-        final fuzzy = best
-            .where((s) => isCloseMatch(key, s.ingredient.normalizedKey))
-            .take(1);
 
-        isFuzzy = fuzzy.isNotEmpty;
-        return fuzzy.map((s) => s.ingredient);
+        // Poda barata antes do Levenshtein completo: a distância de edição
+        // nunca é menor que a diferença de tamanho das strings, então dá pra
+        // descartar sem calcular nada candidatos que não têm como bater nem
+        // o limiar de score nem a regra de 1 letra de diferença. Roda em
+        // todo o catálogo a cada tecla digitada, então essa poda evita rodar
+        // Levenshtein (custo O(n·m)) em quem já está matematicamente fora.
+        Ingredient? bestMatch;
+        var bestScore = -1.0;
+        for (final s in suggestions) {
+          final target = s.normalizedKey;
+          final diff = (key.length - target.length).abs();
+          final maxLen = key.length > target.length ? key.length : target.length;
+          if (diff > 1 && diff > 0.15 * maxLen) continue;
+
+          final lev = levenshteinDistance(key, target);
+          final score = maxLen == 0 ? 1.0 : 1 - (lev / maxLen);
+          final shorter = key.length < target.length ? key.length : target.length;
+          final closeEnough = score >= 0.85 || (shorter >= 4 && lev <= 1);
+          if (closeEnough && score > bestScore) {
+            bestScore = score;
+            bestMatch = s;
+          }
+        }
+
+        isFuzzy = bestMatch != null;
+        return bestMatch == null
+            ? const Iterable<Ingredient>.empty()
+            : [bestMatch];
       },
       onSelected: (picked) {
         line.applyIngredientSuggestion(picked, pendingPickText);

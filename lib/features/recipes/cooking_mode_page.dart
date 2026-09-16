@@ -24,8 +24,8 @@ class CookingModePage extends ConsumerStatefulWidget {
 }
 
 class _CookingModePageState extends ConsumerState<CookingModePage> {
-  final _done = <int>{};
-  bool _ingredientsOpen = true;
+  final _ingredientsOpen = ValueNotifier<bool>(true);
+  final _doneNotifiers = <int, ValueNotifier<bool>>{};
 
   @override
   void initState() {
@@ -36,6 +36,10 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   @override
   void dispose() {
     _setWakelock(false);
+    _ingredientsOpen.dispose();
+    for (final n in _doneNotifiers.values) {
+      n.dispose();
+    }
     super.dispose();
   }
 
@@ -47,36 +51,39 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     } catch (_) {}
   }
 
-  /// Passos em cartão + subtítulos de grupo (§RF-01.4). O número não pula por
-  /// causa dos separadores; `_done` continua indexado pela posição do passo.
-  List<Widget> _stepRows(List<RecipeStep> steps) {
-    final out = <Widget>[];
-    String? last;
-    for (var i = 0; i < steps.length; i++) {
-      final g = steps[i].groupLabel;
-      if (g != last && g != null && g.isNotEmpty) {
-        out.add(Padding(
-          padding: const EdgeInsets.only(
-            top: AppSpacing.md,
-            bottom: AppSpacing.xs,
+  /// Um `ValueNotifier` por passo: tocar um cartão só reconstrói aquele
+  /// cartão (via `ValueListenableBuilder`), não a página inteira.
+  ValueNotifier<bool> _doneNotifierFor(int index) =>
+      _doneNotifiers.putIfAbsent(index, () => ValueNotifier(false));
+
+  /// Passo em cartão + subtítulo de grupo (§RF-01.4) quando muda em relação
+  /// ao passo anterior. Chamado sob demanda pelo `SliverChildBuilderDelegate`
+  /// — só os passos visíveis (+ cache) chegam a ser construídos.
+  Widget _stepItem(List<RecipeStep> steps, int i) {
+    final g = steps[i].groupLabel;
+    final prevGroup = i > 0 ? steps[i - 1].groupLabel : null;
+    final showGroupLabel = g != prevGroup && g != null && g.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showGroupLabel)
+          Padding(
+            padding: const EdgeInsets.only(
+              top: AppSpacing.md,
+              bottom: AppSpacing.xs,
+            ),
+            child: _GroupLabel(g),
           ),
-          child: _GroupLabel(g),
-        ));
-      }
-      last = g;
-      out.add(Padding(
-        padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-        child: _StepCard(
-          number: i + 1,
-          text: steps[i].text,
-          done: _done.contains(i),
-          onTap: () => setState(() {
-            _done.contains(i) ? _done.remove(i) : _done.add(i);
-          }),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+          child: _StepCard(
+            number: i + 1,
+            text: steps[i].text,
+            doneListenable: _doneNotifierFor(i),
+          ),
         ),
-      ));
-    }
-    return out;
+      ],
+    );
   }
 
   @override
@@ -100,32 +107,52 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                       _TopBar(name: detail.recipe.name),
                       const _WakeTip(),
                       Expanded(
-                        child: ListView(
-                          padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.screen,
-                            AppSpacing.xs,
-                            AppSpacing.screen,
-                            AppSpacing.xxl,
-                          ),
-                          children: [
-                            _IngredientsCard(
-                              ingredients: detail.ingredients,
-                              open: _ingredientsOpen,
-                              onToggle: () => setState(
-                                () => _ingredientsOpen = !_ingredientsOpen,
+                        child: CustomScrollView(
+                          slivers: [
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.screen,
+                                AppSpacing.xs,
+                                AppSpacing.screen,
+                                0,
+                              ),
+                              sliver: SliverToBoxAdapter(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _IngredientsCard(
+                                      ingredients: detail.ingredients,
+                                      openListenable: _ingredientsOpen,
+                                    ),
+                                    const SizedBox(height: AppSpacing.xl),
+                                    _SectionLabel('Preparo'),
+                                    const SizedBox(height: AppSpacing.md),
+                                    if (detail.steps.isEmpty)
+                                      Text(
+                                        'Esta receita não tem passos.',
+                                        style: context.texts.bodyLarge
+                                            ?.copyWith(color: colors.textBody),
+                                      ),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: AppSpacing.xl),
-                            _SectionLabel('Preparo'),
-                            const SizedBox(height: AppSpacing.md),
-                            if (detail.steps.isEmpty)
-                              Text(
-                                'Esta receita não tem passos.',
-                                style: context.texts.bodyLarge
-                                    ?.copyWith(color: colors.textBody),
-                              )
-                            else
-                              ..._stepRows(detail.steps),
+                            if (detail.steps.isNotEmpty)
+                              SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.screen,
+                                  0,
+                                  AppSpacing.screen,
+                                  AppSpacing.xxl,
+                                ),
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, i) =>
+                                        _stepItem(detail.steps, i),
+                                    childCount: detail.steps.length,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -209,13 +236,11 @@ class _WakeTip extends StatelessWidget {
 class _IngredientsCard extends StatelessWidget {
   const _IngredientsCard({
     required this.ingredients,
-    required this.open,
-    required this.onToggle,
+    required this.openListenable,
   });
 
   final List<RecipeIngredient> ingredients;
-  final bool open;
-  final VoidCallback onToggle;
+  final ValueNotifier<bool> openListenable;
 
   /// Linhas + subtítulos de grupo (§RF-01.4), no tom escuro do modo cozinha.
   List<Widget> _rows(BuildContext context) {
@@ -251,66 +276,69 @@ class _IngredientsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.inkSoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            onTap: onToggle,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: [
-                  Text(
-                    'INGREDIENTES',
-                    style:
-                        context.texts.labelSmall?.copyWith(color: colors.lime),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  Text(
-                    '${ingredients.length}',
-                    style: context.texts.labelSmall?.copyWith(
-                      color: colors.onSaturated.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    open ? Icons.expand_less : Icons.expand_more,
-                    color: colors.onSaturated.withValues(alpha: 0.7),
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (open)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                0,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (ingredients.isEmpty)
+    return ValueListenableBuilder<bool>(
+      valueListenable: openListenable,
+      builder: (context, open, _) => Container(
+        decoration: BoxDecoration(
+          color: colors.inkSoft,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: () => openListenable.value = !open,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
                     Text(
-                      'Nenhum ingrediente cadastrado.',
-                      style: context.texts.bodyMedium
-                          ?.copyWith(color: colors.textBody),
-                    )
-                  else
-                    ..._rows(context),
-                ],
+                      'INGREDIENTES',
+                      style: context.texts.labelSmall
+                          ?.copyWith(color: colors.lime),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      '${ingredients.length}',
+                      style: context.texts.labelSmall?.copyWith(
+                        color: colors.onSaturated.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      open ? Icons.expand_less : Icons.expand_more,
+                      color: colors.onSaturated.withValues(alpha: 0.7),
+                      size: 20,
+                    ),
+                  ],
+                ),
               ),
             ),
-        ],
+            if (open)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.md,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (ingredients.isEmpty)
+                      Text(
+                        'Nenhum ingrediente cadastrado.',
+                        style: context.texts.bodyMedium
+                            ?.copyWith(color: colors.textBody),
+                      )
+                    else
+                      ..._rows(context),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -363,58 +391,59 @@ class _StepCard extends StatelessWidget {
   const _StepCard({
     required this.number,
     required this.text,
-    required this.done,
-    required this.onTap,
+    required this.doneListenable,
   });
 
   final int number;
   final String text;
-  final bool done;
-  final VoidCallback onTap;
+  final ValueNotifier<bool> doneListenable;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: done ? colors.ink : colors.inkSoft,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        onTap: onTap,
+    return ValueListenableBuilder<bool>(
+      valueListenable: doneListenable,
+      builder: (context, done, _) => Material(
+        color: done ? colors.ink : colors.inkSoft,
         borderRadius: BorderRadius.circular(AppRadii.md),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 56,
-                child: Text(
-                  '$number'.padLeft(2, '0'),
-                  style: AppTextStyles.display(40).copyWith(
-                    color: done
-                        ? colors.onSaturated.withValues(alpha: 0.25)
-                        : colors.lime,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.xs / 2),
+        child: InkWell(
+          onTap: () => doneListenable.value = !done,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 56,
                   child: Text(
-                    text,
-                    style: context.texts.bodyLarge?.copyWith(
+                    '$number'.padLeft(2, '0'),
+                    style: AppTextStyles.display(40).copyWith(
                       color: done
-                          ? colors.onSaturated.withValues(alpha: 0.4)
-                          : colors.onSaturated,
-                      fontSize: 20,
-                      height: 1.4,
-                      decoration: done ? TextDecoration.lineThrough : null,
+                          ? colors.onSaturated.withValues(alpha: 0.25)
+                          : colors.lime,
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs / 2),
+                    child: Text(
+                      text,
+                      style: context.texts.bodyLarge?.copyWith(
+                        color: done
+                            ? colors.onSaturated.withValues(alpha: 0.4)
+                            : colors.onSaturated,
+                        fontSize: 20,
+                        height: 1.4,
+                        decoration: done ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -90,11 +90,18 @@ void main() {
         findsOneWidget);
     expect(find.text('2   dentes de alho', findRichText: true),
         findsOneWidget);
-    expect(find.text('Preparo'), findsOneWidget);
-    expect(find.text('Tempere o frango'), findsOneWidget);
-    expect(find.text('melhor no dia seguinte'), findsOneWidget);
     expect(find.text('Rápido'), findsOneWidget);
     expect(find.text('Frango'), findsOneWidget);
+
+    // Ingredientes e passos agora são slivers lazy (RF perf): numa tela de
+    // teste pequena, "Preparo" só existe na árvore depois de rolar até lá.
+    await tester.scrollUntilVisible(find.text('Preparo'), 300);
+    expect(find.text('Preparo'), findsOneWidget);
+    expect(find.text('Tempere o frango'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('melhor no dia seguinte'), 300);
+    expect(find.text('melhor no dia seguinte'), findsOneWidget);
+
     expect(find.text('Modo cozinha'), findsOneWidget);
   });
 
