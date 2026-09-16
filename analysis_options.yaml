@@ -12,6 +12,13 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - "lib/**/*.g.dart"
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
   errors:
     # Drift/Riverpod codegen anotam alvos que o analyzer reclama; inofensivo.
     invalid_annotation_target: ignore
