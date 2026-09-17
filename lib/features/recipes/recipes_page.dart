@@ -12,6 +12,7 @@ import 'package:receyta/features/folders/recipe_drag.dart';
 import 'package:receyta/features/recipes/ingredients_page.dart';
 import 'package:receyta/features/recipes/recipe_import_flow.dart';
 import 'package:receyta/features/recipes/recipe_ocr_flow.dart';
+import 'package:receyta/features/recipes/receyta_import_flow.dart';
 import 'package:receyta/features/recipes/recipes_view_model.dart';
 import 'package:receyta/features/recipes/tags_page.dart';
 import 'package:receyta/features/recipes/trash_page.dart';
@@ -434,6 +435,12 @@ class _Header extends ConsumerWidget {
                                       onSelected: () =>
                                           importRecipeFromPhotoFlow(
                                               context, ref),
+                                    ),
+                                    CreateMenuAction(
+                                      icon: Icons.file_open_outlined,
+                                      label: 'Importar arquivo .receyta',
+                                      onSelected: () =>
+                                          importReceytaFileFlow(context, ref),
                                     ),
                                   ],
                                 ),

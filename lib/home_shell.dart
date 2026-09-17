@@ -1,6 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'package:receyta/features/folders/recipe_drag.dart';
+import 'package:receyta/features/recipes/receyta_import_flow.dart';
 import 'package:receyta/features/recipes/recipes_page.dart';
 import 'package:receyta/features/settings/account_page.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -9,17 +14,63 @@ import 'package:receyta/widgets/pill_nav_bar.dart';
 import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
-/// Casca do app: as três seções (§9.2) sob a `PillNavBar` flutuante (§9.8).
-/// Semana e Compras são placeholder até os blocos F e E.
-class HomeShell extends StatefulWidget {
+/// Casca do app: as quatro seções (§9.2) sob a `PillNavBar` flutuante
+/// (§9.8). Semana e Compras são placeholder até os blocos F e E.
+class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
   @override
-  State<HomeShell> createState() => _HomeShellState();
+  ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> {
   int _tab = 0;
+  StreamSubscription<List<SharedMediaFile>>? _mediaSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // `.receyta` recebido de outro app (D5, RF-06.5): `getInitialMedia`
+    // cobre o app fechado sendo aberto pelo anexo; `getMediaStream` cobre o
+    // app já aberto recebendo um novo. Os dois passam pelo mesmo canal do
+    // `receive_sharing_intent`, nunca pela rota inicial (ver
+    // `MainActivity.getInitialRoute` — por isso não navegamos daqui, só
+    // importamos e avisamos por snackbar). Best-effort: qualquer falha do
+    // plugin (inclusive em teste de widget, sem o canal nativo) não pode
+    // travar a home.
+    _checkInitialShare();
+    _mediaSub = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen(_handleSharedMedia, onError: (_) {});
+  }
+
+  Future<void> _checkInitialShare() async {
+    try {
+      final media = await ReceiveSharingIntent.instance.getInitialMedia();
+      debugPrint('[receyta] getInitialMedia -> ${media.length} arquivo(s): '
+          '${media.map((m) => '${m.path} (${m.mimeType})').toList()}');
+      await ReceiveSharingIntent.instance.reset();
+      if (!mounted) return;
+      _handleSharedMedia(media);
+    } catch (e, st) {
+      debugPrint('[receyta] getInitialMedia falhou: $e\n$st');
+    }
+  }
+
+  void _handleSharedMedia(List<SharedMediaFile> media) {
+    for (final file in media) {
+      if (file.path.toLowerCase().endsWith('.receyta')) {
+        importSharedReceytaFileFlow(ref, file.path);
+        return;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _mediaSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
