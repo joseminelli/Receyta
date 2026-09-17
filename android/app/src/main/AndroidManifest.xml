@@ -27,6 +27,20 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- `getInitialRoute()` (no MainActivity.kt) só resolve o app
+                 fechado (cold start). Com o app já aberto, `singleTask`
+                 reaproveita a activity via `onNewIntent` — e por padrão o
+                 Flutter tem um segundo mecanismo (independente do
+                 `getInitialRoute`) que empurra o dado bruto do Intent direto
+                 pro GoRouter como rota nessa hora, dando o mesmo "Página não
+                 encontrada" de novo, só que agora com o app já aberto
+                 (confirmado no aparelho: importava certo mas caía nessa
+                 tela). Desligado aqui porque o `.receyta` compartilhado é
+                 tratado inteiro pelo canal do `receive_sharing_intent`
+                 (`home_shell.dart`), nunca pelo GoRouter. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
