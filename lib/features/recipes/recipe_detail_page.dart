@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/database/seed_data.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
@@ -16,6 +17,7 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/hero_number.dart';
 import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/section_header.dart';
@@ -394,6 +396,24 @@ class _Hero extends ConsumerWidget {
               onTap: () {
                 Navigator.of(sheet).pop();
                 moveRecipeFlow(context, ref, recipe.id, recipe.folderId);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('Compartilhar'),
+              subtitle: const Text('Manda como arquivo .receyta'),
+              onTap: () async {
+                Navigator.of(sheet).pop();
+                final result = await ref
+                    .read(recipeExportServiceProvider)
+                    .shareRecipe(recipe.id);
+                result.when(
+                  ok: (_) {},
+                  err: (f) => showAppSnackBar(
+                    message: f.message,
+                    variant: AppSnackBarVariant.error,
+                  ),
+                );
               },
             ),
             ListTile(

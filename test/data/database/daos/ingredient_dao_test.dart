@@ -120,6 +120,21 @@ void main() {
     expect(byName['Sal'], 0);
   });
 
+  test('findByIds devolve só os ids pedidos, em lote', () async {
+    final tomato = await db.ingredientDao.getOrCreate('Tomate');
+    final onion = await db.ingredientDao.getOrCreate('Cebola');
+    await db.ingredientDao.getOrCreate('Alho');
+
+    final rows = await db.ingredientDao.findByIds([tomato.id, onion.id]);
+
+    expect(rows.map((r) => r.id).toSet(), {tomato.id, onion.id});
+  });
+
+  test('findByIds com lista vazia devolve lista vazia', () async {
+    final rows = await db.ingredientDao.findByIds(const []);
+    expect(rows, isEmpty);
+  });
+
   test('deleteIngredient apaga quando não está em uso', () async {
     final sal = await db.ingredientDao.getOrCreate('Sal');
     await db.ingredientDao.deleteIngredient(sal.id);

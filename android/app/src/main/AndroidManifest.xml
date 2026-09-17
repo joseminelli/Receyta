@@ -24,6 +24,44 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Aparece no "Abrir com" pra um `.receyta` recebido por outro app
+                 (D5, RF-06.5). Dois filtros por dois formatos de URI
+                 diferentes que já vimos na prática (checado com `adb` num
+                 aparelho de verdade):
+                 1. `file://` com o nome do arquivo visível no path — o
+                    `pathPattern` restringe certinho pro `.receyta` aqui.
+                 2. `content://` do MediaStore de Downloads (Arquivos, e
+                    provavelmente qualquer app que salva antes de abrir) —
+                    o path é só um id numérico (`/external/downloads/52820`),
+                    sem o nome do arquivo em lugar nenhum, então `pathPattern`
+                    NUNCA bate nesse caso (era o bug: o filtro antigo exigia
+                    path em todo `<data>`, essa URI ficava de fora). O que dá
+                    pra usar aqui é o mimeType: extensão desconhecida pro
+                    Android sempre vira `application/octet-stream`
+                    (confirmado via `content query` no MediaStore) — casa por
+                    esse tipo específico, sem `pathPattern` nem `host`, então
+                    Receyta aparece pra qualquer arquivo "binário
+                    desconhecido" nessa origem (mais amplo que só `.receyta`,
+                    mas é o único jeito: o Android não expõe o nome do
+                    arquivo pra casar no manifesto quando o path é opaco).
+                 Abrir de verdade (ler o JSON e importar) ainda não existe —
+                 isso é o D3. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="file"
+                    android:host="*"
+                    android:mimeType="*/*"
+                    android:pathPattern=".*\\.receyta"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content" android:mimeType="application/octet-stream"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

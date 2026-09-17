@@ -48,6 +48,13 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Lote de ingredientes por id — o export (D1) resolve `ingredientId` →
+  /// nome legível de uma vez só, em vez de um `SELECT` por linha.
+  Future<List<IngredientRow>> findByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value(const []);
+    return (select(ingredients)..where((i) => i.id.isIn(ids))).get();
+  }
+
   Stream<List<IngredientRow>> watchAll() {
     return (select(ingredients)
           ..orderBy([(i) => OrderingTerm.asc(i.displayName)]))
