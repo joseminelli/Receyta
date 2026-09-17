@@ -47,23 +47,25 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   Future<void> _checkInitialShare() async {
     try {
       final media = await ReceiveSharingIntent.instance.getInitialMedia();
-      debugPrint('[receyta] getInitialMedia -> ${media.length} arquivo(s): '
-          '${media.map((m) => '${m.path} (${m.mimeType})').toList()}');
       await ReceiveSharingIntent.instance.reset();
       if (!mounted) return;
       _handleSharedMedia(media);
-    } catch (e, st) {
-      debugPrint('[receyta] getInitialMedia falhou: $e\n$st');
+    } catch (_) {
+      // Sem plugin nativo (teste de widget) ou qualquer outra falha — segue
+      // pra home normal, sem import nenhum.
     }
   }
 
+  /// Não filtra por `file.path` terminar em `.receyta`: confirmado no
+  /// aparelho que o WhatsApp às vezes entrega o anexo já cacheado sob o
+  /// PRÓPRIO nome interno (`DOC-<data>-WA<n>.bin`), sem a extensão
+  /// original — daí o import só "às vezes" funcionar antes desse fix.
+  /// Quem decide se é um `.receyta` de verdade é o conteúdo
+  /// (`parseReceytaFile`, dentro de `importSharedReceytaFileFlow`), nunca o
+  /// nome do arquivo.
   void _handleSharedMedia(List<SharedMediaFile> media) {
-    for (final file in media) {
-      if (file.path.toLowerCase().endsWith('.receyta')) {
-        importSharedReceytaFileFlow(ref, file.path);
-        return;
-      }
-    }
+    if (media.isEmpty) return;
+    importSharedReceytaFileFlow(ref, media.first.path);
   }
 
   @override

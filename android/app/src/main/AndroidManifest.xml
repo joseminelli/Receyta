@@ -3,11 +3,18 @@
         android:label="Receyta"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
+        <!-- `singleTask` (era `singleTop` + `taskAffinity=""`, o padrão que o
+             `flutter create` gera): abrir um `.receyta` de outro app criava
+             uma tarefa/janela nova do Receyta em vez de reaproveitar a que já
+             tava aberta (confirmado no aparelho — ficava com "2 apps" na
+             lista de recentes). `taskAffinity=""` some porque uma activity
+             sem afinidade nenhuma nunca acha a tarefa existente pra
+             reaproveitar; sem essa linha ela usa a afinidade padrão (o
+             próprio pacote), que é o que o `singleTask` precisa pra casar. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
+            android:launchMode="singleTask"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
