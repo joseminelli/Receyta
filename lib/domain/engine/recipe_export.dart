@@ -7,13 +7,14 @@
 library;
 
 import 'package:receyta/domain/engine/ingredient_parser.dart';
+import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 
 const kRecipeExportSchemaVersion = 1;
 
 /// Monta o corpo de export de uma única receita (D1) — `kind: "recipes"`,
-/// sem pastas nem planejamento (export completo com pastas é o D2).
+/// sem pastas nem planejamento (export completo com pastas é o [buildFullExportJson], D2).
 /// [ingredientNames] resolve `ingredientId` → nome legível (§8.2, catálogo);
 /// entra pronto porque este arquivo não toca em banco.
 Map<String, dynamic> buildRecipeExportJson(
@@ -21,14 +22,56 @@ Map<String, dynamic> buildRecipeExportJson(
   required Map<String, String> ingredientNames,
   DateTime Function() clock = DateTime.now,
 }) {
+  return _envelope(
+    kind: 'recipes',
+    recipes: [detail],
+    ingredientNames: ingredientNames,
+    clock: clock,
+  );
+}
+
+/// Backup completo (D2) — `kind: "full"`, com [folders] junto pra a árvore
+/// sobreviver ao roundtrip. `recipeCount`/planejamento (calendário, lista de
+/// compras) ainda não existem no app, então não tem o que incluir aqui além
+/// de pasta + receita.
+Map<String, dynamic> buildFullExportJson({
+  required List<Folder> folders,
+  required List<RecipeDetail> recipes,
+  required Map<String, String> ingredientNames,
+  DateTime Function() clock = DateTime.now,
+}) {
+  return _envelope(
+    kind: 'full',
+    folders: folders,
+    recipes: recipes,
+    ingredientNames: ingredientNames,
+    clock: clock,
+  );
+}
+
+Map<String, dynamic> _envelope({
+  required String kind,
+  required List<RecipeDetail> recipes,
+  required Map<String, String> ingredientNames,
+  required DateTime Function() clock,
+  List<Folder>? folders,
+}) {
   return {
     'schemaVersion': kRecipeExportSchemaVersion,
     'exportedAt': clock().toUtc().toIso8601String(),
     'app': 'receyta',
-    'kind': 'recipes',
-    'recipes': [_recipeToJson(detail, ingredientNames)],
+    'kind': kind,
+    if (folders != null) 'folders': [for (final f in folders) _folderToJson(f)],
+    'recipes': [for (final r in recipes) _recipeToJson(r, ingredientNames)],
   };
 }
+
+Map<String, dynamic> _folderToJson(Folder f) => {
+      'id': f.id,
+      'parentId': f.parentId,
+      'name': f.name,
+      'position': f.position,
+    };
 
 Map<String, dynamic> _recipeToJson(
   RecipeDetail detail,
@@ -37,6 +80,7 @@ Map<String, dynamic> _recipeToJson(
   final r = detail.recipe;
   return {
     'id': r.id,
+    'folderId': r.folderId,
     'name': r.name,
     'about': r.about,
     'prepMinutes': r.prepMinutes,

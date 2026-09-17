@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:receyta/features/folders/recipe_drag.dart';
 import 'package:receyta/features/recipes/recipes_page.dart';
+import 'package:receyta/features/settings/account_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
@@ -42,6 +43,16 @@ class _HomeShellState extends State<HomeShell> {
         color: colors.lime,
         motif: TileMotif.ponto,
       ),
+      // `paper`, não `ink`: a PillNavBar em si já é `ink` (§9.8) — um item
+      // `ink` selecionado ficaria invisível contra o próprio fundo da barra.
+      // `paper` inverte (pill claro no fundo escuro) e ainda fecha o
+      // quarteto de cores do §9.2.
+      PillNavItem(
+        icon: Icons.person_outline,
+        label: 'Conta',
+        color: colors.paper,
+        motif: TileMotif.diagonal,
+      ),
     ];
 
     return Scaffold(
@@ -62,6 +73,7 @@ class _HomeShellState extends State<HomeShell> {
                 icon: Icons.shopping_bag_outlined,
                 color: colors.lime,
               ),
+              const AccountPage(),
             ],
           ),
           Align(

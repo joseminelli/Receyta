@@ -309,7 +309,8 @@ class _RecipeList extends StatelessWidget {
 }
 
 /// Rodapé da lista: acessos discretos a gerenciar tags, ingredientes e à
-/// lixeira, lado a lado — cada um só aparece quando tem algo lá.
+/// lixeira, lado a lado — cada um só aparece quando tem algo lá. Backup
+/// mudou pra aba "Conta" (`AccountPage`), junto do resto de configurações.
 class _HomeFooter extends StatelessWidget {
   const _HomeFooter();
 

@@ -24,14 +24,14 @@ Widget _host() => ProviderScope(
     );
 
 void main() {
-  testWidgets('inicia em Receitas com as 3 abas', (tester) async {
+  testWidgets('inicia em Receitas com as 4 abas', (tester) async {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
     expect(find.byType(RecipesPage), findsOneWidget);
     // RegExp, não igualdade: no slot ativo o label do Semantics funde com o
     // Text visível ("Receitas Receitas").
-    for (final label in ['Receitas', 'Semana', 'Compras']) {
+    for (final label in ['Receitas', 'Semana', 'Compras', 'Conta']) {
       expect(find.bySemanticsLabel(RegExp(label)), findsWidgets);
     }
     expect(find.text('Em breve'), findsNothing);
@@ -51,5 +51,17 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Receitas'));
     await tester.pumpAndSettle();
     expect(find.text('Em breve'), findsNothing);
+  });
+
+  testWidgets('aba Conta mostra o placeholder de perfil e o botão de config',
+      (tester) async {
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel(RegExp('Conta')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sem login por enquanto'), findsOneWidget);
+    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
   });
 }

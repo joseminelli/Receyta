@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/domain/engine/recipe_export.dart';
+import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
@@ -63,6 +64,7 @@ void main() {
     );
 
     final recipe = json['recipes'][0] as Map<String, dynamic>;
+    expect(recipe['folderId'], isNull);
     expect(recipe['name'], 'Frango ao curry');
     expect(recipe['about'], 'Rápido, para dias de semana');
     expect(recipe['prepMinutes'], 15);
@@ -158,5 +160,64 @@ void main() {
     expect(step['position'], 0);
     expect(step['groupLabel'], isNull);
     expect(step['text'], 'Tempere o frango...');
+  });
+
+  test('buildFullExportJson monta kind "full" com pastas e várias receitas',
+      () {
+    final json = buildFullExportJson(
+      folders: const [
+        Folder(id: 'f1', name: 'Massas', position: 0),
+        Folder(id: 'f2', name: 'Sobremesas', parentId: 'f1', position: 1),
+      ],
+      recipes: [
+        buildDetail(),
+        buildDetail().copyWith(
+          recipe: buildDetail().recipe.copyWith(id: 'r2', name: 'Bolo'),
+        ),
+      ],
+      ingredientNames: const {},
+      clock: () => exportedAt,
+    );
+
+    expect(json['kind'], 'full');
+    final folders = json['folders'] as List;
+    expect(folders, hasLength(2));
+    expect(folders[0], {
+      'id': 'f1',
+      'parentId': null,
+      'name': 'Massas',
+      'position': 0,
+    });
+    expect(folders[1], {
+      'id': 'f2',
+      'parentId': 'f1',
+      'name': 'Sobremesas',
+      'position': 1,
+    });
+    expect(json['recipes'], hasLength(2));
+    expect(json['recipes'][1]['name'], 'Bolo');
+  });
+
+  test('buildFullExportJson sem pastas exporta lista vazia, não omite a chave',
+      () {
+    final json = buildFullExportJson(
+      folders: const [],
+      recipes: [buildDetail()],
+      ingredientNames: const {},
+      clock: () => exportedAt,
+    );
+
+    expect(json['folders'], isEmpty);
+  });
+
+  test('buildRecipeExportJson (kind "recipes") não inclui a chave "folders"',
+      () {
+    final json = buildRecipeExportJson(
+      buildDetail(),
+      ingredientNames: const {},
+      clock: () => exportedAt,
+    );
+
+    expect(json.containsKey('folders'), isFalse);
   });
 }

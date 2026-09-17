@@ -13,6 +13,7 @@ import 'package:receyta/features/recipes/recipe_form_page.dart';
 import 'package:receyta/features/recipes/search_page.dart';
 import 'package:receyta/features/recipes/tags_page.dart';
 import 'package:receyta/features/recipes/trash_page.dart';
+import 'package:receyta/features/settings/settings_page.dart';
 import 'package:receyta/home_shell.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/root_back_guard.dart';
@@ -86,6 +87,11 @@ final router = GoRouter(
       path: '/search',
       name: 'search',
       builder: (context, state) => const SearchPage(),
+    ),
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      builder: (context, state) => const SettingsPage(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

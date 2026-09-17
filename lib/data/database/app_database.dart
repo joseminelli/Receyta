@@ -205,4 +205,29 @@ class AppDatabase extends _$AppDatabase {
 
   /// Reexecuta o seed. Existe para o teste de idempotência.
   Future<void> reseed() => _seed();
+
+  /// Apaga tudo que o usuário criou — receitas, pastas, tags, catálogo de
+  /// ingredientes, planejamento e lista de compras (RF-08.4) — mas preserva
+  /// as tabelas de seed (`units`/`categories`/`normalizer_terms`): são
+  /// referência do app, não dado do usuário, e apagar+reseedar não traria
+  /// benefício nenhum. Ordem explícita (não só depender de cascade) pra
+  /// nunca esbarrar no `onDelete: restrict` de
+  /// `recipe_ingredients.ingredient_id` nem no autorreferencial de
+  /// `folders.parent_id`.
+  Future<void> wipeUserData() {
+    return transaction(() async {
+      await delete(shoppingItemSources).go();
+      await delete(shoppingListItems).go();
+      await delete(shoppingLists).go();
+      await delete(mealPlanEntries).go();
+      await delete(recipeTags).go();
+      await delete(recipeSteps).go();
+      await delete(recipeIngredients).go();
+      await delete(ingredientAliases).go();
+      await delete(ingredients).go();
+      await delete(tags).go();
+      await delete(recipes).go();
+      await delete(folders).go();
+    });
+  }
 }
