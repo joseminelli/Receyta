@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:receyta/core/result.dart';
@@ -11,6 +12,7 @@ import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/engine/recipe_export.dart';
+import 'package:receyta/domain/engine/recipe_pdf.dart';
 import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 
@@ -52,6 +54,26 @@ class RecipeExportService {
         (payload['recipes'] as List)[0]['name'] as String? ?? 'receita';
 
     return _writeAndShare(payload, fileName: _fileName(recipeName), text: recipeName);
+  }
+
+  /// PDF de uma receita (D6, RF-06.6) — layout próprio via `buildRecipePdf`,
+  /// não uma captura de tela do app; `Printing.sharePdf` abre o mesmo share
+  /// sheet do sistema (imprimir aparece como opção nele, quando suportado).
+  Future<Result<void>> sharePdf(String recipeId) async {
+    final detailResult = await _recipeRepository.getDetail(recipeId);
+    if (detailResult is Err<RecipeDetail>) return Err(detailResult.failure);
+    final detail = (detailResult as Ok<RecipeDetail>).value;
+
+    try {
+      final bytes = await buildRecipePdf(detail);
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: _pdfFileName(detail.recipe.name),
+      );
+      return const Ok(null);
+    } catch (e) {
+      return Err(ProcessingFailure('Falha ao gerar o PDF', cause: e));
+    }
   }
 
   /// Monta o payload do backup completo (D2, §7): todas as pastas e receitas
@@ -118,15 +140,18 @@ class RecipeExportService {
   }
 }
 
-/// `<nome-da-receita>.receyta`, achatado pra ser um nome de arquivo seguro em
-/// qualquer SO — sem acento (reaproveita o mesmo mapa do parser/normalizador,
-/// C1/C2) e sem nada além de letra/número/hífen.
-String _fileName(String recipeName) {
+/// Slug seguro em qualquer SO — sem acento (reaproveita o mesmo mapa do
+/// parser/normalizador, C1/C2) e sem nada além de letra/número/hífen.
+String _slug(String recipeName) {
   final slug = stripAccents(recipeName.trim().toLowerCase())
       .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
       .replaceAll(RegExp(r'^-+|-+$'), '');
-  return '${slug.isEmpty ? 'receita' : slug}.receyta';
+  return slug.isEmpty ? 'receita' : slug;
 }
+
+String _fileName(String recipeName) => '${_slug(recipeName)}.receyta';
+
+String _pdfFileName(String recipeName) => '${_slug(recipeName)}.pdf';
 
 /// `receyta-backup-<data>.receyta` — a data ajuda quem faz mais de um backup
 /// manual a distinguir os arquivos sem precisar abrir cada um.

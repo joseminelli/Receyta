@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/database/seed_data.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
@@ -363,6 +364,54 @@ class _Hero extends ConsumerWidget {
     );
   }
 
+  Future<void> _shareAs(
+    BuildContext context,
+    WidgetRef ref,
+    Future<Result<void>> Function(RecipeExportService) action,
+  ) async {
+    final result = await action(ref.read(recipeExportServiceProvider));
+    result.when(
+      ok: (_) {},
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
+  void _showShare(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Arquivo .receyta'),
+              subtitle: const Text('Pra importar em outro Receyta'),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                _shareAs(context, ref, (s) => s.shareRecipe(recipe.id));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('PDF'),
+              subtitle: const Text('Pra imprimir ou ler em outro app'),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                _shareAs(context, ref, (s) => s.sharePdf(recipe.id));
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showMore(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     showModalBottomSheet<void>(
@@ -396,24 +445,6 @@ class _Hero extends ConsumerWidget {
               onTap: () {
                 Navigator.of(sheet).pop();
                 moveRecipeFlow(context, ref, recipe.id, recipe.folderId);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.share_outlined),
-              title: const Text('Compartilhar'),
-              subtitle: const Text('Manda como arquivo .receyta'),
-              onTap: () async {
-                Navigator.of(sheet).pop();
-                final result = await ref
-                    .read(recipeExportServiceProvider)
-                    .shareRecipe(recipe.id);
-                result.when(
-                  ok: (_) {},
-                  err: (f) => showAppSnackBar(
-                    message: f.message,
-                    variant: AppSnackBarVariant.error,
-                  ),
-                );
               },
             ),
             ListTile(
@@ -523,6 +554,12 @@ class _Hero extends ConsumerWidget {
                             onTap: () =>
                                 context.push('/recipe/${recipe.id}/edit'),
                             tooltip: 'Editar',
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          _HeroCircleButton(
+                            icon: Icons.ios_share,
+                            onTap: () => _showShare(context, ref),
+                            tooltip: 'Compartilhar',
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           _HeroCircleButton(
