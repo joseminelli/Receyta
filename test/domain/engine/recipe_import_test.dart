@@ -148,6 +148,62 @@ void main() {
     expect(extractRecipeFromHtml(htmlList)!.servings, 8);
   });
 
+  test('decodifica entidades HTML escapadas duas vezes (bug do tudogostoso)',
+      () {
+    const html = '''
+<script type="application/ld+json">
+{
+  "@type": "Recipe",
+  "name": "P&amp;atilde;o de queijo",
+  "description": "Aque&amp;ccedil;a a &amp;aacute;gua.",
+  "recipeIngredient": ["&amp;Aacute;gua e &amp;oacute;leo"],
+  "recipeInstructions": "Aque&amp;ccedil;a uma frigideira."
+}
+</script>
+''';
+    final r = extractRecipeFromHtml(html);
+    expect(r!.name, 'Pão de queijo');
+    expect(r.about, 'Aqueça a água.');
+    expect(r.ingredientLines, ['Água e óleo']);
+    expect(r.stepLines, ['Aqueça uma frigideira.']);
+  });
+
+  test(
+      'recipeInstructions como parágrafo único vira um passo por frase, não '
+      'tudo junto', () {
+    const html = '''
+<script type="application/ld+json">
+{
+  "@type": "Recipe",
+  "name": "Pão de queijo de frigideira",
+  "recipeInstructions": "Misture os ingredientes secos. Aqueça a frigideira e frite a massa. Deixe corar."
+}
+</script>
+''';
+    final r = extractRecipeFromHtml(html);
+    expect(r!.stepLines, [
+      'Misture os ingredientes secos.',
+      'Aqueça a frigideira e frite a massa.',
+      'Deixe corar.',
+    ]);
+  });
+
+  test('HowToStep.text com frase só não é resplitado', () {
+    const html = '''
+<script type="application/ld+json">
+{
+  "@type": "Recipe",
+  "name": "A",
+  "recipeInstructions": [
+    {"@type": "HowToStep", "text": "Preaqueça o forno a 180 graus. Unte a forma."}
+  ]
+}
+</script>
+''';
+    final r = extractRecipeFromHtml(html);
+    expect(r!.stepLines, ['Preaqueça o forno a 180 graus. Unte a forma.']);
+  });
+
   test('duração com horas e minutos', () {
     const html = '''
 <script type="application/ld+json">

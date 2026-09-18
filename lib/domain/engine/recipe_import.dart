@@ -86,8 +86,9 @@ bool _isRecipeType(Object? type) {
 }
 
 ImportedRecipe _parseRecipeNode(Map<String, dynamic> node, String? sourceUrl) {
-  final name = (node['name'] ?? '').toString().trim();
-  final about = (node['description'] as Object?)?.toString().trim();
+  final name = _decodeHtmlEntities((node['name'] ?? '').toString().trim());
+  final rawAbout = (node['description'] as Object?)?.toString().trim();
+  final about = rawAbout == null ? null : _decodeHtmlEntities(rawAbout);
 
   return ImportedRecipe(
     name: name.isEmpty ? 'Receita importada' : fixShoutyCase(name),
@@ -100,6 +101,21 @@ ImportedRecipe _parseRecipeNode(Map<String, dynamic> node, String? sourceUrl) {
     stepLines: _extractSteps(node['recipeInstructions']),
     sourceUrl: sourceUrl,
   );
+}
+
+/// Alguns sites (ex.: tudogostoso.com.br) escapam as entidades HTML do
+/// texto duas vezes dentro do próprio JSON-LD (`&amp;aacute;` em vez de
+/// `á`). Decodifica em loop até o texto parar de mudar, o que resolve
+/// tanto o caso normal (0 entidades, 1 passe sem efeito) quanto o
+/// duplamente escapado (2 passes).
+String _decodeHtmlEntities(String value) {
+  var result = value;
+  for (var i = 0; i < 4; i++) {
+    final decoded = html_parser.parseFragment(result).text ?? result;
+    if (decoded == result) break;
+    result = decoded;
+  }
+  return result;
 }
 
 final _durationRegex = RegExp(r'^P(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?');
@@ -126,12 +142,12 @@ int? _parseServings(Object? value) {
 
 List<String> _stringList(Object? value) {
   if (value is List) {
-    return [for (final v in value) v.toString().trim()]
+    return [for (final v in value) _decodeHtmlEntities(v.toString().trim())]
         .where((s) => s.isNotEmpty)
         .toList();
   }
   if (value is String) {
-    final s = value.trim();
+    final s = _decodeHtmlEntities(value.trim());
     return s.isEmpty ? const [] : [s];
   }
   return const [];
@@ -143,24 +159,46 @@ List<String> _stringList(Object? value) {
 /// achata tudo em ordem de leitura.
 List<String> _extractSteps(Object? value) {
   final out = <String>[];
-  void walk(Object? node) {
+  void walk(Object? node, {required bool splitSentences}) {
     if (node is String) {
-      final t = node.trim();
-      if (t.isNotEmpty) out.add(t);
+      final t = _decodeHtmlEntities(node).trim();
+      if (t.isEmpty) return;
+      if (splitSentences) {
+        out.addAll(_splitIntoSentences(t));
+      } else {
+        out.add(t);
+      }
     } else if (node is Map<String, dynamic>) {
       if (node['@type'] == 'HowToSection') {
-        walk(node['itemListElement']);
+        walk(node['itemListElement'], splitSentences: splitSentences);
       } else {
         final text = node['text'] ?? node['name'];
-        if (text is String && text.trim().isNotEmpty) out.add(text.trim());
+        if (text is String) walk(text, splitSentences: false);
       }
     } else if (node is List) {
-      node.forEach(walk);
+      for (final n in node) {
+        walk(n, splitSentences: splitSentences);
+      }
     }
   }
 
-  walk(value);
+  walk(value, splitSentences: true);
   return out;
+}
+
+/// Alguns sites (ex.: tudogostoso.com.br) mandam `recipeInstructions` como
+/// um parágrafo único em vez de lista de `HowToStep` — sem isso, o passo a
+/// passo inteiro cai junto num "passo 1" só. Separa por quebra de linha
+/// quando existe; senão, por fim de frase (`.`/`!`/`?` seguido de espaço).
+/// Só se aplica a texto solto — um `HowToStep.text` já é um passo
+/// individual de verdade e não é resplitado.
+final _sentenceSplitRegex = RegExp(r'(?<=[.!?])\s+(?=\S)');
+
+List<String> _splitIntoSentences(String text) {
+  final pieces = text.contains('\n')
+      ? text.split('\n')
+      : text.split(_sentenceSplitRegex);
+  return [for (final p in pieces) p.trim()].where((s) => s.isNotEmpty).toList();
 }
 
 /// Domínios de duas partes comuns o bastante pra valer a pena reconhecer —
