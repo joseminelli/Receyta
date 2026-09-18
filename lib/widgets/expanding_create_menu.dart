@@ -220,8 +220,8 @@ class _Overlay extends StatelessWidget {
                       child: _Pill(
                         action: actions[i],
                         color: pillColor,
-                        anim: curved,
-                        delay: i / (actions.length + 1),
+                        anim: anim,
+                        delay: (i / actions.length) * 0.4,
                         onTap: () => onPick(actions[i]),
                       ),
                     ),
@@ -255,13 +255,21 @@ class _Pill extends StatelessWidget {
     final colors = context.colors;
     final onColor =
         color.computeLuminance() > 0.5 ? colors.ink : colors.onSaturated;
+    // Janela de tempo própria por pílula, não até o fim (1) — senão a última
+    // pílula do leque mal tem tempo de animar e "trava" no lugar. `anim` aqui
+    // é o `AnimationController` cru (0→1 linear); aplicar o `Interval` sobre
+    // uma curva já suavizada distorcia esse intervalo.
     final slide = Tween<Offset>(
       begin: const Offset(0, -0.35),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: anim,
-        curve: Interval(delay, 1, curve: Curves.easeOutCubic),
+        curve: Interval(
+          delay,
+          (delay + 0.6).clamp(0.0, 1.0),
+          curve: Curves.easeOutCubic,
+        ),
       ),
     );
 

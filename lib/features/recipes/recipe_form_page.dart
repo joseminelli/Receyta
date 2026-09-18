@@ -665,6 +665,25 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+/// Fundo + sombra da lista de sugestões (tags e ingredientes) — `BoxShadow`
+/// estático, não `Material.elevation`: reconstrói a cada tecla digitada, e a
+/// sombra física recalculada nesse ritmo pesa à toa (mesma correção já
+/// aplicada no leque de ações e no fantasma do arrasto).
+BoxDecoration _suggestionDecoration(BuildContext context) {
+  final colors = context.colors;
+  return BoxDecoration(
+    color: colors.paper,
+    borderRadius: BorderRadius.circular(AppRadii.sm),
+    boxShadow: [
+      BoxShadow(
+        color: colors.ink.withValues(alpha: 0.25),
+        blurRadius: 16,
+        offset: const Offset(0, 6),
+      ),
+    ],
+  );
+}
+
 /// Campo de tags (§RF-01.10): pills removíveis + entrada com autocomplete das
 /// tags já existentes. Enter ou tocar numa sugestão adiciona; a normalização
 /// (minúsculas, dedupe) é do [RecipeFormViewModel].
@@ -737,11 +756,8 @@ class _TagsField extends ConsumerWidget {
               final items = options.toList();
               return Align(
                 alignment: Alignment.topLeft,
-                child: Material(
-                  color: colors.paper,
-                  elevation: 6,
-                  shadowColor: colors.ink.withValues(alpha: 0.25),
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
+                child: DecoratedBox(
+                  decoration: _suggestionDecoration(context),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
                       maxHeight: 180,
@@ -1116,11 +1132,8 @@ class _IngredientAutocompleteField extends ConsumerWidget {
         final items = options.toList();
         return Align(
           alignment: Alignment.topLeft,
-          child: Material(
-            color: colors.paper,
-            elevation: 6,
-            shadowColor: colors.ink.withValues(alpha: 0.25),
-            borderRadius: BorderRadius.circular(AppRadii.sm),
+          child: DecoratedBox(
+            decoration: _suggestionDecoration(context),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220, maxWidth: 280),
               child: ListView(

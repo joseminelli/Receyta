@@ -180,6 +180,21 @@ class _LiftIn extends StatelessWidget {
   }
 }
 
+/// Sombra do fantasma como `BoxShadow` (blur numa `RRect`), não
+/// `Material.elevation` (`Canvas.drawShadow`, sombra física) — o fantasma
+/// reposiciona a cada frame do arrasto, e a sombra física recalcula a malha
+/// da sombra nesse ritmo; a `BoxShadow` é só um blur, bem mais barata.
+BoxDecoration _ghostShadow(BuildContext context) => BoxDecoration(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      boxShadow: [
+        BoxShadow(
+          color: context.colors.ink.withValues(alpha: 0.35),
+          blurRadius: 24,
+          offset: const Offset(0, 10),
+        ),
+      ],
+    );
+
 class _RecipeGhost extends StatelessWidget {
   const _RecipeGhost({required this.recipe});
 
@@ -189,11 +204,8 @@ class _RecipeGhost extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 168,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        elevation: 14,
-        shadowColor: context.colors.ink.withValues(alpha: 0.5),
+      child: DecoratedBox(
+        decoration: _ghostShadow(context),
         child: RecipeCard(recipe: recipe),
       ),
     );
@@ -214,11 +226,8 @@ class _FolderGhost extends StatelessWidget {
       motif: folder.tileMotif,
       fallbackColor: TileColor.violet,
     );
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      elevation: 14,
-      shadowColor: colors.ink.withValues(alpha: 0.5),
+    return DecoratedBox(
+      decoration: _ghostShadow(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppRadii.md),
         child: SizedBox(

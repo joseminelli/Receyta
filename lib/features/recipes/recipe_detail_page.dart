@@ -468,113 +468,130 @@ class _Hero extends ConsumerWidget {
     );
 
     // Cartão de cor: canto arredondado embaixo e sombra, para ler como um bloco
-    // por cima do conteúdo. `Material` cuida da sombra + clip sem brigar com o
-    // shader do azulejo. `AnnotatedRegion`: hora/bateria em branco enquanto o
-    // hero cobre o topo; ao rolar, o sheet claro assume e volta ao escuro.
+    // por cima do conteúdo. Sombra é um `BoxShadow` estático fora do clip (não
+    // `Material.elevation` — mais leve pra rolar por trás de uma lista longa,
+    // sem sombra física recalculada). `AnnotatedRegion`: hora/bateria em branco
+    // enquanto o hero cobre o topo; ao rolar, o sheet claro assume e volta ao
+    // escuro.
+    final heroRadius = const BorderRadius.vertical(
+      bottom: Radius.circular(AppRadii.lg),
+    );
     return AnnotatedRegion(
       value: SystemBars.onDark,
-      child: Material(
-        color: tile.background,
-        elevation: 8,
-        shadowColor: colors.ink,
-        borderRadius: const BorderRadius.vertical(
-          bottom: Radius.circular(AppRadii.lg),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: heroRadius,
+          boxShadow: [
+            BoxShadow(
+              color: colors.ink.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: SizedBox(
-          height: 300,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: TilePattern(
-                  motif: tile.motif,
-                  background: tile.background,
-                  patternColor: tile.patternColor,
-                  patternColorAlt: tile.patternColorAlt,
-                ),
-              ),
-              if (minutes != null)
-                Transform.translate(
-                  offset: const Offset(
-                      -40, -20), // 40px pra esquerda, 30px pra cima
-                  child: HeroNumber(
-                    value: '$minutes',
-                    unit: 'min',
-                    color: tile.onColor.withValues(alpha: 0.5),
-                    corner: Alignment.bottomRight,
-                    size: 100,
+        child: ClipRRect(
+          borderRadius: heroRadius,
+          child: ColoredBox(
+            color: tile.background,
+            child: SizedBox(
+              height: 300,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: TilePattern(
+                      motif: tile.motif,
+                      background: tile.background,
+                      patternColor: tile.patternColor,
+                      patternColorAlt: tile.patternColorAlt,
+                    ),
                   ),
-                ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screen,
-                    AppSpacing.xs,
-                    AppSpacing.screen,
-                    AppSpacing.lg,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                  if (minutes != null)
+                    Transform.translate(
+                      offset: const Offset(
+                          -40, -20), // 40px pra esquerda, 30px pra cima
+                      child: HeroNumber(
+                        value: '$minutes',
+                        unit: 'min',
+                        color: tile.onColor.withValues(alpha: 0.5),
+                        corner: Alignment.bottomRight,
+                        size: 100,
+                      ),
+                    ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.screen,
+                        AppSpacing.xs,
+                        AppSpacing.screen,
+                        AppSpacing.lg,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _HeroCircleButton(
-                            icon: Icons.arrow_back,
-                            onTap: () => context.pop(),
-                            tooltip: 'Voltar',
+                          Row(
+                            children: [
+                              _HeroCircleButton(
+                                icon: Icons.arrow_back,
+                                onTap: () => context.pop(),
+                                tooltip: 'Voltar',
+                              ),
+                              const Spacer(),
+                              _HeroCircleButton(
+                                icon: recipe.isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                onTap: () => ref
+                                    .read(recipeRepositoryProvider)
+                                    .setFavorite(
+                                        recipe.id, !recipe.isFavorite),
+                                tooltip: recipe.isFavorite
+                                    ? 'Desfavoritar'
+                                    : 'Favoritar',
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              ExpandingCreateMenu(
+                                icon: Icons.more_horiz,
+                                tooltip: 'Mais',
+                                buttonColor: colors.ink,
+                                iconColor: colors.onSaturated,
+                                actions: _menuActions(context, ref),
+                              ),
+                            ],
                           ),
+                          if (tags.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.sm),
+                            Wrap(
+                              spacing: AppSpacing.xs,
+                              runSpacing: AppSpacing.xs,
+                              children: [
+                                for (final t in tags)
+                                  _TagPill(t.name,
+                                      heroColor: tile.background),
+                              ],
+                            ),
+                          ],
                           const Spacer(),
-                          _HeroCircleButton(
-                            icon: recipe.isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            onTap: () => ref
-                                .read(recipeRepositoryProvider)
-                                .setFavorite(recipe.id, !recipe.isFavorite),
-                            tooltip: recipe.isFavorite
-                                ? 'Desfavoritar'
-                                : 'Favoritar',
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          ExpandingCreateMenu(
-                            icon: Icons.more_horiz,
-                            tooltip: 'Mais',
-                            buttonColor: colors.ink,
-                            iconColor: colors.onSaturated,
-                            actions: _menuActions(context, ref),
+                          Text(
+                            recipe.name,
+                            style: AppTextStyles.display(44)
+                                .copyWith(color: tile.onColor),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
-                      if (tags.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        Wrap(
-                          spacing: AppSpacing.xs,
-                          runSpacing: AppSpacing.xs,
-                          children: [
-                            for (final t in tags)
-                              _TagPill(t.name, heroColor: tile.background),
-                          ],
-                        ),
-                      ],
-                      const Spacer(),
-                      Text(
-                        recipe.name,
-                        style: AppTextStyles.display(44)
-                            .copyWith(color: tile.onColor),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 }
+
 
 /// Linha de ingrediente como texto corrido, com quantidade e unidade em
 /// negrito no meio da frase — sem coluna nem alinhamento forçado, lê como
