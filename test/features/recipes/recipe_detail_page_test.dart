@@ -138,11 +138,14 @@ void main() {
     expect(find.text('Receita não encontrada'), findsOneWidget);
   });
 
-  testWidgets('botão editar abre o formulário de edição', (tester) async {
+  testWidgets('menu "Mais": "Editar" abre o formulário de edição',
+      (tester) async {
     await tester.pumpWidget(_host(detail: _detail()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.tap(find.byIcon(Icons.more_horiz));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Editar'));
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA EDIT'), findsOneWidget);

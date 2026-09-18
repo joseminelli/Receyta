@@ -19,20 +19,24 @@ class CreateMenuAction {
 /// Botão `+` que abre um leque de opções saindo dele mesmo (§9 — flat, pílula).
 /// Fecha ao escolher, ao tocar fora ou ao apertar de novo. As pílulas vão pra
 /// baixo do botão, num overlay, então não empurram nem são cortadas pelo header.
-/// Um degradê radial parte do botão pra dar ênfase às opções; elas herdam a cor
-/// do próprio botão.
+/// Um degradê radial parte do botão pra dar ênfase às opções; pílulas herdam
+/// a cor do próprio botão, sem sombra animada (mais leve pra animar junto).
 class ExpandingCreateMenu extends StatefulWidget {
   const ExpandingCreateMenu({
     super.key,
     required this.actions,
     required this.buttonColor,
     required this.iconColor,
+    this.icon = Icons.add,
     this.tooltip = 'Criar',
   });
 
   final List<CreateMenuAction> actions;
   final Color buttonColor;
   final Color iconColor;
+
+  /// Ícone do botão fechado — vira [Icons.close] enquanto o leque está aberto.
+  final IconData icon;
   final String tooltip;
 
   @override
@@ -120,11 +124,18 @@ class _ExpandingCreateMenuState extends State<ExpandingCreateMenu>
               customBorder: const CircleBorder(),
               child: Padding(
                 padding: const EdgeInsets.all(AppSpacing.sm),
-                child: AnimatedRotation(
-                  turns: _open ? 0.125 : 0,
+                child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutBack,
-                  child: Icon(Icons.add, size: 22, color: widget.iconColor),
+                  transitionBuilder: (child, anim) => RotationTransition(
+                    turns: Tween<double>(begin: 0.75, end: 1).animate(anim),
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: Icon(
+                    _open ? Icons.close : widget.icon,
+                    key: ValueKey(_open),
+                    size: 22,
+                    color: widget.iconColor,
+                  ),
                 ),
               ),
             ),
@@ -259,8 +270,6 @@ class _Pill extends StatelessWidget {
       child: Material(
         color: color,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        elevation: 10,
-        shadowColor: colors.ink.withValues(alpha: 0.4),
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppRadii.pill),

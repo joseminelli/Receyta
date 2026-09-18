@@ -19,6 +19,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
+import 'package:receyta/widgets/expanding_create_menu.dart';
 import 'package:receyta/widgets/hero_number.dart';
 import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/section_header.dart';
@@ -412,61 +413,47 @@ class _Hero extends ConsumerWidget {
     );
   }
 
-  void _showMore(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.palette_outlined),
-              title: const Text('Aparência'),
-              onTap: () {
-                Navigator.of(sheet).pop();
-                showAppearanceSheet(
-                  context,
-                  title: 'Aparência de "${recipe.name}"',
-                  color: recipe.tileColor,
-                  motif: recipe.tileMotif,
-                  fallbackColor: TileColor.coral,
-                  seedId: recipe.id,
-                  onChanged: (c, m) => ref
-                      .read(recipeRepositoryProvider)
-                      .setAppearance(recipe.id, color: c, motif: m),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: const Text('Mover para pasta'),
-              onTap: () {
-                Navigator.of(sheet).pop();
-                moveRecipeFlow(context, ref, recipe.id, recipe.folderId);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: colors.danger),
-              title: Text(
-                'Mover para a lixeira',
-                style: context.texts.bodyLarge?.copyWith(color: colors.danger),
-              ),
-              subtitle: Text(
-                'Some da lista agora; apaga de vez em 30 dias.',
-                style: context.texts.bodyMedium,
-              ),
-              onTap: () {
-                Navigator.of(sheet).pop();
-                _delete(context, ref);
-              },
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
+  /// Ações do leque que substitui o "⋯" (§ hero): editar/compartilhar, antes
+  /// botões próprios, entraram aqui junto do que já vivia no sheet de "Mais".
+  List<CreateMenuAction> _menuActions(BuildContext context, WidgetRef ref) {
+    return [
+      CreateMenuAction(
+        icon: Icons.edit_outlined,
+        label: 'Editar',
+        onSelected: () => context.push('/recipe/${recipe.id}/edit'),
+      ),
+      CreateMenuAction(
+        icon: Icons.ios_share,
+        label: 'Compartilhar',
+        onSelected: () => _showShare(context, ref),
+      ),
+      CreateMenuAction(
+        icon: Icons.palette_outlined,
+        label: 'Aparência',
+        onSelected: () => showAppearanceSheet(
+          context,
+          title: 'Aparência de "${recipe.name}"',
+          color: recipe.tileColor,
+          motif: recipe.tileMotif,
+          fallbackColor: TileColor.coral,
+          seedId: recipe.id,
+          onChanged: (c, m) => ref
+              .read(recipeRepositoryProvider)
+              .setAppearance(recipe.id, color: c, motif: m),
         ),
       ),
-    );
+      CreateMenuAction(
+        icon: Icons.drive_file_move_outline,
+        label: 'Mover para pasta',
+        onSelected: () =>
+            moveRecipeFlow(context, ref, recipe.id, recipe.folderId),
+      ),
+      CreateMenuAction(
+        icon: Icons.delete_outline,
+        label: 'Mover para a lixeira',
+        onSelected: () => _delete(context, ref),
+      ),
+    ];
   }
 
   @override
@@ -549,23 +536,12 @@ class _Hero extends ConsumerWidget {
                                 : 'Favoritar',
                           ),
                           const SizedBox(width: AppSpacing.xs),
-                          _HeroCircleButton(
-                            icon: Icons.edit_outlined,
-                            onTap: () =>
-                                context.push('/recipe/${recipe.id}/edit'),
-                            tooltip: 'Editar',
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          _HeroCircleButton(
-                            icon: Icons.ios_share,
-                            onTap: () => _showShare(context, ref),
-                            tooltip: 'Compartilhar',
-                          ),
-                          const SizedBox(width: AppSpacing.xs),
-                          _HeroCircleButton(
+                          ExpandingCreateMenu(
                             icon: Icons.more_horiz,
-                            onTap: () => _showMore(context, ref),
                             tooltip: 'Mais',
+                            buttonColor: colors.ink,
+                            iconColor: colors.onSaturated,
+                            actions: _menuActions(context, ref),
                           ),
                         ],
                       ),
