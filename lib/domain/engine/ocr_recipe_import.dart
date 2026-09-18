@@ -6,6 +6,8 @@
 /// o OCR devolveu, na ordem em que apareceram na foto.
 library;
 
+import 'package:receyta/core/tag_name.dart';
+
 import 'ingredient_parser.dart';
 import 'recipe_import.dart';
 
@@ -288,7 +290,7 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     final body = lines.sublist(1, cut < 1 ? 1 : cut);
     final ingredientsEnd = _ingredientRunEnd(body, 0, body.length);
     return ImportedRecipe(
-      name: lines.first,
+      name: fixShoutyCase(lines.first),
       ingredientLines:
           body.sublist(0, ingredientsEnd).map(fixOcrDigitLetterConfusion).toList(),
       stepLines: _splitSteps(body.sublist(ingredientsEnd))
@@ -363,7 +365,7 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
         ]);
 
   return ImportedRecipe(
-    name: name,
+    name: fixShoutyCase(name),
     about: about,
     ingredientLines: ingredientLines.map(fixOcrDigitLetterConfusion).toList(),
     stepLines: stepLines.map(fixOcrDigitLetterConfusion).toList(),

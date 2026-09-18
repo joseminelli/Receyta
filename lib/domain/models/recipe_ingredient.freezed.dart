@@ -22,6 +22,14 @@ mixin _$RecipeIngredient {
   int get position => throw _privateConstructorUsedError;
   String? get groupLabel => throw _privateConstructorUsedError;
   String? get ingredientId => throw _privateConstructorUsedError;
+
+  /// `displayName` do catálogo (`Ingredient`) na hora em que a receita foi
+  /// carregada — é o nome de verdade pra EXIBIR (já normalizado, Title
+  /// Case). `null` quando `ingredientId` também é nulo (linha nunca
+  /// resolvida). Quem preenche é `RecipeRepository._detail`; nunca é
+  /// gravado no banco (`rawText`/`ingredientId` continuam sendo a fonte
+  /// de verdade salva).
+  String? get ingredientName => throw _privateConstructorUsedError;
   double? get quantity => throw _privateConstructorUsedError;
   String? get unitId => throw _privateConstructorUsedError;
   String? get qualifier => throw _privateConstructorUsedError;
@@ -46,6 +54,7 @@ abstract class $RecipeIngredientCopyWith<$Res> {
       int position,
       String? groupLabel,
       String? ingredientId,
+      String? ingredientName,
       double? quantity,
       String? unitId,
       String? qualifier});
@@ -72,6 +81,7 @@ class _$RecipeIngredientCopyWithImpl<$Res, $Val extends RecipeIngredient>
     Object? position = null,
     Object? groupLabel = freezed,
     Object? ingredientId = freezed,
+    Object? ingredientName = freezed,
     Object? quantity = freezed,
     Object? unitId = freezed,
     Object? qualifier = freezed,
@@ -100,6 +110,10 @@ class _$RecipeIngredientCopyWithImpl<$Res, $Val extends RecipeIngredient>
       ingredientId: freezed == ingredientId
           ? _value.ingredientId
           : ingredientId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      ingredientName: freezed == ingredientName
+          ? _value.ingredientName
+          : ingredientName // ignore: cast_nullable_to_non_nullable
               as String?,
       quantity: freezed == quantity
           ? _value.quantity
@@ -132,6 +146,7 @@ abstract class _$$RecipeIngredientImplCopyWith<$Res>
       int position,
       String? groupLabel,
       String? ingredientId,
+      String? ingredientName,
       double? quantity,
       String? unitId,
       String? qualifier});
@@ -156,6 +171,7 @@ class __$$RecipeIngredientImplCopyWithImpl<$Res>
     Object? position = null,
     Object? groupLabel = freezed,
     Object? ingredientId = freezed,
+    Object? ingredientName = freezed,
     Object? quantity = freezed,
     Object? unitId = freezed,
     Object? qualifier = freezed,
@@ -185,6 +201,10 @@ class __$$RecipeIngredientImplCopyWithImpl<$Res>
           ? _value.ingredientId
           : ingredientId // ignore: cast_nullable_to_non_nullable
               as String?,
+      ingredientName: freezed == ingredientName
+          ? _value.ingredientName
+          : ingredientName // ignore: cast_nullable_to_non_nullable
+              as String?,
       quantity: freezed == quantity
           ? _value.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
@@ -211,6 +231,7 @@ class _$RecipeIngredientImpl implements _RecipeIngredient {
       required this.position,
       this.groupLabel,
       this.ingredientId,
+      this.ingredientName,
       this.quantity,
       this.unitId,
       this.qualifier});
@@ -227,6 +248,15 @@ class _$RecipeIngredientImpl implements _RecipeIngredient {
   final String? groupLabel;
   @override
   final String? ingredientId;
+
+  /// `displayName` do catálogo (`Ingredient`) na hora em que a receita foi
+  /// carregada — é o nome de verdade pra EXIBIR (já normalizado, Title
+  /// Case). `null` quando `ingredientId` também é nulo (linha nunca
+  /// resolvida). Quem preenche é `RecipeRepository._detail`; nunca é
+  /// gravado no banco (`rawText`/`ingredientId` continuam sendo a fonte
+  /// de verdade salva).
+  @override
+  final String? ingredientName;
   @override
   final double? quantity;
   @override
@@ -236,7 +266,7 @@ class _$RecipeIngredientImpl implements _RecipeIngredient {
 
   @override
   String toString() {
-    return 'RecipeIngredient(id: $id, recipeId: $recipeId, rawText: $rawText, position: $position, groupLabel: $groupLabel, ingredientId: $ingredientId, quantity: $quantity, unitId: $unitId, qualifier: $qualifier)';
+    return 'RecipeIngredient(id: $id, recipeId: $recipeId, rawText: $rawText, position: $position, groupLabel: $groupLabel, ingredientId: $ingredientId, ingredientName: $ingredientName, quantity: $quantity, unitId: $unitId, qualifier: $qualifier)';
   }
 
   @override
@@ -254,6 +284,8 @@ class _$RecipeIngredientImpl implements _RecipeIngredient {
                 other.groupLabel == groupLabel) &&
             (identical(other.ingredientId, ingredientId) ||
                 other.ingredientId == ingredientId) &&
+            (identical(other.ingredientName, ingredientName) ||
+                other.ingredientName == ingredientName) &&
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
             (identical(other.unitId, unitId) || other.unitId == unitId) &&
@@ -263,7 +295,7 @@ class _$RecipeIngredientImpl implements _RecipeIngredient {
 
   @override
   int get hashCode => Object.hash(runtimeType, id, recipeId, rawText, position,
-      groupLabel, ingredientId, quantity, unitId, qualifier);
+      groupLabel, ingredientId, ingredientName, quantity, unitId, qualifier);
 
   /// Create a copy of RecipeIngredient
   /// with the given fields replaced by the non-null parameter values.
@@ -283,6 +315,7 @@ abstract class _RecipeIngredient implements RecipeIngredient {
       required final int position,
       final String? groupLabel,
       final String? ingredientId,
+      final String? ingredientName,
       final double? quantity,
       final String? unitId,
       final String? qualifier}) = _$RecipeIngredientImpl;
@@ -299,6 +332,15 @@ abstract class _RecipeIngredient implements RecipeIngredient {
   String? get groupLabel;
   @override
   String? get ingredientId;
+
+  /// `displayName` do catálogo (`Ingredient`) na hora em que a receita foi
+  /// carregada — é o nome de verdade pra EXIBIR (já normalizado, Title
+  /// Case). `null` quando `ingredientId` também é nulo (linha nunca
+  /// resolvida). Quem preenche é `RecipeRepository._detail`; nunca é
+  /// gravado no banco (`rawText`/`ingredientId` continuam sendo a fonte
+  /// de verdade salva).
+  @override
+  String? get ingredientName;
   @override
   double? get quantity;
   @override

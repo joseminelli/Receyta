@@ -320,9 +320,23 @@ class RecipeRepository {
     final ingredients = await _dao.ingredientsOf(row.id);
     final steps = await _dao.stepsOf(row.id);
     final tags = await _dao.tagsOf(row.id);
+
+    // Nome de exibição vem do catálogo (já normalizado, Title Case — ver
+    // `IngredientDao.getOrCreate`), não do `rawText`/parser: são fontes
+    // diferentes e podem divergir (usuário digitou "farinha", catálogo já
+    // tinha "Farinha de Trigo" salvo de outra receita).
+    final ingredientIds = {
+      for (final i in ingredients)
+        if (i.ingredientId != null) i.ingredientId!,
+    }.toList();
+    final catalogRows = await _ingredientDao.findByIds(ingredientIds);
+    final namesById = {for (final c in catalogRows) c.id: c.displayName};
+
     return RecipeDetail(
       recipe: _toDomain(row),
-      ingredients: ingredients.map(_ingredientToDomain).toList(),
+      ingredients: [
+        for (final i in ingredients) _ingredientToDomain(i, namesById),
+      ],
       steps: steps.map(_stepToDomain).toList(),
       tags: tags.map(_tagToDomain).toList(),
     );
@@ -370,7 +384,10 @@ class RecipeRepository {
         lastOpenedAt: r.lastOpenedAt,
       );
 
-  RecipeIngredient _ingredientToDomain(RecipeIngredientRow r) =>
+  RecipeIngredient _ingredientToDomain(
+    RecipeIngredientRow r,
+    Map<String, String> namesById,
+  ) =>
       RecipeIngredient(
         id: r.id,
         recipeId: r.recipeId,
@@ -378,6 +395,7 @@ class RecipeRepository {
         position: r.position,
         groupLabel: r.groupLabel,
         ingredientId: r.ingredientId,
+        ingredientName: r.ingredientId == null ? null : namesById[r.ingredientId],
         quantity: r.quantity,
         unitId: r.unitId,
         qualifier: r.qualifier,

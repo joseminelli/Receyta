@@ -7,6 +7,8 @@ library;
 
 import 'dart:convert';
 
+import 'package:receyta/core/tag_name.dart';
+
 const kSupportedReceytaSchemaVersions = {1};
 
 class ParsedIngredientImport {
@@ -43,6 +45,7 @@ class ParsedStepImport {
 
 class ParsedRecipeImport {
   const ParsedRecipeImport({
+    this.sourceId,
     this.folderSourceId,
     required this.name,
     this.about,
@@ -56,6 +59,11 @@ class ParsedRecipeImport {
     this.steps = const [],
   });
 
+  /// Id da receita no arquivo de origem (D4, RF-06.3): reaproveitado como id
+  /// local no primeiro import — é o que permite detectar "essa receita já
+  /// existe" numa reimportação do mesmo arquivo, sem precisar comparar
+  /// conteúdo. `null` (arquivo sem o campo) sempre vira receita nova.
+  final String? sourceId;
   final String? folderSourceId;
   final String name;
   final String? about;
@@ -189,8 +197,9 @@ ParsedRecipeImport? _parseRecipe(Object? raw) {
       : const <String>[];
 
   return ParsedRecipeImport(
+    sourceId: raw['id'] as String?,
     folderSourceId: raw['folderId'] as String?,
-    name: name.trim(),
+    name: fixShoutyCase(name.trim()),
     about: raw['about'] as String?,
     prepMinutes: (raw['prepMinutes'] as num?)?.toInt(),
     cookMinutes: (raw['cookMinutes'] as num?)?.toInt(),

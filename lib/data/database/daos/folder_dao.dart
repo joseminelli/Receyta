@@ -47,6 +47,21 @@ class FolderDao extends DatabaseAccessor<AppDatabase> with _$FolderDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Acha uma pasta pelo par nome+pai (D4/RF-06.3): é como o import
+  /// reconcilia a árvore de pastas sem duplicar a cada reimportação do
+  /// mesmo backup — nome sozinho não bastaria (duas pastas de nomes iguais
+  /// em lugares diferentes da árvore são pastas diferentes de verdade).
+  Future<FolderRow?> findByNameAndParent(String name, String? parentId) {
+    return (select(folders)
+          ..where((f) =>
+              f.deletedAt.isNull() &
+              f.name.equals(name) &
+              (parentId == null
+                  ? f.parentId.isNull()
+                  : f.parentId.equals(parentId))))
+        .getSingleOrNull();
+  }
+
   /// Pastas de um nível já com a contagem de receitas diretas (não conta as de
   /// subpastas) e de subpastas diretas. Uma query só, stream vivo.
   Stream<List<({FolderRow folder, int recipeCount, int subfolders})>>

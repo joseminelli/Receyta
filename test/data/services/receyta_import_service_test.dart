@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/core/result.dart';
@@ -61,7 +64,10 @@ void main() {
     ]));
 
     expect(result, isA<Ok<ImportSummary>>());
-    expect((result as Ok<ImportSummary>).value, (recipes: 1, folders: 0));
+    expect(
+      (result as Ok<ImportSummary>).value,
+      (recipes: 1, folders: 0, skipped: 0),
+    );
 
     final all = await repo.watchAll().first;
     expect(all, hasLength(1));
@@ -131,14 +137,6 @@ void main() {
     expect(recipe.folderId, sobremesas.id);
   });
 
-  test('devolve Err e não cria nada quando o arquivo não tem receita',
-      () async {
-    final result = await service.importParsedFile(parsedFullFile());
-
-    expect(result, isA<Err<ImportSummary>>());
-    expect(await repo.watchAll().first, isEmpty);
-  });
-
   test('recipe sem folderSourceId cai na raiz mesmo com pastas no arquivo',
       () async {
     await service.importParsedFile(parsedFullFile(
@@ -152,5 +150,208 @@ void main() {
 
     final recipe = (await repo.watchAll().first).single;
     expect(recipe.folderId, isNull);
+  });
+
+  group('reconciliação de pasta por nome+pai (D4)', () {
+    test('reimportar as mesmas pastas não duplica a árvore', () async {
+      final file = parsedFullFile(
+        folders: const [
+          ParsedFolderImport(sourceId: 'a', name: 'Massas'),
+          ParsedFolderImport(
+              sourceId: 'b', parentSourceId: 'a', name: 'Doces'),
+        ],
+      );
+      await service.importParsedFile(file);
+      // Sourceids diferentes de propósito — simula reimportar um arquivo
+      // gerado por outra exportação, não byte-a-byte o mesmo.
+      await service.importParsedFile(parsedFullFile(
+        folders: const [
+          ParsedFolderImport(sourceId: 'x', name: 'Massas'),
+          ParsedFolderImport(
+              sourceId: 'y', parentSourceId: 'x', name: 'Doces'),
+        ],
+      ));
+
+      final folders = await folderRepo.watchAll().first;
+      expect(folders, hasLength(2));
+    });
+
+    test('mesmo nome em pai diferente não reconcilia — são pastas distintas',
+        () async {
+      await service.importParsedFile(parsedFullFile(folders: const [
+        ParsedFolderImport(sourceId: 'a', name: 'Raiz1'),
+        ParsedFolderImport(sourceId: 'b', name: 'Raiz2'),
+        ParsedFolderImport(sourceId: 'c', parentSourceId: 'a', name: 'Sub'),
+        ParsedFolderImport(sourceId: 'd', parentSourceId: 'b', name: 'Sub'),
+      ]));
+
+      final folders = await folderRepo.watchAll().first;
+      expect(folders.where((f) => f.name == 'Sub'), hasLength(2));
+    });
+  });
+
+  group('conflito de receita (D4, RF-06.3)', () {
+    test('findConflicts acha receita cujo id de origem já existe', () async {
+      await service.importParsedFile(parsedFullFile(recipes: const [
+        ParsedRecipeImport(sourceId: 'r1', name: 'Bolo'),
+      ]));
+
+      final conflicts = await service.findConflicts(parsedFullFile(recipes: [
+        const ParsedRecipeImport(sourceId: 'r1', name: 'Bolo v2'),
+        const ParsedRecipeImport(sourceId: 'r2', name: 'Torta'),
+      ]));
+
+      expect(conflicts, ['Bolo v2']);
+    });
+
+    test('sem conflito, a receita nasce com o id de origem', () async {
+      await service.importParsedFile(parsedFullFile(recipes: const [
+        ParsedRecipeImport(sourceId: 'r1', name: 'Bolo'),
+      ]));
+
+      final recipe = (await repo.watchAll().first).single;
+      expect(recipe.id, 'r1');
+    });
+
+    test('resolution.duplicate cria uma segunda receita com id novo',
+        () async {
+      await service.importParsedFile(parsedFullFile(recipes: const [
+        ParsedRecipeImport(sourceId: 'r1', name: 'Bolo', notes: 'original'),
+      ]));
+
+      final result = await service.importParsedFile(
+        parsedFullFile(recipes: const [
+          ParsedRecipeImport(sourceId: 'r1', name: 'Bolo', notes: 'novo'),
+        ]),
+        resolution: ConflictResolution.duplicate,
+      );
+
+      expect((result as Ok<ImportSummary>).value.recipes, 1);
+      final all = await repo.watchAll().first;
+      expect(all, hasLength(2));
+      expect(all.map((r) => r.id).toSet(), hasLength(2));
+      final notes = all.map((r) => r.notes).toSet();
+      expect(notes, {'original', 'novo'});
+    });
+
+    test('resolution.replace sobrescreve a receita existente (mesmo id)',
+        () async {
+      await service.importParsedFile(parsedFullFile(recipes: const [
+        ParsedRecipeImport(sourceId: 'r1', name: 'Bolo', notes: 'original'),
+      ]));
+
+      await service.importParsedFile(
+        parsedFullFile(recipes: const [
+          ParsedRecipeImport(sourceId: 'r1', name: 'Bolo', notes: 'novo'),
+        ]),
+        resolution: ConflictResolution.replace,
+      );
+
+      final all = await repo.watchAll().first;
+      expect(all, hasLength(1));
+      expect(all.single.id, 'r1');
+      expect(all.single.notes, 'novo');
+    });
+
+    test('resolution.skip não toca na receita existente', () async {
+      await service.importParsedFile(parsedFullFile(recipes: const [
+        ParsedRecipeImport(sourceId: 'r1', name: 'Bolo', notes: 'original'),
+      ]));
+
+      final result = await service.importParsedFile(
+        parsedFullFile(recipes: const [
+          ParsedRecipeImport(sourceId: 'r1', name: 'Bolo', notes: 'novo'),
+        ]),
+        resolution: ConflictResolution.skip,
+      );
+
+      expect(
+        (result as Ok<ImportSummary>).value,
+        (recipes: 0, folders: 0, skipped: 1),
+      );
+      final all = await repo.watchAll().first;
+      expect(all, hasLength(1));
+      expect(all.single.notes, 'original');
+    });
+
+    test('lote misto: só a receita em conflito é pulada, o resto importa',
+        () async {
+      await service.importParsedFile(parsedFullFile(recipes: const [
+        ParsedRecipeImport(sourceId: 'r1', name: 'Bolo'),
+      ]));
+
+      final result = await service.importParsedFile(
+        parsedFullFile(recipes: const [
+          ParsedRecipeImport(sourceId: 'r1', name: 'Bolo'),
+          ParsedRecipeImport(sourceId: 'r2', name: 'Torta'),
+        ]),
+        resolution: ConflictResolution.skip,
+      );
+
+      expect(
+        (result as Ok<ImportSummary>).value,
+        (recipes: 1, folders: 0, skipped: 1),
+      );
+      final names = (await repo.watchAll().first).map((r) => r.name).toSet();
+      expect(names, {'Bolo', 'Torta'});
+    });
+  });
+
+  group('parseFileAtPath', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('receyta_import_test');
+    });
+    tearDown(() => tempDir.delete(recursive: true));
+
+    Future<String> writeFile(String name, Object content) async {
+      final file = File('${tempDir.path}/$name');
+      await file.writeAsString(jsonEncode(content));
+      return file.path;
+    }
+
+    test('lê e parseia um .receyta válido do disco', () async {
+      final path = await writeFile('receita.receyta', {
+        'schemaVersion': 1,
+        'kind': 'recipes',
+        'recipes': [
+          {'name': 'Bolo'},
+        ],
+      });
+
+      final result = await service.parseFileAtPath(path);
+
+      expect(result, isA<Ok<ParsedReceytaFile>>());
+      expect((result as Ok<ParsedReceytaFile>).value.recipes.single.name,
+          'Bolo');
+    });
+
+    test('arquivo sem receita nenhuma devolve Err', () async {
+      final path = await writeFile('vazio.receyta', {
+        'schemaVersion': 1,
+        'kind': 'recipes',
+        'recipes': [],
+      });
+
+      final result = await service.parseFileAtPath(path);
+
+      expect(result, isA<Err<ParsedReceytaFile>>());
+    });
+
+    test('conteúdo que não é um .receyta válido devolve Err', () async {
+      final path = await writeFile('lixo.receyta', {'oi': 'tudo bem'});
+
+      final result = await service.parseFileAtPath(path);
+
+      expect(result, isA<Err<ParsedReceytaFile>>());
+    });
+
+    test('caminho inexistente devolve Err', () async {
+      final result =
+          await service.parseFileAtPath('${tempDir.path}/nao-existe.receyta');
+
+      expect(result, isA<Err<ParsedReceytaFile>>());
+    });
   });
 }

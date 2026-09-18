@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/domain/engine/ingredient_normalizer.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 
@@ -19,6 +20,34 @@ void main() {
     expect(second.id, first.id);
     expect(first.displayName, 'Tomate');
     expect(first.normalizedKey, 'tomate');
+  });
+
+  test('getOrCreate normaliza o displayName pra Title Case ao criar',
+      () async {
+    final row = await db.ingredientDao.getOrCreate('farinha de trigo');
+    expect(row.displayName, 'Farinha de Trigo');
+  });
+
+  test(
+      'getOrCreate autocorrige o displayName de um ingrediente salvo antes '
+      'desta normalização existir (ex.: sessão de teste antiga)', () async {
+    await db.into(db.ingredients).insert(
+          IngredientRow(
+            id: 'legacy-1',
+            displayName: 'batata baroa',
+            normalizedKey: normalize('batata baroa'),
+            usageCount: 0,
+          ),
+        );
+
+    final row = await db.ingredientDao.getOrCreate('batata baroa');
+
+    expect(row.id, 'legacy-1');
+    expect(row.displayName, 'Batata Baroa');
+    final persisted = await (db.select(db.ingredients)
+          ..where((i) => i.id.equals('legacy-1')))
+        .getSingle();
+    expect(persisted.displayName, 'Batata Baroa');
   });
 
   test('bate por alias sem criar duplicata', () async {
@@ -115,8 +144,8 @@ void main() {
     final byName = {
       for (final r in rows) r.ingredient.displayName: r.count,
     };
-    expect(byName['ovos'], 2);
-    expect(byName['alho'], 1);
+    expect(byName['Ovos'], 2);
+    expect(byName['Alho'], 1);
     expect(byName['Sal'], 0);
   });
 

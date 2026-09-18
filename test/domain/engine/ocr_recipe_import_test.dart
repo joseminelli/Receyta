@@ -72,6 +72,26 @@ void main() {
     expect(r!.stepLines, ['Tempere o frango.', 'Leve ao forno.']);
   });
 
+  test('nome tudo maiúsculo (comum em embalagem/livro impresso) normaliza '
+      'igual tag; nome já em caixa mista fica intocado', () {
+    final shouting = parseOcrLines([
+      'BOLO DE FUBÁ',
+      'Ingredientes',
+      '2 xícaras de fubá',
+    ]);
+    expect(shouting!.name, 'Bolo de Fubá');
+
+    final mixedCase = parseOcrLines([
+      'Cookie (Sem Açúcar)',
+      'Ingredientes',
+      'Farinha',
+    ]);
+    // Não mexe: recalcular por posição de palavra ia trocar "(Sem" por
+    // "(sem" — só vale a pena arriscar isso quando o nome inteiro já não
+    // distingue caixa nenhuma.
+    expect(mixedCase!.name, 'Cookie (Sem Açúcar)');
+  });
+
   test('sem nenhum marcador de seção, cai no melhor esforço', () {
     final r = parseOcrLines(['Bolo simples', 'farinha', 'açúcar', 'ovos']);
     expect(r!.name, 'Bolo simples');

@@ -90,7 +90,7 @@ ImportedRecipe _parseRecipeNode(Map<String, dynamic> node, String? sourceUrl) {
   final about = (node['description'] as Object?)?.toString().trim();
 
   return ImportedRecipe(
-    name: name.isEmpty ? 'Receita importada' : name,
+    name: name.isEmpty ? 'Receita importada' : fixShoutyCase(name),
     about: (about == null || about.isEmpty) ? null : about,
     prepMinutes: _parseIsoDurationMinutes(node['prepTime']),
     cookMinutes: _parseIsoDurationMinutes(node['cookTime']),

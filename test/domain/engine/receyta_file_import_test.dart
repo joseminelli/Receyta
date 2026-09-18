@@ -68,6 +68,7 @@ void main() {
 
     expect(parsed.recipes, hasLength(1));
     final recipe = parsed.recipes.single;
+    expect(recipe.sourceId, 'r1');
     expect(recipe.name, 'Frango ao curry');
     expect(recipe.folderSourceId, 'f1');
     expect(recipe.prepMinutes, 15);
@@ -143,6 +144,18 @@ void main() {
     expect(parsed.recipes.single.name, 'Bolo');
   });
 
+  test('nome da receita normaliza pra Title Case, igual a tag', () {
+    final parsed = parseReceytaFile(jsonEncode({
+      'schemaVersion': 1,
+      'kind': 'recipes',
+      'recipes': [
+        {'name': 'BOLO DE FUBÁ'},
+      ],
+    }));
+
+    expect(parsed!.recipes.single.name, 'Bolo de Fubá');
+  });
+
   test('ingrediente sem "name" ou "rawText" é descartado', () {
     final parsed = parseReceytaFile(jsonEncode({
       'schemaVersion': 1,
@@ -186,6 +199,19 @@ void main() {
     final recipe = parsed!.recipes.single;
     expect(recipe.ingredients.map((i) => i.position), [0, 1]);
     expect(recipe.steps.map((s) => s.position), [0, 1]);
+  });
+
+  test('receita sem "id" no JSON vira sourceId nulo (sempre nova no import)',
+      () {
+    final parsed = parseReceytaFile(jsonEncode({
+      'schemaVersion': 1,
+      'kind': 'recipes',
+      'recipes': [
+        {'name': 'Bolo'},
+      ],
+    }));
+
+    expect(parsed!.recipes.single.sourceId, isNull);
   });
 
   test('pasta sem "id" ou "name" é descartada', () {

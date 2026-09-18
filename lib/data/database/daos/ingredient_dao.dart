@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:receyta/core/tag_name.dart';
 import 'package:receyta/domain/engine/ingredient_normalizer.dart';
 
 import '../app_database.dart';
@@ -20,32 +21,54 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
 
   final Uuid _uuid;
 
+  /// `displayName` sempre vira Title Case (`canonicalTitleCase`, mesma regra
+  /// da tag — §RF-01.10): "farinha de trigo" salva como "Farinha de Trigo".
+  /// Bate num ingrediente que já existe de antes desta normalização existir
+  /// (ex.: "batata baroa" salvo numa sessão de teste anterior)? Autocorrige
+  /// ali mesmo (`_healDisplayName`) — sem isso, `getOrCreate` reaproveitando
+  /// o ingrediente pelo `normalizedKey`/alias nunca tocaria no `displayName`
+  /// de novo, e o nome errado ficaria pra sempre por mais que o usuário
+  /// reimportasse ou resalvasse a receita.
   Future<IngredientRow> getOrCreate(String displayName) {
     final key = normalize(displayName);
     return transaction(() async {
       final byKey = await (select(ingredients)
             ..where((i) => i.normalizedKey.equals(key)))
           .getSingleOrNull();
-      if (byKey != null) return byKey;
+      if (byKey != null) return _healDisplayName(byKey);
 
       final aliasRow = await (select(ingredientAliases)
             ..where((a) => a.normalizedAlias.equals(key)))
           .getSingleOrNull();
       if (aliasRow != null) {
-        return (select(ingredients)
+        final row = await (select(ingredients)
               ..where((i) => i.id.equals(aliasRow.ingredientId)))
             .getSingle();
+        return _healDisplayName(row);
       }
 
       final row = IngredientRow(
         id: _uuid.v4(),
-        displayName: displayName.trim(),
+        displayName: canonicalTitleCase(displayName),
         normalizedKey: key,
         usageCount: 0,
       );
       await into(ingredients).insert(row);
       return row;
     });
+  }
+
+  /// Recalcula o `displayName` a partir de si mesmo — nunca do texto que
+  /// motivou este `getOrCreate` (uma linha digitada só de leve fora de
+  /// padrão não deveria conseguir reescrever um nome já estabelecido). Só
+  /// grava quando muda de verdade, pra não gastar um `UPDATE` à toa no
+  /// caminho mais comum (nome já certo).
+  Future<IngredientRow> _healDisplayName(IngredientRow row) async {
+    final canonical = canonicalTitleCase(row.displayName);
+    if (canonical == row.displayName) return row;
+    await (update(ingredients)..where((i) => i.id.equals(row.id)))
+        .write(IngredientsCompanion(displayName: Value(canonical)));
+    return row.copyWith(displayName: canonical);
   }
 
   /// Lote de ingredientes por id — o export (D1) resolve `ingredientId` →

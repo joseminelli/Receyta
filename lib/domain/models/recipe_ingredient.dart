@@ -14,6 +14,14 @@ class RecipeIngredient with _$RecipeIngredient {
     required int position,
     String? groupLabel,
     String? ingredientId,
+
+    /// `displayName` do catálogo (`Ingredient`) na hora em que a receita foi
+    /// carregada — é o nome de verdade pra EXIBIR (já normalizado, Title
+    /// Case). `null` quando `ingredientId` também é nulo (linha nunca
+    /// resolvida). Quem preenche é `RecipeRepository._detail`; nunca é
+    /// gravado no banco (`rawText`/`ingredientId` continuam sendo a fonte
+    /// de verdade salva).
+    String? ingredientName,
     double? quantity,
     String? unitId,
     String? qualifier,

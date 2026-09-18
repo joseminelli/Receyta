@@ -609,7 +609,11 @@ class _IngredientRow extends StatelessWidget {
               ),
               const TextSpan(text: ' de'),
             ],
-            TextSpan(text: ' ${parsed.name}'),
+            // Nome do catálogo (já normalizado — ver `IngredientDao
+            // .getOrCreate`) tem prioridade sobre o que o parser extraiu do
+            // `rawText`: são fontes diferentes e o catálogo é o que
+            // realmente fica salvo, então é o que a receita deve mostrar.
+            TextSpan(text: ' ${ingredient.ingredientName ?? parsed.name}'),
             if (parsed.qualifier != null)
               TextSpan(
                 text: ', ${parsed.qualifier}',

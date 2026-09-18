@@ -15,14 +15,30 @@ import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/domain/engine/receyta_file_import.dart';
 
 /// Quantas pastas/receitas entraram — o que a UI mostra depois de importar.
-typedef ImportSummary = ({int recipes, int folders});
+/// `skipped` só conta receitas em conflito que o usuário mandou pular (D4).
+typedef ImportSummary = ({int recipes, int folders, int skipped});
 
-/// Lê um `.receyta` escolhido pelo usuário (D3, §7/RF-06.3) e reconcilia
-/// contra a base local: ingrediente entra pelo mesmo `getOrCreate` do
-/// C1/C2 (nunca por id — o catálogo de origem não tem por que bater com o
-/// daqui), tag pelo mesmo `ensureTags`. Sempre cria linhas NOVAS (pasta,
-/// receita, vínculo); detectar duplicata de uma reimportação e deixar
-/// escolher substituir/duplicar/pular é o D4, ainda não existe.
+/// O que fazer com uma receita cujo `id` de origem já existe localmente
+/// (D4, RF-06.3) — decidido pelo usuário na tela de conflitos, nunca
+/// escolhido sozinho pelo serviço.
+enum ConflictResolution {
+  /// Sobrescreve a receita existente (mesmo id) com o conteúdo do arquivo.
+  replace,
+
+  /// Cria uma receita nova, com id novo — a existente fica intocada.
+  duplicate,
+
+  /// Não faz nada com essa receita.
+  skip,
+}
+
+/// Lê um `.receyta` e reconcilia contra a base local: ingrediente entra
+/// pelo mesmo `getOrCreate` do C1/C2 (nunca por id — o catálogo de origem
+/// não tem por que bater com o daqui), tag pelo mesmo `ensureTags`, pasta
+/// pelo par nome+pai (D4). Receita reaproveita o `id` do arquivo de
+/// origem quando não bate com nada local — é isso que permite detectar
+/// conflito numa reimportação e não é escolha alocada em outro lugar: sem
+/// conflito, a receita simplesmente nasce com aquele id.
 class ReceytaImportService {
   ReceytaImportService(
     this._recipeDao,
@@ -41,8 +57,10 @@ class ReceytaImportService {
   final Uuid _uuid;
   final DateTime Function() _clock;
 
-  /// Abre o seletor de arquivo do sistema. `null` significa que o usuário
-  /// cancelou a escolha — não é erro, não mostra mensagem nenhuma.
+  /// Abre o seletor de arquivo do sistema e já lê+parseia o conteúdo. `null`
+  /// significa que o usuário cancelou a escolha — não é erro, não mostra
+  /// mensagem nenhuma. Não importa nada ainda — quem chama decide (via
+  /// [findConflicts] + [importParsedFile]) depois de ver se há conflito.
   ///
   /// Sem filtro de extensão de propósito: `.receyta` não é uma extensão
   /// registrada no `MimeTypeMap` do Android, e `FileType.custom` +
@@ -52,23 +70,25 @@ class ReceytaImportService {
   /// nesse ponto da cadeia). `FileType.any` sempre funciona; quem valida que
   /// o arquivo escolhido é um `.receyta` de verdade é o `parseReceytaFile`
   /// logo depois.
-  Future<Result<ImportSummary>?> importFromPickedFile() async {
+  Future<Result<ParsedReceytaFile>?> pickAndParseFile() async {
     final FilePickerResult? picked;
     try {
       picked = await FilePicker.platform.pickFiles(type: FileType.any);
     } catch (e) {
-      return Err(ProcessingFailure('Falha ao abrir o seletor de arquivo', cause: e));
+      return Err(
+        ProcessingFailure('Falha ao abrir o seletor de arquivo', cause: e),
+      );
     }
     final path = picked?.files.single.path;
     if (path == null) return null;
-    return importFromFilePath(path);
+    return parseFileAtPath(path);
   }
 
-  /// Lê e importa um `.receyta` já em disco — usado tanto pelo seletor
+  /// Lê e parseia um `.receyta` já em disco — usado tanto pelo seletor
   /// manual quanto pelo `.receyta` recebido de outro app (D5), cujo caminho
   /// o `receive_sharing_intent` já resolveu (copia o `content://` pra um
   /// arquivo de verdade antes de entregar pro Dart).
-  Future<Result<ImportSummary>> importFromFilePath(String path) async {
+  Future<Result<ParsedReceytaFile>> parseFileAtPath(String path) async {
     final String source;
     try {
       source = await File(path).readAsString();
@@ -82,62 +102,115 @@ class ReceytaImportService {
         ValidationFailure('Esse arquivo não é um .receyta válido.'),
       );
     }
-    return importParsedFile(parsed);
-  }
-
-  /// A reconciliação em si, separada de [importFromPickedFile] pra ficar
-  /// testável sem tocar no seletor de arquivo nativo.
-  Future<Result<ImportSummary>> importParsedFile(
-    ParsedReceytaFile file,
-  ) async {
-    if (file.recipes.isEmpty) {
+    if (parsed.recipes.isEmpty) {
       return const Err(
         ValidationFailure('Esse arquivo não tem nenhuma receita.'),
       );
     }
+    return Ok(parsed);
+  }
+
+  /// Nomes das receitas do arquivo que já existem localmente (mesmo `id` de
+  /// origem) — a UI só precisa perguntar o que fazer quando essa lista não
+  /// vem vazia (D4). Leitura pura, não escreve nada.
+  Future<List<String>> findConflicts(ParsedReceytaFile file) async {
+    final names = <String>[];
+    for (final recipe in file.recipes) {
+      final sourceId = recipe.sourceId;
+      if (sourceId == null) continue;
+      if (await _recipeDao.findById(sourceId) != null) {
+        names.add(recipe.name);
+      }
+    }
+    return names;
+  }
+
+  /// A reconciliação em si, separada do seletor/parser pra ficar testável
+  /// sem tocar em plugin nativo. [resolution] vale pra TODAS as receitas em
+  /// conflito deste import — a tela de conflitos (D4) pergunta uma vez só
+  /// pro lote inteiro, não receita por receita.
+  Future<Result<ImportSummary>> importParsedFile(
+    ParsedReceytaFile file, {
+    ConflictResolution resolution = ConflictResolution.duplicate,
+  }) async {
     try {
-      return Ok(await _import(file));
+      return Ok(await _import(file, resolution));
     } catch (e) {
       return Err(DatabaseFailure('Falha ao importar', cause: e));
     }
   }
 
-  Future<ImportSummary> _import(ParsedReceytaFile file) async {
+  Future<ImportSummary> _import(
+    ParsedReceytaFile file,
+    ConflictResolution resolution,
+  ) async {
     final folderIds = await _importFolders(file.folders);
+    var imported = 0;
+    var skipped = 0;
     for (final recipe in file.recipes) {
-      await _importRecipe(recipe, folderIds);
+      if (await _importRecipe(recipe, folderIds, resolution)) {
+        imported++;
+      } else {
+        skipped++;
+      }
     }
-    return (recipes: file.recipes.length, folders: folderIds.length);
+    return (recipes: imported, folders: folderIds.length, skipped: skipped);
   }
 
-  /// Duas passadas: cria toda pasta na raiz primeiro (id novo, sem
-  /// hierarquia) pra só depois resolver `parentId` com o mapa completo em
-  /// mãos — a ordem das pastas no arquivo não garante pai antes de filho (o
-  /// export lista em ordem alfabética, não hierárquica).
+  /// Resolve cada pasta recursivamente (pai antes de filho, não importa a
+  /// ordem no arquivo — o export lista por nome, não por hierarquia) e
+  /// reconcilia pelo par nome+pai já resolvido (D4): reimportar o mesmo
+  /// backup reaproveita a pasta existente em vez de duplicar a árvore
+  /// inteira a cada vez.
   Future<Map<String, String>> _importFolders(
     List<ParsedFolderImport> folders,
   ) async {
+    final bySourceId = {for (final f in folders) f.sourceId: f};
     final realIds = <String, String>{};
-    for (final f in folders) {
-      final row = await _folderDao.create(name: f.name);
-      realIds[f.sourceId] = row.id;
+
+    Future<String> resolve(String sourceId) async {
+      final cached = realIds[sourceId];
+      if (cached != null) return cached;
+
+      final folder = bySourceId[sourceId]!;
+      final parentSourceId = folder.parentSourceId;
+      final parentId = (parentSourceId != null &&
+              bySourceId.containsKey(parentSourceId))
+          ? await resolve(parentSourceId)
+          : null;
+
+      final existing =
+          await _folderDao.findByNameAndParent(folder.name, parentId);
+      final id = existing?.id ??
+          (await _folderDao.create(name: folder.name, parentId: parentId)).id;
+      realIds[sourceId] = id;
+      return id;
     }
-    final now = _clock().toUtc();
+
     for (final f in folders) {
-      final realParentId =
-          f.parentSourceId == null ? null : realIds[f.parentSourceId];
-      if (realParentId == null) continue;
-      await _folderDao.move(realIds[f.sourceId]!, realParentId, now);
+      await resolve(f.sourceId);
     }
     return realIds;
   }
 
-  Future<void> _importRecipe(
+  /// `true` se a receita foi de fato criada/atualizada; `false` só quando o
+  /// usuário escolheu pular um conflito.
+  Future<bool> _importRecipe(
     ParsedRecipeImport recipe,
     Map<String, String> folderIds,
+    ConflictResolution resolution,
   ) async {
+    final sourceId = recipe.sourceId;
+    final hasConflict =
+        sourceId != null && await _recipeDao.findById(sourceId) != null;
+    if (hasConflict && resolution == ConflictResolution.skip) {
+      return false;
+    }
+    final recipeId = (hasConflict && resolution == ConflictResolution.duplicate)
+        ? _uuid.v4()
+        : (sourceId ?? _uuid.v4());
+
     final now = _clock().toUtc();
-    final recipeId = _uuid.v4();
 
     final ingredients = <RecipeIngredientRow>[];
     for (final i in recipe.ingredients) {
@@ -200,6 +273,7 @@ class ReceytaImportService {
       steps: steps,
       tagIds: [for (final t in tagRows) t.id],
     );
+    return true;
   }
 }
 

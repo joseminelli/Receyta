@@ -39,9 +39,9 @@ void main() {
 
     final ingredients = json['ingredients'] as List;
     expect(ingredients, hasLength(2));
-    expect(ingredients[0]['name'], 'tomates');
+    expect(ingredients[0]['name'], 'Tomates');
     expect(ingredients[0]['unit'], isNull);
-    expect(ingredients[1]['name'], 'sal');
+    expect(ingredients[1]['name'], 'Sal');
     expect(ingredients[1]['unit'], 'pitada');
 
     final steps = json['steps'] as List;
@@ -86,7 +86,7 @@ void main() {
     expect(lasanha['folderId'], folder.id);
     expect(
       (lasanha['ingredients'] as List)[0]['name'],
-      'massa',
+      'Massa',
     );
   });
 
