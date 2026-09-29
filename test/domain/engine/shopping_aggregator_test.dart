@@ -32,7 +32,7 @@ void main() {
     expect(result, hasLength(1));
     expect(result.single.quantity, 5);
     expect(result.single.unitCode, 'dente');
-    expect(result.single.sourceRecipeIds, ['r1', 'r2']);
+    expect(result.single.sources.map((s) => s.recipeId), ['r1', 'r2']);
   });
 
   test('500g + 800g vira 1,3kg', () {
@@ -56,6 +56,12 @@ void main() {
     expect(result, hasLength(1));
     expect(result.single.quantity, closeTo(1.3, 0.0001));
     expect(result.single.unitCode, 'kg');
+    // `sources` guarda a quantidade ORIGINAL de cada receita (500g/800g),
+    // não a convertida — é o que `ShoppingItemSources` grava (RF-05.8).
+    expect(result.single.sources, [
+      (recipeId: 'r1', quantity: 500.0, unitId: 'g'),
+      (recipeId: 'r2', quantity: 800.0, unitId: 'g'),
+    ]);
   });
 
   test('700ml + 500ml vira 1,2l', () {
@@ -138,7 +144,7 @@ void main() {
     ]);
 
     expect(result, hasLength(2));
-    expect(result.every((r) => r.sourceRecipeIds.length == 1), isTrue);
+    expect(result.every((r) => r.sources.length == 1), isTrue);
   });
 
   test('ingredientes diferentes nunca se misturam', () {
@@ -163,7 +169,7 @@ void main() {
     ]);
 
     expect(result.single.quantity, isNull);
-    expect(result.single.sourceRecipeIds, ['r1']);
+    expect(result.single.sources.map((s) => s.recipeId), ['r1']);
   });
 
   test('linha nunca resolvida agrupa pelo rawText normalizado', () {

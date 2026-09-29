@@ -1,16 +1,24 @@
 import 'package:receyta/data/database/seed_data.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 
+/// Uma origem de um item agregado: quanto ESSA receita contribuiu, na
+/// unidade original dela (não convertida) — é o que `ShoppingItemSources`
+/// grava (RF-05.8, "de quais receitas veio").
+typedef ShoppingSourceLine = ({
+  String recipeId,
+  double? quantity,
+  String? unitId,
+});
+
 /// Linha pronta pra lista de compras (E2 monta a partir disto): quantidade
-/// total numa unidade só, quando deu pra somar, e de quais receitas veio
-/// (E5 — rastreio de origem).
+/// total numa unidade só, quando deu pra somar, e de quais receitas veio.
 class AggregatedIngredient {
   const AggregatedIngredient({
     required this.ingredientKey,
     required this.displayName,
     required this.quantity,
     required this.unitCode,
-    required this.sourceRecipeIds,
+    required this.sources,
   });
 
   /// `ingredientId` do catálogo, ou uma chave sintética a partir do
@@ -23,7 +31,7 @@ class AggregatedIngredient {
   /// tela mostra a unidade/texto cru sem número, não inventa um.
   final double? quantity;
   final String? unitCode;
-  final List<String> sourceRecipeIds;
+  final List<ShoppingSourceLine> sources;
 }
 
 /// Agrega linhas de ingrediente de várias receitas selecionadas: o mesmo
@@ -84,7 +92,10 @@ AggregatedIngredient _mergeBucket(
   String ingredientKey,
   List<RecipeIngredient> bucket,
 ) {
-  final sourceIds = [for (final b in bucket) b.recipeId];
+  final sources = [
+    for (final b in bucket)
+      (recipeId: b.recipeId, quantity: b.quantity, unitId: b.unitId),
+  ];
   final first = bucket.first;
   final displayName = first.ingredientName ?? first.rawText;
 
@@ -94,7 +105,7 @@ AggregatedIngredient _mergeBucket(
       displayName: displayName,
       quantity: null,
       unitCode: first.unitId,
-      sourceRecipeIds: sourceIds,
+      sources: sources,
     );
   }
 
@@ -110,7 +121,7 @@ AggregatedIngredient _mergeBucket(
     displayName: displayName,
     quantity: quantity,
     unitCode: unitCode,
-    sourceRecipeIds: sourceIds,
+    sources: sources,
   );
 }
 

@@ -4,6 +4,7 @@ import 'connection.dart';
 import 'daos/folder_dao.dart';
 import 'daos/ingredient_dao.dart';
 import 'daos/recipe_dao.dart';
+import 'daos/shopping_list_dao.dart';
 import 'daos/tag_dao.dart';
 import 'seed_data.dart';
 import 'tables.dart';
@@ -64,7 +65,7 @@ END''',
     ShoppingItemSources,
     NormalizerTerms,
   ],
-  daos: [RecipeDao, TagDao, FolderDao, IngredientDao],
+  daos: [RecipeDao, TagDao, FolderDao, IngredientDao, ShoppingListDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(openConnection());

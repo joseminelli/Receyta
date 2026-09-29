@@ -91,9 +91,28 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Lote de receitas por id — gerar lista de compras (E2) resolve o nome
+  /// de cada receita de origem de uma vez só, não um `SELECT` por linha.
+  Future<List<RecipeRow>> findByIds(List<String> ids) {
+    if (ids.isEmpty) return Future.value(const []);
+    return (select(recipes)..where((r) => r.id.isIn(ids))).get();
+  }
+
   Future<List<RecipeIngredientRow>> ingredientsOf(String recipeId) {
     return (select(recipeIngredients)
           ..where((i) => i.recipeId.equals(recipeId))
+          ..orderBy([(i) => OrderingTerm.asc(i.position)]))
+        .get();
+  }
+
+  /// Ingredientes de várias receitas numa query só — gerar lista de compras
+  /// (E2) a partir de receitas selecionadas não busca uma por vez.
+  Future<List<RecipeIngredientRow>> ingredientsForRecipes(
+    List<String> recipeIds,
+  ) {
+    if (recipeIds.isEmpty) return Future.value(const []);
+    return (select(recipeIngredients)
+          ..where((i) => i.recipeId.isIn(recipeIds))
           ..orderBy([(i) => OrderingTerm.asc(i.position)]))
         .get();
   }
