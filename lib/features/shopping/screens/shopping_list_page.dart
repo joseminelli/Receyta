@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -41,8 +44,8 @@ class ShoppingListPage extends ConsumerWidget {
         await ref.read(shoppingListRepositoryProvider).generateFromRecipes(ids);
     result.when(
       ok: (_) {},
-      err: (f) =>
-          showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error),
+      err: (f) => showAppSnackBar(
+          message: f.message, variant: AppSnackBarVariant.error),
     );
   }
 
@@ -118,8 +121,8 @@ class ShoppingListPage extends ConsumerWidget {
         await ref.read(shoppingListRepositoryProvider).clearChecked(list.id);
     result.when(
       ok: (_) {},
-      err: (f) =>
-          showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error),
+      err: (f) => showAppSnackBar(
+          message: f.message, variant: AppSnackBarVariant.error),
     );
   }
 
@@ -138,7 +141,8 @@ class ShoppingListPage extends ConsumerWidget {
             Expanded(
               child: listAsync.when(
                 loading: () => const Center(child: BrandLoader()),
-                error: (_, __) => _buildMessage(context, 'Não deu para carregar.'),
+                error: (_, __) =>
+                    _buildMessage(context, 'Não deu para carregar.'),
                 data: (list) => list == null
                     ? _buildEmpty(context, ref)
                     : _buildList(context, ref, list),
@@ -324,7 +328,8 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
 
   void _sync() {
     final ids = {for (final i in widget.items) i.id};
-    for (final gone in _sortState.keys.where((k) => !ids.contains(k)).toList()) {
+    for (final gone
+        in _sortState.keys.where((k) => !ids.contains(k)).toList()) {
       _sortState.remove(gone);
       _phase.remove(gone);
       _timers.remove(gone)?.cancel();
@@ -342,8 +347,33 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
     }
   }
 
+  /// Ordem visual (ids na sequência exata da tela, seções incluídas) pra um
+  /// dado estado de ordenação.
+  List<String> _visualOrder(Map<String, bool> state) {
+    final proxied = [
+      for (final i in widget.items)
+        i.copyWith(checked: state[i.id] ?? i.checked),
+    ];
+    return [
+      for (final g in groupShoppingItems(proxied, sinkChecked: true))
+        for (final i in g.items) i.id,
+    ];
+  }
+
+  /// Só anima a saída se a linha realmente muda de lugar; senão (já é a
+  /// última da seção, única, etc.) fica só o risco no lugar — sem movimento
+  /// à toa.
   void _leave(String id) {
     if (!mounted) return;
+    final current = widget.items.where((i) => i.id == id).firstOrNull;
+    if (current == null) return;
+    final after = {..._sortState, id: current.checked};
+    final moves = !listEquals(_visualOrder(_sortState), _visualOrder(after));
+    if (!moves) {
+      _timers.remove(id);
+      setState(() => _sortState[id] = current.checked);
+      return;
+    }
     setState(() => _phase[id] = _MovePhase.leaving);
     _timers[id] = Timer(_leaveDuration, () => _enter(id));
   }
@@ -542,7 +572,7 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _ItemRow extends ConsumerWidget {
-  const _ItemRow({super.key, required this.item});
+  const _ItemRow({required this.item});
 
   final ShoppingListItem item;
 
@@ -585,7 +615,7 @@ class _ItemRow extends ConsumerWidget {
     if (qty == null) return const SizedBox.shrink();
     final unit = shoppingItemUnit(item);
     final alpha = item.checked ? 0.35 : 1.0;
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -596,6 +626,7 @@ class _ItemRow extends ConsumerWidget {
             height: 1.1,
           ),
         ),
+        const SizedBox(width: 5),
         if (unit != null)
           Text(
             unit,
@@ -656,7 +687,8 @@ class _OriginChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: colors.onSaturated.withValues(alpha: alpha * 0.6)),
+        border: Border.all(
+            color: colors.onSaturated.withValues(alpha: alpha * 0.6)),
       ),
       child: Text(
         name,
@@ -680,4 +712,151 @@ class _CheckDot extends StatefulWidget {
 }
 
 class _CheckDotState extends State<_CheckDot>
-    with SingleTickerProvide
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
+
+  late final Animation<double> _scale = TweenSequence<double>([
+    TweenSequenceItem(tween: Tween(begin: 1.0, end: 0.8), weight: 25),
+    TweenSequenceItem(
+      tween:
+          Tween(begin: 0.8, end: 1.2).chain(CurveTween(curve: Curves.easeOut)),
+      weight: 40,
+    ),
+    TweenSequenceItem(
+      tween:
+          Tween(begin: 1.2, end: 1.0).chain(CurveTween(curve: Curves.easeIn)),
+      weight: 35,
+    ),
+  ]).animate(_pop);
+
+  @override
+  void didUpdateWidget(covariant _CheckDot old) {
+    super.didUpdateWidget(old);
+    if (widget.done && !old.done) _pop.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final done = widget.done;
+    return ScaleTransition(
+      scale: _scale,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: done ? colors.lime : Colors.transparent,
+          border: Border.all(
+            color:
+                done ? colors.lime : colors.onSaturated.withValues(alpha: 0.5),
+            width: 2,
+          ),
+        ),
+        child: done ? Icon(Icons.check, size: 16, color: colors.ink) : null,
+      ),
+    );
+  }
+}
+
+/// Campo de item avulso: pílula do mesmo estilo da navbar; o `+` só aparece
+/// com texto digitado.
+class _AddItemBar extends ConsumerStatefulWidget {
+  const _AddItemBar({required this.listId});
+
+  final String listId;
+
+  @override
+  ConsumerState<_AddItemBar> createState() => _AddItemBarState();
+}
+
+class _AddItemBarState extends ConsumerState<_AddItemBar> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _controller.text;
+    if (text.trim().isEmpty) return;
+    final result = await ref
+        .read(shoppingListRepositoryProvider)
+        .addManualItem(widget.listId, text);
+    result.when(
+      ok: (_) => _controller.clear(),
+      err: (f) => showAppSnackBar(
+          message: f.message, variant: AppSnackBarVariant.error),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.xs,
+        AppSpacing.screen,
+        _navBarClearance,
+      ),
+      child: TextField(
+        controller: _controller,
+        textInputAction: TextInputAction.done,
+        textCapitalization: TextCapitalization.sentences,
+        onSubmitted: (_) => _submit(),
+        style: context.texts.bodyLarge?.copyWith(color: colors.onSaturated),
+        cursorColor: colors.lime,
+        decoration: InputDecoration(
+          hintText: 'Adicionar item (ex.: 2 caixas de leite)',
+          hintStyle: context.texts.bodyMedium?.copyWith(
+            color: colors.onSaturated.withValues(alpha: 0.5),
+          ),
+          filled: true,
+          fillColor: colors.inkSoft,
+          contentPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.xs,
+            AppSpacing.sm,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+            valueListenable: _controller,
+            builder: (context, value, _) => AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              transitionBuilder: (child, animation) =>
+                  ScaleTransition(scale: animation, child: child),
+              child: value.text.trim().isEmpty
+                  ? const SizedBox.shrink(key: ValueKey('empty'))
+                  : Padding(
+                      key: const ValueKey('add'),
+                      padding: const EdgeInsets.all(4),
+                      child: CircleIconButton(
+                        icon: Icons.add,
+                        tooltip: 'Adicionar item',
+                        onTap: _submit,
+                      ),
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
