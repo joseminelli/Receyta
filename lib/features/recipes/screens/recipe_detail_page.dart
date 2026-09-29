@@ -575,6 +575,7 @@ class _Hero extends ConsumerWidget {
                   Positioned.fill(
                     child: Hero(
                       tag: recipeTileHeroTag(recipe.id),
+                      flightShuttleBuilder: recipeTileHeroFlightShuttleBuilder,
                       child: TilePattern(
                         motif: tile.motif,
                         background: tile.background,

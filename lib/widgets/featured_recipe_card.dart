@@ -59,6 +59,7 @@ class FeaturedRecipeCard extends StatelessWidget {
                         color: tile.background,
                         child: Hero(
                           tag: recipeTileHeroTag(recipe.id),
+                          flightShuttleBuilder: recipeTileHeroFlightShuttleBuilder,
                           child: TilePattern(
                             motif: tile.motif,
                             background: tile.background,
