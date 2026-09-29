@@ -23,8 +23,14 @@ class PillNavItem {
 
 /// Ilha de navegação flutuante em pílula `ink` (§9.8) — compacta, centrada, não
 /// uma barra de ponta a ponta. Inativos mostram só o ícone; o ativo ganha a
-/// cor da seção e o ícone entra num medalhão, com ícone + label.
-class PillNavBar extends StatelessWidget {
+/// cor da seção e o ícone entra num medalhão, com ícone + label. A seleção em
+/// si é uma pílula única que desliza do retângulo do item antigo pro do item
+/// novo (em vez de sumir num e aparecer no outro): cada `_NavSlot` assenta no
+/// tamanho final na hora (sem animação própria de largura) pra dar dois
+/// pontos fixos — origem e destino — que o indicador interpola com
+/// `Rect.lerp`. Se o próprio item também animasse a largura, o alvo ficaria
+/// se mexendo durante o desliza e as duas animações brigariam.
+class PillNavBar extends StatefulWidget {
   const PillNavBar({
     super.key,
     required this.items,
@@ -35,6 +41,85 @@ class PillNavBar extends StatelessWidget {
   final List<PillNavItem> items;
   final int currentIndex;
   final ValueChanged<int> onSelected;
+
+  @override
+  State<PillNavBar> createState() => _PillNavBarState();
+}
+
+class _PillNavBarState extends State<PillNavBar>
+    with SingleTickerProviderStateMixin {
+  final _stackKey = GlobalKey();
+  late List<GlobalKey> _slotKeys;
+  late final AnimationController _slide;
+  Rect? _previousRect;
+  Rect? _targetRect;
+  Rect? _indicatorRect;
+
+  @override
+  void initState() {
+    super.initState();
+    _slotKeys = List.generate(widget.items.length, (_) => GlobalKey());
+    _slide = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    )..addListener(_onSlideTick);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _snapToCurrent());
+  }
+
+  @override
+  void didUpdateWidget(covariant PillNavBar old) {
+    super.didUpdateWidget(old);
+    if (widget.items.length != _slotKeys.length) {
+      _slotKeys = List.generate(widget.items.length, (_) => GlobalKey());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _snapToCurrent());
+    } else if (widget.currentIndex != old.currentIndex) {
+      // O `_NavSlot` já assentou no tamanho final neste mesmo frame (sem
+      // animação própria) — espera só o layout aplicar antes de medir o
+      // destino, senão pega o retângulo antigo.
+      _previousRect = _indicatorRect;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final r = _rectFor(widget.currentIndex);
+        if (r == null) return;
+        _targetRect = r;
+        _previousRect ??= r;
+        _slide.forward(from: 0);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _slide.dispose();
+    super.dispose();
+  }
+
+  Rect? _rectFor(int index) {
+    final stackBox = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+    final slotBox =
+        _slotKeys[index].currentContext?.findRenderObject() as RenderBox?;
+    if (stackBox == null || slotBox == null || !slotBox.attached) return null;
+    final topLeft = slotBox.localToGlobal(Offset.zero, ancestor: stackBox);
+    return topLeft & slotBox.size;
+  }
+
+  void _snapToCurrent() {
+    final r = _rectFor(widget.currentIndex);
+    if (r != null) {
+      setState(() {
+        _indicatorRect = r;
+        _previousRect = r;
+        _targetRect = r;
+      });
+    }
+  }
+
+  void _onSlideTick() {
+    final from = _previousRect;
+    final to = _targetRect;
+    if (from == null || to == null) return;
+    final t = Curves.easeOutCubic.transform(_slide.value);
+    setState(() => _indicatorRect = Rect.lerp(from, to, t));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,17 +144,37 @@ class PillNavBar extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.xs / 2),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Stack(
+              key: _stackKey,
+              alignment: Alignment.centerLeft,
               children: [
-                for (var i = 0; i < items.length; i++) ...[
-                  if (i > 0) const SizedBox(width: AppSpacing.xs / 2),
-                  _NavSlot(
-                    item: items[i],
-                    selected: i == currentIndex,
-                    onTap: () => onSelected(i),
+                if (_indicatorRect != null)
+                  Positioned(
+                    left: _indicatorRect!.left,
+                    top: _indicatorRect!.top,
+                    width: _indicatorRect!.width,
+                    height: _indicatorRect!.height,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: widget.items[widget.currentIndex].color,
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                      ),
+                    ),
                   ),
-                ],
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i = 0; i < widget.items.length; i++) ...[
+                      if (i > 0) const SizedBox(width: AppSpacing.xs / 2),
+                      _NavSlot(
+                        key: _slotKeys[i],
+                        item: widget.items[i],
+                        selected: i == widget.currentIndex,
+                        onTap: () => widget.onSelected(i),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -81,6 +186,7 @@ class PillNavBar extends StatelessWidget {
 
 class _NavSlot extends StatefulWidget {
   const _NavSlot({
+    super.key,
     required this.item,
     required this.selected,
     required this.onTap,
@@ -152,16 +258,16 @@ class _NavSlotState extends State<_NavSlot> with SingleTickerProviderStateMixin 
       child: InkWell(
         onTap: widget.onTap,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOutCubic,
+        child: Container(
+          // Sem animação de tamanho própria: assenta no formato final na
+          // hora, pra dar ao `_PillNavBarState` um retângulo fixo de destino.
+          // Quem desliza é só o indicador (cor), atrás disto.
           height: AppSpacing.minTapTarget,
           clipBehavior: Clip.antiAlias,
           padding: EdgeInsets.symmetric(
             horizontal: selected ? AppSpacing.md : AppSpacing.sm + 2,
           ),
           decoration: BoxDecoration(
-            color: selected ? item.color : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadii.pill),
           ),
           child: Row(
@@ -182,20 +288,20 @@ class _NavSlotState extends State<_NavSlot> with SingleTickerProviderStateMixin 
                       )
                     : Icon(item.icon, size: 21, color: foreground),
               ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
-                child: selected
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: AppSpacing.xs),
-                        child: Text(
-                          item.label,
-                          style: context.texts.labelLarge
-                              ?.copyWith(color: foreground),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
+              if (selected)
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.xs),
+                  child: FadeTransition(
+                    // Some/aparece junto do estouro do ícone — o layout já
+                    // está no tamanho final, só o texto ganha opacidade.
+                    opacity: _pop,
+                    child: Text(
+                      item.label,
+                      style:
+                          context.texts.labelLarge?.copyWith(color: foreground),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
