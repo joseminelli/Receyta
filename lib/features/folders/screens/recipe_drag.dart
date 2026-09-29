@@ -242,28 +242,32 @@ class _FolderGhost extends StatelessWidget {
                 patternColor: tile.patternColor,
                 patternColorAlt: tile.patternColorAlt,
               ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(Icons.folder_outlined, size: 18, color: tile.onColor),
-                    Text(
-                      folder.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.texts.labelLarge?.copyWith(
-                        color: tile.onColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildContent(context, tile.onColor),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, Color onColor) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(Icons.folder_outlined, size: 18, color: onColor),
+          Text(
+            folder.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.texts.labelLarge?.copyWith(
+              color: onColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -307,24 +311,26 @@ class FolderDropZone extends ConsumerWidget {
           ),
         );
       },
-      builder: (context, candidate, rejected) {
-        final active = candidate.isNotEmpty;
-        return AnimatedScale(
-          scale: active ? 1.06 : 1,
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: borderRadius,
-              border: Border.all(
-                color: active ? colors.lime : Colors.transparent,
-                width: 3,
-              ),
-            ),
-            child: child,
+      builder: (context, candidate, rejected) =>
+          _buildTile(colors, candidate.isNotEmpty),
+    );
+  }
+
+  Widget _buildTile(AppColors colors, bool active) {
+    return AnimatedScale(
+      scale: active ? 1.06 : 1,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          border: Border.all(
+            color: active ? colors.lime : Colors.transparent,
+            width: 3,
           ),
-        );
-      },
+        ),
+        child: child,
+      ),
     );
   }
 }
@@ -379,40 +385,47 @@ class FolderExitDropBar extends ConsumerWidget {
                     ),
                   );
                 },
-                builder: (context, candidate, rejected) {
-                  final active = candidate.isNotEmpty;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    height: AppSpacing.minTapTarget + 12,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: active ? colors.lime : colors.ink,
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.subdirectory_arrow_left,
-                          size: 20,
-                          color: active ? colors.ink : colors.lime,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          label,
-                          style: context.texts.labelLarge?.copyWith(
-                            color: active ? colors.ink : colors.onSaturated,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                builder: (context, candidate, rejected) =>
+                    _buildBar(context, colors, label, candidate.isNotEmpty),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBar(
+    BuildContext context,
+    AppColors colors,
+    String label,
+    bool active,
+  ) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      height: AppSpacing.minTapTarget + 12,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: active ? colors.lime : colors.ink,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.subdirectory_arrow_left,
+            size: 20,
+            color: active ? colors.ink : colors.lime,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            label,
+            style: context.texts.labelLarge?.copyWith(
+              color: active ? colors.ink : colors.onSaturated,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -454,42 +467,43 @@ class RecipeDeleteDropTarget extends ConsumerWidget {
                 onAction: () => repo.restore(id),
               );
             },
-            builder: (context, candidate, rejected) {
-              final active = candidate.isNotEmpty;
-              return AnimatedScale(
-                scale: active ? 1 : .9,
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOutBack,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        colors.danger,
-                        Color.lerp(colors.danger, colors.ink, 0.35)!,
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colors.danger
-                            .withValues(alpha: active ? 0.55 : 0.35),
-                        blurRadius: active ? 28 : 18,
-                        spreadRadius: active ? 6 : 2,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.delete_outline,
-                    color: colors.onSaturated,
-                    size: 28,
-                  ),
-                ),
-              );
-            },
+            builder: (context, candidate, rejected) =>
+                _buildButton(colors, candidate.isNotEmpty),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildButton(AppColors colors, bool active) {
+    return AnimatedScale(
+      scale: active ? 1 : .9,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOutBack,
+      child: Container(
+        width: 64,
+        height: 64,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              colors.danger,
+              Color.lerp(colors.danger, colors.ink, 0.35)!,
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.danger.withValues(alpha: active ? 0.55 : 0.35),
+              blurRadius: active ? 28 : 18,
+              spreadRadius: active ? 6 : 2,
+            ),
+          ],
+        ),
+        child: Icon(
+          Icons.delete_outline,
+          color: colors.onSaturated,
+          size: 28,
         ),
       ),
     );

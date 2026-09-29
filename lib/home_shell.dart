@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
-import 'package:receyta/features/folders/recipe_drag.dart';
-import 'package:receyta/features/recipes/receyta_import_flow.dart';
-import 'package:receyta/features/recipes/recipes_page.dart';
-import 'package:receyta/features/settings/account_page.dart';
+import 'package:receyta/features/folders/screens/recipe_drag.dart';
+import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
+import 'package:receyta/features/recipes/screens/recipes_page.dart';
+import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';

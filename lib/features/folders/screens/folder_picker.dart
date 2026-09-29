@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
-import 'package:receyta/features/folders/folder_actions.dart';
-import 'package:receyta/features/folders/folders_view_model.dart';
+import 'package:receyta/features/folders/screens/folder_actions.dart';
+import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 
@@ -40,8 +40,8 @@ class _FolderPickerSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    final folders = ref.watch(allFoldersProvider).valueOrNull ?? const <Folder>[];
+    final folders =
+        ref.watch(allFoldersProvider).valueOrNull ?? const <Folder>[];
     final rows = _flatten(folders, excludeSubtreeOf);
 
     return SafeArea(
@@ -53,65 +53,75 @@ class _FolderPickerSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                0,
-                AppSpacing.screen,
-                AppSpacing.sm,
-              ),
-              child: Text('Mover para', style: context.texts.displaySmall),
-            ),
-            Flexible(
-              child: ListView(
-                shrinkWrap: true,
-                children: [
-                  _Row(
-                    label: 'Raiz',
-                    icon: Icons.home_outlined,
-                    depth: 0,
-                    selected: currentId == null,
-                    onTap: () =>
-                        Navigator.of(context).pop<FolderChoice>((id: null)),
-                  ),
-                  for (final r in rows)
-                    _Row(
-                      label: r.folder.name,
-                      icon: Icons.folder_outlined,
-                      depth: r.depth,
-                      selected: currentId == r.folder.id,
-                      onTap: () => Navigator.of(context)
-                          .pop<FolderChoice>((id: r.folder.id)),
-                    ),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: colors.paperSoft),
-            ListTile(
-              leading: Icon(Icons.add, color: colors.violet),
-              title: Text(
-                'Nova pasta',
-                style: context.texts.bodyLarge?.copyWith(color: colors.violet),
-              ),
-              onTap: () async {
-                final name = await promptFolderName(
-                  context,
-                  title: 'Nova pasta',
-                  action: 'Criar',
-                );
-                if (name == null || name.isEmpty) return;
-                final result =
-                    await ref.read(folderRepositoryProvider).create(name: name);
-                result.when(
-                  ok: (folder) => Navigator.of(context)
-                      .pop<FolderChoice>((id: folder.id)),
-                  err: (_) {},
-                );
-              },
-            ),
+            _buildTitle(context),
+            Flexible(child: _buildList(context, rows)),
+            Divider(height: 1, color: context.colors.paperSoft),
+            _buildNewFolderTile(context, ref),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTitle(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.sm,
+      ),
+      child: Text('Mover para', style: context.texts.displaySmall),
+    );
+  }
+
+  Widget _buildList(BuildContext context, List<_FlatFolder> rows) {
+    return ListView(
+      shrinkWrap: true,
+      children: [
+        _Row(
+          label: 'Raiz',
+          icon: Icons.home_outlined,
+          depth: 0,
+          selected: currentId == null,
+          onTap: () => Navigator.of(context).pop<FolderChoice>((id: null)),
+        ),
+        for (final r in rows)
+          _Row(
+            label: r.folder.name,
+            icon: Icons.folder_outlined,
+            depth: r.depth,
+            selected: currentId == r.folder.id,
+            onTap: () =>
+                Navigator.of(context).pop<FolderChoice>((id: r.folder.id)),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNewFolderTile(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    return ListTile(
+      leading: Icon(Icons.add, color: colors.violet),
+      title: Text(
+        'Nova pasta',
+        style: context.texts.bodyLarge?.copyWith(color: colors.violet),
+      ),
+      onTap: () async {
+        final name = await promptFolderName(
+          context,
+          title: 'Nova pasta',
+          action: 'Criar',
+        );
+        if (name == null || name.isEmpty) return;
+        final result =
+            await ref.read(folderRepositoryProvider).create(name: name);
+        result.when(
+          ok: (folder) =>
+              Navigator.of(context).pop<FolderChoice>((id: folder.id)),
+          err: (_) {},
+        );
+      },
     );
   }
 }

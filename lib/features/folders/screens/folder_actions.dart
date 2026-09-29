@@ -5,7 +5,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
-import 'package:receyta/features/folders/folder_picker.dart';
+import 'package:receyta/features/folders/screens/folder_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';

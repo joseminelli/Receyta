@@ -10,7 +10,7 @@ import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/recipes/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
@@ -348,31 +348,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
                   autofocus: !_isEditing && !blocked,
                 ),
                 _Field(label: 'Sobre', controller: _about, maxLines: 3),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _Field(
-                        label: 'Preparo (min)',
-                        controller: _prep,
-                        numeric: true,
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) => _cookFocus.requestFocus(),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: _Field(
-                        label: 'Cozimento (min)',
-                        controller: _cook,
-                        numeric: true,
-                        focusNode: _cookFocus,
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) => _servingsFocus.requestFocus(),
-                      ),
-                    ),
-                  ],
-                ),
+                _buildTimeFields(),
                 _Field(
                   label: 'Rende (porções)',
                   controller: _servings,
@@ -427,6 +403,34 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTimeFields() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: _Field(
+            label: 'Preparo (min)',
+            controller: _prep,
+            numeric: true,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => _cookFocus.requestFocus(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _Field(
+            label: 'Cozimento (min)',
+            controller: _cook,
+            numeric: true,
+            focusNode: _cookFocus,
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => _servingsFocus.requestFocus(),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -751,47 +755,46 @@ class _TagsField extends ConsumerWidget {
                 },
               );
             },
-            optionsViewBuilder: (context, onSelected, options) {
-              final colors = context.colors;
-              final items = options.toList();
-              return Align(
-                alignment: Alignment.topLeft,
-                child: DecoratedBox(
-                  decoration: _suggestionDecoration(context),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxHeight: 180,
-                      maxWidth: 280,
-                    ),
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      children: [
-                        for (var i = 0; i < items.length; i++) ...[
-                          if (i > 0)
-                            Divider(height: 1, color: colors.paperSoft),
-                          InkWell(
-                            onTap: () => onSelected(items[i]),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.sm,
-                                vertical: AppSpacing.sm,
-                              ),
-                              child: Text(
-                                items[i],
-                                style: context.texts.bodyMedium,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+            optionsViewBuilder: (context, onSelected, options) =>
+                _buildSuggestions(context, onSelected, options.toList()),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestions(
+    BuildContext context,
+    AutocompleteOnSelected<String> onSelected,
+    List<String> items,
+  ) {
+    final colors = context.colors;
+    return Align(
+      alignment: Alignment.topLeft,
+      child: DecoratedBox(
+        decoration: _suggestionDecoration(context),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 180, maxWidth: 280),
+          child: ListView(
+            padding: EdgeInsets.zero,
+            shrinkWrap: true,
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: colors.paperSoft),
+                InkWell(
+                  onTap: () => onSelected(items[i]),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.sm,
+                    ),
+                    child: Text(items[i], style: context.texts.bodyMedium),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -919,7 +922,6 @@ class _LineList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -940,69 +942,7 @@ class _LineList extends StatelessWidget {
             buildDefaultDragHandles: false,
             itemCount: lines.length,
             onReorder: onReorder,
-            itemBuilder: (context, i) {
-              final line = lines[i];
-              return Container(
-                key: line.key,
-                margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-                decoration: line.heading
-                    ? BoxDecoration(
-                        color: accentColor.withValues(alpha: 0.06),
-                        border: Border(
-                          left: BorderSide(color: accentColor, width: 3),
-                        ),
-                      )
-                    : null,
-                child: Row(
-                  children: [
-                    ReorderableDragStartListener(
-                      index: i,
-                      child: Icon(
-                        line.heading ? Icons.segment : Icons.drag_indicator,
-                        color: line.heading
-                            ? accentColor
-                            : accentColor.withValues(alpha: 0.55),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.xs / 2),
-                    Expanded(
-                      child: (suggestions != null && !line.heading)
-                          ? _IngredientAutocompleteField(
-                              line: line,
-                              suggestions: suggestions!,
-                              hintText: hintFor(i),
-                            )
-                          : TextField(
-                              controller: line.controller,
-                              focusNode: line.focusNode,
-                              textCapitalization: TextCapitalization.sentences,
-                              minLines: 1,
-                              maxLines: line.heading ? 1 : 4,
-                              style: line.heading
-                                  ? context.texts.labelLarge?.copyWith(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.3,
-                                      color: colors.coral,
-                                    )
-                                  : null,
-                              decoration: InputDecoration(
-                                hintText: line.heading
-                                    ? 'Nome da seção (ex.: Para a massa)'
-                                    : hintFor(i),
-                              ),
-                            ),
-                    ),
-                    IconButton(
-                      onPressed: () => onRemove(i),
-                      icon: const Icon(Icons.close),
-                      color: colors.textMuted,
-                      tooltip: 'Remover',
-                    ),
-                  ],
-                ),
-              );
-            },
+            itemBuilder: (context, i) => _buildLineTile(context, i),
           ),
         Align(
           alignment: Alignment.centerLeft,
@@ -1026,6 +966,70 @@ class _LineList extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLineTile(BuildContext context, int i) {
+    final colors = context.colors;
+    final line = lines[i];
+    return Container(
+      key: line.key,
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      decoration: line.heading
+          ? BoxDecoration(
+              color: accentColor.withValues(alpha: 0.06),
+              border: Border(left: BorderSide(color: accentColor, width: 3)),
+            )
+          : null,
+      child: Row(
+        children: [
+          ReorderableDragStartListener(
+            index: i,
+            child: Icon(
+              line.heading ? Icons.segment : Icons.drag_indicator,
+              color:
+                  line.heading ? accentColor : accentColor.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs / 2),
+          Expanded(child: _buildLineField(context, line, i)),
+          IconButton(
+            onPressed: () => onRemove(i),
+            icon: const Icon(Icons.close),
+            color: colors.textMuted,
+            tooltip: 'Remover',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLineField(BuildContext context, _Line line, int i) {
+    if (suggestions != null && !line.heading) {
+      return _IngredientAutocompleteField(
+        line: line,
+        suggestions: suggestions!,
+        hintText: hintFor(i),
+      );
+    }
+    return TextField(
+      controller: line.controller,
+      focusNode: line.focusNode,
+      textCapitalization: TextCapitalization.sentences,
+      minLines: 1,
+      maxLines: line.heading ? 1 : 4,
+      style: line.heading
+          ? context.texts.labelLarge?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.3,
+              color: context.colors.coral,
+            )
+          : null,
+      decoration: InputDecoration(
+        hintText:
+            line.heading ? 'Nome da seção (ex.: Para a massa)' : hintFor(i),
+      ),
     );
   }
 }
@@ -1128,55 +1132,66 @@ class _IngredientAutocompleteField extends ConsumerWidget {
         );
       },
       optionsViewBuilder: (context, onSelected, options) {
-        final colors = context.colors;
-        final items = options.toList();
         return Align(
           alignment: Alignment.topLeft,
           child: DecoratedBox(
             decoration: _suggestionDecoration(context),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220, maxWidth: 280),
-              child: ListView(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                children: [
-                  if (isFuzzy)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: AppSpacing.xs / 2,
-                      ),
-                      child: Text(
-                        'Você quis dizer:',
-                        style: context.texts.labelSmall,
-                      ),
-                    ),
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0) Divider(height: 1, color: colors.paperSoft),
-                    InkWell(
-                      onTap: () {
-                        pendingPickText = line.controller.text;
-                        pendingWasFuzzy = isFuzzy;
-                        onSelected(items[i]);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm,
-                          vertical: AppSpacing.sm,
-                        ),
-                        child: Text(
-                          items[i].displayName,
-                          style: context.texts.bodyMedium,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+              child: _buildSuggestionsList(
+                context,
+                options.toList(),
+                isFuzzy,
+                onSelected,
+                () => pendingPickText = line.controller.text,
+                () => pendingWasFuzzy = isFuzzy,
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSuggestionsList(
+    BuildContext context,
+    List<Ingredient> items,
+    bool isFuzzy,
+    AutocompleteOnSelected<Ingredient> onSelected,
+    VoidCallback capturePendingText,
+    VoidCallback capturePendingFuzzy,
+  ) {
+    final colors = context.colors;
+    return ListView(
+      padding: EdgeInsets.zero,
+      shrinkWrap: true,
+      children: [
+        if (isFuzzy)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs / 2,
+            ),
+            child: Text('Você quis dizer:', style: context.texts.labelSmall),
+          ),
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) Divider(height: 1, color: colors.paperSoft),
+          InkWell(
+            onTap: () {
+              capturePendingText();
+              capturePendingFuzzy();
+              onSelected(items[i]);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm,
+              ),
+              child: Text(items[i].displayName, style: context.texts.bodyMedium),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

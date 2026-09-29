@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/recipes/recipes_page.dart';
-import 'package:receyta/features/recipes/recipes_view_model.dart';
+import 'package:receyta/features/recipes/screens/recipes_page.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/home_shell.dart';
 import 'package:receyta/theme/app_theme.dart';
 

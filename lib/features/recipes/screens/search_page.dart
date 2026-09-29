@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/recipes/recipes_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/brand_loader.dart';
@@ -119,87 +119,98 @@ class _SearchHeader extends StatelessWidget {
           color: colors.ink,
           child: Stack(
             children: [
-              Positioned(
-                top: -50,
-                right: -40,
-                child: SizedBox(
-                  width: 200,
-                  height: 200,
-                  child: TilePattern(
-                    motif: TileMotif.arco,
-                    background: colors.ink,
-                    patternColor: colors.inkPattern,
-                  ),
-                ),
-              ),
-              SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.xs,
-                    AppSpacing.xs,
-                    AppSpacing.screen,
-                    AppSpacing.md,
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: onBack,
-                        icon: const Icon(Icons.arrow_back),
-                        color: colors.onSaturated,
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 46,
-                          padding: const EdgeInsets.only(left: AppSpacing.sm),
-                          decoration: BoxDecoration(
-                            color: colors.paper,
-                            borderRadius: BorderRadius.circular(AppRadii.pill),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.search,
-                                  size: 20, color: colors.textMuted),
-                              const SizedBox(width: AppSpacing.xs),
-                              Expanded(
-                                child: TextField(
-                                  controller: controller,
-                                  autofocus: true,
-                                  onChanged: onChanged,
-                                  textInputAction: TextInputAction.search,
-                                  cursorColor: colors.ink,
-                                  style: context.texts.bodyLarge,
-                                  decoration: const InputDecoration(
-                                    hintText: 'Nome, notas ou tag',
-                                    isCollapsed: true,
-                                    filled: false,
-                                    contentPadding: EdgeInsets.zero,
-                                    border: InputBorder.none,
-                                    enabledBorder: InputBorder.none,
-                                    focusedBorder: InputBorder.none,
-                                    errorBorder: InputBorder.none,
-                                    focusedErrorBorder: InputBorder.none,
-                                  ),
-                                ),
-                              ),
-                              if (controller.text.isNotEmpty)
-                                IconButton(
-                                  onPressed: onClear,
-                                  icon: const Icon(Icons.close, size: 18),
-                                  color: colors.textMuted,
-                                  tooltip: 'Limpar',
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _buildPatternBackground(colors),
+              _buildSearchRow(context),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPatternBackground(AppColors colors) {
+    return Positioned(
+      top: -50,
+      right: -40,
+      child: SizedBox(
+        width: 200,
+        height: 200,
+        child: TilePattern(
+          motif: TileMotif.arco,
+          background: colors.ink,
+          patternColor: colors.inkPattern,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchRow(BuildContext context) {
+    final colors = context.colors;
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xs,
+          AppSpacing.xs,
+          AppSpacing.screen,
+          AppSpacing.md,
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back),
+              color: colors.onSaturated,
+            ),
+            Expanded(child: _buildSearchField(context)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchField(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.only(left: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: colors.paper,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, size: 20, color: colors.textMuted),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              autofocus: true,
+              onChanged: onChanged,
+              textInputAction: TextInputAction.search,
+              cursorColor: colors.ink,
+              style: context.texts.bodyLarge,
+              decoration: const InputDecoration(
+                hintText: 'Nome, notas ou tag',
+                isCollapsed: true,
+                filled: false,
+                contentPadding: EdgeInsets.zero,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+              ),
+            ),
+          ),
+          if (controller.text.isNotEmpty)
+            IconButton(
+              onPressed: onClear,
+              icon: const Icon(Icons.close, size: 18),
+              color: colors.textMuted,
+              tooltip: 'Limpar',
+            ),
+        ],
       ),
     );
   }

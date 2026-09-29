@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/domain/models/folder.dart';
-import 'package:receyta/features/folders/folder_actions.dart';
-import 'package:receyta/features/folders/folders_view_model.dart';
-import 'package:receyta/features/folders/recipe_drag.dart';
+import 'package:receyta/features/folders/screens/folder_actions.dart';
+import 'package:receyta/features/folders/controllers/folders_view_model.dart';
+import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -29,52 +29,64 @@ class FoldersStrip extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            AppSpacing.lg,
-            AppSpacing.screen,
-            AppSpacing.sm,
-          ),
-          child: SectionHeader(
-            title: 'Pastas',
-            action: PillButton(
-              label: 'Ver todas',
-              variant: PillButtonVariant.ghost,
-              dense: true,
-              onPressed: () => context.push('/folders'),
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 128,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-            itemCount: folders.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
-            itemBuilder: (context, i) {
-              if (i == folders.length) {
-                return _NewTile(onTap: () => createFolderFlow(context, ref));
-              }
-              final it = folders[i];
-              return DraggableFolder(
-                folder: it.folder,
-                child: FolderDropZone(
-                  folderId: it.folder.id,
-                  folderName: it.folder.name,
-                  child: _Tile(
-                    folder: it.folder,
-                    count: it.recipeCount,
-                    subfolders: it.subfolders,
-                    onTap: () => context.push('/folder/${it.folder.id}'),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+        _buildHeader(context),
+        _buildList(context, ref, folders),
       ],
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.lg,
+        AppSpacing.screen,
+        AppSpacing.sm,
+      ),
+      child: SectionHeader(
+        title: 'Pastas',
+        action: PillButton(
+          label: 'Ver todas',
+          variant: PillButtonVariant.ghost,
+          dense: true,
+          onPressed: () => context.push('/folders'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    WidgetRef ref,
+    List<FolderWithCounts> folders,
+  ) {
+    return SizedBox(
+      height: 128,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+        itemCount: folders.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (context, i) {
+          if (i == folders.length) {
+            return _NewTile(onTap: () => createFolderFlow(context, ref));
+          }
+          final it = folders[i];
+          return DraggableFolder(
+            folder: it.folder,
+            child: FolderDropZone(
+              folderId: it.folder.id,
+              folderName: it.folder.name,
+              child: _Tile(
+                folder: it.folder,
+                count: it.recipeCount,
+                subfolders: it.subfolders,
+                onTap: () => context.push('/folder/${it.folder.id}'),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -117,43 +129,46 @@ class _Tile extends StatelessWidget {
                 patternColor: tile.patternColor,
                 patternColorAlt: tile.patternColorAlt,
               ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(Icons.folder_outlined,
-                        size: 20, color: tile.onColor),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          folder.name,
-                          style: context.texts.bodyLarge?.copyWith(
-                            color: tile.onColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          _subtitle(),
-                          style: context.texts.labelLarge?.copyWith(
-                            color: tile.onColor.withValues(alpha: 0.82),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+              _buildContent(context, tile.onColor),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, Color onColor) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Icon(Icons.folder_outlined, size: 20, color: onColor),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                folder.name,
+                style: context.texts.bodyLarge?.copyWith(
+                  color: onColor,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                _subtitle(),
+                style: context.texts.labelLarge?.copyWith(
+                  color: onColor.withValues(alpha: 0.82),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

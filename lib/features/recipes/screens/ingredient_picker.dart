@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/domain/models/ingredient.dart';
-import 'package:receyta/features/recipes/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 
@@ -44,7 +44,6 @@ class _IngredientPickerSheetState
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final all =
         ref.watch(allIngredientsProvider).valueOrNull ?? const <Ingredient>[];
     final q = _query.text.trim().toLowerCase();
@@ -62,74 +61,83 @@ class _IngredientPickerSheetState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                0,
-                AppSpacing.screen,
-                AppSpacing.md,
-              ),
-              child: Text('Mesclar com', style: context.texts.displaySmall),
-            ),
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-              child: TextField(
-                controller: _query,
-                onChanged: (_) => setState(() {}),
-                textCapitalization: TextCapitalization.none,
-                style: context.texts.bodyLarge,
-                decoration: InputDecoration(
-                  hintText: 'Buscar ingrediente',
-                  prefixIcon: Icon(Icons.search, color: colors.textMuted),
-                  filled: true,
-                  fillColor: colors.paperSoft,
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadii.pill),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
+            _buildTitle(context),
+            _buildSearchField(context),
             const SizedBox(height: AppSpacing.sm),
-            Flexible(
-              child: options.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(AppSpacing.screen),
-                      child: Text(
-                        q.isEmpty
-                            ? 'Nenhum outro ingrediente ainda.'
-                            : 'Nada encontrado pra "$q".',
-                        style: context.texts.bodyMedium
-                            ?.copyWith(color: colors.textMuted),
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.screen,
-                        0,
-                        AppSpacing.screen,
-                        AppSpacing.lg,
-                      ),
-                      itemCount: options.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: AppSpacing.xs),
-                      itemBuilder: (context, i) {
-                        final ing = options[i];
-                        return _PickerRow(
-                          label: ing.displayName,
-                          onTap: () =>
-                              Navigator.of(context).pop<Ingredient>(ing),
-                        );
-                      },
-                    ),
-            ),
+            Flexible(child: _buildList(context, options, q)),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTitle(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.md,
+      ),
+      child: Text('Mesclar com', style: context.texts.displaySmall),
+    );
+  }
+
+  Widget _buildSearchField(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: TextField(
+        controller: _query,
+        onChanged: (_) => setState(() {}),
+        textCapitalization: TextCapitalization.none,
+        style: context.texts.bodyLarge,
+        decoration: InputDecoration(
+          hintText: 'Buscar ingrediente',
+          prefixIcon: Icon(Icons.search, color: colors.textMuted),
+          filled: true,
+          fillColor: colors.paperSoft,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(BuildContext context, List<Ingredient> options, String q) {
+    if (options.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.screen),
+        child: Text(
+          q.isEmpty
+              ? 'Nenhum outro ingrediente ainda.'
+              : 'Nada encontrado pra "$q".',
+          style: context.texts.bodyMedium
+              ?.copyWith(color: context.colors.textMuted),
+        ),
+      );
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.lg,
+      ),
+      itemCount: options.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, i) {
+        final ing = options[i];
+        return _PickerRow(
+          label: ing.displayName,
+          onTap: () => Navigator.of(context).pop<Ingredient>(ing),
+        );
+      },
     );
   }
 }

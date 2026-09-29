@@ -5,9 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
-import 'package:receyta/features/folders/folder_actions.dart';
-import 'package:receyta/features/folders/folders_view_model.dart';
-import 'package:receyta/features/folders/recipe_drag.dart';
+import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/features/folders/screens/folder_actions.dart';
+import 'package:receyta/features/folders/controllers/folders_view_model.dart';
+import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -51,22 +52,7 @@ class _FolderPageState extends ConsumerState<FolderPage> {
     if (folder == null) {
       // Ainda não emitiu valor nenhum = carregando; já emitiu (nulo) ou deu
       // erro = a pasta não existe mesmo.
-      return AnimatedSwitcher(
-        duration: const Duration(milliseconds: 280),
-        switchInCurve: Curves.easeOut,
-        switchOutCurve: Curves.easeIn,
-        child: folderAsync.isLoading
-            ? const _FolderSkeleton(key: ValueKey('skeleton'))
-            : Scaffold(
-                key: const ValueKey('missing'),
-                backgroundColor: context.colors.paper,
-                appBar: AppBar(leading: const BackButton()),
-                body: Center(
-                  child: Text('Pasta não encontrada',
-                      style: context.texts.bodyMedium),
-                ),
-              ),
-      );
+      return _buildLoadingOrMissing(context, folderAsync);
     }
 
     final parentId = folder.parentId;
@@ -83,114 +69,154 @@ class _FolderPageState extends ConsumerState<FolderPage> {
         backgroundColor: context.colors.paper,
         body: Stack(
           children: [
-            PullToRefreshControl(
-              onRefresh: () async {
-                ref.invalidate(folderProvider(folderId));
-                ref.invalidate(subfoldersProvider(folderId));
-                ref.invalidate(folderRecipesProvider(folderId));
-                await ref.read(folderProvider(folderId).future);
-              },
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: _Header(
-                      folder: folder,
-                      recipeCount: recipes.length,
-                      subfolderCount: subfolders.length,
-                      onMenu: () => showFolderMenu(
-                        context,
-                        ref,
-                        folder,
-                        onDeleted: () => context.pop(),
-                      ),
-                    ),
-                  ),
-                  if (subfolders.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: _Subfolders(items: subfolders),
-                    ),
-                  if (recipes.isNotEmpty)
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.screen,
-                        AppSpacing.lg,
-                        AppSpacing.screen,
-                        AppSpacing.sm,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: SectionHeader(
-                          title: 'Receitas',
-                          action: Text(
-                            '${recipes.length}',
-                            style: context.texts.displaySmall
-                                ?.copyWith(color: context.colors.textMuted),
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (recipes.isEmpty && subfolders.isEmpty)
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: _Empty(
-                        onNewSubfolder: () =>
-                            createFolderFlow(context, ref, parentId: folderId),
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.screen,
-                        0,
-                        AppSpacing.screen,
-                        AppSpacing.xxl,
-                      ),
-                      sliver: SliverGrid(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: AppSpacing.sm,
-                          mainAxisSpacing: AppSpacing.sm,
-                          childAspectRatio: 0.78,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, i) => DraggableRecipe(
-                            recipe: recipes[i],
-                            child: RecipeCard(
-                              recipe: recipes[i],
-                              onTap: () =>
-                                  context.push('/recipe/${recipes[i].id}'),
-                            ),
-                          ),
-                          childCount: recipes.length,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  // Clareia a `FolderExitDropBar` (~96 de altura visível) + folga.
-                  padding: const EdgeInsets.only(bottom: 112, right: 16),
-                  child: const RecipeDeleteDropTarget(),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: FolderExitDropBar(
-                parentId: parentId,
-                parentName: parentName,
-              ),
-            ),
+            _buildScrollView(context, folderId, folder, subfolders, recipes),
+            _buildDeleteTarget(),
+            _buildExitBar(parentId, parentName),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingOrMissing(
+    BuildContext context,
+    AsyncValue<Folder?> folderAsync,
+  ) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 280),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      child: folderAsync.isLoading
+          ? const _FolderSkeleton(key: ValueKey('skeleton'))
+          : Scaffold(
+              key: const ValueKey('missing'),
+              backgroundColor: context.colors.paper,
+              appBar: AppBar(leading: const BackButton()),
+              body: Center(
+                child:
+                    Text('Pasta não encontrada', style: context.texts.bodyMedium),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildScrollView(
+    BuildContext context,
+    String folderId,
+    Folder folder,
+    List<FolderWithCounts> subfolders,
+    List<Recipe> recipes,
+  ) {
+    return PullToRefreshControl(
+      onRefresh: () async {
+        ref.invalidate(folderProvider(folderId));
+        ref.invalidate(subfoldersProvider(folderId));
+        ref.invalidate(folderRecipesProvider(folderId));
+        await ref.read(folderProvider(folderId).future);
+      },
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: _Header(
+              folder: folder,
+              recipeCount: recipes.length,
+              subfolderCount: subfolders.length,
+              onMenu: () => showFolderMenu(
+                context,
+                ref,
+                folder,
+                onDeleted: () => context.pop(),
+              ),
+            ),
+          ),
+          if (subfolders.isNotEmpty)
+            SliverToBoxAdapter(child: _Subfolders(items: subfolders)),
+          if (recipes.isNotEmpty) _buildRecipesHeaderSliver(context, recipes.length),
+          if (recipes.isEmpty && subfolders.isEmpty)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _Empty(
+                onNewSubfolder: () =>
+                    createFolderFlow(context, ref, parentId: folderId),
+              ),
+            )
+          else
+            _buildRecipesGridSliver(context, recipes),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecipesHeaderSliver(BuildContext context, int count) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.lg,
+        AppSpacing.screen,
+        AppSpacing.sm,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: SectionHeader(
+          title: 'Receitas',
+          action: Text(
+            '$count',
+            style: context.texts.displaySmall
+                ?.copyWith(color: context.colors.textMuted),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecipesGridSliver(BuildContext context, List<Recipe> recipes) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.xxl,
+      ),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: AppSpacing.sm,
+          mainAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 0.78,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => DraggableRecipe(
+            recipe: recipes[i],
+            child: RecipeCard(
+              recipe: recipes[i],
+              onTap: () => context.push('/recipe/${recipes[i].id}'),
+            ),
+          ),
+          childCount: recipes.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteTarget() {
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          // Clareia a `FolderExitDropBar` (~96 de altura visível) + folga.
+          padding: const EdgeInsets.only(bottom: 112, right: 16),
+          child: const RecipeDeleteDropTarget(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExitBar(String? parentId, String? parentName) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      child: FolderExitDropBar(parentId: parentId, parentName: parentName),
     );
   }
 }
@@ -212,75 +238,83 @@ class _FolderSkeleton extends StatelessWidget {
         padding: EdgeInsets.zero,
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(AppRadii.lg)),
-            child: Container(
-              color: colors.violet,
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screen,
-                    AppSpacing.xs,
-                    AppSpacing.screen,
-                    AppSpacing.lg,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          SkeletonBox(
-                            width: 40,
-                            height: 40,
-                            borderRadius: AppRadii.pill,
-                            color: onHero,
-                          ),
-                          const Spacer(),
-                          SkeletonBox(
-                            width: 40,
-                            height: 40,
-                            borderRadius: AppRadii.pill,
-                            color: onHero,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      SkeletonBox(width: 70, height: 12, color: onHero),
-                      const SizedBox(height: AppSpacing.xs),
-                      SkeletonBox(width: 220, height: 40, color: onHero),
-                      const SizedBox(height: AppSpacing.sm),
-                      SkeletonBox(width: 140, height: 16, color: onHero),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
+          _buildHeaderSkeleton(colors, onHero),
+          _buildGridSkeleton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderSkeleton(AppColors colors, Color onHero) {
+    return ClipRRect(
+      borderRadius:
+          const BorderRadius.vertical(bottom: Radius.circular(AppRadii.lg)),
+      child: Container(
+        color: colors.violet,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.screen,
-              AppSpacing.lg,
+              AppSpacing.xs,
               AppSpacing.screen,
-              AppSpacing.xxl,
+              AppSpacing.lg,
             ),
-            child: GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: AppSpacing.sm,
-              mainAxisSpacing: AppSpacing.sm,
-              childAspectRatio: 0.78,
-              children: const [
-                SkeletonBox(borderRadius: AppRadii.md),
-                SkeletonBox(borderRadius: AppRadii.md),
-                SkeletonBox(borderRadius: AppRadii.md),
-                SkeletonBox(borderRadius: AppRadii.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    SkeletonBox(
+                      width: 40,
+                      height: 40,
+                      borderRadius: AppRadii.pill,
+                      color: onHero,
+                    ),
+                    const Spacer(),
+                    SkeletonBox(
+                      width: 40,
+                      height: 40,
+                      borderRadius: AppRadii.pill,
+                      color: onHero,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                SkeletonBox(width: 70, height: 12, color: onHero),
+                const SizedBox(height: AppSpacing.xs),
+                SkeletonBox(width: 220, height: 40, color: onHero),
+                const SizedBox(height: AppSpacing.sm),
+                SkeletonBox(width: 140, height: 16, color: onHero),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.lg,
+        AppSpacing.screen,
+        AppSpacing.xxl,
+      ),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        crossAxisSpacing: AppSpacing.sm,
+        mainAxisSpacing: AppSpacing.sm,
+        childAspectRatio: 0.78,
+        children: const [
+          SkeletonBox(borderRadius: AppRadii.md),
+          SkeletonBox(borderRadius: AppRadii.md),
+          SkeletonBox(borderRadius: AppRadii.md),
+          SkeletonBox(borderRadius: AppRadii.md),
         ],
       ),
     );
@@ -326,71 +360,81 @@ class _Header extends StatelessWidget {
           color: tile.background,
           child: Stack(
             children: [
-              Positioned(
-                top: -40,
-                right: -30,
-                child: SizedBox(
-                  width: 240,
-                  height: 240,
-                  child: TilePattern(
-                    motif: tile.motif,
-                    background: tile.background,
-                    patternColor: tile.patternColor,
-                    patternColorAlt: tile.patternColorAlt,
-                  ),
-                ),
-              ),
-              SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.screen,
-                    AppSpacing.xs,
-                    AppSpacing.screen,
-                    AppSpacing.lg,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          _CircleButton(
-                            icon: Icons.arrow_back,
-                            onTap: () => Navigator.of(context).maybePop(),
-                          ),
-                          const Spacer(),
-                          _CircleButton(icon: Icons.more_horiz, onTap: onMenu),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      Text(
-                        'PASTA',
-                        style:
-                            context.texts.labelSmall?.copyWith(color: onColor),
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        folder.name,
-                        style:
-                            AppTextStyles.display(40).copyWith(color: onColor),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (bits.isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          bits.join('  ·  '),
-                          style: context.texts.bodyMedium?.copyWith(
-                            color: onColor.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+              _buildPatternBackground(tile),
+              _buildContent(context, tile, onColor, bits),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPatternBackground(TileAppearance tile) {
+    return Positioned(
+      top: -40,
+      right: -30,
+      child: SizedBox(
+        width: 240,
+        height: 240,
+        child: TilePattern(
+          motif: tile.motif,
+          background: tile.background,
+          patternColor: tile.patternColor,
+          patternColorAlt: tile.patternColorAlt,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    TileAppearance tile,
+    Color onColor,
+    List<String> bits,
+  ) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.xs,
+          AppSpacing.screen,
+          AppSpacing.lg,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _CircleButton(
+                  icon: Icons.arrow_back,
+                  onTap: () => Navigator.of(context).maybePop(),
+                ),
+                const Spacer(),
+                _CircleButton(icon: Icons.more_horiz, onTap: onMenu),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'PASTA',
+              style: context.texts.labelSmall?.copyWith(color: onColor),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              folder.name,
+              style: AppTextStyles.display(40).copyWith(color: onColor),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (bits.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                bits.join('  ·  '),
+                style: context.texts.bodyMedium
+                    ?.copyWith(color: onColor.withValues(alpha: 0.8)),
+              ),
+            ],
+          ],
         ),
       ),
     );

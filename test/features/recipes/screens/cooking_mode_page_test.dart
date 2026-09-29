@@ -6,8 +6,8 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
-import 'package:receyta/features/recipes/cooking_mode_page.dart';
-import 'package:receyta/features/recipes/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
+import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 
 RecipeDetail _detail({List<RecipeStep> steps = _steps}) => RecipeDetail(

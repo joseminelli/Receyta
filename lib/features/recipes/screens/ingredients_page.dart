@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/data/repositories/ingredient_repository.dart';
 import 'package:receyta/domain/engine/fuzzy_match.dart';
 import 'package:receyta/domain/models/ingredient.dart';
-import 'package:receyta/features/recipes/ingredient_picker.dart';
-import 'package:receyta/features/recipes/ingredients_view_model.dart';
+import 'package:receyta/features/recipes/screens/ingredient_picker.dart';
+import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_dialog.dart';
@@ -72,138 +72,156 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final items = ref.watch(ingredientsWithCountsProvider);
 
     return Scaffold(
-      backgroundColor: colors.paper,
+      backgroundColor: context.colors.paper,
       appBar: AppBar(title: const Text('Ingredientes')),
       body: items.when(
         loading: () => const Center(child: BrandLoader()),
-        error: (_, __) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                StateBadge(
-                  icon: Icons.priority_high_rounded,
-                  background: colors.danger,
-                  foreground: colors.onSaturated,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Não deu para carregar os ingredientes',
-                  style: context.texts.displaySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ],
+        error: (_, __) => _buildError(context),
+        data: (rows) =>
+            rows.isEmpty ? _buildEmpty(context) : _buildContent(context, rows),
+      ),
+    );
+  }
+
+  Widget _buildError(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.priority_high_rounded,
+              background: colors.danger,
+              foreground: colors.onSaturated,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Não deu para carregar os ingredientes',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.egg_outlined,
+              background: colors.violet,
+              foreground: colors.onSaturated,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Nenhum ingrediente ainda',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    List<({Ingredient ingredient, int count})> rows,
+  ) {
+    final duplicateOf = _detectDuplicates([for (final r in rows) r.ingredient]);
+    final query = _query.text.trim().toLowerCase();
+    final filtered = query.isEmpty
+        ? rows
+        : [
+            for (final r in rows)
+              if (r.ingredient.displayName.toLowerCase().contains(query)) r,
+          ];
+
+    return Column(
+      children: [
+        _buildSearchField(context),
+        Expanded(child: _buildResultsList(context, filtered, duplicateOf, query)),
+      ],
+    );
+  }
+
+  Widget _buildSearchField(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.sm,
+        AppSpacing.screen,
+        AppSpacing.sm,
+      ),
+      child: TextField(
+        controller: _query,
+        onChanged: (_) => setState(() {}),
+        textCapitalization: TextCapitalization.none,
+        decoration: InputDecoration(
+          hintText: 'Buscar ingrediente',
+          prefixIcon: Icon(Icons.search, color: colors.textMuted),
+          filled: true,
+          fillColor: colors.paperSoft,
+          contentPadding:
+              const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            borderSide: BorderSide.none,
           ),
         ),
-        data: (rows) {
-          if (rows.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    StateBadge(
-                      icon: Icons.egg_outlined,
-                      background: colors.violet,
-                      foreground: colors.onSaturated,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Nenhum ingrediente ainda',
-                      style: context.texts.displaySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          final duplicateOf =
-              _detectDuplicates([for (final r in rows) r.ingredient]);
-          final query = _query.text.trim().toLowerCase();
-          final filtered = query.isEmpty
-              ? rows
-              : [
-                  for (final r in rows)
-                    if (r.ingredient.displayName.toLowerCase().contains(query))
-                      r,
-                ];
-
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screen,
-                  AppSpacing.sm,
-                  AppSpacing.screen,
-                  AppSpacing.sm,
-                ),
-                child: TextField(
-                  controller: _query,
-                  onChanged: (_) => setState(() {}),
-                  textCapitalization: TextCapitalization.none,
-                  decoration: InputDecoration(
-                    hintText: 'Buscar ingrediente',
-                    prefixIcon: Icon(Icons.search, color: colors.textMuted),
-                    filled: true,
-                    fillColor: colors.paperSoft,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Nada encontrado pra "$query".',
-                          style: context.texts.bodyMedium
-                              ?.copyWith(color: colors.textMuted),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.screen,
-                          0,
-                          AppSpacing.screen,
-                          AppSpacing.screen,
-                        ),
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: AppSpacing.xs),
-                        itemBuilder: (context, i) {
-                          final (:ingredient, :count) = filtered[i];
-                          final dup = duplicateOf[ingredient.id];
-                          return _IngredientRow(
-                            ingredient: ingredient,
-                            count: count,
-                            duplicateOf: dup,
-                            onMergeDuplicate: dup == null
-                                ? null
-                                : () => _merge(ingredient, dup),
-                            onPickMerge: () => _pickAndMerge(ingredient),
-                            onDelete:
-                                count == 0 ? () => _delete(ingredient) : null,
-                          );
-                        },
-                      ),
-              ),
-            ],
-          );
-        },
       ),
+    );
+  }
+
+  Widget _buildResultsList(
+    BuildContext context,
+    List<({Ingredient ingredient, int count})> filtered,
+    Map<String, Ingredient> duplicateOf,
+    String query,
+  ) {
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(
+          'Nada encontrado pra "$query".',
+          style: context.texts.bodyMedium
+              ?.copyWith(color: context.colors.textMuted),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.screen,
+      ),
+      itemCount: filtered.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, i) {
+        final (:ingredient, :count) = filtered[i];
+        final dup = duplicateOf[ingredient.id];
+        return _IngredientRow(
+          ingredient: ingredient,
+          count: count,
+          duplicateOf: dup,
+          onMergeDuplicate: dup == null ? null : () => _merge(ingredient, dup),
+          onPickMerge: () => _pickAndMerge(ingredient),
+          onDelete: count == 0 ? () => _delete(ingredient) : null,
+        );
+      },
     );
   }
 }

@@ -22,58 +22,64 @@ class AccountPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return SafeArea(
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.screen,
-              AppSpacing.screen,
-              0,
-            ),
-            child: Row(
-              children: [
-                Text('Conta', style: context.texts.displaySmall),
-                const Spacer(),
-                CircleIconButton(
-                  icon: Icons.settings_outlined,
-                  tooltip: 'Configurações',
-                  onTap: () => context.push('/settings'),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    StateBadge(
-                      icon: Icons.person_outline,
-                      background: colors.violetMuted,
-                      foreground: colors.ink,
-                      size: 72,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text('Sem login por enquanto', style: context.texts.displaySmall),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Seus dados ficam só neste aparelho. Login e '
-                      'sincronização entre dispositivos chegam mais pra '
-                      'frente.',
-                      style: context.texts.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          _buildHeader(context),
+          Expanded(child: _buildPlaceholder(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.screen,
+        AppSpacing.screen,
+        0,
+      ),
+      child: Row(
+        children: [
+          Text('Conta', style: context.texts.displaySmall),
+          const Spacer(),
+          CircleIconButton(
+            icon: Icons.settings_outlined,
+            tooltip: 'Configurações',
+            onTap: () => context.push('/settings'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            StateBadge(
+              icon: Icons.person_outline,
+              background: colors.violetMuted,
+              foreground: colors.ink,
+              size: 72,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text('Sem login por enquanto', style: context.texts.displaySmall),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Seus dados ficam só neste aparelho. Login e '
+              'sincronização entre dispositivos chegam mais pra '
+              'frente.',
+              style: context.texts.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

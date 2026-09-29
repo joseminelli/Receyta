@@ -10,8 +10,8 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
-import 'package:receyta/features/recipes/recipes_view_model.dart';
-import 'package:receyta/features/recipes/trash_page.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 
 Recipe _trashed(String id, String name) => Recipe(

@@ -5,17 +5,17 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/folders/folder_actions.dart';
-import 'package:receyta/features/folders/folders_strip.dart';
-import 'package:receyta/features/folders/folders_view_model.dart';
-import 'package:receyta/features/folders/recipe_drag.dart';
-import 'package:receyta/features/recipes/ingredients_page.dart';
-import 'package:receyta/features/recipes/recipe_import_flow.dart';
-import 'package:receyta/features/recipes/recipe_ocr_flow.dart';
-import 'package:receyta/features/recipes/receyta_import_flow.dart';
-import 'package:receyta/features/recipes/recipes_view_model.dart';
-import 'package:receyta/features/recipes/tags_page.dart';
-import 'package:receyta/features/recipes/trash_page.dart';
+import 'package:receyta/features/folders/screens/folder_actions.dart';
+import 'package:receyta/features/folders/screens/folders_strip.dart';
+import 'package:receyta/features/folders/controllers/folders_view_model.dart';
+import 'package:receyta/features/folders/screens/recipe_drag.dart';
+import 'package:receyta/features/recipes/screens/ingredients_page.dart';
+import 'package:receyta/features/recipes/screens/recipe_import_flow.dart';
+import 'package:receyta/features/recipes/screens/recipe_ocr_flow.dart';
+import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/recipes/screens/tags_page.dart';
+import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/brand_loader.dart';
@@ -231,80 +231,91 @@ class _RecipeList extends StatelessWidget {
   Widget build(BuildContext context) {
     final featured = recipes.first;
     final rest = recipes.skip(1).toList();
-    void open(String id) => context.push('/recipe/$id');
 
     return SliverMainAxisGroup(
       slivers: [
         const SliverToBoxAdapter(child: FoldersStrip()),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            AppSpacing.lg,
-            AppSpacing.screen,
-            AppSpacing.md,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: SectionHeader(
-              title: 'Recentes',
-              action: showViewAll
-                  ? PillButton(
-                      label: 'Ver todas',
-                      variant: PillButtonVariant.ghost,
-                      dense: true,
-                      onPressed: () => context.push('/search'),
-                    )
-                  : null,
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            0,
-            AppSpacing.screen,
-            AppSpacing.md,
-          ),
-          sliver: SliverToBoxAdapter(
-            child: DraggableRecipe(
-              recipe: featured,
-              child: FeaturedRecipeCard(
-                recipe: featured,
-                onTap: () => open(featured.id),
-              ),
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            0,
-            AppSpacing.screen,
-            AppSpacing.lg,
-          ),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: AppSpacing.sm,
-              mainAxisSpacing: AppSpacing.sm,
-              childAspectRatio: 0.78,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => DraggableRecipe(
-                recipe: rest[i],
-                child: RecipeCard(
-                  recipe: rest[i],
-                  onTap: () => open(rest[i].id),
-                ),
-              ),
-              childCount: rest.length,
-            ),
-          ),
-        ),
+        _buildSectionHeader(context),
+        _buildFeatured(context, featured),
+        _buildGrid(context, rest),
         const SliverPadding(
           padding: EdgeInsets.only(bottom: 96),
           sliver: SliverToBoxAdapter(child: _HomeFooter()),
         ),
       ],
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.lg,
+        AppSpacing.screen,
+        AppSpacing.md,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: SectionHeader(
+          title: 'Recentes',
+          action: showViewAll
+              ? PillButton(
+                  label: 'Ver todas',
+                  variant: PillButtonVariant.ghost,
+                  dense: true,
+                  onPressed: () => context.push('/search'),
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatured(BuildContext context, Recipe featured) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.md,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: DraggableRecipe(
+          recipe: featured,
+          child: FeaturedRecipeCard(
+            recipe: featured,
+            onTap: () => context.push('/recipe/${featured.id}'),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGrid(BuildContext context, List<Recipe> rest) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.lg,
+      ),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: AppSpacing.sm,
+          mainAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 0.78,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => DraggableRecipe(
+            recipe: rest[i],
+            child: RecipeCard(
+              recipe: rest[i],
+              onTap: () => context.push('/recipe/${rest[i].id}'),
+            ),
+          ),
+          childCount: rest.length,
+        ),
+      ),
     );
   }
 }
@@ -343,17 +354,6 @@ class _Header extends ConsumerWidget {
     final favoritesOnly = ref.watch(favoritesOnlyProvider);
     final showBar = tags.isNotEmpty || hasFavorites;
 
-    void setSelected(Set<String> next) =>
-        ref.read(selectedTagIdsProvider.notifier).state = next;
-    void setFavoritesOnly(bool v) =>
-        ref.read(favoritesOnlyProvider.notifier).state = v;
-    void clearFilter() {
-      setSelected(const {});
-      setFavoritesOnly(false);
-    }
-
-    const sidePad = EdgeInsets.symmetric(horizontal: AppSpacing.screen);
-
     return AnnotatedRegion(
       value: SystemBars.onDark,
       child: ClipRRect(
@@ -364,19 +364,7 @@ class _Header extends ConsumerWidget {
           color: colors.ink,
           child: Stack(
             children: [
-              Positioned(
-                top: -40,
-                right: -30,
-                child: SizedBox(
-                  width: 260,
-                  height: 260,
-                  child: TilePattern(
-                    motif: TileMotif.arco,
-                    background: colors.ink,
-                    patternColor: colors.inkPattern,
-                  ),
-                ),
-              ),
+              _buildPatternBackground(colors),
               SafeArea(
                 bottom: false,
                 child: Padding(
@@ -387,121 +375,159 @@ class _Header extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: sidePad,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    count == null
-                                        ? ''
-                                        : '$count ${count == 1 ? 'RECEITA' : 'RECEITAS'}',
-                                    style: context.texts.labelSmall
-                                        ?.copyWith(color: colors.lime),
-                                  ),
-                                ),
-                                _CircleButton(
-                                  icon: Icons.search,
-                                  onTap: () => context.push('/search'),
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                ExpandingCreateMenu(
-                                  buttonColor: colors.lime,
-                                  iconColor: colors.ink,
-                                  actions: [
-                                    CreateMenuAction(
-                                      icon: Icons.restaurant_menu,
-                                      label: 'Nova receita',
-                                      onSelected: onCreate,
-                                    ),
-                                    CreateMenuAction(
-                                      icon: Icons.create_new_folder_outlined,
-                                      label: 'Nova pasta',
-                                      onSelected: () =>
-                                          createFolderFlow(context, ref),
-                                    ),
-                                    CreateMenuAction(
-                                      icon: Icons.link,
-                                      label: 'Importar de link',
-                                      onSelected: () =>
-                                          importRecipeFromUrlFlow(context, ref),
-                                    ),
-                                    CreateMenuAction(
-                                      icon: Icons.camera_alt_outlined,
-                                      label: 'Importar de foto',
-                                      onSelected: () =>
-                                          importRecipeFromPhotoFlow(
-                                              context, ref),
-                                    ),
-                                    CreateMenuAction(
-                                      icon: Icons.file_open_outlined,
-                                      label: 'Importar arquivo .receyta',
-                                      onSelected: () =>
-                                          importReceytaFileFlow(context, ref),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                            const ReceytasWordmark(),
-                          ],
+                      _buildTitleRow(context, ref, colors),
+                      if (showBar)
+                        _buildFilterBar(
+                          context,
+                          ref,
+                          tags,
+                          selected,
+                          hasFavorites,
+                          favoritesOnly,
                         ),
-                      ),
-                      if (showBar) ...[
-                        const SizedBox(height: AppSpacing.md),
-                        SizedBox(
-                          height: 44,
-                          child: ListView(
-                            scrollDirection: Axis.horizontal,
-                            padding: sidePad,
-                            children: [
-                              _HeaderChip(
-                                label: 'Todas',
-                                active: selected.isEmpty && !favoritesOnly,
-                                onTap: clearFilter,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              if (hasFavorites) ...[
-                                _HeaderChip(
-                                  label: 'Favoritos',
-                                  icon: Icons.favorite,
-                                  active: favoritesOnly,
-                                  onTap: () => setFavoritesOnly(!favoritesOnly),
-                                ),
-                              ],
-                              for (final tag in tags) ...[
-                                const SizedBox(width: AppSpacing.xs),
-                                _HeaderChip(
-                                  label: tag.name,
-                                  active: selected.contains(tag.id),
-                                  onTap: () {
-                                    final next = Set<String>.from(selected);
-                                    if (!next.remove(tag.id)) next.add(tag.id);
-                                    setSelected(next);
-                                  },
-                                  onLongPress: () => _confirmDeleteTag(
-                                    context,
-                                    ref,
-                                    tag,
-                                    selected,
-                                    setSelected,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPatternBackground(AppColors colors) {
+    return Positioned(
+      top: -40,
+      right: -30,
+      child: SizedBox(
+        width: 260,
+        height: 260,
+        child: TilePattern(
+          motif: TileMotif.arco,
+          background: colors.ink,
+          patternColor: colors.inkPattern,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitleRow(BuildContext context, WidgetRef ref, AppColors colors) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  count == null
+                      ? ''
+                      : '$count ${count == 1 ? 'RECEITA' : 'RECEITAS'}',
+                  style: context.texts.labelSmall?.copyWith(color: colors.lime),
+                ),
+              ),
+              _CircleButton(
+                icon: Icons.search,
+                onTap: () => context.push('/search'),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              ExpandingCreateMenu(
+                buttonColor: colors.lime,
+                iconColor: colors.ink,
+                actions: [
+                  CreateMenuAction(
+                    icon: Icons.restaurant_menu,
+                    label: 'Nova receita',
+                    onSelected: onCreate,
+                  ),
+                  CreateMenuAction(
+                    icon: Icons.create_new_folder_outlined,
+                    label: 'Nova pasta',
+                    onSelected: () => createFolderFlow(context, ref),
+                  ),
+                  CreateMenuAction(
+                    icon: Icons.link,
+                    label: 'Importar de link',
+                    onSelected: () => importRecipeFromUrlFlow(context, ref),
+                  ),
+                  CreateMenuAction(
+                    icon: Icons.camera_alt_outlined,
+                    label: 'Importar de foto',
+                    onSelected: () => importRecipeFromPhotoFlow(context, ref),
+                  ),
+                  CreateMenuAction(
+                    icon: Icons.file_open_outlined,
+                    label: 'Importar arquivo .receyta',
+                    onSelected: () => importReceytaFileFlow(context, ref),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const ReceytasWordmark(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterBar(
+    BuildContext context,
+    WidgetRef ref,
+    List<Tag> tags,
+    Set<String> selected,
+    bool hasFavorites,
+    bool favoritesOnly,
+  ) {
+    const sidePad = EdgeInsets.symmetric(horizontal: AppSpacing.screen);
+
+    void setSelected(Set<String> next) =>
+        ref.read(selectedTagIdsProvider.notifier).state = next;
+    void setFavoritesOnly(bool v) =>
+        ref.read(favoritesOnlyProvider.notifier).state = v;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: SizedBox(
+        height: 44,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: sidePad,
+          children: [
+            _HeaderChip(
+              label: 'Todas',
+              active: selected.isEmpty && !favoritesOnly,
+              onTap: () {
+                setSelected(const {});
+                setFavoritesOnly(false);
+              },
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            if (hasFavorites) ...[
+              _HeaderChip(
+                label: 'Favoritos',
+                icon: Icons.favorite,
+                active: favoritesOnly,
+                onTap: () => setFavoritesOnly(!favoritesOnly),
+              ),
+            ],
+            for (final tag in tags) ...[
+              const SizedBox(width: AppSpacing.xs),
+              _HeaderChip(
+                label: tag.name,
+                active: selected.contains(tag.id),
+                onTap: () {
+                  final next = Set<String>.from(selected);
+                  if (!next.remove(tag.id)) next.add(tag.id);
+                  setSelected(next);
+                },
+                onLongPress: () =>
+                    _confirmDeleteTag(context, ref, tag, selected, setSelected),
+              ),
+            ],
+          ],
         ),
       ),
     );

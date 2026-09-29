@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/recipes/recipes_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_dialog.dart';
@@ -42,74 +42,88 @@ class TagsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
     final tags = ref.watch(tagsWithCountsProvider);
 
     return Scaffold(
-      backgroundColor: colors.paper,
+      backgroundColor: context.colors.paper,
       appBar: AppBar(title: const Text('Tags')),
       body: tags.when(
         loading: () => const Center(child: BrandLoader()),
-        error: (_, __) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                StateBadge(
-                  icon: Icons.priority_high_rounded,
-                  background: colors.danger,
-                  foreground: colors.onSaturated,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Não deu para carregar as tags',
-                  style: context.texts.displaySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
-        data: (items) {
-          if (items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    StateBadge(
-                      icon: Icons.sell_outlined,
-                      background: colors.violet,
-                      foreground: colors.onSaturated,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Nenhuma tag ainda',
-                      style: context.texts.displaySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.screen),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-            itemBuilder: (context, i) {
-              final (:tag, :count) = items[i];
-              return _TagRow(
-                tag: tag,
-                count: count,
-                onDelete: () => _delete(context, ref, tag, count),
-              );
-            },
-          );
-        },
+        error: (_, __) => _buildError(context),
+        data: (items) => items.isEmpty
+            ? _buildEmpty(context)
+            : _buildList(context, ref, items),
       ),
+    );
+  }
+
+  Widget _buildError(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.priority_high_rounded,
+              background: colors.danger,
+              foreground: colors.onSaturated,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Não deu para carregar as tags',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.sell_outlined,
+              background: colors.violet,
+              foreground: colors.onSaturated,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Nenhuma tag ainda',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(
+    BuildContext context,
+    WidgetRef ref,
+    List<({Tag tag, int count})> items,
+  ) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.screen),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, i) {
+        final (:tag, :count) = items[i];
+        return _TagRow(
+          tag: tag,
+          count: count,
+          onDelete: () => _delete(context, ref, tag, count),
+        );
+      },
     );
   }
 }

@@ -8,8 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/recipes/recipes_view_model.dart';
-import 'package:receyta/features/recipes/tags_page.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 
 void main() {

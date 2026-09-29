@@ -4,8 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/domain/models/recipe.dart';
-import 'package:receyta/features/folders/folder_page.dart';
-import 'package:receyta/features/folders/folders_view_model.dart';
+import 'package:receyta/features/folders/screens/folder_page.dart';
+import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 

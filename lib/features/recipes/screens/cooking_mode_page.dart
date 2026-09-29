@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
-import 'package:receyta/features/recipes/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -88,79 +89,84 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-
     return AnnotatedRegion(
       value: SystemBars.onDark,
       child: Scaffold(
-        backgroundColor: colors.ink,
+        backgroundColor: context.colors.ink,
         body: ref.watch(recipeDetailProvider(widget.recipeId)).when(
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const _Message(text: 'Receita não encontrada'),
-              data: (detail) {
-                if (detail == null) {
-                  return const _Message(text: 'Receita não encontrada');
-                }
-                return SafeArea(
-                  child: Column(
-                    children: [
-                      _TopBar(name: detail.recipe.name),
-                      const _WakeTip(),
-                      Expanded(
-                        child: CustomScrollView(
-                          slivers: [
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.screen,
-                                AppSpacing.xs,
-                                AppSpacing.screen,
-                                0,
-                              ),
-                              sliver: SliverToBoxAdapter(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _IngredientsCard(
-                                      ingredients: detail.ingredients,
-                                      openListenable: _ingredientsOpen,
-                                    ),
-                                    const SizedBox(height: AppSpacing.xl),
-                                    _SectionLabel('Preparo'),
-                                    const SizedBox(height: AppSpacing.md),
-                                    if (detail.steps.isEmpty)
-                                      Text(
-                                        'Esta receita não tem passos.',
-                                        style: context.texts.bodyLarge
-                                            ?.copyWith(color: colors.textBody),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            if (detail.steps.isNotEmpty)
-                              SliverPadding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.screen,
-                                  0,
-                                  AppSpacing.screen,
-                                  AppSpacing.xxl,
-                                ),
-                                sliver: SliverList(
-                                  delegate: SliverChildBuilderDelegate(
-                                    (context, i) =>
-                                        _stepItem(detail.steps, i),
-                                    childCount: detail.steps.length,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              data: (detail) => detail == null
+                  ? const _Message(text: 'Receita não encontrada')
+                  : _buildBody(context, detail),
             ),
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, RecipeDetail detail) {
+    return SafeArea(
+      child: Column(
+        children: [
+          _TopBar(name: detail.recipe.name),
+          const _WakeTip(),
+          Expanded(
+            child: CustomScrollView(
+              slivers: [
+                _buildIntroSliver(context, detail),
+                if (detail.steps.isNotEmpty) _buildStepsSliver(detail),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIntroSliver(BuildContext context, RecipeDetail detail) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.xs,
+        AppSpacing.screen,
+        0,
+      ),
+      sliver: SliverToBoxAdapter(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _IngredientsCard(
+              ingredients: detail.ingredients,
+              openListenable: _ingredientsOpen,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            _SectionLabel('Preparo'),
+            const SizedBox(height: AppSpacing.md),
+            if (detail.steps.isEmpty)
+              Text(
+                'Esta receita não tem passos.',
+                style: context.texts.bodyLarge
+                    ?.copyWith(color: context.colors.textBody),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepsSliver(RecipeDetail detail) {
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.xxl,
+      ),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => _stepItem(detail.steps, i),
+          childCount: detail.steps.length,
+        ),
       ),
     );
   }

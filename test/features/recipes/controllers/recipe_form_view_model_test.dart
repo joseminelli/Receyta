@@ -5,7 +5,7 @@ import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
-import 'package:receyta/features/recipes/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 
 void main() {
   late AppDatabase db;

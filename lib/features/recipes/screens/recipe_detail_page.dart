@@ -12,8 +12,8 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/folders/folder_actions.dart';
-import 'package:receyta/features/recipes/recipe_form_view_model.dart';
+import 'package:receyta/features/folders/screens/folder_actions.dart';
+import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -98,87 +98,90 @@ class _DetailSkeleton extends StatelessWidget {
         padding: EdgeInsets.zero,
         physics: const NeverScrollableScrollPhysics(),
         children: [
-          Container(
-            height: 300,
-            color: colors.coral,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screen,
-                  AppSpacing.xs,
-                  AppSpacing.screen,
-                  AppSpacing.lg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        SkeletonBox(
-                          width: 40,
-                          height: 40,
-                          borderRadius: AppRadii.pill,
-                          color: onHero,
-                        ),
-                        const Spacer(),
-                        SkeletonBox(
-                          width: 40,
-                          height: 40,
-                          borderRadius: AppRadii.pill,
-                          color: onHero,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        SkeletonBox(
-                          width: 40,
-                          height: 40,
-                          borderRadius: AppRadii.pill,
-                          color: onHero,
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    SkeletonBox(width: 220, height: 40, color: onHero),
-                    const SizedBox(height: AppSpacing.sm),
-                    SkeletonBox(width: 140, height: 40, color: onHero),
-                  ],
-                ),
-              ),
-            ),
+          _buildHeroSkeleton(colors, onHero),
+          _buildBodySkeleton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroSkeleton(AppColors colors, Color onHero) {
+    return Container(
+      height: 300,
+      color: colors.coral,
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            AppSpacing.xs,
+            AppSpacing.screen,
+            AppSpacing.lg,
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.xl,
-              AppSpacing.screen,
-              AppSpacing.xxl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    SkeletonBox(width: 64, height: 44),
-                    SkeletonBox(width: 64, height: 44),
-                    SkeletonBox(width: 64, height: 44),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                const SkeletonBox(width: 140, height: 18),
-                const SizedBox(height: AppSpacing.sm),
-                for (final w in const [
-                  double.infinity,
-                  260.0,
-                  200.0,
-                  240.0
-                ]) ...[
-                  SkeletonBox(width: w.isFinite ? w : null, height: 16),
-                  const SizedBox(height: AppSpacing.xs),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  SkeletonBox(
+                    width: 40,
+                    height: 40,
+                    borderRadius: AppRadii.pill,
+                    color: onHero,
+                  ),
+                  const Spacer(),
+                  SkeletonBox(
+                    width: 40,
+                    height: 40,
+                    borderRadius: AppRadii.pill,
+                    color: onHero,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  SkeletonBox(
+                    width: 40,
+                    height: 40,
+                    borderRadius: AppRadii.pill,
+                    color: onHero,
+                  ),
                 ],
-              ],
-            ),
+              ),
+              const Spacer(),
+              SkeletonBox(width: 220, height: 40, color: onHero),
+              const SizedBox(height: AppSpacing.sm),
+              SkeletonBox(width: 140, height: 40, color: onHero),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBodySkeleton() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.xl,
+        AppSpacing.screen,
+        AppSpacing.xxl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              SkeletonBox(width: 64, height: 44),
+              SkeletonBox(width: 64, height: 44),
+              SkeletonBox(width: 64, height: 44),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SkeletonBox(width: 140, height: 18),
+          const SizedBox(height: AppSpacing.sm),
+          for (final w in const [double.infinity, 260.0, 200.0, 240.0]) ...[
+            SkeletonBox(width: w.isFinite ? w : null, height: 16),
+            const SizedBox(height: AppSpacing.xs),
+          ],
         ],
       ),
     );
@@ -193,11 +196,8 @@ class _Detail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recipe = detail.recipe;
-
-    final colors = context.colors;
     final hasSteps = detail.steps.isNotEmpty;
     final hasIngredients = detail.ingredients.isNotEmpty;
-    final hasNotes = (recipe.notes ?? '').isNotEmpty;
 
     // Calculado uma vez por carregamento da receita (não a cada rebuild de
     // linha): parsear a mesma string toda hora que a linha reconstrói é
@@ -208,7 +208,7 @@ class _Detail extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: colors.paper,
+      backgroundColor: context.colors.paper,
       body: Stack(
         children: [
           CustomScrollView(
@@ -216,117 +216,16 @@ class _Detail extends StatelessWidget {
               SliverToBoxAdapter(
                 child: _Hero(recipe: recipe, tags: detail.tags),
               ),
-              SliverToBoxAdapter(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: colors.paper,
-                    border: Border(
-                      top: BorderSide(color: colors.paperSoft, width: 1.5),
-                    ),
-                  ),
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.screen,
-                    AppSpacing.xl,
-                    AppSpacing.screen,
-                    0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _Metrics(recipe: recipe),
-                      if ((recipe.about ?? '').isNotEmpty) ...[
-                        const SizedBox(height: AppSpacing.lg),
-                        Text(recipe.about!, style: context.texts.bodyLarge),
-                      ],
-                      if (hasIngredients) ...[
-                        const SizedBox(height: AppSpacing.xl),
-                        SectionHeader(
-                          title: 'Ingredientes',
-                          action: _CountPill(
-                              detail.ingredients.length, 'item', 'itens'),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+              _buildIntroSliver(context, recipe, hasIngredients),
               // Ingredientes e passos entram em slivers lazy próprios (em vez
               // de dentro do Column acima): receitas longas deixam de montar
               // todas as linhas de uma vez, só as visíveis (+ cache) chegam a
               // ser construídas.
               if (hasIngredients)
-                SliverPadding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, i) => _groupedItem(
-                        detail.ingredients,
-                        i,
-                        (x) => x.groupLabel,
-                        (idx, x) => _IngredientRow(x, parsedIngredients[idx]),
-                      ),
-                      childCount: detail.ingredients.length,
-                    ),
-                  ),
-                ),
-              SliverToBoxAdapter(
-                child: Container(
-                  color: colors.paper,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.screen),
-                  child: hasSteps
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: AppSpacing.xl),
-                            _Label('Preparo'),
-                            const SizedBox(height: AppSpacing.sm),
-                          ],
-                        )
-                      : null,
-                ),
-              ),
-              if (hasSteps)
-                SliverPadding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, i) => _groupedItem(
-                        detail.steps,
-                        i,
-                        (s) => s.groupLabel,
-                        (idx, s) => _Step(index: idx + 1, text: s.text),
-                      ),
-                      childCount: detail.steps.length,
-                    ),
-                  ),
-                ),
-              SliverToBoxAdapter(
-                child: Container(
-                  color: colors.paper,
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.screen,
-                    0,
-                    AppSpacing.screen,
-                    hasSteps ? 120 : AppSpacing.xxl,
-                  ),
-                  child: hasNotes
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            const SizedBox(height: AppSpacing.xl),
-                            _Label('Notas'),
-                            const SizedBox(height: AppSpacing.sm),
-                            Text(recipe.notes!,
-                                style: context.texts.bodyLarge),
-                          ],
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ),
+                _buildIngredientsSliver(detail, parsedIngredients),
+              _buildPreparoHeaderSliver(context, hasSteps),
+              if (hasSteps) _buildStepsSliver(detail),
+              _buildNotesSliver(context, recipe, hasSteps),
             ],
           ),
           if (hasSteps)
@@ -337,6 +236,128 @@ class _Detail extends StatelessWidget {
               child: _CookBar(recipeId: recipe.id),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildIntroSliver(
+    BuildContext context,
+    Recipe recipe,
+    bool hasIngredients,
+  ) {
+    final colors = context.colors;
+    return SliverToBoxAdapter(
+      child: Container(
+        decoration: BoxDecoration(
+          color: colors.paper,
+          border: Border(top: BorderSide(color: colors.paperSoft, width: 1.5)),
+        ),
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.xl,
+          AppSpacing.screen,
+          0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Metrics(recipe: recipe),
+            if ((recipe.about ?? '').isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.lg),
+              Text(recipe.about!, style: context.texts.bodyLarge),
+            ],
+            if (hasIngredients) ...[
+              const SizedBox(height: AppSpacing.xl),
+              SectionHeader(
+                title: 'Ingredientes',
+                action: _CountPill(detail.ingredients.length, 'item', 'itens'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIngredientsSliver(
+    RecipeDetail detail,
+    List<ParsedIngredientLine?> parsedIngredients,
+  ) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => _groupedItem(
+            detail.ingredients,
+            i,
+            (x) => x.groupLabel,
+            (idx, x) => _IngredientRow(x, parsedIngredients[idx]),
+          ),
+          childCount: detail.ingredients.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPreparoHeaderSliver(BuildContext context, bool hasSteps) {
+    return SliverToBoxAdapter(
+      child: Container(
+        color: context.colors.paper,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+        child: hasSteps
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: AppSpacing.xl),
+                  _Label('Preparo'),
+                  const SizedBox(height: AppSpacing.sm),
+                ],
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildStepsSliver(RecipeDetail detail) {
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => _groupedItem(
+            detail.steps,
+            i,
+            (s) => s.groupLabel,
+            (idx, s) => _Step(index: idx + 1, text: s.text),
+          ),
+          childCount: detail.steps.length,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotesSliver(BuildContext context, Recipe recipe, bool hasSteps) {
+    final hasNotes = (recipe.notes ?? '').isNotEmpty;
+    return SliverToBoxAdapter(
+      child: Container(
+        color: context.colors.paper,
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          0,
+          AppSpacing.screen,
+          hasSteps ? 120 : AppSpacing.xxl,
+        ),
+        child: hasNotes
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: AppSpacing.xl),
+                  _Label('Notas'),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(recipe.notes!, style: context.texts.bodyLarge),
+                ],
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
@@ -505,87 +526,93 @@ class _Hero extends ConsumerWidget {
                       patternColorAlt: tile.patternColorAlt,
                     ),
                   ),
-                  if (minutes != null)
-                    Transform.translate(
-                      offset: const Offset(
-                          -40, -20), // 40px pra esquerda, 30px pra cima
-                      child: HeroNumber(
-                        value: '$minutes',
-                        unit: 'min',
-                        color: tile.onColor.withValues(alpha: 0.5),
-                        corner: Alignment.bottomRight,
-                        size: 100,
-                      ),
-                    ),
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.screen,
-                        AppSpacing.xs,
-                        AppSpacing.screen,
-                        AppSpacing.lg,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              _HeroCircleButton(
-                                icon: Icons.arrow_back,
-                                onTap: () => context.pop(),
-                                tooltip: 'Voltar',
-                              ),
-                              const Spacer(),
-                              _HeroCircleButton(
-                                icon: recipe.isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                onTap: () => ref
-                                    .read(recipeRepositoryProvider)
-                                    .setFavorite(
-                                        recipe.id, !recipe.isFavorite),
-                                tooltip: recipe.isFavorite
-                                    ? 'Desfavoritar'
-                                    : 'Favoritar',
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              ExpandingCreateMenu(
-                                icon: Icons.more_horiz,
-                                tooltip: 'Mais',
-                                buttonColor: colors.ink,
-                                iconColor: colors.onSaturated,
-                                actions: _menuActions(context, ref),
-                              ),
-                            ],
-                          ),
-                          if (tags.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            Wrap(
-                              spacing: AppSpacing.xs,
-                              runSpacing: AppSpacing.xs,
-                              children: [
-                                for (final t in tags)
-                                  _TagPill(t.name,
-                                      heroColor: tile.background),
-                              ],
-                            ),
-                          ],
-                          const Spacer(),
-                          Text(
-                            recipe.name,
-                            style: AppTextStyles.display(44)
-                                .copyWith(color: tile.onColor),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  if (minutes != null) _buildMinutesBadge(minutes, tile),
+                  _buildTopContent(context, ref, colors, tile),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMinutesBadge(int minutes, TileAppearance tile) {
+    return Transform.translate(
+      offset: const Offset(-40, -20), // 40px pra esquerda, 30px pra cima
+      child: HeroNumber(
+        value: '$minutes',
+        unit: 'min',
+        color: tile.onColor.withValues(alpha: 0.5),
+        corner: Alignment.bottomRight,
+        size: 100,
+      ),
+    );
+  }
+
+  Widget _buildTopContent(
+    BuildContext context,
+    WidgetRef ref,
+    AppColors colors,
+    TileAppearance tile,
+  ) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.xs,
+          AppSpacing.screen,
+          AppSpacing.lg,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _HeroCircleButton(
+                  icon: Icons.arrow_back,
+                  onTap: () => context.pop(),
+                  tooltip: 'Voltar',
+                ),
+                const Spacer(),
+                _HeroCircleButton(
+                  icon: recipe.isFavorite
+                      ? Icons.favorite
+                      : Icons.favorite_border,
+                  onTap: () => ref
+                      .read(recipeRepositoryProvider)
+                      .setFavorite(recipe.id, !recipe.isFavorite),
+                  tooltip: recipe.isFavorite ? 'Desfavoritar' : 'Favoritar',
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                ExpandingCreateMenu(
+                  icon: Icons.more_horiz,
+                  tooltip: 'Mais',
+                  buttonColor: colors.ink,
+                  iconColor: colors.onSaturated,
+                  actions: _menuActions(context, ref),
+                ),
+              ],
+            ),
+            if (tags.isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.xs,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  for (final t in tags)
+                    _TagPill(t.name, heroColor: tile.background),
+                ],
+              ),
+            ],
+            const Spacer(),
+            Text(
+              recipe.name,
+              style: AppTextStyles.display(44).copyWith(color: tile.onColor),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );

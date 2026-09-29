@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:receyta/features/folders/folders_view_model.dart';
+import 'package:receyta/domain/models/folder.dart';
+import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/brand_loader.dart';
@@ -18,7 +19,6 @@ class AllFoldersPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
     final folders = ref.watch(rootFoldersProvider);
 
     Future<void> refresh() async {
@@ -27,87 +27,100 @@ class AllFoldersPage extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: colors.paper,
+      backgroundColor: context.colors.paper,
       appBar: AppBar(title: const Text('Pastas')),
       body: PullToRefreshControl(
         onRefresh: refresh,
         child: CustomScrollView(
           slivers: [
             folders.when(
-              loading: () => const SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(child: BrandLoader()),
-              ),
-              error: (_, __) => SliverFillRemaining(
-                hasScrollBody: false,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xl),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      StateBadge(
-                        icon: Icons.priority_high_rounded,
-                        background: colors.danger,
-                        foreground: colors.onSaturated,
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'Não deu para carregar as pastas',
-                        style: context.texts.displaySmall,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              data: (items) {
-                if (items.isEmpty) {
-                  return SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          StateBadge(
-                            icon: Icons.folder_outlined,
-                            background: colors.violet,
-                            foreground: colors.onSaturated,
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Text(
-                            'Nenhuma pasta ainda',
-                            style: context.texts.displaySmall,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                return SliverPadding(
-                  padding: const EdgeInsets.all(AppSpacing.screen),
-                  sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: AppSpacing.sm,
-                      mainAxisSpacing: AppSpacing.sm,
-                      childAspectRatio: 0.78,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, i) => FolderGridTile(
-                        item: items[i],
-                        onTap: () =>
-                            context.push('/folder/${items[i].folder.id}'),
-                      ),
-                      childCount: items.length,
-                    ),
-                  ),
-                );
-              },
+              loading: () => _buildLoading(),
+              error: (_, __) => _buildError(context),
+              data: (items) => items.isEmpty
+                  ? _buildEmpty(context)
+                  : _buildGrid(context, items),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoading() {
+    return const SliverFillRemaining(
+      hasScrollBody: false,
+      child: Center(child: BrandLoader()),
+    );
+  }
+
+  Widget _buildError(BuildContext context) {
+    final colors = context.colors;
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.priority_high_rounded,
+              background: colors.danger,
+              foreground: colors.onSaturated,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Não deu para carregar as pastas',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    final colors = context.colors;
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.folder_outlined,
+              background: colors.violet,
+              foreground: colors.onSaturated,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Nenhuma pasta ainda',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGrid(BuildContext context, List<FolderWithCounts> items) {
+    return SliverPadding(
+      padding: const EdgeInsets.all(AppSpacing.screen),
+      sliver: SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: AppSpacing.sm,
+          mainAxisSpacing: AppSpacing.sm,
+          childAspectRatio: 0.78,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, i) => FolderGridTile(
+            item: items[i],
+            onTap: () => context.push('/folder/${items[i].folder.id}'),
+          ),
+          childCount: items.length,
         ),
       ),
     );

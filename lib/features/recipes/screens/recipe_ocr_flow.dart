@@ -89,71 +89,80 @@ class _RecipeInclusionSheetState extends State<_RecipeInclusionSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    final texts = context.texts;
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              0,
-              AppSpacing.screen,
-              AppSpacing.sm,
-            ),
-            child: Text(
-              'Achamos ${widget.recipes.length} receitas nessa foto',
-              style: texts.displaySmall,
-            ),
-          ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                for (final recipe in widget.recipes)
-                  CheckboxListTile(
-                    value: _selected.contains(recipe),
-                    onChanged: (checked) => setState(() {
-                      if (checked ?? false) {
-                        _selected.add(recipe);
-                      } else {
-                        _selected.remove(recipe);
-                      }
-                    }),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    activeColor: colors.violet,
-                    secondary: Icon(
-                      Icons.restaurant_menu_outlined,
-                      color: colors.textMuted,
-                    ),
-                    title: Text(recipe.name, style: texts.bodyLarge),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.sm,
-              AppSpacing.screen,
-              AppSpacing.screen,
-            ),
-            child: PillButton(
-              label: _selected.isEmpty
-                  ? 'Selecione ao menos uma'
-                  : 'Incluir ${_selected.length} '
-                      '${_selected.length > 1 ? 'receitas' : 'receita'}',
-              onPressed: _selected.isEmpty
-                  ? null
-                  : () => Navigator.of(context).pop([
-                        for (final recipe in widget.recipes)
-                          if (_selected.contains(recipe)) recipe,
-                      ]),
-            ),
-          ),
+          _buildTitle(context),
+          Flexible(child: _buildCheckboxList(context)),
+          _buildIncludeButton(context),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTitle(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.sm,
+      ),
+      child: Text(
+        'Achamos ${widget.recipes.length} receitas nessa foto',
+        style: context.texts.displaySmall,
+      ),
+    );
+  }
+
+  Widget _buildCheckboxList(BuildContext context) {
+    final colors = context.colors;
+    return ListView(
+      shrinkWrap: true,
+      children: [
+        for (final recipe in widget.recipes)
+          CheckboxListTile(
+            value: _selected.contains(recipe),
+            onChanged: (checked) => setState(() {
+              if (checked ?? false) {
+                _selected.add(recipe);
+              } else {
+                _selected.remove(recipe);
+              }
+            }),
+            controlAffinity: ListTileControlAffinity.leading,
+            activeColor: colors.violet,
+            secondary: Icon(
+              Icons.restaurant_menu_outlined,
+              color: colors.textMuted,
+            ),
+            title: Text(recipe.name, style: context.texts.bodyLarge),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildIncludeButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.sm,
+        AppSpacing.screen,
+        AppSpacing.screen,
+      ),
+      child: PillButton(
+        label: _selected.isEmpty
+            ? 'Selecione ao menos uma'
+            : 'Incluir ${_selected.length} '
+                '${_selected.length > 1 ? 'receitas' : 'receita'}',
+        onPressed: _selected.isEmpty
+            ? null
+            : () => Navigator.of(context).pop([
+                  for (final recipe in widget.recipes)
+                    if (_selected.contains(recipe)) recipe,
+                ]),
       ),
     );
   }

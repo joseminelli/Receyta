@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
-import 'package:receyta/features/recipes/recipes_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -65,88 +65,106 @@ class TrashPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    final repo = ref.read(recipeRepositoryProvider);
     final trashed = ref.watch(trashedRecipesProvider);
-    final now = DateTime.now().toUtc();
 
     return Scaffold(
-      backgroundColor: colors.paper,
-      appBar: AppBar(
-        title: const Text('Lixeira'),
-        actions: [
-          if (trashed.valueOrNull?.isNotEmpty ?? false)
-            Padding(
-              padding: const EdgeInsets.only(right: AppSpacing.sm),
-              child: _EmptyTrashButton(
-                onPressed: () => _emptyAll(context, ref, trashed.value!),
-              ),
-            ),
-        ],
-      ),
+      backgroundColor: context.colors.paper,
+      appBar: _buildAppBar(context, ref, trashed),
       body: trashed.when(
         loading: () => const Center(child: BrandLoader()),
-        error: (_, __) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xl),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                StateBadge(
-                  icon: Icons.priority_high_rounded,
-                  background: colors.danger,
-                  foreground: colors.onSaturated,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  'Não deu para carregar a lixeira',
-                  style: context.texts.displaySmall,
-                  textAlign: TextAlign.center,
-                ),
-              ],
+        error: (_, __) => _buildError(context),
+        data: (items) => items.isEmpty
+            ? _buildEmpty(context)
+            : _buildList(context, ref, items),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<List<Recipe>> trashed,
+  ) {
+    return AppBar(
+      title: const Text('Lixeira'),
+      actions: [
+        if (trashed.valueOrNull?.isNotEmpty ?? false)
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: _EmptyTrashButton(
+              onPressed: () => _emptyAll(context, ref, trashed.value!),
             ),
           ),
+      ],
+    );
+  }
+
+  Widget _buildError(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.priority_high_rounded,
+              background: colors.danger,
+              foreground: colors.onSaturated,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Não deu para carregar a lixeira',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
-        data: (items) {
-          if (items.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    StateBadge(
-                      icon: Icons.delete_outline,
-                      background: colors.ink,
-                      foreground: colors.lime,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'A lixeira está vazia',
-                      style: context.texts.displaySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.screen),
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-            itemBuilder: (context, i) {
-              final r = items[i];
-              return _TrashRow(
-                recipe: r,
-                daysLeft: _daysLeft(r, now),
-                onRestore: () => repo.restore(r.id),
-                onDeleteForever: () => _deleteForever(context, ref, r),
-              );
-            },
-          );
-        },
       ),
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    final colors = context.colors;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            StateBadge(
+              icon: Icons.delete_outline,
+              background: colors.ink,
+              foreground: colors.lime,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'A lixeira está vazia',
+              style: context.texts.displaySmall,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList(BuildContext context, WidgetRef ref, List<Recipe> items) {
+    final repo = ref.read(recipeRepositoryProvider);
+    final now = DateTime.now().toUtc();
+    return ListView.separated(
+      padding: const EdgeInsets.all(AppSpacing.screen),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+      itemBuilder: (context, i) {
+        final r = items[i];
+        return _TrashRow(
+          recipe: r,
+          daysLeft: _daysLeft(r, now),
+          onRestore: () => repo.restore(r.id),
+          onDeleteForever: () => _deleteForever(context, ref, r),
+        );
+      },
     );
   }
 }
