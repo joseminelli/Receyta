@@ -128,6 +128,13 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Apaga os itens já marcados da lista (origens caem em cascata).
+  Future<int> deleteChecked(String listId) {
+    return (delete(shoppingListItems)
+          ..where((i) => i.listId.equals(listId) & i.checked.equals(true)))
+        .go();
+  }
+
   Future<int> setChecked(String itemId, bool checked) {
     return (update(shoppingListItems)..where((i) => i.id.equals(itemId)))
         .write(ShoppingListItemsCompanion(checked: Value(checked)));

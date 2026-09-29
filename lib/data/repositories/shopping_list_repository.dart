@@ -92,6 +92,16 @@ class ShoppingListRepository {
     }
   }
 
+  /// Remove os itens marcados como comprados; devolve quantos saíram.
+  Future<Result<int>> clearChecked(String listId) async {
+    try {
+      return Ok(await _dao.deleteChecked(listId));
+    } catch (e) {
+      debugPrint('ShoppingListRepository.clearChecked: $e');
+      return Err(DatabaseFailure('Falha ao limpar os itens', cause: e));
+    }
+  }
+
   /// Adiciona um item avulso digitado na lista (RF-05.6). Passa pelo mesmo
   /// parser (C1) e catálogo (C2) das receitas — "2 caixas de leite" vira
   /// quantidade + unidade + ingrediente "Leite", e ganha o corredor certo.

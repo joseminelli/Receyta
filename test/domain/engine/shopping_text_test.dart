@@ -67,6 +67,26 @@ void main() {
     });
   });
 
+  group('groupShoppingItems com sinkChecked', () {
+    test('marcados vão pro fim da seção; seção toda marcada pro fim da lista',
+        () {
+      final groups = groupShoppingItems(
+        [
+          _item('Cebola', position: 0, checked: true),
+          _item('Tomate', position: 1),
+          _item('Leite', position: 2, checked: true),
+          _item('Farinha de Trigo', position: 3),
+        ],
+        sinkChecked: true,
+      );
+      expect(
+        groups.map((g) => g.slug),
+        ['hortifruti', 'mercearia', 'frios_laticinios'],
+      );
+      expect(groups.first.items.map((i) => i.displayName), ['Tomate', 'Cebola']);
+    });
+  });
+
   group('buildShoppingListText', () {
     test('título, seções, marcação e origem', () {
       final text = buildShoppingListText('Lista de 29/09', [
