@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -63,19 +64,7 @@ class RecipeFormPage extends ConsumerWidget {
 class _Line {
   _Line(String text, {this.heading = false, this.ingredientId})
       : controller = TextEditingController(text: text),
-        _appliedText = ingredientId != null ? text : null {
-    focusNode.addListener(() {
-      if (!focusNode.hasFocus) return;
-      final ctx = focusNode.context;
-      if (ctx == null) return;
-      Scrollable.ensureVisible(
-        ctx,
-        alignment: 0.5,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-      );
-    });
-  }
+        _appliedText = ingredientId != null ? text : null;
   final TextEditingController controller;
   final FocusNode focusNode = FocusNode();
   final bool heading;
@@ -196,6 +185,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
   ];
   final _tagInput = TextEditingController();
   final _tagFocus = FocusNode();
+  final _aboutFocus = FocusNode();
   final _cookFocus = FocusNode();
   final _servingsFocus = FocusNode();
 
@@ -207,27 +197,88 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
       WidgetsBinding.instance.platformDispatcher.views.first.viewInsets.bottom;
   late double _lastKeyboardInset = _keyboardInset;
 
+  /// Onde o campo focado para na área visível (0 = colado no topo): bem
+  /// perto do topo, sobra o resto da tela pras sugestões do autocomplete e
+  /// pro próximo campo aparecerem inteiros acima do teclado.
+  static const _revealAlignment = 0.06;
+
+  Timer? _revealTimer;
+
   @override
   void initState() {
     super.initState();
     _name.addListener(() => setState(() {}));
     WidgetsBinding.instance.addObserver(this);
+    FocusManager.instance.addListener(_onFocusChanged);
   }
 
   @override
   void didChangeMetrics() {
     final inset = _keyboardInset;
-    if (_lastKeyboardInset > 0 && inset == 0) {
+    final wasOpen = _lastKeyboardInset > 0;
+    if (wasOpen && inset == 0) {
       // Teclado fechou (botão de esconder, arrastar pra baixo, gesto de
       // voltar) — tira o foco do campo pra sumir junto qualquer sugestão de
       // autocomplete (ingrediente/tag) que ainda estivesse flutuando.
       FocusManager.instance.primaryFocus?.unfocus();
     }
+    final grew = inset > _lastKeyboardInset;
     _lastKeyboardInset = inset;
+    if (wasOpen != (inset > 0)) setState(() {});
+    if (grew) _scheduleReveal(keyboardAlreadyOpen: false);
+  }
+
+  void _onFocusChanged() {
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null || ctx.widget is! EditableText) return;
+    _scheduleReveal(keyboardAlreadyOpen: _keyboardInset > 0);
+  }
+
+  /// Espera o teclado terminar de subir (o timer reinicia a cada passo da
+  /// animação dele) e só então rola — rolar antes deixava o campo no meio
+  /// da tela e depois escondido atrás do teclado.
+  void _scheduleReveal({required bool keyboardAlreadyOpen}) {
+    _revealTimer?.cancel();
+    _revealTimer = Timer(
+      Duration(milliseconds: keyboardAlreadyOpen ? 60 : 320),
+      _revealFocused,
+    );
+  }
+
+  void _revealFocused() {
+    if (!mounted) return;
+    final ctx = FocusManager.instance.primaryFocus?.context;
+    if (ctx == null || !ctx.mounted || ctx.widget is! EditableText) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: _revealAlignment,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  /// Enter numa linha de ingrediente/passo: vai pra próxima; na última, abre
+  /// uma linha nova (a não ser que a atual esteja vazia — aí só fecha).
+  void _focusNextLine(List<_Line> list, int index) {
+    if (index + 1 < list.length) {
+      list[index + 1].focusNode.requestFocus();
+      return;
+    }
+    if (list[index].controller.text.trim().isEmpty) {
+      FocusScope.of(context).unfocus();
+      return;
+    }
+    final line = _Line('');
+    setState(() => list.add(line));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) line.focusNode.requestFocus();
+    });
   }
 
   @override
   void dispose() {
+    _revealTimer?.cancel();
+    FocusManager.instance.removeListener(_onFocusChanged);
     WidgetsBinding.instance.removeObserver(this);
     for (final c in [_name, _about, _prep, _cook, _servings, _notes]) {
       c.dispose();
@@ -238,6 +289,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
     }
     _tagInput.dispose();
     _tagFocus.dispose();
+    _aboutFocus.dispose();
     _cookFocus.dispose();
     _servingsFocus.dispose();
     super.dispose();
@@ -335,27 +387,38 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.screen,
                 AppSpacing.md,
                 AppSpacing.screen,
-                AppSpacing.xxl,
+                // Com o teclado aberto sobra espaço rolável embaixo pros
+                // últimos campos poderem subir até a posição de destaque.
+                _keyboardInset > 0
+                    ? MediaQuery.sizeOf(context).height * 0.5
+                    : AppSpacing.xxl,
               ),
               children: [
                 _Field(
                   label: 'Nome',
                   controller: _name,
                   autofocus: !_isEditing && !blocked,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _aboutFocus.requestFocus(),
                 ),
-                _Field(label: 'Sobre', controller: _about, maxLines: 3),
+                _Field(
+                  label: 'Sobre',
+                  controller: _about,
+                  maxLines: 3,
+                  focusNode: _aboutFocus,
+                ),
                 _buildTimeFields(),
                 _Field(
                   label: 'Rende (porções)',
                   controller: _servings,
                   numeric: true,
                   focusNode: _servingsFocus,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _tagFocus.requestFocus(),
                 ),
                 _TagsField(
                   tags: _tags,
@@ -380,6 +443,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
                     _ingredients.removeAt(i).controller.dispose();
                   }),
                   onReorder: (o, n) => _reorder(_ingredients, o, n),
+                  onSubmitLine: (i) => _focusNextLine(_ingredients, i),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 _LineList(
@@ -395,6 +459,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
                     _steps.removeAt(i).controller.dispose();
                   }),
                   onReorder: (o, n) => _reorder(_steps, o, n),
+                  onSubmitLine: (i) => _focusNextLine(_steps, i),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 _Field(label: 'Notas', controller: _notes, maxLines: 4),
@@ -902,6 +967,7 @@ class _LineList extends StatelessWidget {
     required this.onAddHeading,
     required this.onRemove,
     required this.onReorder,
+    required this.onSubmitLine,
     this.suggestions,
   });
 
@@ -918,6 +984,9 @@ class _LineList extends StatelessWidget {
   final VoidCallback onAddHeading;
   final void Function(int index) onRemove;
   final void Function(int oldIndex, int newIndex) onReorder;
+
+  /// Enter numa linha: o pai decide (próxima linha, ou cria uma).
+  final void Function(int index) onSubmitLine;
   final List<Ingredient>? suggestions;
 
   @override
@@ -1010,12 +1079,16 @@ class _LineList extends StatelessWidget {
         line: line,
         suggestions: suggestions!,
         hintText: hintFor(i),
+        onSubmitted: () => onSubmitLine(i),
       );
     }
     return TextField(
       controller: line.controller,
       focusNode: line.focusNode,
       textCapitalization: TextCapitalization.sentences,
+      keyboardType: TextInputType.text,
+      textInputAction: TextInputAction.next,
+      onSubmitted: (_) => onSubmitLine(i),
       minLines: 1,
       maxLines: line.heading ? 1 : 4,
       style: line.heading
@@ -1042,11 +1115,13 @@ class _IngredientAutocompleteField extends ConsumerWidget {
     required this.line,
     required this.suggestions,
     required this.hintText,
+    required this.onSubmitted,
   });
 
   final _Line line;
   final List<Ingredient> suggestions;
   final String hintText;
+  final VoidCallback onSubmitted;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1126,6 +1201,9 @@ class _IngredientAutocompleteField extends ConsumerWidget {
           controller: controller,
           focusNode: focusNode,
           textCapitalization: TextCapitalization.sentences,
+          keyboardType: TextInputType.text,
+          textInputAction: TextInputAction.next,
+          onSubmitted: (_) => onSubmitted(),
           minLines: 1,
           maxLines: 4,
           decoration: InputDecoration(hintText: hintText),
