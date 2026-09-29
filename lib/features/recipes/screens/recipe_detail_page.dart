@@ -519,11 +519,14 @@ class _Hero extends ConsumerWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: TilePattern(
-                      motif: tile.motif,
-                      background: tile.background,
-                      patternColor: tile.patternColor,
-                      patternColorAlt: tile.patternColorAlt,
+                    child: Hero(
+                      tag: recipeTileHeroTag(recipe.id),
+                      child: TilePattern(
+                        motif: tile.motif,
+                        background: tile.background,
+                        patternColor: tile.patternColor,
+                        patternColorAlt: tile.patternColorAlt,
+                      ),
                     ),
                   ),
                   if (minutes != null) _buildMinutesBadge(minutes, tile),
@@ -575,14 +578,11 @@ class _Hero extends ConsumerWidget {
                   tooltip: 'Voltar',
                 ),
                 const Spacer(),
-                _HeroCircleButton(
-                  icon: recipe.isFavorite
-                      ? Icons.favorite
-                      : Icons.favorite_border,
+                _FavoriteButton(
+                  isFavorite: recipe.isFavorite,
                   onTap: () => ref
                       .read(recipeRepositoryProvider)
                       .setFavorite(recipe.id, !recipe.isFavorite),
-                  tooltip: recipe.isFavorite ? 'Desfavoritar' : 'Favoritar',
                 ),
                 const SizedBox(width: AppSpacing.xs),
                 ExpandingCreateMenu(
@@ -1004,6 +1004,106 @@ class _HeroCircleButton extends StatelessWidget {
             child: Icon(icon, size: 22, color: colors.onSaturated),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Botão de favoritar: ao MARCAR (não ao desmarcar), o coração estoura de
+/// tamanho e recua elástico, com um anel se expandindo e sumindo atrás dele —
+/// mesmo "burst" do coração do Instagram/Twitter, com o vocabulário de
+/// animação que já existe no app (`easeOutBack`/pop do ícone da navbar).
+class _FavoriteButton extends StatefulWidget {
+  const _FavoriteButton({required this.isFavorite, required this.onTap});
+
+  final bool isFavorite;
+  final VoidCallback onTap;
+
+  @override
+  State<_FavoriteButton> createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends State<_FavoriteButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _burst;
+
+  @override
+  void initState() {
+    super.initState();
+    _burst = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _FavoriteButton old) {
+    super.didUpdateWidget(old);
+    if (widget.isFavorite && !old.isFavorite) {
+      _burst.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _burst.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final scale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.4).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.4, end: 1.0)
+            .chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 65,
+      ),
+    ]).animate(_burst);
+    final ringScale = Tween<double>(begin: 0.5, end: 1.9).animate(
+      CurvedAnimation(parent: _burst, curve: Curves.easeOut),
+    );
+    final ringOpacity = Tween<double>(begin: 0.6, end: 0.0).animate(
+      CurvedAnimation(parent: _burst, curve: Curves.easeOut),
+    );
+
+    return AnimatedBuilder(
+      animation: _burst,
+      builder: (context, child) {
+        return SizedBox(
+          width: 44,
+          height: 44,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_burst.value > 0)
+                Opacity(
+                  opacity: ringOpacity.value,
+                  child: Transform.scale(
+                    scale: ringScale.value,
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colors.coral, width: 2),
+                      ),
+                    ),
+                  ),
+                ),
+              Transform.scale(scale: scale.value, child: child),
+            ],
+          ),
+        );
+      },
+      child: _HeroCircleButton(
+        icon: widget.isFavorite ? Icons.favorite : Icons.favorite_border,
+        onTap: widget.onTap,
+        tooltip: widget.isFavorite ? 'Desfavoritar' : 'Favoritar',
       ),
     );
   }

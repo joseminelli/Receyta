@@ -14,6 +14,11 @@ typedef TileAppearance = ({
   Color onColor,
 });
 
+/// Tag do `Hero` que faz o azulejo da receita "crescer" do card da lista até
+/// virar o hero da tela de detalhe — mesma string nos dois lados
+/// ([RecipeCard]/[FeaturedRecipeCard] e o hero de `recipe_detail_page.dart`).
+String recipeTileHeroTag(String recipeId) => 'recipe-tile-$recipeId';
+
 /// Pareamento padrão da §9.2/§9.4.
 TileColor _colorForMotif(TileMotif m) => switch (m) {
       TileMotif.arco => TileColor.coral,

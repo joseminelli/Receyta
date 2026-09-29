@@ -53,11 +53,14 @@ class FeaturedRecipeCard extends StatelessWidget {
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: TilePattern(
-                        motif: tile.motif,
-                        background: tile.background,
-                        patternColor: tile.patternColor,
-                        patternColorAlt: tile.patternColorAlt,
+                      child: Hero(
+                        tag: recipeTileHeroTag(recipe.id),
+                        child: TilePattern(
+                          motif: tile.motif,
+                          background: tile.background,
+                          patternColor: tile.patternColor,
+                          patternColorAlt: tile.patternColorAlt,
+                        ),
                       ),
                     ),
                     Positioned(

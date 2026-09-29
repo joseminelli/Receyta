@@ -44,11 +44,14 @@ class RecipeCard extends StatelessWidget {
             children: [
               AspectRatio(
                 aspectRatio: 1.45,
-                child: TilePattern(
-                  motif: tile.motif,
-                  background: tile.background,
-                  patternColor: tile.patternColor,
-                  patternColorAlt: tile.patternColorAlt,
+                child: Hero(
+                  tag: recipeTileHeroTag(recipe.id),
+                  child: TilePattern(
+                    motif: tile.motif,
+                    background: tile.background,
+                    patternColor: tile.patternColor,
+                    patternColorAlt: tile.patternColorAlt,
+                  ),
                 ),
               ),
               Padding(

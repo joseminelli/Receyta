@@ -42,8 +42,17 @@ final router = GoRouter(
     GoRoute(
       path: '/recipe/:id',
       name: 'recipe-detail',
-      builder: (context, state) =>
-          RecipeDetailPage(recipeId: state.pathParameters['id']!),
+      // Sem fade/slide de página própria: só o Hero do azulejo (card→hero)
+      // se move. Com a transição padrão, as duas animações competiam e o
+      // bloco parecia "sumir" em vez de voar de um lugar pro outro.
+      pageBuilder: (context, state) => CustomTransitionPage(
+        key: state.pageKey,
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        child: RecipeDetailPage(recipeId: state.pathParameters['id']!),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            child,
+      ),
     ),
     GoRoute(
       path: '/recipe/:id/edit',
