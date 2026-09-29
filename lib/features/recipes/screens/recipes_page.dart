@@ -167,8 +167,11 @@ class _Scaffold extends StatelessWidget {
 }
 
 /// Pílula do filtro de tags, desenhada para o header escuro: marcada em `lime`
-/// com texto `ink`; solta em `inkSoft` com texto claro apagado.
-class _HeaderChip extends StatelessWidget {
+/// com texto `ink`; solta em `inkSoft` com texto claro apagado. Cor e texto
+/// fazem a transição suave, e a pílula dá um pequeno estouro elástico só ao
+/// ENTRAR marcada (mesmo idioma do resto do app: nav bar, favoritar) — sair
+/// não estoura, só a cor desliza de volta.
+class _HeaderChip extends StatefulWidget {
   const _HeaderChip({
     required this.label,
     required this.active,
@@ -184,33 +187,87 @@ class _HeaderChip extends StatelessWidget {
   final IconData? icon;
 
   @override
+  State<_HeaderChip> createState() => _HeaderChipState();
+}
+
+class _HeaderChipState extends State<_HeaderChip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pop;
+
+  @override
+  void initState() {
+    super.initState();
+    // Valor de repouso é 1 (escala normal) nos dois estados — só o próprio
+    // `.forward(from: 0)` mergulha até 0.85 de propósito, pro estouro.
+    _pop = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+      value: 1,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeaderChip old) {
+    super.didUpdateWidget(old);
+    if (widget.active && !old.active) {
+      _pop.forward(from: 0);
+    } else if (!widget.active) {
+      _pop.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final fg = active ? colors.ink : colors.onSaturated.withValues(alpha: 0.65);
-    return Material(
-      color: active ? colors.lime : colors.inkSoft,
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
+    final fg =
+        widget.active ? colors.ink : colors.onSaturated.withValues(alpha: 0.65);
+    final scale = Tween<double>(begin: 0.85, end: 1).animate(
+      CurvedAnimation(parent: _pop, curve: Curves.easeOutBack),
+    );
+    return ScaleTransition(
+      scale: scale,
+      child: Material(
+        color: widget.active ? colors.lime : colors.inkSoft,
         borderRadius: BorderRadius.circular(AppRadii.pill),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 16, color: fg),
-                const SizedBox(width: AppSpacing.xs / 2),
-              ],
-              Text(
-                label,
-                style: context.texts.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: fg,
+        animationDuration: const Duration(milliseconds: 200),
+        child: InkWell(
+          onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.icon != null) ...[
+                  // `Icon` não lê `DefaultTextStyle` — a cor precisa de um
+                  // tween próprio pra animar (`AnimatedDefaultTextStyle` não
+                  // faria nada aqui).
+                  TweenAnimationBuilder<Color?>(
+                    tween: ColorTween(end: fg),
+                    duration: const Duration(milliseconds: 200),
+                    builder: (context, color, _) =>
+                        Icon(widget.icon, size: 16, color: color),
+                  ),
+                  const SizedBox(width: AppSpacing.xs / 2),
+                ],
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: context.texts.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: fg,
+                      ) ??
+                      TextStyle(color: fg),
+                  child: Text(widget.label),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
