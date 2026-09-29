@@ -51,16 +51,16 @@ final router = GoRouter(
       // coisa só, em vez do bloco animar liso e o resto cortar seco.
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
-        transitionDuration: const Duration(milliseconds: 300),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
+        transitionDuration: const Duration(milliseconds: 500),
+        reverseTransitionDuration: const Duration(milliseconds: 500),
         child: RecipeDetailPage(
           recipeId: state.pathParameters['id']!,
           initialRecipe: state.extra as Recipe?,
         ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           // Content termina de entrar/começa a sair um pouco antes do fim
-          // dos 300ms do voo, pra nunca parecer que ainda tá "chegando"
-          // depois do bloco já ter assentado.
+          // do voo, pra nunca parecer que ainda tá "chegando" depois do
+          // bloco já ter assentado.
           final fade = CurvedAnimation(
             parent: animation,
             curve: const Interval(0, 0.65, curve: Curves.easeOut),

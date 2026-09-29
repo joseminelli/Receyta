@@ -55,12 +55,12 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
   void initState() {
     super.initState();
     // Sobe pro topo da prateleira "Recentes" da home (§ "recentes") — mas só
-    // depois que o voo do Hero (card→hero, ~300ms no router) termina. Se a
-    // lista de origem reordenar ENQUANTO o Hero ainda está voando (o card
-    // tocado pode até virar o `FeaturedRecipeCard`, widget diferente), o
-    // Flutter recria o Hero de origem no meio do voo e quebra com
-    // 'manifest.tag == newManifest.tag'.
-    Future.delayed(const Duration(milliseconds: 320), () {
+    // depois que o voo do Hero (card→hero, 500ms no router — se mudar lá,
+    // muda aqui também) termina. Se a lista de origem reordenar ENQUANTO o
+    // Hero ainda está voando (o card tocado pode até virar o
+    // `FeaturedRecipeCard`, widget diferente), o Flutter recria o Hero de
+    // origem no meio do voo e quebra com 'manifest.tag == newManifest.tag'.
+    Future.delayed(const Duration(milliseconds: 520), () {
       if (mounted) {
         ref.read(recipeRepositoryProvider).markOpened(widget.recipeId);
       }
