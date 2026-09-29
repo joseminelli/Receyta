@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tile_style.dart';
-import 'package:receyta/data/database/seed_data.dart';
+import 'package:receyta/core/unit_label.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
@@ -701,7 +701,7 @@ class _IngredientRow extends StatelessWidget {
     }
 
     final parsed = this.parsed!;
-    final unit = _unitLabel(ingredient.unitId, qty);
+    final unit = unitLabel(ingredient.unitId, qty);
     final base = context.texts.bodyLarge?.copyWith(color: colors.ink);
     final quantityStyle = AppTextStyles.metric.copyWith(color: colors.ink);
 
@@ -843,13 +843,6 @@ class _StackedFraction extends StatelessWidget {
   }
 }
 
-String? _unitLabel(String? unitCode, double quantity) {
-  if (unitCode == null) return null;
-  for (final u in kSeedUnits) {
-    if (u.code == unitCode) return quantity == 1 ? u.displayName : u.plural;
-  }
-  return null;
-}
 
 /// Item de uma lista de ingredientes ou passos (§RF-01.4), com o subtítulo de
 /// grupo embutido acima dele quando o grupo muda em relação ao item anterior.

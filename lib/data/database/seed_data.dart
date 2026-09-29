@@ -31,7 +31,9 @@ const List<SeedUnit> kSeedUnits = [
   SeedUnit('kg', 'kg', 'kg', 'mass', baseUnitCode: 'g', factorToBase: 1000),
   SeedUnit('mg', 'mg', 'mg', 'mass', baseUnitCode: 'g', factorToBase: 0.001),
   SeedUnit('ml', 'ml', 'ml', 'volume'),
-  SeedUnit('l', 'l', 'l', 'volume', baseUnitCode: 'ml', factorToBase: 1000),
+  // Maiúsculo na exibição (código continua "l"): "l" minúsculo sozinho
+  // confunde com "1"/"I" — o próprio SI permite "L" por causa disso.
+  SeedUnit('l', 'L', 'L', 'volume', baseUnitCode: 'ml', factorToBase: 1000),
   SeedUnit('xicara', 'xícara', 'xícaras', 'volume',
       baseUnitCode: 'ml', factorToBase: 240),
   SeedUnit('xicara_cha', 'xícara de chá', 'xícaras de chá', 'volume',

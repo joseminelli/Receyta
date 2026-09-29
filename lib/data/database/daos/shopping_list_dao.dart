@@ -74,11 +74,33 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// A lista mais recente — E3 não tem seletor de "qual lista" ainda
+  /// (múltiplas listas simultâneas é RF-05.9, Could); mostra sempre a
+  /// última gerada.
+  Stream<ShoppingListRow?> watchMostRecent() {
+    return (select(shoppingLists)
+          ..orderBy([(l) => OrderingTerm.desc(l.createdAt)])
+          ..limit(1))
+        .watchSingleOrNull();
+  }
+
   Future<List<ShoppingListItemRow>> itemsOf(String listId) {
     return (select(shoppingListItems)
           ..where((i) => i.listId.equals(listId))
           ..orderBy([(i) => OrderingTerm.asc(i.position)]))
         .get();
+  }
+
+  Stream<List<ShoppingListItemRow>> watchItems(String listId) {
+    return (select(shoppingListItems)
+          ..where((i) => i.listId.equals(listId))
+          ..orderBy([(i) => OrderingTerm.asc(i.position)]))
+        .watch();
+  }
+
+  Future<int> setChecked(String itemId, bool checked) {
+    return (update(shoppingListItems)..where((i) => i.id.equals(itemId)))
+        .write(ShoppingListItemsCompanion(checked: Value(checked)));
   }
 
   Future<List<ShoppingItemSourceRow>> sourcesOf(List<String> itemIds) {

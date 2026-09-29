@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/result.dart';
@@ -64,6 +65,7 @@ class ShoppingListRepository {
           await _dao.create(name: listName, items: aggregated, at: at);
       return Ok(_listToDomain(row));
     } catch (e) {
+      debugPrint('ShoppingListRepository.generateFromRecipes: $e');
       return Err(DatabaseFailure('Falha ao gerar a lista', cause: e));
     }
   }
@@ -71,10 +73,39 @@ class ShoppingListRepository {
   Stream<List<ShoppingList>> watchAll() =>
       _dao.watchAll().map((rows) => rows.map(_listToDomain).toList());
 
+  /// A lista mais recente, ao vivo — E3 mostra sempre a última gerada (sem
+  /// seletor de lista ainda, RF-05.9 fica pra depois).
+  Stream<ShoppingList?> watchMostRecent() {
+    return _dao
+        .watchMostRecent()
+        .map((r) => r == null ? null : _listToDomain(r));
+  }
+
+  Future<Result<void>> setChecked(String itemId, bool checked) async {
+    try {
+      await _dao.setChecked(itemId, checked);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao marcar item', cause: e));
+    }
+  }
+
   /// Itens de uma lista, já com o nome de exibição e a origem resolvidos
   /// (catálogo + receitas) — quem chama não faz join nenhum sozinho.
   Future<List<ShoppingListItem>> itemsOf(String listId) async {
     final items = await _dao.itemsOf(listId);
+    return _resolveItems(items);
+  }
+
+  /// Mesma resolução de [itemsOf], mas ao vivo — reemite quando um item é
+  /// marcado/desmarcado ou a lista ganha itens novos.
+  Stream<List<ShoppingListItem>> watchItems(String listId) {
+    return _dao.watchItems(listId).asyncMap(_resolveItems);
+  }
+
+  Future<List<ShoppingListItem>> _resolveItems(
+    List<ShoppingListItemRow> items,
+  ) async {
     if (items.isEmpty) return const [];
 
     final ingredientIds = {

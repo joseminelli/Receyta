@@ -8,6 +8,7 @@ import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
+import 'package:receyta/features/shopping/screens/shopping_list_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
@@ -15,7 +16,7 @@ import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Casca do app: as quatro seções (§9.2) sob a `PillNavBar` flutuante
-/// (§9.8). Semana e Compras são placeholder até os blocos F e E.
+/// (§9.8). Semana é placeholder até o bloco F; Compras já é real (E3).
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
 
@@ -121,11 +122,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 icon: Icons.calendar_today_rounded,
                 color: colors.violet,
               ),
-              _ComingSoon(
-                'Compras',
-                icon: Icons.shopping_bag_outlined,
-                color: colors.lime,
-              ),
+              const ShoppingListPage(),
               const AccountPage(),
             ],
           ),

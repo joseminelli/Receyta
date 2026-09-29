@@ -101,6 +101,51 @@ void main() {
     expect(items, hasLength(6));
   });
 
+  test(
+      '"meia xícara" e "2 e meia xícara" por extenso somam certo '
+      '(achado pelo usuário gerando lista de verdade)', () async {
+    final a = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Panqueca',
+      ingredientLines: ['meia xícara de farinha'],
+    ));
+    final b = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['2 e meia xícara de farinha'],
+    ));
+
+    final list =
+        unwrapList(await shoppingRepo.generateFromRecipes([a.id, b.id]));
+    final items = await shoppingRepo.itemsOf(list.id);
+
+    // 0,5 + 2,5 = 3 xícaras = 720ml (abaixo de 1000, não sobe pra litro).
+    expect(items, hasLength(1));
+    expect(items.single.quantity, closeTo(720, 0.0001));
+    expect(items.single.unitId, 'ml');
+  });
+
+  test(
+      'receita com o mesmo ingrediente em 2 linhas não quebra a PK '
+      'composta de shopping_item_sources (achado em produção)', () async {
+    final recipe = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Pão caseiro',
+      ingredientLines: [
+        '1 xícara de farinha',
+        '1 xícara de farinha', // pra polvilhar — mesma receita, linha repetida
+      ],
+    ));
+
+    // Não deve lançar `SqliteException` de UNIQUE constraint.
+    final list = unwrapList(
+      await shoppingRepo.generateFromRecipes([recipe.id]),
+    );
+    final items = await shoppingRepo.itemsOf(list.id);
+
+    expect(items, hasLength(1));
+    expect(items.single.quantity, closeTo(480, 0.0001)); // 2 xícaras = 480ml
+    expect(items.single.sources, hasLength(1));
+    expect(items.single.sources.single.recipeId, recipe.id);
+  });
+
   test('recusa lista sem receita nenhuma', () async {
     final result = await shoppingRepo.generateFromRecipes(const []);
     expect(result, isA<Err<ShoppingList>>());

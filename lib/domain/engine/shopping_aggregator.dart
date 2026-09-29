@@ -92,10 +92,6 @@ AggregatedIngredient _mergeBucket(
   String ingredientKey,
   List<RecipeIngredient> bucket,
 ) {
-  final sources = [
-    for (final b in bucket)
-      (recipeId: b.recipeId, quantity: b.quantity, unitId: b.unitId),
-  ];
   final first = bucket.first;
   final displayName = first.ingredientName ?? first.rawText;
 
@@ -105,7 +101,7 @@ AggregatedIngredient _mergeBucket(
       displayName: displayName,
       quantity: null,
       unitCode: first.unitId,
-      sources: sources,
+      sources: _mergeSourcesByRecipe(bucket, null),
     );
   }
 
@@ -121,8 +117,44 @@ AggregatedIngredient _mergeBucket(
     displayName: displayName,
     quantity: quantity,
     unitCode: unitCode,
-    sources: sources,
+    sources: _mergeSourcesByRecipe(bucket, baseCode),
   );
+}
+
+/// Uma linha por receita: `ShoppingItemSources` tem chave composta
+/// (item, receita) — se a MESMA receita contribuir com mais de uma linha
+/// pro mesmo balde (achado testando: "farinha" duas vezes na mesma receita,
+/// uma seção e depois pra polvilhar), inserir as duas quebraria essa chave
+/// única. Funde na unidade-base quando dá pra somar; sem receita repetida
+/// (o caso comum) mantém a unidade original de cada linha, sem conversão à
+/// toa.
+List<ShoppingSourceLine> _mergeSourcesByRecipe(
+  List<RecipeIngredient> bucket,
+  String? baseCode,
+) {
+  final byRecipe = <String, List<RecipeIngredient>>{};
+  for (final line in bucket) {
+    byRecipe.putIfAbsent(line.recipeId, () => []).add(line);
+  }
+
+  return [
+    for (final entry in byRecipe.entries)
+      if (entry.value.length == 1 || baseCode == null)
+        (
+          recipeId: entry.key,
+          quantity: entry.value.last.quantity,
+          unitId: entry.value.last.unitId,
+        )
+      else
+        (
+          recipeId: entry.key,
+          quantity: entry.value.fold<double>(
+            0,
+            (sum, l) => sum + l.quantity! * _factorToBase(l.unitId!),
+          ),
+          unitId: baseCode,
+        ),
+  ];
 }
 
 /// Sobe pra `kg`/`l` acima de 1000 na base de massa/volume (500g + 800g vira

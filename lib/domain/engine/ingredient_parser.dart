@@ -69,6 +69,13 @@ final _mixedUnicodeFractionWithERegex = RegExp(
 final _mixedUnicodeFractionRegex =
     RegExp('^(\\d+)\\s*([${_fractionChars.keys.join()}])\\s*');
 final _unicodeFractionRegex = RegExp('^([${_fractionChars.keys.join()}])\\s*');
+// "meia"/"meio" por extenso (§ achado testando: "meia xícara", "2 e meia
+// xícara") — concordância de gênero com o substantivo que vem depois
+// ("meia xícara", "meio copo"), então aceita os dois pra 0,5. `\b` barra
+// virar prefixo de outra palavra ("meiota" não vira "mei" + "ota").
+final _mixedWordHalfRegex =
+    RegExp(r'^(\d+)\s+e\s+mei[ao]\b\s*', caseSensitive: false);
+final _wordHalfRegex = RegExp(r'^mei[ao]\b\s*', caseSensitive: false);
 final _decimalRegex = RegExp(r'^(\d+[.,]\d+)\s*');
 final _integerRegex = RegExp(r'^(\d+)\s*');
 
@@ -190,9 +197,20 @@ ParsedIngredientLine parseIngredientLine(
     return (whole + _fractionChars[m.group(2)!]!, text.substring(m.end));
   }
 
+  m = _mixedWordHalfRegex.firstMatch(text);
+  if (m != null) {
+    final whole = int.parse(m.group(1)!);
+    return (whole + 0.5, text.substring(m.end));
+  }
+
   m = _unicodeFractionRegex.firstMatch(text);
   if (m != null) {
     return (_fractionChars[m.group(1)!]!, text.substring(m.end));
+  }
+
+  m = _wordHalfRegex.firstMatch(text);
+  if (m != null) {
+    return (0.5, text.substring(m.end));
   }
 
   m = _decimalRegex.firstMatch(text);

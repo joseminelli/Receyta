@@ -37,6 +37,33 @@ void main() {
     expect(r.name, 'açúcar');
   });
 
+  test('"meia" por extenso (achado gerando lista de compras)', () {
+    final r = parseIngredientLine('meia xícara de farinha');
+    expect(r.quantity, 0.5);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'farinha');
+  });
+
+  test('"meio" por extenso (concordância com substantivo masculino)', () {
+    final r = parseIngredientLine('meio copo de leite');
+    expect(r.quantity, 0.5);
+    expect(r.unitCode, 'copo');
+    expect(r.name, 'leite');
+  });
+
+  test('número misto com "e meia" por extenso', () {
+    final r = parseIngredientLine('2 e meia xícara de farinha');
+    expect(r.quantity, 2.5);
+    expect(r.unitCode, 'xicara');
+    expect(r.name, 'farinha');
+  });
+
+  test('"meia" não vira quantidade quando é prefixo de outra palavra', () {
+    final r = parseIngredientLine('meiota de queijo');
+    expect(r.quantity, isNull);
+    expect(r.name, 'meiota de queijo');
+  });
+
   test('decimal com vírgula', () {
     final r = parseIngredientLine('1,5 kg de peito de frango');
     expect(r.quantity, 1.5);

@@ -10,6 +10,7 @@ import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/sweep_strike_text.dart';
 
 /// Modo cozinha mínimo (RF-01.11 / G1 parcial): superfície escura reaproveitada
 /// de Compras, tela que não apaga (wakelock), passos numa lista de corpo grande
@@ -443,7 +444,7 @@ class _StepCard extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(top: AppSpacing.xs / 2),
-                    child: _SweepStrikeText(
+                    child: SweepStrikeText(
                       text: text,
                       done: done,
                       style: context.texts.bodyLarge?.copyWith(
@@ -462,55 +463,6 @@ class _StepCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Texto de passo com risco animado: em vez do `TextDecoration.lineThrough`
-/// instantâneo, uma linha varre da esquerda pra direita ao marcar feito (e
-/// recolhe do mesmo jeito ao desmarcar) — `TextStyle.lerp` não anima
-/// decoration suavemente (é um salto), então o traço é desenhado à parte,
-/// por cima do texto, com a largura controlada por um `TweenAnimationBuilder`.
-class _SweepStrikeText extends StatelessWidget {
-  const _SweepStrikeText({
-    required this.text,
-    required this.done,
-    required this.style,
-    required this.lineColor,
-  });
-
-  final String text;
-  final bool done;
-  final TextStyle? style;
-  final Color lineColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.centerLeft,
-      children: [
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          style: style ?? const TextStyle(),
-          child: Text(text),
-        ),
-        TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: done ? 1.0 : 0.0),
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          builder: (context, t, _) {
-            if (t == 0) return const SizedBox.shrink();
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: t,
-                child: Container(height: 2, color: lineColor),
-              ),
-            );
-          },
-        ),
-      ],
     );
   }
 }

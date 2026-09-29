@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/home_shell.dart';
 import 'package:receyta/theme/app_theme.dart';
 
@@ -19,6 +21,10 @@ Widget _host() => ProviderScope(
         tagsWithCountsProvider.overrideWith(
           (ref) => Stream.value(const <({Tag tag, int count})>[]),
         ),
+        // A aba Compras é montada de cara pelo `IndexedStack`, mesmo sem
+        // trocar de aba — sem isto cairia no banco de verdade.
+        currentShoppingListProvider
+            .overrideWith((ref) => Stream.value(null as ShoppingList?)),
       ],
       child: MaterialApp(theme: AppTheme.light(), home: const HomeShell()),
     );
@@ -42,7 +48,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('Compras'));
+    await tester.tap(find.bySemanticsLabel('Semana'));
     await tester.pumpAndSettle();
     expect(find.text('Em breve'), findsOneWidget);
 
@@ -51,6 +57,19 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Receitas'));
     await tester.pumpAndSettle();
     expect(find.text('Em breve'), findsNothing);
+  });
+
+  testWidgets('aba Compras mostra a tela de compras de verdade (não placeholder)',
+      (tester) async {
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel('Compras'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Em breve'), findsNothing);
+    expect(find.text('Nenhuma lista ainda'), findsOneWidget);
+    expect(find.text('Gerar lista'), findsOneWidget);
   });
 
   testWidgets('aba Conta mostra o placeholder de perfil e o botão de config',

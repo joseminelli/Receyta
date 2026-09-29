@@ -9,6 +9,7 @@ import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/widgets/sweep_strike_text.dart';
 
 RecipeDetail _detail({List<RecipeStep> steps = _steps}) => RecipeDetail(
       recipe: Recipe(
@@ -68,9 +69,6 @@ Future<void> _open(WidgetTester tester, RecipeDetail? detail) async {
   await tester.pumpAndSettle();
 }
 
-Text _stepText(WidgetTester tester, String text) =>
-    tester.widget<Text>(find.text(text));
-
 void main() {
   testWidgets('lista todos os passos e os ingredientes de cara', (tester) async {
     await _open(tester, _detail());
@@ -95,18 +93,19 @@ void main() {
       (tester) async {
     await _open(tester, _detail());
 
-    expect(
-      _stepText(tester, 'Tempere o frango').style?.decoration,
-      isNot(TextDecoration.lineThrough),
-    );
+    // O risco é uma linha animada por cima do texto (`SweepStrikeText`),
+    // não mais `TextDecoration.lineThrough` (que não anima suavemente) —
+    // checa a prop `done` do widget, não o `TextStyle` renderizado.
+    SweepStrikeText stepStrike() => tester.widget<SweepStrikeText>(
+          find.widgetWithText(SweepStrikeText, 'Tempere o frango'),
+        );
+
+    expect(stepStrike().done, isFalse);
 
     await tester.tap(find.text('Tempere o frango'));
     await tester.pumpAndSettle();
 
-    expect(
-      _stepText(tester, 'Tempere o frango').style?.decoration,
-      TextDecoration.lineThrough,
-    );
+    expect(stepStrike().done, isTrue);
   });
 
   testWidgets('sem passos, mostra aviso e mantém ingredientes', (tester) async {

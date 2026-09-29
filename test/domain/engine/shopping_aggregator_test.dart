@@ -147,6 +147,39 @@ void main() {
     expect(result.every((r) => r.sources.length == 1), isTrue);
   });
 
+  test(
+      'a mesma receita repetindo a mesma linha de ingrediente funde numa '
+      'única origem (achado em produção: violava a chave única de '
+      'shopping_item_sources)', () {
+    final result = aggregateIngredients([
+      _line(
+        recipeId: 'r1',
+        ingredientId: 'farinha',
+        rawText: '1 xícara de farinha, pra massa',
+        quantity: 1,
+        unitId: 'xicara',
+      ),
+      _line(
+        recipeId: 'r1',
+        ingredientId: 'farinha',
+        rawText: '1 xícara de farinha, pra polvilhar',
+        quantity: 1,
+        unitId: 'xicara',
+      ),
+    ]);
+
+    expect(result, hasLength(1));
+    // 2 xícaras = 480ml — soma as duas linhas antes de virar origem.
+    expect(result.single.quantity, closeTo(480, 0.0001));
+    expect(result.single.unitCode, 'ml');
+    // Uma origem só por receita, mesmo vindo de 2 linhas — senão a
+    // inserção em `shopping_item_sources` quebra a PK (item_id, recipe_id).
+    expect(result.single.sources, hasLength(1));
+    expect(result.single.sources.single.recipeId, 'r1');
+    expect(result.single.sources.single.quantity, closeTo(480, 0.0001));
+    expect(result.single.sources.single.unitId, 'ml');
+  });
+
   test('ingredientes diferentes nunca se misturam', () {
     final result = aggregateIngredients([
       _line(recipeId: 'r1', ingredientId: 'alho', quantity: 2, unitId: 'dente'),
