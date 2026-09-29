@@ -336,11 +336,19 @@ class _RecipeList extends StatelessWidget {
         AppSpacing.md,
       ),
       sliver: SliverToBoxAdapter(
-        child: DraggableRecipe(
-          recipe: featured,
-          child: FeaturedRecipeCard(
+        // Key por id: ao trocar o filtro, se o destaque virar outra receita,
+        // o Flutter vê como um elemento novo e o fade de entrada dispara —
+        // sem a key, ficaria só trocando o conteúdo do mesmo elemento, sem
+        // reanimar (a troca de filtro continuaria cortando seco).
+        child: _EntranceFade(
+          key: ValueKey(featured.id),
+          child: DraggableRecipe(
             recipe: featured,
-            onTap: () => context.push('/recipe/${featured.id}', extra: featured),
+            child: FeaturedRecipeCard(
+              recipe: featured,
+              onTap: () =>
+                  context.push('/recipe/${featured.id}', extra: featured),
+            ),
           ),
         ),
       ),
@@ -363,15 +371,44 @@ class _RecipeList extends StatelessWidget {
           childAspectRatio: 0.78,
         ),
         delegate: SliverChildBuilderDelegate(
-          (context, i) => DraggableRecipe(
-            recipe: rest[i],
-            child: RecipeCard(
+          (context, i) => _EntranceFade(
+            key: ValueKey(rest[i].id),
+            child: DraggableRecipe(
               recipe: rest[i],
-              onTap: () => context.push('/recipe/${rest[i].id}', extra: rest[i]),
+              child: RecipeCard(
+                recipe: rest[i],
+                onTap: () =>
+                    context.push('/recipe/${rest[i].id}', extra: rest[i]),
+              ),
             ),
           ),
           childCount: rest.length,
         ),
+      ),
+    );
+  }
+}
+
+/// Fade + leve crescimento na entrada — cobre tanto o primeiro carregamento
+/// quanto um card novo aparecendo depois de trocar o filtro de tags (que
+/// antes cortava seco). Sem key própria: quem usa passa `key:
+/// ValueKey(recipe.id)`, senão o Flutter reaproveita o elemento e nunca
+/// reanima ao trocar de receita na mesma posição da grade.
+class _EntranceFade extends StatelessWidget {
+  const _EntranceFade({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+      child: child,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.scale(scale: 0.94 + 0.06 * t, child: child),
       ),
     );
   }

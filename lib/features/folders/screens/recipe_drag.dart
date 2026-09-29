@@ -321,11 +321,15 @@ class FolderDropZone extends ConsumerWidget {
       scale: active ? 1.06 : 1,
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
-      child: DecoratedBox(
+      // `AnimatedContainer` em vez de `DecoratedBox`: o anel entrava/sumia
+      // na hora, sem acompanhar o `AnimatedScale` do resto do tile.
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
         decoration: BoxDecoration(
           borderRadius: borderRadius,
           border: Border.all(
-            color: active ? colors.lime : Colors.transparent,
+            color: active ? colors.lime : colors.lime.withValues(alpha: 0),
             width: 3,
           ),
         ),
