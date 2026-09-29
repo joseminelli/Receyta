@@ -201,7 +201,7 @@ void main() {
     expect(manual.position, 2);
   });
 
-  test('clearChecked apaga só os marcados e diz quantos', () async {
+  test('deleteItem tira só aquele item e leva as origens junto', () async {
     final recipe = unwrapRecipe(await recipeRepo.saveDetail(
       name: 'Bolo',
       ingredientLines: ['1 ovo', '300g de farinha de trigo', '2 tomates'],
@@ -209,14 +209,12 @@ void main() {
     final list =
         unwrapList(await shoppingRepo.generateFromRecipes([recipe.id]));
     final items = await shoppingRepo.itemsOf(list.id);
-    await shoppingRepo.setChecked(items[0].id, true);
-    await shoppingRepo.setChecked(items[1].id, true);
 
-    final result = await shoppingRepo.clearChecked(list.id);
-    expect((result as Ok<int>).value, 2);
+    final result = await shoppingRepo.deleteItem(items[1].id);
+    expect(result, isA<Ok<void>>());
 
     final left = await shoppingRepo.itemsOf(list.id);
-    expect(left.single.id, items[2].id);
+    expect(left.map((i) => i.id), [items[0].id, items[2].id]);
   });
 
   test('avulso vazio é recusado', () async {

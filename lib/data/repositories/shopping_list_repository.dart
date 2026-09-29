@@ -92,13 +92,14 @@ class ShoppingListRepository {
     }
   }
 
-  /// Remove os itens marcados como comprados; devolve quantos saíram.
-  Future<Result<int>> clearChecked(String listId) async {
+  /// Tira um item da lista.
+  Future<Result<void>> deleteItem(String itemId) async {
     try {
-      return Ok(await _dao.deleteChecked(listId));
+      await _dao.deleteItem(itemId);
+      return const Ok(null);
     } catch (e) {
-      debugPrint('ShoppingListRepository.clearChecked: $e');
-      return Err(DatabaseFailure('Falha ao limpar os itens', cause: e));
+      debugPrint('ShoppingListRepository.deleteItem: $e');
+      return Err(DatabaseFailure('Falha ao tirar o item', cause: e));
     }
   }
 

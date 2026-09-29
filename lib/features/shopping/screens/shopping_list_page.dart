@@ -61,71 +61,6 @@ class ShoppingListPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _openMenu(
-    BuildContext context,
-    WidgetRef ref,
-    ShoppingList list,
-  ) {
-    final checked = (ref.read(shoppingListItemsProvider(list.id)).valueOrNull ??
-            const <ShoppingListItem>[])
-        .where((i) => i.checked)
-        .length;
-    return showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              enabled: checked > 0,
-              leading: const Icon(Icons.done_all),
-              title: const Text('Limpar itens marcados'),
-              subtitle: Text(
-                checked == 0
-                    ? 'Nenhum item marcado'
-                    : checked == 1
-                        ? '1 item comprado sai da lista'
-                        : '$checked itens comprados saem da lista',
-              ),
-              onTap: () {
-                Navigator.of(sheet).pop();
-                _clearChecked(context, ref, list, checked);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _clearChecked(
-    BuildContext context,
-    WidgetRef ref,
-    ShoppingList list,
-    int count,
-  ) async {
-    final confirmed = await AppDialog.confirm(
-      context,
-      icon: Icons.done_all,
-      accent: context.colors.danger,
-      title: 'Limpar itens marcados?',
-      message: count == 1
-          ? 'O item comprado sai da lista. Isso não dá para desfazer.'
-          : 'Os $count itens comprados saem da lista. Isso não dá para '
-              'desfazer.',
-      confirmLabel: 'Limpar',
-    );
-    if (!confirmed) return;
-    final result =
-        await ref.read(shoppingListRepositoryProvider).clearChecked(list.id);
-    result.when(
-      ok: (_) {},
-      err: (f) => showAppSnackBar(
-          message: f.message, variant: AppSnackBarVariant.error),
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
@@ -199,14 +134,6 @@ class ShoppingListPage extends ConsumerWidget {
             tooltip: 'Gerar lista',
             onTap: () => _generate(context, ref),
           ),
-          if (list != null) ...[
-            const SizedBox(width: AppSpacing.xs),
-            CircleIconButton(
-              icon: Icons.more_horiz,
-              tooltip: 'Mais opções',
-              onTap: () => _openMenu(context, ref, list),
-            ),
-          ],
         ],
       ),
     );
@@ -306,6 +233,17 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
   final _phase = <String, _MovePhase>{};
   final _timers = <String, Timer>{};
 
+  /// Itens já deslizados pra fora: somem da tela na hora (o `Dismissible`
+  /// exige isso) enquanto o banco ainda apaga e o stream não reemitiu.
+  final _removed = <String>{};
+
+  List<ShoppingListItem> get _visible =>
+      [for (final i in widget.items) if (!_removed.contains(i.id)) i];
+
+  void _setRemoved(String id, {required bool removed}) {
+    setState(() => removed ? _removed.add(id) : _removed.remove(id));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -334,7 +272,8 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
       _phase.remove(gone);
       _timers.remove(gone)?.cancel();
     }
-    for (final item in widget.items) {
+    _removed.removeWhere((id) => !ids.contains(id));
+    for (final item in _visible) {
       final known = _sortState[item.id];
       if (known == null) {
         _sortState[item.id] = item.checked;
@@ -351,8 +290,7 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
   /// dado estado de ordenação.
   List<String> _visualOrder(Map<String, bool> state) {
     final proxied = [
-      for (final i in widget.items)
-        i.copyWith(checked: state[i.id] ?? i.checked),
+      for (final i in _visible) i.copyWith(checked: state[i.id] ?? i.checked),
     ];
     return [
       for (final g in groupShoppingItems(proxied, sinkChecked: true))
@@ -394,13 +332,14 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
 
   @override
   Widget build(BuildContext context) {
-    final actualById = {for (final i in widget.items) i.id: i};
+    final visible = _visible;
+    final actualById = {for (final i in visible) i.id: i};
     final forSorting = [
-      for (final i in widget.items)
+      for (final i in visible)
         i.copyWith(checked: _sortState[i.id] ?? i.checked),
     ];
 
-    final children = <Widget>[_ProgressHeader(items: widget.items)];
+    final children = <Widget>[_ProgressHeader(items: visible)];
     for (final group in groupShoppingItems(forSorting, sinkChecked: true)) {
       final rows = [for (final i in group.items) actualById[i.id]!];
       children.add(_SectionHeader(label: group.label, items: rows));
@@ -413,7 +352,11 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
             movingDown: item.checked,
             leaveDuration: _leaveDuration,
             enterDuration: _enterDuration,
-            child: _ItemRow(item: item),
+            child: _ItemRow(
+              item: item,
+              onRemoved: (removed) =>
+                  _setRemoved(item.id, removed: removed),
+            ),
           ),
         );
       }
@@ -571,21 +514,84 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+/// Linha do item. Toque ou deslizar pra direita marca/desmarca (a linha volta
+/// pro lugar); deslizar pra esquerda tira da lista, depois de confirmar.
 class _ItemRow extends ConsumerWidget {
-  const _ItemRow({required this.item});
+  const _ItemRow({required this.item, required this.onRemoved});
 
   final ShoppingListItem item;
 
+  /// Esconde (true) ou traz de volta (false) a linha na tela — o pai guarda.
+  final ValueChanged<bool> onRemoved;
+
+  void _toggle(WidgetRef ref) {
+    HapticFeedback.selectionClick();
+    ref.read(shoppingListRepositoryProvider).setChecked(item.id, !item.checked);
+  }
+
+  Future<bool> _confirmRemove(BuildContext context) {
+    HapticFeedback.mediumImpact();
+    return AppDialog.confirm(
+      context,
+      icon: Icons.remove_shopping_cart_outlined,
+      accent: context.colors.danger,
+      title: 'Tirar "${item.displayName}" da lista?',
+      message: 'O item sai da lista. Isso não dá para desfazer.',
+      confirmLabel: 'Tirar',
+    );
+  }
+
+  Future<void> _remove(WidgetRef ref) async {
+    onRemoved(true);
+    final result =
+        await ref.read(shoppingListRepositoryProvider).deleteItem(item.id);
+    result.when(
+      ok: (_) {},
+      err: (f) {
+        onRemoved(false);
+        showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    return Dismissible(
+      key: ValueKey('swipe-${item.id}'),
+      dismissThresholds: const {
+        DismissDirection.startToEnd: 0.25,
+        DismissDirection.endToStart: 0.4,
+      },
+      background: _SwipeBackground(
+        alignment: Alignment.centerLeft,
+        icon: item.checked ? Icons.undo : Icons.check,
+        label: item.checked ? 'Desmarcar' : 'Marcar',
+        color: context.colors.lime,
+      ),
+      secondaryBackground: _SwipeBackground(
+        alignment: Alignment.centerRight,
+        icon: Icons.delete_outline,
+        label: 'Tirar',
+        color: context.colors.danger,
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          _toggle(ref);
+          return false;
+        }
+        return _confirmRemove(context);
+      },
+      onDismissed: (_) => _remove(ref),
+      child: _buildContent(context, ref),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final done = item.checked;
 
     return InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        ref.read(shoppingListRepositoryProvider).setChecked(item.id, !done);
-      },
+      onTap: () => _toggle(ref),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         decoration: BoxDecoration(
@@ -668,6 +674,44 @@ class _ItemRow extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Fundo revelado ao deslizar a linha: superfície neutra, só o ícone e o
+/// rótulo levam a cor da ação (fundo nunca tingido).
+class _SwipeBackground extends StatelessWidget {
+  const _SwipeBackground({
+    required this.alignment,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final Alignment alignment;
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final leading = alignment == Alignment.centerLeft;
+    final children = [
+      Icon(icon, color: color),
+      const SizedBox(width: AppSpacing.xs),
+      Text(
+        label,
+        style: context.texts.labelLarge?.copyWith(color: color),
+      ),
+    ];
+    return Container(
+      color: context.colors.inkSoft,
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: leading ? children : children.reversed.toList(),
+      ),
     );
   }
 }
