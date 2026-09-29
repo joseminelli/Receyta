@@ -110,6 +110,25 @@ class ShoppingListRepository {
     }
   }
 
+  /// Duplica a lista ("Nome (cópia)") com os itens desmarcados.
+  Future<Result<ShoppingList>> duplicate(String id) async {
+    try {
+      final original = await _dao.watchById(id).first;
+      if (original == null) {
+        return const Err(NotFoundFailure('Lista não encontrada.'));
+      }
+      final row = await _dao.duplicate(
+        id,
+        name: '${original.name} (cópia)',
+        at: _clock().toUtc(),
+      );
+      return Ok(_listToDomain(row));
+    } catch (e) {
+      debugPrint('ShoppingListRepository.duplicate: $e');
+      return Err(DatabaseFailure('Falha ao duplicar a lista', cause: e));
+    }
+  }
+
   Future<Result<void>> rename(String id, String name) async {
     final trimmed = name.trim();
     if (trimmed.isEmpty) {

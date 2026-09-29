@@ -19,6 +19,7 @@ import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/sweep_strike_text.dart';
 
 /// Largura fixa da coluna de quantidade — alinha os números em coluna.
@@ -132,10 +133,10 @@ class ShoppingListPage extends ConsumerWidget {
         children: [
           Expanded(
             child: items.isEmpty
-                ? _buildMessage(context, 'Lista vazia.')
+                ? const _EmptyListHint()
                 : _buildGroups(context, items),
           ),
-          _AddItemBar(listId: list.id),
+          _AddItemBar(listId: list.id, autofocus: items.isEmpty),
         ],
       ),
     );
@@ -499,13 +500,13 @@ class _ItemRow extends ConsumerWidget {
         DismissDirection.startToEnd: 0.25,
         DismissDirection.endToStart: 0.4,
       },
-      background: _SwipeBackground(
+      background: SwipeActionBackground(
         alignment: Alignment.centerLeft,
         icon: item.checked ? Icons.undo : Icons.check,
         label: item.checked ? 'Desmarcar' : 'Marcar',
         color: context.colors.lime,
       ),
-      secondaryBackground: _SwipeBackground(
+      secondaryBackground: SwipeActionBackground(
         alignment: Alignment.centerRight,
         icon: Icons.delete_outline,
         label: 'Tirar',
@@ -615,44 +616,6 @@ class _ItemRow extends ConsumerWidget {
   }
 }
 
-/// Fundo revelado ao deslizar a linha: superfície neutra, só o ícone e o
-/// rótulo levam a cor da ação (fundo nunca tingido).
-class _SwipeBackground extends StatelessWidget {
-  const _SwipeBackground({
-    required this.alignment,
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final Alignment alignment;
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final leading = alignment == Alignment.centerLeft;
-    final children = [
-      Icon(icon, color: color),
-      const SizedBox(width: AppSpacing.xs),
-      Text(
-        label,
-        style: context.texts.labelLarge?.copyWith(color: color),
-      ),
-    ];
-    return Container(
-      color: context.colors.inkSoft,
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: leading ? children : children.reversed.toList(),
-      ),
-    );
-  }
-}
-
 /// Receita de origem como etiqueta só de contorno (fundo nunca tingido).
 class _OriginChip extends StatelessWidget {
   const _OriginChip({required this.name, required this.dim});
@@ -750,12 +713,66 @@ class _CheckDotState extends State<_CheckDot>
   }
 }
 
+/// Estado da lista sem itens: diz o que fazer e mostra exemplos do que o
+/// campo de baixo entende (quantidade e unidade saem do texto).
+class _EmptyListHint extends StatelessWidget {
+  const _EmptyListHint();
+
+  static const _examples = ['2 caixas de leite', '500 g de queijo', 'pão'];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final muted = colors.onSaturated.withValues(alpha: 0.7);
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.playlist_add, size: 56, color: colors.lime),
+            const SizedBox(height: AppSpacing.lg),
+            Text(
+              'Sua lista está vazia',
+              style: context.texts.displaySmall
+                  ?.copyWith(color: colors.onSaturated),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Digite o que precisa comprar no campo abaixo. A quantidade e '
+              'a unidade o app entende sozinho.',
+              style: context.texts.bodyMedium?.copyWith(color: muted),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final e in _examples) _OriginChip(name: e, dim: false),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Icon(Icons.arrow_downward, size: 20, color: muted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Campo de item avulso: pílula do mesmo estilo da navbar; o `+` só aparece
 /// com texto digitado.
 class _AddItemBar extends ConsumerStatefulWidget {
-  const _AddItemBar({required this.listId});
+  const _AddItemBar({required this.listId, this.autofocus = false});
 
   final String listId;
+
+  /// Lista recém-criada e vazia: o próximo passo óbvio é digitar, então o
+  /// teclado já abre. Só vale na montagem do campo.
+  final bool autofocus;
 
   @override
   ConsumerState<_AddItemBar> createState() => _AddItemBarState();
@@ -795,6 +812,7 @@ class _AddItemBarState extends ConsumerState<_AddItemBar> {
       ),
       child: TextField(
         controller: _controller,
+        autofocus: widget.autofocus,
         textInputAction: TextInputAction.done,
         textCapitalization: TextCapitalization.sentences,
         onSubmitted: (_) => _submit(),

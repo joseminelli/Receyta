@@ -119,6 +119,30 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
     return list;
   }
 
+  /// Copia a lista com os itens (todos desmarcados) e as origens, numa
+  /// transação — a "mesma compra da semana passada" em um gesto.
+  Future<ShoppingListRow> duplicate(
+    String id, {
+    required String name,
+    required DateTime at,
+  }) {
+    return transaction(() async {
+      final copy = await createEmpty(name: name, at: at);
+      final items = await itemsOf(id);
+      final sources = await sourcesOf([for (final i in items) i.id]);
+      for (final item in items) {
+        final newId = _uuid.v4();
+        await into(shoppingListItems).insert(
+          item.copyWith(id: newId, listId: copy.id, checked: false),
+        );
+        for (final s in sources.where((s) => s.itemId == item.id)) {
+          await into(shoppingItemSources).insert(s.copyWith(itemId: newId));
+        }
+      }
+      return copy;
+    });
+  }
+
   Future<int> rename(String id, String name, DateTime at) {
     return (update(shoppingLists)..where((l) => l.id.equals(id))).write(
       ShoppingListsCompanion(name: Value(name), updatedAt: Value(at)),

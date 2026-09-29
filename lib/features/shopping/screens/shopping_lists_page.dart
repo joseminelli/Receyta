@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,35 +16,53 @@ import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
+import 'package:receyta/widgets/swipe_action_background.dart';
 
 /// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
 /// home_shell usa `extendBody`, então a aba desenha por baixo dela.
 const _navBarClearance = 96.0;
 
-/// Aba "Compras" (RF-05.9): as suas listas, da mais nova pra mais antiga.
-/// Tocar numa abre `ShoppingListPage`; criar uma nova é a partir de receitas
-/// (agrega os ingredientes) ou em branco (itens avulsos).
-class ShoppingListsPage extends ConsumerWidget {
+/// Aba "Compras" (RF-05.9): as suas listas, "Em andamento" primeiro e
+/// "Concluídas" (tudo marcado) por último. Tocar abre `ShoppingListPage`;
+/// deslizar pra direita duplica, pra esquerda exclui (com confirmação).
+/// Criar uma nova é a partir de receitas (agrega os ingredientes) ou em
+/// branco (itens avulsos).
+class ShoppingListsPage extends ConsumerStatefulWidget {
   const ShoppingListsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShoppingListsPage> createState() => _ShoppingListsPageState();
+}
+
+class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
+  /// Listas já deslizadas pra fora: somem da tela na hora (o `Dismissible`
+  /// exige isso) enquanto o banco ainda apaga e o stream não reemitiu.
+  final _removed = <String>{};
+
+  ShoppingListRepository get _repo => ref.read(shoppingListRepositoryProvider);
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final listsAsync = ref.watch(shoppingListsProvider);
+    final lists = [
+      for (final s in listsAsync.valueOrNull ?? const <ShoppingListSummary>[])
+        if (!_removed.contains(s.list.id)) s,
+    ];
 
     return Scaffold(
       backgroundColor: colors.ink,
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopBar(context, ref),
+            _buildTopBar(context, lists),
             Expanded(
               child: listsAsync.when(
                 loading: () => const Center(child: BrandLoader()),
-                error: (_, __) => _buildMessage(context, 'Não deu para carregar.'),
-                data: (lists) => lists.isEmpty
-                    ? _buildEmpty(context, ref)
-                    : _buildLists(context, ref, lists),
+                error: (_, __) =>
+                    _buildMessage(context, 'Não deu para carregar.'),
+                data: (_) =>
+                    lists.isEmpty ? _buildEmpty(context) : _buildLists(lists),
               ),
             ),
           ],
@@ -52,7 +71,9 @@ class ShoppingListsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, WidgetRef ref) {
+  Widget _buildTopBar(BuildContext context, List<ShoppingListSummary> lists) {
+    final colors = context.colors;
+    final active = lists.where((s) => !_isComplete(s)).length;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -63,20 +84,38 @@ class ShoppingListsPage extends ConsumerWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              'Compras',
-              style: context.texts.displaySmall
-                  ?.copyWith(color: context.colors.onSaturated),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Compras',
+                  style: context.texts.displaySmall
+                      ?.copyWith(color: colors.onSaturated),
+                ),
+                if (lists.isNotEmpty)
+                  Text(
+                    _summaryLine(lists.length, active),
+                    style: context.texts.bodyMedium?.copyWith(
+                      color: colors.onSaturated.withValues(alpha: 0.6),
+                    ),
+                  ),
+              ],
             ),
           ),
           CircleIconButton(
             icon: Icons.add,
             tooltip: 'Nova lista',
-            onTap: () => _openCreateSheet(context, ref),
+            onTap: () => _openCreateSheet(context),
           ),
         ],
       ),
     );
+  }
+
+  String _summaryLine(int total, int active) {
+    final lists = total == 1 ? '1 lista' : '$total listas';
+    if (active == 0) return '$lists · tudo comprado';
+    return '$lists · $active em andamento';
   }
 
   Widget _buildMessage(BuildContext context, String text) {
@@ -89,7 +128,7 @@ class ShoppingListsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmpty(BuildContext context, WidgetRef ref) {
+  Widget _buildEmpty(BuildContext context) {
     final colors = context.colors;
     return Center(
       child: Padding(
@@ -118,13 +157,13 @@ class ShoppingListsPage extends ConsumerWidget {
             PillButton(
               label: 'Gerar de receitas',
               icon: Icons.add_shopping_cart_outlined,
-              onPressed: () => _createFromRecipes(context, ref),
+              onPressed: () => _createFromRecipes(context),
             ),
             const SizedBox(height: AppSpacing.xs),
             PillButton(
               label: 'Lista em branco',
               variant: PillButtonVariant.ghost,
-              onPressed: () => _createEmpty(context, ref),
+              onPressed: () => _createEmpty(context),
             ),
           ],
         ),
@@ -132,29 +171,80 @@ class ShoppingListsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildLists(
-    BuildContext context,
-    WidgetRef ref,
-    List<ShoppingListSummary> lists,
-  ) {
-    return ListView.separated(
+  Widget _buildLists(List<ShoppingListSummary> lists) {
+    final active = [for (final s in lists) if (!_isComplete(s)) s];
+    final done = [for (final s in lists) if (_isComplete(s)) s];
+    final children = <Widget>[
+      if (active.isNotEmpty) ...[
+        _SectionLabel('Em andamento', count: active.length),
+        for (final s in active) _buildCard(s),
+      ],
+      if (done.isNotEmpty) ...[
+        _SectionLabel('Concluídas', count: done.length),
+        for (final s in done) _buildCard(s),
+      ],
+    ];
+    return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
-        AppSpacing.xs,
+        0,
         AppSpacing.screen,
         _navBarClearance,
       ),
-      itemCount: lists.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, i) => _ListCard(
-        summary: lists[i],
-        onOpen: () => context.push('/shopping/${lists[i].list.id}'),
-        onMenu: () => _openListMenu(context, ref, lists[i].list),
+      children: children,
+    );
+  }
+
+  Widget _buildCard(ShoppingListSummary summary) {
+    final list = summary.list;
+    final radius = BorderRadius.circular(AppRadii.md);
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Dismissible(
+          key: ValueKey('list-${list.id}'),
+          dismissThresholds: const {
+            DismissDirection.startToEnd: 0.3,
+            DismissDirection.endToStart: 0.4,
+          },
+          background: SwipeActionBackground(
+            alignment: Alignment.centerLeft,
+            icon: Icons.copy_all_outlined,
+            label: 'Duplicar',
+            color: colors.lime,
+            borderRadius: radius,
+          ),
+          secondaryBackground: SwipeActionBackground(
+            alignment: Alignment.centerRight,
+            icon: Icons.delete_outline,
+            label: 'Excluir',
+            color: colors.danger,
+            borderRadius: radius,
+          ),
+          confirmDismiss: (direction) async {
+            if (direction == DismissDirection.startToEnd) {
+              _duplicate(list);
+              return false;
+            }
+            return _confirmDelete(list);
+          },
+          onDismissed: (_) => _delete(list),
+          child: _ListCard(
+            summary: summary,
+            onOpen: () => context.push('/shopping/${list.id}'),
+            onMenu: () => _openListMenu(list),
+          ),
+        ),
       ),
     );
   }
 
-  Future<void> _openCreateSheet(BuildContext context, WidgetRef ref) {
+  bool _isComplete(ShoppingListSummary s) =>
+      s.total > 0 && s.checked == s.total;
+
+  Future<void> _openCreateSheet(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -165,10 +255,11 @@ class ShoppingListsPage extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.add_shopping_cart_outlined),
               title: const Text('A partir de receitas'),
-              subtitle: const Text('Soma os ingredientes das que você escolher'),
+              subtitle:
+                  const Text('Soma os ingredientes das que você escolher'),
               onTap: () {
                 Navigator.of(sheet).pop();
-                _createFromRecipes(context, ref);
+                _createFromRecipes(context);
               },
             ),
             ListTile(
@@ -177,7 +268,7 @@ class ShoppingListsPage extends ConsumerWidget {
               subtitle: const Text('Você adiciona os itens'),
               onTap: () {
                 Navigator.of(sheet).pop();
-                _createEmpty(context, ref);
+                _createEmpty(context);
               },
             ),
           ],
@@ -186,29 +277,27 @@ class ShoppingListsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _createFromRecipes(BuildContext context, WidgetRef ref) async {
+  Future<void> _createFromRecipes(BuildContext context) async {
     final ids = await pickRecipesForShoppingList(context, ref);
     if (ids == null || ids.isEmpty) return;
-    final result =
-        await ref.read(shoppingListRepositoryProvider).generateFromRecipes(ids);
-    if (!context.mounted) return;
-    _openCreated(context, result);
+    final result = await _repo.generateFromRecipes(ids);
+    if (!mounted) return;
+    _openCreated(result);
   }
 
-  Future<void> _createEmpty(BuildContext context, WidgetRef ref) async {
+  Future<void> _createEmpty(BuildContext context) async {
     final name = await _promptListName(
       context,
       title: 'Nova lista',
       action: 'Criar',
     );
     if (name == null) return;
-    final result =
-        await ref.read(shoppingListRepositoryProvider).createEmpty(name: name);
-    if (!context.mounted) return;
-    _openCreated(context, result);
+    final result = await _repo.createEmpty(name: name);
+    if (!mounted) return;
+    _openCreated(result);
   }
 
-  void _openCreated(BuildContext context, Result<ShoppingList> result) {
+  void _openCreated(Result<ShoppingList> result) {
     result.when(
       ok: (list) => context.push('/shopping/${list.id}'),
       err: (f) => showAppSnackBar(
@@ -218,11 +307,7 @@ class ShoppingListsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _openListMenu(
-    BuildContext context,
-    WidgetRef ref,
-    ShoppingList list,
-  ) {
+  Future<void> _openListMenu(ShoppingList list) {
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -235,7 +320,16 @@ class ShoppingListsPage extends ConsumerWidget {
               title: const Text('Renomear'),
               onTap: () {
                 Navigator.of(sheet).pop();
-                _rename(context, ref, list);
+                _rename(list);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_all_outlined),
+              title: const Text('Duplicar'),
+              subtitle: const Text('Mesma lista, com tudo desmarcado'),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                _duplicate(list);
               },
             ),
             ListTile(
@@ -245,9 +339,9 @@ class ShoppingListsPage extends ConsumerWidget {
                 style: context.texts.bodyLarge
                     ?.copyWith(color: context.colors.danger),
               ),
-              onTap: () {
+              onTap: () async {
                 Navigator.of(sheet).pop();
-                _delete(context, ref, list);
+                if (await _confirmDelete(list)) _delete(list);
               },
             ),
           ],
@@ -256,28 +350,31 @@ class ShoppingListsPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _rename(
-    BuildContext context,
-    WidgetRef ref,
-    ShoppingList list,
-  ) async {
+  Future<void> _rename(ShoppingList list) async {
     final name = await _promptListName(
       context,
       title: 'Renomear lista',
       initial: list.name,
     );
     if (name == null || name == list.name) return;
-    final result =
-        await ref.read(shoppingListRepositoryProvider).rename(list.id, name);
-    _report(result);
+    _report(await _repo.rename(list.id, name));
   }
 
-  Future<void> _delete(
-    BuildContext context,
-    WidgetRef ref,
-    ShoppingList list,
-  ) async {
-    final confirmed = await AppDialog.confirm(
+  Future<void> _duplicate(ShoppingList list) async {
+    HapticFeedback.selectionClick();
+    final result = await _repo.duplicate(list.id);
+    result.when(
+      ok: (copy) => showAppSnackBar(message: 'Lista duplicada: ${copy.name}'),
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
+  Future<bool> _confirmDelete(ShoppingList list) {
+    HapticFeedback.mediumImpact();
+    return AppDialog.confirm(
       context,
       icon: Icons.delete_outline,
       accent: context.colors.danger,
@@ -286,10 +383,18 @@ class ShoppingListsPage extends ConsumerWidget {
           'desfazer.',
       confirmLabel: 'Excluir',
     );
-    if (!confirmed) return;
-    final result =
-        await ref.read(shoppingListRepositoryProvider).deleteList(list.id);
-    _report(result);
+  }
+
+  Future<void> _delete(ShoppingList list) async {
+    setState(() => _removed.add(list.id));
+    final result = await _repo.deleteList(list.id);
+    result.when(
+      ok: (_) {},
+      err: (f) {
+        if (mounted) setState(() => _removed.remove(list.id));
+        showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error);
+      },
+    );
   }
 
   void _report(Result<void> result) {
@@ -341,8 +446,48 @@ Future<String?> _promptListName(
   );
 }
 
-/// Cartão de uma lista: nome, "X de Y itens · dd/mm", barra de progresso e ⋯.
-/// Lista toda marcada apaga um pouco e diz "Concluída".
+/// "EM ANDAMENTO ———— 2": mesmo cabeçalho de seção da tela da lista.
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label, {required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.xs),
+      child: Row(
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: context.texts.labelMedium
+                ?.copyWith(color: colors.lime, letterSpacing: 1.2),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: colors.onSaturated.withValues(alpha: 0.12),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            '$count',
+            style: context.texts.labelMedium?.copyWith(
+              color: colors.onSaturated.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cartão de uma lista: anel de progresso, nome, "X de Y itens · Hoje" e
+/// seta. Lista toda marcada apaga um pouco; o ⋯ abre renomear/duplicar/
+/// excluir.
 class _ListCard extends StatelessWidget {
   const _ListCard({
     required this.summary,
@@ -354,42 +499,40 @@ class _ListCard extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onMenu;
 
+  bool get _complete => summary.total > 0 && summary.checked == summary.total;
+
   String get _subtitle {
     final total = summary.total;
-    final date = summary.list.createdAt.toLocal();
-    final day = '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}';
-    if (total == 0) return 'Vazia · $day';
-    if (_complete) return 'Concluída · $day';
+    final when = _relativeDay(summary.list.createdAt.toLocal());
+    if (total == 0) return 'Vazia · $when';
+    if (_complete) {
+      return '$total ${total == 1 ? 'item' : 'itens'} · $when';
+    }
     return '${summary.checked} de $total ${total == 1 ? 'item' : 'itens'} · '
-        '$day';
+        '$when';
   }
-
-  bool get _complete => summary.total > 0 && summary.checked == summary.total;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final total = summary.total;
-
     return Material(
       color: colors.inkSoft,
-      borderRadius: BorderRadius.circular(AppRadii.md),
       child: InkWell(
         onTap: onOpen,
-        borderRadius: BorderRadius.circular(AppRadii.md),
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 250),
           opacity: _complete ? 0.6 : 1,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
-              AppSpacing.md,
+              AppSpacing.sm,
               AppSpacing.xs,
-              AppSpacing.md,
+              AppSpacing.sm,
             ),
             child: Row(
               children: [
+                _ProgressRing(summary: summary),
+                const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -408,19 +551,6 @@ class _ListCard extends StatelessWidget {
                           color: colors.onSaturated.withValues(alpha: 0.6),
                         ),
                       ),
-                      if (total > 0) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                          child: LinearProgressIndicator(
-                            value: summary.checked / total,
-                            minHeight: 6,
-                            backgroundColor:
-                                colors.onSaturated.withValues(alpha: 0.12),
-                            valueColor: AlwaysStoppedAnimation(colors.lime),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -436,6 +566,75 @@ class _ListCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// "Hoje", "Ontem" ou "dd/mm".
+String _relativeDay(DateTime date) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final day = DateTime(date.year, date.month, date.day);
+  final diff = today.difference(day).inDays;
+  if (diff == 0) return 'Hoje';
+  if (diff == 1) return 'Ontem';
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}';
+}
+
+/// Anel de progresso do cartão: porcentagem no centro, check quando tudo foi
+/// comprado, ícone de edição quando a lista ainda está vazia.
+class _ProgressRing extends StatelessWidget {
+  const _ProgressRing({required this.summary});
+
+  final ShoppingListSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final total = summary.total;
+    final value = total == 0 ? 0.0 : summary.checked / total;
+    final complete = total > 0 && summary.checked == total;
+
+    final Widget center;
+    if (total == 0) {
+      center = Icon(
+        Icons.edit_note,
+        size: 22,
+        color: colors.onSaturated.withValues(alpha: 0.5),
+      );
+    } else if (complete) {
+      center = Icon(Icons.check, size: 22, color: colors.lime);
+    } else {
+      center = Text(
+        '${(value * 100).round()}%',
+        style: context.texts.labelMedium?.copyWith(color: colors.onSaturated),
+      );
+    }
+
+    return SizedBox(
+      width: 52,
+      height: 52,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(end: value),
+            duration: const Duration(milliseconds: 400),
+            curve: Curves.easeOutCubic,
+            builder: (context, v, _) => SizedBox.expand(
+              child: CircularProgressIndicator(
+                value: v,
+                strokeWidth: 5,
+                strokeCap: StrokeCap.round,
+                backgroundColor: colors.onSaturated.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation(colors.lime),
+              ),
+            ),
+          ),
+          center,
+        ],
       ),
     );
   }

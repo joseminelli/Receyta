@@ -249,6 +249,31 @@ void main() {
     expect(await shoppingRepo.itemsOf(generated.id), isEmpty);
   });
 
+  test('duplicate copia itens desmarcados e origens, sem tocar o original',
+      () async {
+    final recipe = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['1 ovo', '2 tomates'],
+    ));
+    final original = unwrapList(await shoppingRepo
+        .generateFromRecipes([recipe.id], name: 'Semana'));
+    final items = await shoppingRepo.itemsOf(original.id);
+    await shoppingRepo.setChecked(items.first.id, true);
+
+    final copy = unwrapList(await shoppingRepo.duplicate(original.id));
+    expect(copy.name, 'Semana (cópia)');
+    expect(copy.id, isNot(original.id));
+
+    final copied = await shoppingRepo.itemsOf(copy.id);
+    expect(copied.map((i) => i.displayName),
+        items.map((i) => i.displayName));
+    expect(copied.every((i) => !i.checked), isTrue);
+    expect(copied.every((i) => i.sources.single.recipeName == 'Bolo'), isTrue);
+    expect((await shoppingRepo.itemsOf(original.id)).first.checked, isTrue);
+
+    expect(await shoppingRepo.duplicate('nao-existe'), isA<Err<ShoppingList>>());
+  });
+
   test('avulso vazio é recusado', () async {
     final recipe = unwrapRecipe(await recipeRepo.saveDetail(
       name: 'Bolo',

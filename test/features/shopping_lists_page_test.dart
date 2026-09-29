@@ -49,7 +49,10 @@ void main() {
 
     expect(find.text('Semana'), findsOneWidget);
     expect(find.textContaining('7 de 12 itens'), findsOneWidget);
-    expect(find.textContaining('Concluída'), findsOneWidget);
     expect(find.textContaining('Vazia'), findsOneWidget);
+    expect(find.text('58%'), findsOneWidget);
+    expect(find.text('EM ANDAMENTO'), findsOneWidget);
+    expect(find.text('CONCLUÍDAS'), findsOneWidget);
+    expect(find.textContaining('3 listas · 2 em andamento'), findsOneWidget);
   });
 }
