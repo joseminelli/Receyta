@@ -14,6 +14,7 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/screens/folder_actions.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
+import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -1185,14 +1186,17 @@ class _CountPill extends StatelessWidget {
   }
 }
 
-/// Barra fixa no rodapé: abre o modo cozinha (§RF-01.11).
-class _CookBar extends StatelessWidget {
+/// Barra fixa no rodapé: abre o modo cozinha (§RF-01.11) e, ao lado, o botão
+/// de adicionar a receita a uma lista de compras (RF-05.1).
+class _CookBar extends ConsumerWidget {
   const _CookBar({required this.recipeId});
 
   final String recipeId;
 
+  static const _height = AppSpacing.minTapTarget + 6;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     return Container(
       color: colors.paper,
@@ -1205,28 +1209,71 @@ class _CookBar extends StatelessWidget {
             AppSpacing.screen,
             AppSpacing.sm,
           ),
-          child: Material(
-            color: colors.ink,
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: InkWell(
-              onTap: () => context.push('/recipe/$recipeId/cook'),
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-              child: Container(
-                height: AppSpacing.minTapTarget + 6,
+          child: Row(
+            children: [
+              Expanded(child: _buildCookButton(context)),
+              const SizedBox(width: AppSpacing.xs),
+              _buildAddToListButton(context, ref),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCookButton(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.ink,
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: InkWell(
+        onTap: () => context.push('/recipe/$recipeId/cook'),
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: Container(
+          height: _height,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.local_fire_department, size: 20, color: colors.lime),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                'Modo cozinha',
+                style: context.texts.labelLarge?.copyWith(color: colors.lime),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Círculo lime com sacola + "+" em ink.
+  Widget _buildAddToListButton(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    return Semantics(
+      button: true,
+      label: 'Adicionar à lista de compras',
+      child: Tooltip(
+        message: 'Adicionar à lista de compras',
+        child: Material(
+          color: colors.lime,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => addRecipeToShoppingListFlow(context, ref, recipeId),
+            child: SizedBox(
+              width: _height,
+              height: _height,
+              child: Stack(
                 alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.local_fire_department,
-                        size: 20, color: colors.lime),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      'Modo cozinha',
-                      style: context.texts.labelLarge
-                          ?.copyWith(color: colors.lime),
-                    ),
-                  ],
-                ),
+                children: [
+                  Icon(Icons.shopping_bag_outlined, size: 26, color: colors.ink),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Icon(Icons.add, size: 14, color: colors.ink),
+                  ),
+                ],
               ),
             ),
           ),

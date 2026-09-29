@@ -72,6 +72,42 @@ class ShoppingListRepository {
     }
   }
 
+  /// Junta uma receita numa lista que já existe (RF-05.1): os ingredientes
+  /// somam com os itens iguais e o resto entra no fim. Recusa receita sem
+  /// ingrediente e receita que já contribuiu pra essa lista (somaria em
+  /// dobro sem o usuário perceber).
+  Future<Result<void>> addRecipeToList(String listId, String recipeId) async {
+    try {
+      final rows = await _recipeDao.ingredientsForRecipes([recipeId]);
+      if (rows.isEmpty) {
+        return const Err(
+          ValidationFailure('Essa receita não tem ingredientes.'),
+        );
+      }
+      final items = await _dao.itemsOf(listId);
+      final sources = await _dao.sourcesOf([for (final i in items) i.id]);
+      if (sources.any((s) => s.recipeId == recipeId)) {
+        return const Err(ValidationFailure('Essa receita já está na lista.'));
+      }
+
+      final ingredientIds = {
+        for (final r in rows)
+          if (r.ingredientId != null) r.ingredientId!,
+      }.toList();
+      final catalogRows = await _ingredientDao.findByIds(ingredientIds);
+      final namesById = {for (final c in catalogRows) c.id: c.displayName};
+      final aggregated = aggregateIngredients(
+        [for (final r in rows) _lineToDomain(r, namesById)],
+      );
+
+      await _dao.addAggregated(listId, aggregated);
+      return const Ok(null);
+    } catch (e) {
+      debugPrint('ShoppingListRepository.addRecipeToList: $e');
+      return Err(DatabaseFailure('Falha ao adicionar à lista', cause: e));
+    }
+  }
+
   Stream<List<ShoppingList>> watchAll() =>
       _dao.watchAll().map((rows) => rows.map(_listToDomain).toList());
 

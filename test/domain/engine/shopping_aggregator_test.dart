@@ -205,6 +205,74 @@ void main() {
     expect(result.single.sources.map((s) => s.recipeId), ['r1']);
   });
 
+  test('contagem sem unidade ("3 ovos" + "2 ovos") soma e mantém o número', () {
+    final result = aggregateIngredients([
+      _line(recipeId: 'r1', ingredientId: 'ovo', quantity: 3, unitId: null),
+      _line(recipeId: 'r2', ingredientId: 'ovo', quantity: 2, unitId: null),
+      _line(recipeId: 'r2', ingredientId: 'ovo', quantity: 1, unitId: null),
+    ]);
+
+    expect(result, hasLength(1));
+    expect(result.single.quantity, 6);
+    expect(result.single.unitCode, isNull);
+    final byRecipe = {for (final s in result.single.sources) s.recipeId: s.quantity};
+    expect(byRecipe, {'r1': 3, 'r2': 3});
+  });
+
+  test('contagem sem unidade não mistura com ovo em "unidade" nem em gramas',
+      () {
+    final result = aggregateIngredients([
+      _line(recipeId: 'r1', ingredientId: 'ovo', quantity: 3, unitId: null),
+      _line(recipeId: 'r2', ingredientId: 'ovo', quantity: 2, unitId: 'unidade'),
+    ]);
+
+    expect(result, hasLength(2));
+  });
+
+  group('combineQuantities', () {
+    test('soma unidades da mesma família e sobe pra kg', () {
+      final r = combineQuantities(
+        quantityA: 500,
+        unitA: 'g',
+        quantityB: 0.8,
+        unitB: 'kg',
+      );
+      expect((r?.quantity, r?.unitCode), (1.3, 'kg'));
+    });
+
+    test('contagem sem unidade soma; contra unidade real é incompatível', () {
+      expect(
+        combineQuantities(
+            quantityA: 2, unitA: null, quantityB: 3, unitB: null),
+        (quantity: 5.0, unitCode: null),
+      );
+      expect(
+        combineQuantities(
+            quantityA: 2, unitA: null, quantityB: 3, unitB: 'g'),
+        isNull,
+      );
+    });
+
+    test('sem quantidade só combina com outra igual; famílias diferentes não',
+        () {
+      expect(
+        combineQuantities(
+            quantityA: null, unitA: null, quantityB: null, unitB: null),
+        (quantity: null, unitCode: null),
+      );
+      expect(
+        combineQuantities(
+            quantityA: null, unitA: null, quantityB: 1, unitB: 'g'),
+        isNull,
+      );
+      expect(
+        combineQuantities(
+            quantityA: 1, unitA: 'dente', quantityB: 1, unitB: 'cabeca'),
+        isNull,
+      );
+    });
+  });
+
   test('linha nunca resolvida agrupa pelo rawText normalizado', () {
     final result = aggregateIngredients([
       _line(

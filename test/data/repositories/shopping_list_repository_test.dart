@@ -274,6 +274,57 @@ void main() {
     expect(await shoppingRepo.duplicate('nao-existe'), isA<Err<ShoppingList>>());
   });
 
+  test('addRecipeToList soma com itens iguais, acrescenta o resto e desmarca',
+      () async {
+    final bolo = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['500g de farinha de trigo', '2 tomates'],
+    ));
+    final pao = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Pão',
+      ingredientLines: [
+        '800g de farinha de trigo',
+        '1 xícara de leite',
+        '3 tomates',
+      ],
+    ));
+    final list =
+        unwrapList(await shoppingRepo.generateFromRecipes([bolo.id]));
+    final farinha =
+        (await shoppingRepo.itemsOf(list.id)).firstWhere((i) => i.displayName == 'Farinha de Trigo');
+    await shoppingRepo.setChecked(farinha.id, true);
+
+    expect(await shoppingRepo.addRecipeToList(list.id, pao.id), isA<Ok<void>>());
+
+    final items = await shoppingRepo.itemsOf(list.id);
+    expect(items, hasLength(3));
+    final f = items.firstWhere((i) => i.displayName == 'Farinha de Trigo');
+    expect((f.quantity, f.unitId), (1.3, 'kg'));
+    expect(f.checked, isFalse);
+    expect(f.sources.map((s) => s.recipeName).toSet(), {'Bolo', 'Pão'});
+    final t = items.firstWhere((i) => i.displayName == 'Tomates');
+    expect(t.quantity, 5);
+    final leite = items.firstWhere((i) => i.displayName == 'Leite');
+    expect(leite.position, 2);
+    expect(leite.sources.single.recipeName, 'Pão');
+  });
+
+  test('addRecipeToList recusa receita repetida e sem ingrediente', () async {
+    final bolo = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['1 ovo'],
+    ));
+    final vazia = unwrapRecipe(await recipeRepo.saveDetail(name: 'Vazia'));
+    final list =
+        unwrapList(await shoppingRepo.generateFromRecipes([bolo.id]));
+
+    expect(await shoppingRepo.addRecipeToList(list.id, bolo.id),
+        isA<Err<void>>());
+    expect(await shoppingRepo.addRecipeToList(list.id, vazia.id),
+        isA<Err<void>>());
+    expect(await shoppingRepo.itemsOf(list.id), hasLength(1));
+  });
+
   test('avulso vazio é recusado', () async {
     final recipe = unwrapRecipe(await recipeRepo.saveDetail(
       name: 'Bolo',

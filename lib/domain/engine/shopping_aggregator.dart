@@ -61,12 +61,12 @@ List<AggregatedIngredient> aggregateIngredients(
   return out;
 }
 
-/// Balde de agregação: linhas sem quantidade/unidade nunca somam com nada
-/// (uma por combinação `unitId`), as demais agrupam pela unidade-base.
+/// Balde de agregação: linhas sem quantidade nunca somam com nada (uma por
+/// combinação `unitId`); contagem sem unidade ("3 ovos") soma só com outra
+/// contagem sem unidade; as demais agrupam pela unidade-base.
 String _bucketKey(RecipeIngredient line) {
-  if (line.quantity == null || line.unitId == null) {
-    return 'unquantified:${line.unitId}';
-  }
+  if (line.quantity == null) return 'unquantified:${line.unitId}';
+  if (line.unitId == null) return 'count';
   return _baseUnitCode(line.unitId!);
 }
 
@@ -95,13 +95,23 @@ AggregatedIngredient _mergeBucket(
   final first = bucket.first;
   final displayName = first.ingredientName ?? first.rawText;
 
-  if (first.quantity == null || first.unitId == null) {
+  if (first.quantity == null) {
     return AggregatedIngredient(
       ingredientKey: ingredientKey,
       displayName: displayName,
       quantity: null,
       unitCode: first.unitId,
       sources: _mergeSourcesByRecipe(bucket, null),
+    );
+  }
+
+  if (first.unitId == null) {
+    return AggregatedIngredient(
+      ingredientKey: ingredientKey,
+      displayName: displayName,
+      quantity: bucket.fold<double>(0, (sum, l) => sum + l.quantity!),
+      unitCode: null,
+      sources: _mergeSourcesByRecipe(bucket, null, unitless: true),
     );
   }
 
@@ -130,8 +140,9 @@ AggregatedIngredient _mergeBucket(
 /// toa.
 List<ShoppingSourceLine> _mergeSourcesByRecipe(
   List<RecipeIngredient> bucket,
-  String? baseCode,
-) {
+  String? baseCode, {
+  bool unitless = false,
+}) {
   final byRecipe = <String, List<RecipeIngredient>>{};
   for (final line in bucket) {
     byRecipe.putIfAbsent(line.recipeId, () => []).add(line);
@@ -139,11 +150,17 @@ List<ShoppingSourceLine> _mergeSourcesByRecipe(
 
   return [
     for (final entry in byRecipe.entries)
-      if (entry.value.length == 1 || baseCode == null)
+      if (entry.value.length == 1 || (baseCode == null && !unitless))
         (
           recipeId: entry.key,
           quantity: entry.value.last.quantity,
           unitId: entry.value.last.unitId,
+        )
+      else if (unitless)
+        (
+          recipeId: entry.key,
+          quantity: entry.value.fold<double>(0, (sum, l) => sum + l.quantity!),
+          unitId: null,
         )
       else
         (
@@ -155,6 +172,36 @@ List<ShoppingSourceLine> _mergeSourcesByRecipe(
           unitId: baseCode,
         ),
   ];
+}
+
+/// Soma duas quantidades de um mesmo ingrediente (item já na lista + o que
+/// uma receita nova traz). `null` quando são incompatíveis (g vs unidade,
+/// dente vs cabeça): quem chama mantém as duas em linhas separadas. Sem
+/// quantidade só combina com outra igual (continua sem número); contagem sem
+/// unidade ("3 ovos") só soma com outra contagem sem unidade.
+({double? quantity, String? unitCode})? combineQuantities({
+  required double? quantityA,
+  required String? unitA,
+  required double? quantityB,
+  required String? unitB,
+}) {
+  if (quantityA == null || quantityB == null) {
+    if (quantityA == null && quantityB == null && unitA == unitB) {
+      return (quantity: null, unitCode: unitA);
+    }
+    return null;
+  }
+  if (unitA == null || unitB == null) {
+    if (unitA == null && unitB == null) {
+      return (quantity: quantityA + quantityB, unitCode: null);
+    }
+    return null;
+  }
+  final base = _baseUnitCode(unitA);
+  if (base != _baseUnitCode(unitB)) return null;
+  final total = quantityA * _factorToBase(unitA) + quantityB * _factorToBase(unitB);
+  final (quantity, unitCode) = _pickDisplayUnit(base, total);
+  return (quantity: quantity, unitCode: unitCode);
 }
 
 /// Sobe pra `kg`/`l` acima de 1000 na base de massa/volume (500g + 800g vira

@@ -143,6 +143,90 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Junta ingredientes já agregados (E1) numa lista que já existe: o que
+  /// casa com um item da lista (mesmo ingrediente, unidades somáveis) soma
+  /// nele e desmarca (precisa comprar mais); o resto entra no fim como item
+  /// novo. Sempre grava a origem.
+  Future<void> addAggregated(
+    String listId,
+    List<AggregatedIngredient> aggregated,
+  ) {
+    return transaction(() async {
+      final existing = await itemsOf(listId);
+      var position = existing.isEmpty
+          ? 0
+          : existing.map((i) => i.position).reduce((a, b) => a > b ? a : b) + 1;
+      final live = [...existing];
+
+      for (final agg in aggregated) {
+        final isCatalog = !agg.ingredientKey.startsWith('raw:');
+        ShoppingListItemRow? target;
+        ({double? quantity, String? unitCode})? combined;
+        for (final item in live) {
+          final sameIngredient = isCatalog
+              ? item.ingredientId == agg.ingredientKey
+              : item.ingredientId == null &&
+                  item.manualName?.toLowerCase() ==
+                      agg.displayName.toLowerCase();
+          if (!sameIngredient) continue;
+          combined = combineQuantities(
+            quantityA: item.quantity,
+            unitA: item.unitId,
+            quantityB: agg.quantity,
+            unitB: agg.unitCode,
+          );
+          if (combined != null) {
+            target = item;
+            break;
+          }
+        }
+
+        final String itemId;
+        if (target != null && combined != null) {
+          itemId = target.id;
+          await (update(shoppingListItems)..where((i) => i.id.equals(itemId)))
+              .write(
+            ShoppingListItemsCompanion(
+              quantity: Value(combined.quantity),
+              unitId: Value(combined.unitCode),
+              checked: const Value(false),
+            ),
+          );
+          final index = live.indexOf(target);
+          live[index] = target.copyWith(
+            quantity: Value(combined.quantity),
+            unitId: Value(combined.unitCode),
+            checked: false,
+          );
+        } else {
+          itemId = _uuid.v4();
+          final row = ShoppingListItemRow(
+            id: itemId,
+            listId: listId,
+            ingredientId: isCatalog ? agg.ingredientKey : null,
+            manualName: isCatalog ? null : agg.displayName,
+            quantity: agg.quantity,
+            unitId: agg.unitCode,
+            checked: false,
+            position: position++,
+          );
+          await into(shoppingListItems).insert(row);
+          live.add(row);
+        }
+        for (final source in agg.sources) {
+          await into(shoppingItemSources).insert(
+            ShoppingItemSourceRow(
+              itemId: itemId,
+              recipeId: source.recipeId,
+              quantity: source.quantity,
+              unitId: source.unitId,
+            ),
+          );
+        }
+      }
+    });
+  }
+
   Future<int> rename(String id, String name, DateTime at) {
     return (update(shoppingLists)..where((l) => l.id.equals(id))).write(
       ShoppingListsCompanion(name: Value(name), updatedAt: Value(at)),
