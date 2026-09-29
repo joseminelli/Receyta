@@ -743,8 +743,32 @@ Esforço em dias de trabalho focado.
   favoritar, modo cozinha, filtro de tags, drag-and-drop). Não é uma entrega
   de bloco, é manutenção — ver `feature-folder-structure` na memória do
   projeto pra detalhe.
-- **Bloco E em diante** — não começado. Próximo passo real: **E1** (tabela de
-  conversão + agregador de unidades).
+- **Bloco E (E1–E5)** — ✅ completo, e foi além do previsto (atualizado em
+  2026-09-29).
+  - **E1–E3**: agregador (`aggregateIngredients`, Dart puro), gerar lista de
+    receitas selecionadas, tela escura de compras com marcar item.
+  - **E4**: itens agrupados por corredor (`ingredient_category.dart` classifica
+    pelo nome — o catálogo não grava categoria) e item avulso digitado (passa
+    pelo parser C1 e pelo catálogo C2, então "2 caixas de leite" vira
+    quantidade + unidade + "Leite" no corredor certo).
+  - **E5**: chips com as receitas de origem em cada item (RF-05.8) e
+    compartilhar como texto (RF-05.10).
+  - **RF-05.9 (múltiplas listas) entrou agora, antes do planejado (era Could)**:
+    a aba "Compras" é a tela de listas (Em andamento / Concluídas, anel de
+    progresso, criar de receitas ou em branco, renomear, duplicar, excluir) e
+    cada lista abre em `/shopping/:id`.
+  - **Gestos**: na lista, deslizar → marca/desmarca, ← tira o item (com
+    confirmação); nas listas, → duplica, ← exclui (com confirmação). Marcar
+    anima no lugar e só desce ao novo lugar se a posição de fato mudar.
+  - **Da receita pra lista**: botão ao lado do "Modo cozinha" adiciona a
+    receita a uma lista existente (soma com itens iguais, desmarca o que
+    somou) ou cria uma nova.
+  - **Bug do E1 corrigido**: contagem sem unidade ("3 ovos") perdia o número no
+    agregador; agora soma entre si.
+  - **Fora do bloco E**: F3 (lista a partir da semana) e o "levar pendentes pra
+    outra lista" seguem em aberto.
+- **Bloco F em diante** — não começado. Próximo passo real: **F1** (tela
+  semanal).
 
 ---
 
