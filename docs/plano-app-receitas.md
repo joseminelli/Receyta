@@ -704,7 +704,7 @@ Esforço em dias de trabalho focado.
 
 ### Status de implementação
 
-*Atualizado conforme o código; a barra está no fim do bloco B.*
+*Atualizado conforme o código em 2026-09-29; a barra está no início do bloco E.*
 
 - **Bloco A (A1–A8)** — ✅ completo e commitado.
 - **Bloco B** — ✅ completo, **exceto imagem** (B7 foi movida para o bloco H,
@@ -723,8 +723,28 @@ Esforço em dias de trabalho focado.
     "Pastas" da home viram prateleiras por **uso recente** (MRU) capadas em 7,
     com "Ver todas" pra lista completa (schema **v4**, coluna
     `last_opened_at` nas duas tabelas).
-- **Bloco C em diante** — não começado. Próximo passo real: **usar o app com
-  receitas de verdade por uma semana** (ver aviso ao fim do bloco B), depois C1.
+- **Bloco C (C1–C8)** — ✅ completo. Parser + normalizador + `getOrCreate`,
+  autocomplete de ingrediente, fuzzy match com confirmação, migração dos
+  `raw_text` antigos, tela de gerenciar/mesclar ingredientes, import por URL
+  (JSON-LD) e por foto (OCR on-device, sem gravar a imagem). Vários fixes de
+  parser/OCR achados testando no app de verdade (quantidade fora do início
+  da linha, marcador de lista, ruído de print de site/rede social).
+- **Bloco D (D1–D6)** — ✅ completo. Export `.receyta` (uma receita e
+  completo com pastas/`schemaVersion`), import com reconciliação + tela de
+  conflitos, abrir `.receyta` de outro app (`receive_sharing_intent`), PDF da
+  receita.
+  - **Link efêmero + deep link (ex-D7/D8) foram renumerados pra H1/H2** —
+    dependem de function+Redis no ar; movidos de fato pra dentro do bloco H
+    em 2026-09-29 (usuário: "deixar o redis pro final do app").
+- **Housekeeping fora do roadmap (2026-09-29)**: reorganização de
+  `lib/features/*` em `screens/`+`controllers/`, `build()` grandes viraram
+  métodos privados, SDK do Flutter do sistema fixado em 3.27.1 (bate com o
+  CI), e uma leva de animações de interação (navbar, Hero receita→detalhe,
+  favoritar, modo cozinha, filtro de tags, drag-and-drop). Não é uma entrega
+  de bloco, é manutenção — ver `feature-folder-structure` na memória do
+  projeto pra detalhe.
+- **Bloco E em diante** — não começado. Próximo passo real: **E1** (tabela de
+  conversão + agregador de unidades).
 
 ---
 
@@ -792,7 +812,7 @@ Esforço em dias de trabalho focado.
 ---
 
 ### Bloco D — Os dados saem e entram
-*Independente dos blocos E e F. ~6 dias.*
+*Independente dos blocos E e F. ~4 dias.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
@@ -802,30 +822,12 @@ Esforço em dias de trabalho focado.
 | D4 | Tela de conflitos: substituir, duplicar ou pular | 0,5 | Reimportar o mesmo arquivo não gera lixo |
 | D5 | `receive_sharing_intent`: abrir `.receyta` pelo sistema | 0,5 | Tocar no anexo abre o Receyta |
 | D6 | 🎯 PDF da receita | 1 | Impressão sai legível em A4 |
-| D7 | Link efêmero: function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
-| D8 | Deep link (App Links/Universal Links) resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
 
-> **Dois mecanismos de compartilhar uma receita, de propósito (não é
-> duplicação).** `.receyta` (arquivo, D1/D5) e **link efêmero** (D7/D8) resolvem
-> problemas diferentes e usam o mesmo corpo JSON do §7 por baixo — não são
-> dois caminhos de código, é o mesmo serializer com dois transportes.
->
-> - **Link é o padrão** no botão "Compartilhar": abre o Receyta sozinho nas
->   duas plataformas via App Links/Universal Links (sem a ambiguidade de
->   "abrir com" que um arquivo tem no iOS) e ainda gera preview bonito no
->   WhatsApp. Custo: exige internet dos dois lados antes do token expirar, e
->   depende de uma function pequena + Redis no ar (Upstash free tier serve;
->   não precisa de conta de usuário, só um id anônimo de dispositivo pra
->   aplicar o limite de pilha por usuário).
-> - **Arquivo continua existindo** como opção secundária ("compartilhar como
->   arquivo") e é a única via para **export completo** (D2 — múltiplas
->   receitas/backup): isso não cabe no modelo de TTL do Redis, e precisa
->   funcionar mesmo sem servidor nenhum no ar (ex.: mandar por Bluetooth/e-mail,
->   ou guardar como backup permanente numa nuvem própria).
-> - Nenhum dos dois usa o Postgres do bloco H — ele fica reservado para o que
->   de fato precisa persistir e sincronizar (calendário, lista de compras
->   compartilhada, RF-07), evitando que compartilhar receitas avulsas lote o
->   tier free do banco relacional.
+> **Link efêmero de receita (era D7/D8) mudou pro bloco H** (H1/H2, abaixo) —
+> depende de function+Redis no ar, e o bloco H é onde o resto do backend mora.
+> Confirmado com o usuário em 2026-09-29 ("deixar o redis pro final do app");
+> `.receyta` (arquivo, D1/D5) continua sendo o mecanismo de compartilhar que
+> funciona sem servidor nenhum no ar, desde o bloco D.
 
 ---
 
@@ -875,8 +877,33 @@ Supabase, auth, RLS, espelhamento do schema, fila de mutações offline, compart
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
 | H0 | Imagem de receita (ex-B7): câmera e galeria, compressão, thumbnail, **Supabase Storage** com caminho local como cache | 1 | Foto tirada num aparelho aparece no outro; some da UI mas o arquivo local vira cache |
+| H1 | Link efêmero (ex-D7): function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
+| H2 | Deep link (ex-D8): App Links/Universal Links resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
 
-Não comece este bloco antes de responder duas coisas com uso real: você de fato precisa de sync, ou export/import já resolve? E quantas pessoas vão compartilhar de verdade? (Se a resposta for "só quero as fotos", dá pra fazer o H0 sozinho com Storage, sem o resto do sync.)
+> **Dois mecanismos de compartilhar uma receita, de propósito (não é
+> duplicação).** `.receyta` (arquivo, D1/D5) e **link efêmero** (H1/H2) resolvem
+> problemas diferentes e usam o mesmo corpo JSON do §7 por baixo — não são
+> dois caminhos de código, é o mesmo serializer com dois transportes.
+>
+> - **Link é o padrão** no botão "Compartilhar": abre o Receyta sozinho nas
+>   duas plataformas via App Links/Universal Links (sem a ambiguidade de
+>   "abrir com" que um arquivo tem no iOS) e ainda gera preview bonito no
+>   WhatsApp. Custo: exige internet dos dois lados antes do token expirar, e
+>   depende de uma function pequena + Redis no ar (Upstash free tier serve;
+>   não precisa de conta de usuário, só um id anônimo de dispositivo pra
+>   aplicar o limite de pilha por usuário).
+> - **Arquivo continua existindo** como opção secundária ("compartilhar como
+>   arquivo") e é a única via para **export completo** (D2 — múltiplas
+>   receitas/backup): isso não cabe no modelo de TTL do Redis, e precisa
+>   funcionar mesmo sem servidor nenhum no ar (ex.: mandar por Bluetooth/e-mail,
+>   ou guardar como backup permanente numa nuvem própria).
+> - **Nenhum dos dois usa o Postgres deste bloco** — só o Redis (TTL curto).
+>   O Postgres/RLS fica reservado pro que de fato precisa persistir e
+>   sincronizar (calendário, lista de compras compartilhada, RF-07),
+>   evitando que compartilhar receitas avulsas lote o tier free do banco
+>   relacional.
+
+Não comece este bloco antes de responder duas coisas com uso real: você de fato precisa de sync, ou export/import já resolve? E quantas pessoas vão compartilhar de verdade? (Se a resposta for "só quero as fotos", dá pra fazer o H0 sozinho com Storage, sem o resto do sync. H1/H2 são independentes do sync — dá pra fazer só eles também.)
 
 ---
 
@@ -910,7 +937,7 @@ Três momentos em que o app fica bom o bastante para parar: **fim do bloco B** (
 | Sync com conflito corrompe dados | Só depois da v1; `updated_at` por registro desde já; export JSON funciona como backup manual |
 | Import de URL quebra por mudança de site | JSON-LD é padrão estável; falha degrada para "colar texto manualmente" |
 | OCR erra em foto de baixa qualidade, letra à mão ou fonte estilizada | Preenche só o que reconhece; usuário sempre revisa antes de salvar, como digitação manual; imagem nunca é gravada, só o texto extraído |
-| Link efêmero de receita (D7/D8) depende de backend no ar antes do bloco H | Falha vira "compartilhar como arquivo" (`.receyta`, offline, sem prazo); TTL curto (1h) ou pilha por dispositivo limita custo/abuso do Redis sem precisar de conta |
+| Link efêmero de receita (H1/H2) depende de backend no ar | Falha vira "compartilhar como arquivo" (`.receyta`, offline, sem prazo); TTL curto (1h) ou pilha por dispositivo limita custo/abuso do Redis sem precisar de conta |
 | Tipografia display quebra com nome de receita longo | `maxLines: 2` com reticências; testar com "Estrogonofe de frango com arroz sete grãos" |
 | Paleta ácida reprova em contraste | Regras de pareamento fixas na §9.2; teste automatizado de contraste sobre os tokens |
 | Maximalismo cansa no uso diário | Telas de consulta (compras, modo cozinha) já nascem sóbrias; validar depois de 2 semanas de uso real |
