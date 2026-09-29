@@ -15,3 +15,7 @@ class ShoppingList with _$ShoppingList {
     required DateTime updatedAt,
   }) = _ShoppingList;
 }
+
+/// Uma lista com o progresso (itens marcados / total) — o que a tela de
+/// "suas listas" mostra em cada cartão.
+typedef ShoppingListSummary = ({ShoppingList list, int total, int checked});

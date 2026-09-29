@@ -74,14 +74,60 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
-  /// A lista mais recente — E3 não tem seletor de "qual lista" ainda
-  /// (múltiplas listas simultâneas é RF-05.9, Could); mostra sempre a
-  /// última gerada.
-  Stream<ShoppingListRow?> watchMostRecent() {
-    return (select(shoppingLists)
-          ..orderBy([(l) => OrderingTerm.desc(l.createdAt)])
-          ..limit(1))
+  Stream<ShoppingListRow?> watchById(String id) {
+    return (select(shoppingLists)..where((l) => l.id.equals(id)))
         .watchSingleOrNull();
+  }
+
+  /// Todas as listas, da mais nova pra mais antiga, com quantos itens têm e
+  /// quantos já estão marcados (stream vivo — reemite ao marcar).
+  Stream<List<({ShoppingListRow list, int total, int checked})>>
+      watchAllWithCounts() {
+    return customSelect(
+      'SELECT l.*, '
+      '  (SELECT COUNT(*) FROM shopping_list_items i '
+      '   WHERE i.list_id = l.id) AS total, '
+      '  (SELECT COUNT(*) FROM shopping_list_items i '
+      '   WHERE i.list_id = l.id AND i.checked = 1) AS checked_count '
+      'FROM shopping_lists l '
+      'ORDER BY l.created_at DESC',
+      readsFrom: {shoppingLists, shoppingListItems},
+    ).watch().map(
+          (rows) => [
+            for (final row in rows)
+              (
+                list: shoppingLists.map(row.data),
+                total: row.read<int>('total'),
+                checked: row.read<int>('checked_count'),
+              ),
+          ],
+        );
+  }
+
+  Future<ShoppingListRow> createEmpty({
+    required String name,
+    required DateTime at,
+  }) async {
+    final list = ShoppingListRow(
+      id: _uuid.v4(),
+      name: name,
+      status: 'active',
+      createdAt: at,
+      updatedAt: at,
+    );
+    await into(shoppingLists).insert(list);
+    return list;
+  }
+
+  Future<int> rename(String id, String name, DateTime at) {
+    return (update(shoppingLists)..where((l) => l.id.equals(id))).write(
+      ShoppingListsCompanion(name: Value(name), updatedAt: Value(at)),
+    );
+  }
+
+  /// Apaga a lista; itens e origens caem em cascata.
+  Future<int> deleteList(String id) {
+    return (delete(shoppingLists)..where((l) => l.id.equals(id))).go();
   }
 
   Future<List<ShoppingListItemRow>> itemsOf(String listId) {

@@ -15,6 +15,7 @@ import 'package:receyta/features/recipes/screens/search_page.dart';
 import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/features/settings/screens/settings_page.dart';
+import 'package:receyta/features/shopping/screens/shopping_list_page.dart';
 import 'package:receyta/home_shell.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/root_back_guard.dart';
@@ -101,6 +102,12 @@ final router = GoRouter(
       path: '/folders',
       name: 'folders',
       builder: (context, state) => const AllFoldersPage(),
+    ),
+    GoRoute(
+      path: '/shopping/:id',
+      name: 'shopping-list',
+      builder: (context, state) =>
+          ShoppingListPage(listId: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/trash',

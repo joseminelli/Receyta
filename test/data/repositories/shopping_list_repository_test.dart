@@ -217,6 +217,38 @@ void main() {
     expect(left.map((i) => i.id), [items[0].id, items[2].id]);
   });
 
+  test('várias listas: resumo com progresso, renomear e excluir', () async {
+    final recipe = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['1 ovo', '2 tomates'],
+    ));
+    final generated = unwrapList(await shoppingRepo
+        .generateFromRecipes([recipe.id], name: 'Semana'));
+    clock = clock.add(const Duration(days: 1));
+    final empty = unwrapList(await shoppingRepo.createEmpty(name: '  Festa '));
+    expect(empty.name, 'Festa');
+    clock = clock.add(const Duration(days: 1));
+    final unnamed = unwrapList(await shoppingRepo.createEmpty());
+    expect(unnamed.name, contains('03/01'));
+
+    final items = await shoppingRepo.itemsOf(generated.id);
+    await shoppingRepo.setChecked(items.first.id, true);
+
+    final summaries = await shoppingRepo.watchSummaries().first;
+    expect(summaries.map((s) => s.list.name), [unnamed.name, 'Festa', 'Semana']);
+    final week = summaries.last;
+    expect((week.total, week.checked), (2, 1));
+    expect((summaries[1].total, summaries[1].checked), (0, 0));
+
+    expect(await shoppingRepo.rename(empty.id, ' Churrasco '), isA<Ok<void>>());
+    expect(await shoppingRepo.rename(empty.id, '  '), isA<Err<void>>());
+    expect((await shoppingRepo.watchById(empty.id).first)?.name, 'Churrasco');
+
+    expect(await shoppingRepo.deleteList(generated.id), isA<Ok<void>>());
+    expect(await shoppingRepo.watchById(generated.id).first, isNull);
+    expect(await shoppingRepo.itemsOf(generated.id), isEmpty);
+  });
+
   test('avulso vazio é recusado', () async {
     final recipe = unwrapRecipe(await recipeRepo.saveDetail(
       name: 'Bolo',

@@ -23,8 +23,8 @@ Widget _host() => ProviderScope(
         ),
         // A aba Compras é montada de cara pelo `IndexedStack`, mesmo sem
         // trocar de aba — sem isto cairia no banco de verdade.
-        currentShoppingListProvider
-            .overrideWith((ref) => Stream.value(null as ShoppingList?)),
+        shoppingListsProvider
+            .overrideWith((ref) => Stream.value(const <ShoppingListSummary>[])),
       ],
       child: MaterialApp(theme: AppTheme.light(), home: const HomeShell()),
     );
@@ -69,7 +69,7 @@ void main() {
 
     expect(find.text('Em breve'), findsNothing);
     expect(find.text('Nenhuma lista ainda'), findsOneWidget);
-    expect(find.text('Gerar lista'), findsOneWidget);
+    expect(find.text('Gerar de receitas'), findsOneWidget);
   });
 
   testWidgets('aba Conta mostra o placeholder de perfil e o botão de config',

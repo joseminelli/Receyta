@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
@@ -11,7 +12,6 @@ import 'package:receyta/domain/engine/shopping_text.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
-import 'package:receyta/features/shopping/screens/shopping_recipe_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -19,38 +19,23 @@ import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
-import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/sweep_strike_text.dart';
-
-/// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
-/// home_shell usa `extendBody`, então a aba desenha por baixo dela.
-const _navBarClearance = 96.0;
 
 /// Largura fixa da coluna de quantidade — alinha os números em coluna.
 const _quantityColumn = 60.0;
 
-/// Tela de compras (E3–E5, RF-05.5–05.8): superfície escura, mesma linguagem
-/// do modo cozinha (§9.8) — é outra tela "de mão suja"/uso rápido, não de
-/// leitura. Mostra sempre a lista mais recente, agrupada por corredor; marcar
-/// item risca e afunda pro fim da seção.
+/// Uma lista de compras (E3–E5, RF-05.5–05.8): superfície escura, mesma
+/// linguagem do modo cozinha (§9.8) — é outra tela "de mão suja"/uso rápido,
+/// não de leitura. Rota empilhada (`/shopping/:id`), aberta a partir da tela
+/// de listas; agrupada por corredor, marcar item risca e afunda pro fim da
+/// seção.
 class ShoppingListPage extends ConsumerWidget {
-  const ShoppingListPage({super.key});
+  const ShoppingListPage({super.key, required this.listId});
 
-  Future<void> _generate(BuildContext context, WidgetRef ref) async {
-    final ids = await pickRecipesForShoppingList(context, ref);
-    if (ids == null || ids.isEmpty) return;
-    if (!context.mounted) return;
-    final result =
-        await ref.read(shoppingListRepositoryProvider).generateFromRecipes(ids);
-    result.when(
-      ok: (_) {},
-      err: (f) => showAppSnackBar(
-          message: f.message, variant: AppSnackBarVariant.error),
-    );
-  }
+  final String listId;
 
   Future<void> _share(WidgetRef ref) async {
-    final list = ref.read(currentShoppingListProvider).valueOrNull;
+    final list = ref.read(shoppingListProvider(listId)).valueOrNull;
     if (list == null) return;
     final items =
         await ref.read(shoppingListRepositoryProvider).itemsOf(list.id);
@@ -64,7 +49,7 @@ class ShoppingListPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final listAsync = ref.watch(currentShoppingListProvider);
+    final listAsync = ref.watch(shoppingListProvider(listId));
     final list = listAsync.valueOrNull;
 
     return Scaffold(
@@ -79,7 +64,7 @@ class ShoppingListPage extends ConsumerWidget {
                 error: (_, __) =>
                     _buildMessage(context, 'Não deu para carregar.'),
                 data: (list) => list == null
-                    ? _buildEmpty(context, ref)
+                    ? _buildMessage(context, 'Esta lista não existe mais.')
                     : _buildList(context, ref, list),
               ),
             ),
@@ -100,78 +85,30 @@ class ShoppingListPage extends ConsumerWidget {
       ),
       child: Row(
         children: [
+          CircleIconButton(
+            icon: Icons.arrow_back,
+            tooltip: 'Voltar',
+            onTap: () => context.pop(),
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Compras',
-                  style: context.texts.displaySmall
-                      ?.copyWith(color: colors.onSaturated),
-                ),
-                if (list != null)
-                  Text(
-                    list.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.bodyMedium?.copyWith(
-                      color: colors.onSaturated.withValues(alpha: 0.6),
-                    ),
-                  ),
-              ],
+            child: Text(
+              list?.name ?? 'Compras',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.texts.displaySmall
+                  ?.copyWith(color: colors.onSaturated),
             ),
           ),
           if (list != null) ...[
+            const SizedBox(width: AppSpacing.xs),
             CircleIconButton(
               icon: Icons.ios_share,
               tooltip: 'Compartilhar como texto',
               onTap: () => _share(ref),
             ),
-            const SizedBox(width: AppSpacing.xs),
           ],
-          CircleIconButton(
-            icon: Icons.add_shopping_cart_outlined,
-            tooltip: 'Gerar lista',
-            onTap: () => _generate(context, ref),
-          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildEmpty(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.shopping_bag_outlined, size: 56, color: colors.lime),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Nenhuma lista ainda',
-              style: context.texts.displaySmall
-                  ?.copyWith(color: colors.onSaturated),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Escolha as receitas da semana e a lista sai pronta, com as '
-              'quantidades já somadas.',
-              style: context.texts.bodyMedium?.copyWith(
-                color: colors.onSaturated.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            PillButton(
-              label: 'Gerar lista',
-              icon: Icons.add_shopping_cart_outlined,
-              onPressed: () => _generate(context, ref),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -854,7 +791,7 @@ class _AddItemBarState extends ConsumerState<_AddItemBar> {
         AppSpacing.screen,
         AppSpacing.xs,
         AppSpacing.screen,
-        _navBarClearance,
+        AppSpacing.sm,
       ),
       child: TextField(
         controller: _controller,

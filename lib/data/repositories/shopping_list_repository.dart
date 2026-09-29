@@ -75,12 +75,63 @@ class ShoppingListRepository {
   Stream<List<ShoppingList>> watchAll() =>
       _dao.watchAll().map((rows) => rows.map(_listToDomain).toList());
 
-  /// A lista mais recente, ao vivo — E3 mostra sempre a última gerada (sem
-  /// seletor de lista ainda, RF-05.9 fica pra depois).
-  Stream<ShoppingList?> watchMostRecent() {
-    return _dao
-        .watchMostRecent()
-        .map((r) => r == null ? null : _listToDomain(r));
+  Stream<ShoppingList?> watchById(String id) {
+    return _dao.watchById(id).map((r) => r == null ? null : _listToDomain(r));
+  }
+
+  /// Todas as listas com progresso, ao vivo — a tela "suas listas" (RF-05.9).
+  Stream<List<ShoppingListSummary>> watchSummaries() {
+    return _dao.watchAllWithCounts().map(
+          (rows) => [
+            for (final r in rows)
+              (
+                list: _listToDomain(r.list),
+                total: r.total,
+                checked: r.checked,
+              ),
+          ],
+        );
+  }
+
+  /// Lista sem itens — pra ir montando à mão com itens avulsos. Sem nome,
+  /// cai no padrão com a data.
+  Future<Result<ShoppingList>> createEmpty({String? name}) async {
+    try {
+      final at = _clock().toUtc();
+      final trimmed = name?.trim() ?? '';
+      final row = await _dao.createEmpty(
+        name: trimmed.isEmpty ? _defaultName(at) : trimmed,
+        at: at,
+      );
+      return Ok(_listToDomain(row));
+    } catch (e) {
+      debugPrint('ShoppingListRepository.createEmpty: $e');
+      return Err(DatabaseFailure('Falha ao criar a lista', cause: e));
+    }
+  }
+
+  Future<Result<void>> rename(String id, String name) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) {
+      return const Err(ValidationFailure('Dê um nome à lista.'));
+    }
+    try {
+      await _dao.rename(id, trimmed, _clock().toUtc());
+      return const Ok(null);
+    } catch (e) {
+      debugPrint('ShoppingListRepository.rename: $e');
+      return Err(DatabaseFailure('Falha ao renomear a lista', cause: e));
+    }
+  }
+
+  Future<Result<void>> deleteList(String id) async {
+    try {
+      await _dao.deleteList(id);
+      return const Ok(null);
+    } catch (e) {
+      debugPrint('ShoppingListRepository.deleteList: $e');
+      return Err(DatabaseFailure('Falha ao excluir a lista', cause: e));
+    }
   }
 
   Future<Result<void>> setChecked(String itemId, bool checked) async {
