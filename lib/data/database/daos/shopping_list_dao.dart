@@ -98,6 +98,36 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Item avulso (RF-05.6) no fim da lista.
+  Future<void> addItem({
+    required String listId,
+    String? ingredientId,
+    String? manualName,
+    double? quantity,
+    String? unitId,
+  }) {
+    return transaction(() async {
+      final maxPosition = shoppingListItems.position.max();
+      final last = await (selectOnly(shoppingListItems)
+            ..addColumns([maxPosition])
+            ..where(shoppingListItems.listId.equals(listId)))
+          .map((r) => r.read(maxPosition))
+          .getSingle();
+      await into(shoppingListItems).insert(
+        ShoppingListItemRow(
+          id: _uuid.v4(),
+          listId: listId,
+          ingredientId: ingredientId,
+          manualName: manualName,
+          quantity: quantity,
+          unitId: unitId,
+          checked: false,
+          position: (last ?? -1) + 1,
+        ),
+      );
+    });
+  }
+
   Future<int> setChecked(String itemId, bool checked) {
     return (update(shoppingListItems)..where((i) => i.id.equals(itemId)))
         .write(ShoppingListItemsCompanion(checked: Value(checked)));

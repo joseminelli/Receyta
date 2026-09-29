@@ -7,6 +7,8 @@ import 'package:receyta/data/database/daos/ingredient_dao.dart';
 import 'package:receyta/data/database/daos/recipe_dao.dart';
 import 'package:receyta/data/database/daos/shopping_list_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
+import 'package:receyta/domain/engine/ingredient_category.dart';
+import 'package:receyta/domain/engine/ingredient_parser.dart';
 import 'package:receyta/domain/engine/shopping_aggregator.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
@@ -90,6 +92,31 @@ class ShoppingListRepository {
     }
   }
 
+  /// Adiciona um item avulso digitado na lista (RF-05.6). Passa pelo mesmo
+  /// parser (C1) e catálogo (C2) das receitas — "2 caixas de leite" vira
+  /// quantidade + unidade + ingrediente "Leite", e ganha o corredor certo.
+  Future<Result<void>> addManualItem(String listId, String text) async {
+    final raw = text.trim();
+    if (raw.isEmpty) {
+      return const Err(ValidationFailure('Digite o item.'));
+    }
+    try {
+      final parsed = parseIngredientLine(raw);
+      final name = parsed.name.trim().isEmpty ? raw : parsed.name.trim();
+      final ingredient = await _ingredientDao.getOrCreate(name);
+      await _dao.addItem(
+        listId: listId,
+        ingredientId: ingredient.id,
+        quantity: parsed.quantity,
+        unitId: parsed.unitCode,
+      );
+      return const Ok(null);
+    } catch (e) {
+      debugPrint('ShoppingListRepository.addManualItem: $e');
+      return Err(DatabaseFailure('Falha ao adicionar o item', cause: e));
+    }
+  }
+
   /// Itens de uma lista, já com o nome de exibição e a origem resolvidos
   /// (catálogo + receitas) — quem chama não faz join nenhum sozinho.
   Future<List<ShoppingListItem>> itemsOf(String listId) async {
@@ -114,6 +141,9 @@ class ShoppingListRepository {
     }.toList();
     final catalogRows = await _ingredientDao.findByIds(ingredientIds);
     final namesById = {for (final c in catalogRows) c.id: c.displayName};
+    final categoryById = {
+      for (final c in catalogRows) c.id: categorySlugFromId(c.categoryId),
+    };
 
     final sources = await _dao.sourcesOf([for (final i in items) i.id]);
     final recipeIds = {for (final s in sources) s.recipeId}.toList();
@@ -133,24 +163,36 @@ class ShoppingListRepository {
     }
 
     return [
-      for (final i in items)
-        ShoppingListItem(
-          id: i.id,
-          listId: i.listId,
-          ingredientId: i.ingredientId,
-          displayName:
-              (i.ingredientId != null ? namesById[i.ingredientId] : null) ??
-                  i.manualName ??
-                  '?',
-          manualName: i.manualName,
-          quantity: i.quantity,
-          unitId: i.unitId,
-          checked: i.checked,
-          note: i.note,
-          position: i.position,
-          sources: sourcesByItem[i.id] ?? const [],
-        ),
+      for (final i in items) _toItem(i, namesById, categoryById, sourcesByItem),
     ];
+  }
+
+  ShoppingListItem _toItem(
+    ShoppingListItemRow i,
+    Map<String, String> namesById,
+    Map<String, String?> categoryById,
+    Map<String, List<ShoppingItemSource>> sourcesByItem,
+  ) {
+    final displayName =
+        (i.ingredientId != null ? namesById[i.ingredientId] : null) ??
+            i.manualName ??
+            '?';
+    return ShoppingListItem(
+      id: i.id,
+      listId: i.listId,
+      ingredientId: i.ingredientId,
+      displayName: displayName,
+      manualName: i.manualName,
+      categorySlug:
+          (i.ingredientId != null ? categoryById[i.ingredientId] : null) ??
+              categorySlugFor(displayName),
+      quantity: i.quantity,
+      unitId: i.unitId,
+      checked: i.checked,
+      note: i.note,
+      position: i.position,
+      sources: sourcesByItem[i.id] ?? const [],
+    );
   }
 
   RecipeIngredient _lineToDomain(

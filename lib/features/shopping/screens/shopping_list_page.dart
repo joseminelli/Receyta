@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:receyta/core/unit_label.dart';
+import 'package:share_plus/share_plus.dart';
+
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
+import 'package:receyta/domain/engine/shopping_text.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
@@ -79,6 +81,14 @@ class ShoppingListPage extends ConsumerWidget {
                   ?.copyWith(color: colors.onSaturated),
             ),
           ),
+          if (ref.watch(currentShoppingListProvider).valueOrNull != null) ...[
+            CircleIconButton(
+              icon: Icons.ios_share,
+              tooltip: 'Compartilhar como texto',
+              onTap: () => _share(context, ref),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+          ],
           CircleIconButton(
             icon: Icons.add_shopping_cart_outlined,
             tooltip: 'Gerar lista',
@@ -87,6 +97,14 @@ class ShoppingListPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _share(BuildContext context, WidgetRef ref) async {
+    final list = ref.read(currentShoppingListProvider).valueOrNull;
+    if (list == null) return;
+    final items = await ref.read(shoppingListRepositoryProvider).itemsOf(list.id);
+    if (items.isEmpty) return;
+    await Share.share(buildShoppingListText(list.name, items), subject: list.name);
   }
 
   Widget _buildEmpty(BuildContext context, WidgetRef ref) {
@@ -142,23 +160,138 @@ class ShoppingListPage extends ConsumerWidget {
       loading: () => const Center(child: BrandLoader()),
       error: (_, __) => _buildMessage(context, 'Não deu para carregar.'),
       data: (items) {
-        if (items.isEmpty) {
-          return _buildMessage(context, 'Lista vazia.');
-        }
-        // Ordem fixa (a mesma de `position`) — marcar não reordena, só risca
-        // no lugar.
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            AppSpacing.sm,
-            AppSpacing.screen,
-            AppSpacing.xxl,
-          ),
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-          itemBuilder: (context, i) => _ItemRow(item: items[i]),
+        return Column(
+          children: [
+            Expanded(
+              child: items.isEmpty
+                  ? _buildMessage(context, 'Lista vazia.')
+                  : _buildGroups(context, items),
+            ),
+            _AddItemBar(listId: list.id),
+          ],
         );
       },
+    );
+  }
+
+  Widget _buildGroups(BuildContext context, List<ShoppingListItem> items) {
+    final colors = context.colors;
+    final children = <Widget>[];
+    for (final group in groupShoppingItems(items)) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(
+            top: AppSpacing.md,
+            bottom: AppSpacing.xs,
+          ),
+          child: Text(
+            group.label.toUpperCase(),
+            style: context.texts.labelMedium?.copyWith(
+              color: colors.lime,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+      );
+      for (final item in group.items) {
+        children
+          ..add(_ItemRow(item: item))
+          ..add(const SizedBox(height: AppSpacing.xs));
+      }
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        0,
+        AppSpacing.screen,
+        AppSpacing.md,
+      ),
+      children: children,
+    );
+  }
+}
+
+/// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
+/// home_shell usa `extendBody`, então a aba desenha por baixo dela.
+const _navBarClearance = 96.0;
+
+class _AddItemBar extends ConsumerStatefulWidget {
+  const _AddItemBar({required this.listId});
+
+  final String listId;
+
+  @override
+  ConsumerState<_AddItemBar> createState() => _AddItemBarState();
+}
+
+class _AddItemBarState extends ConsumerState<_AddItemBar> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final text = _controller.text;
+    if (text.trim().isEmpty) return;
+    final result = await ref
+        .read(shoppingListRepositoryProvider)
+        .addManualItem(widget.listId, text);
+    result.when(
+      ok: (_) => _controller.clear(),
+      err: (f) =>
+          showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.xs,
+        AppSpacing.screen,
+        _navBarClearance,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              textInputAction: TextInputAction.done,
+              textCapitalization: TextCapitalization.sentences,
+              onSubmitted: (_) => _submit(),
+              style: context.texts.bodyLarge?.copyWith(color: colors.onSaturated),
+              cursorColor: colors.lime,
+              decoration: InputDecoration(
+                hintText: 'Adicionar item (ex.: 2 caixas de leite)',
+                hintStyle: context.texts.bodyMedium?.copyWith(
+                  color: colors.onSaturated.withValues(alpha: 0.5),
+                ),
+                filled: true,
+                fillColor: colors.inkSoft,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadii.md),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          CircleIconButton(
+            icon: Icons.add,
+            tooltip: 'Adicionar item',
+            onTap: _submit,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -168,22 +301,11 @@ class _ItemRow extends ConsumerWidget {
 
   final ShoppingListItem item;
 
-  String get _label {
-    final qty = item.quantity;
-    final unit = unitLabel(item.unitId, qty ?? 1);
-    if (qty == null) return item.displayName;
-    final qtyText = qty == qty.roundToDouble()
-        ? qty.toInt().toString()
-        : qty.toStringAsFixed(2).replaceAll('.', ',');
-    return unit == null
-        ? '$qtyText ${item.displayName}'
-        : '$qtyText $unit de ${item.displayName}';
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final done = item.checked;
+    final origin = shoppingItemOrigin(item);
 
     return Material(
       color: Colors.transparent,
@@ -224,15 +346,30 @@ class _ItemRow extends ConsumerWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: SweepStrikeText(
-                  text: _label,
-                  done: done,
-                  lineColor: colors.onSaturated.withValues(alpha: 0.5),
-                  style: context.texts.bodyLarge?.copyWith(
-                    color: done
-                        ? colors.onSaturated.withValues(alpha: 0.4)
-                        : colors.onSaturated,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SweepStrikeText(
+                      text: shoppingItemLabel(item),
+                      done: done,
+                      lineColor: colors.onSaturated.withValues(alpha: 0.5),
+                      style: context.texts.bodyLarge?.copyWith(
+                        color: done
+                            ? colors.onSaturated.withValues(alpha: 0.4)
+                            : colors.onSaturated,
+                      ),
+                    ),
+                    if (origin.isNotEmpty)
+                      Text(
+                        origin,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodySmall?.copyWith(
+                          color: colors.onSaturated
+                              .withValues(alpha: done ? 0.3 : 0.55),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],

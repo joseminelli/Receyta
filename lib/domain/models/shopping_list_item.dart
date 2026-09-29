@@ -33,6 +33,10 @@ class ShoppingListItem with _$ShoppingListItem {
     @Default(false) bool checked,
     String? note,
     @Default(0) int position,
+
+    /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
+    /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
+    @Default('outros') String categorySlug,
     @Default(<ShoppingItemSource>[]) List<ShoppingItemSource> sources,
   }) = _ShoppingListItem;
 }

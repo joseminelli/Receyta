@@ -174,4 +174,40 @@ void main() {
         unwrapList(await shoppingRepo.generateFromRecipes([recipe.id]));
     expect(unnamed.name, contains('01/01'));
   });
+
+  test('itens vêm com o corredor; avulso digitado entra no fim, parseado',
+      () async {
+    final recipe = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['300g de farinha de trigo', '2 tomates'],
+    ));
+    final list =
+        unwrapList(await shoppingRepo.generateFromRecipes([recipe.id]));
+
+    final added = await shoppingRepo.addManualItem(list.id, '2 caixas de leite');
+    expect(added, isA<Ok<void>>());
+
+    final items = await shoppingRepo.itemsOf(list.id);
+    expect(items, hasLength(3));
+    final bySlug = {for (final i in items) i.displayName: i.categorySlug};
+    expect(bySlug['Farinha de Trigo'], 'mercearia');
+    expect(bySlug['Tomates'], 'hortifruti');
+
+    final manual = items.last;
+    expect(manual.displayName, 'Leite');
+    expect(manual.quantity, 2);
+    expect(manual.categorySlug, 'frios_laticinios');
+    expect(manual.sources, isEmpty);
+    expect(manual.position, 2);
+  });
+
+  test('avulso vazio é recusado', () async {
+    final recipe = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['1 ovo'],
+    ));
+    final list =
+        unwrapList(await shoppingRepo.generateFromRecipes([recipe.id]));
+    expect(await shoppingRepo.addManualItem(list.id, '  '), isA<Err<void>>());
+  });
 }

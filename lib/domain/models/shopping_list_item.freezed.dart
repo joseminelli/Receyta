@@ -220,6 +220,10 @@ mixin _$ShoppingListItem {
   bool get checked => throw _privateConstructorUsedError;
   String? get note => throw _privateConstructorUsedError;
   int get position => throw _privateConstructorUsedError;
+
+  /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
+  /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
+  String get categorySlug => throw _privateConstructorUsedError;
   List<ShoppingItemSource> get sources => throw _privateConstructorUsedError;
 
   /// Create a copy of ShoppingListItem
@@ -246,6 +250,7 @@ abstract class $ShoppingListItemCopyWith<$Res> {
       bool checked,
       String? note,
       int position,
+      String categorySlug,
       List<ShoppingItemSource> sources});
 }
 
@@ -274,6 +279,7 @@ class _$ShoppingListItemCopyWithImpl<$Res, $Val extends ShoppingListItem>
     Object? checked = null,
     Object? note = freezed,
     Object? position = null,
+    Object? categorySlug = null,
     Object? sources = null,
   }) {
     return _then(_value.copyWith(
@@ -317,6 +323,10 @@ class _$ShoppingListItemCopyWithImpl<$Res, $Val extends ShoppingListItem>
           ? _value.position
           : position // ignore: cast_nullable_to_non_nullable
               as int,
+      categorySlug: null == categorySlug
+          ? _value.categorySlug
+          : categorySlug // ignore: cast_nullable_to_non_nullable
+              as String,
       sources: null == sources
           ? _value.sources
           : sources // ignore: cast_nullable_to_non_nullable
@@ -344,6 +354,7 @@ abstract class _$$ShoppingListItemImplCopyWith<$Res>
       bool checked,
       String? note,
       int position,
+      String categorySlug,
       List<ShoppingItemSource> sources});
 }
 
@@ -370,6 +381,7 @@ class __$$ShoppingListItemImplCopyWithImpl<$Res>
     Object? checked = null,
     Object? note = freezed,
     Object? position = null,
+    Object? categorySlug = null,
     Object? sources = null,
   }) {
     return _then(_$ShoppingListItemImpl(
@@ -413,6 +425,10 @@ class __$$ShoppingListItemImplCopyWithImpl<$Res>
           ? _value.position
           : position // ignore: cast_nullable_to_non_nullable
               as int,
+      categorySlug: null == categorySlug
+          ? _value.categorySlug
+          : categorySlug // ignore: cast_nullable_to_non_nullable
+              as String,
       sources: null == sources
           ? _value._sources
           : sources // ignore: cast_nullable_to_non_nullable
@@ -435,6 +451,7 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
       this.checked = false,
       this.note,
       this.position = 0,
+      this.categorySlug = 'outros',
       final List<ShoppingItemSource> sources = const <ShoppingItemSource>[]})
       : _sources = sources;
 
@@ -463,6 +480,12 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
   @override
   @JsonKey()
   final int position;
+
+  /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
+  /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
+  @override
+  @JsonKey()
+  final String categorySlug;
   final List<ShoppingItemSource> _sources;
   @override
   @JsonKey()
@@ -474,7 +497,7 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
 
   @override
   String toString() {
-    return 'ShoppingListItem(id: $id, listId: $listId, ingredientId: $ingredientId, displayName: $displayName, manualName: $manualName, quantity: $quantity, unitId: $unitId, checked: $checked, note: $note, position: $position, sources: $sources)';
+    return 'ShoppingListItem(id: $id, listId: $listId, ingredientId: $ingredientId, displayName: $displayName, manualName: $manualName, quantity: $quantity, unitId: $unitId, checked: $checked, note: $note, position: $position, categorySlug: $categorySlug, sources: $sources)';
   }
 
   @override
@@ -497,6 +520,8 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
             (identical(other.note, note) || other.note == note) &&
             (identical(other.position, position) ||
                 other.position == position) &&
+            (identical(other.categorySlug, categorySlug) ||
+                other.categorySlug == categorySlug) &&
             const DeepCollectionEquality().equals(other._sources, _sources));
   }
 
@@ -513,6 +538,7 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
       checked,
       note,
       position,
+      categorySlug,
       const DeepCollectionEquality().hash(_sources));
 
   /// Create a copy of ShoppingListItem
@@ -537,6 +563,7 @@ abstract class _ShoppingListItem implements ShoppingListItem {
       final bool checked,
       final String? note,
       final int position,
+      final String categorySlug,
       final List<ShoppingItemSource> sources}) = _$ShoppingListItemImpl;
 
   @override
@@ -562,6 +589,11 @@ abstract class _ShoppingListItem implements ShoppingListItem {
   String? get note;
   @override
   int get position;
+
+  /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
+  /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
+  @override
+  String get categorySlug;
   @override
   List<ShoppingItemSource> get sources;
 
