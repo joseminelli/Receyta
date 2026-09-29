@@ -44,13 +44,21 @@ class RecipeCard extends StatelessWidget {
             children: [
               AspectRatio(
                 aspectRatio: 1.45,
-                child: Hero(
-                  tag: recipeTileHeroTag(recipe.id),
-                  child: TilePattern(
-                    motif: tile.motif,
-                    background: tile.background,
-                    patternColor: tile.patternColor,
-                    patternColorAlt: tile.patternColorAlt,
+                // `ColoredBox` fora do `Hero`: o `TilePattern` pinta o
+                // próprio fundo chapado, então enquanto ele "voa" (some daqui
+                // e some do destino, só existe na camada de overlay do voo)
+                // sobrava o `paperSoft` do card por baixo — um flash sem cor
+                // nenhuma. Esta cópia parada da cor cobre esse buraco.
+                child: ColoredBox(
+                  color: tile.background,
+                  child: Hero(
+                    tag: recipeTileHeroTag(recipe.id),
+                    child: TilePattern(
+                      motif: tile.motif,
+                      background: tile.background,
+                      patternColor: tile.patternColor,
+                      patternColorAlt: tile.patternColorAlt,
+                    ),
                   ),
                 ),
               ),

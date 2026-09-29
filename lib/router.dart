@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/bootstrap.dart';
 import 'package:receyta/domain/engine/recipe_import.dart';
+import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/folders/screens/all_folders_page.dart';
 import 'package:receyta/features/folders/screens/folder_page.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
@@ -49,7 +50,10 @@ final router = GoRouter(
         key: state.pageKey,
         transitionDuration: const Duration(milliseconds: 300),
         reverseTransitionDuration: const Duration(milliseconds: 300),
-        child: RecipeDetailPage(recipeId: state.pathParameters['id']!),
+        child: RecipeDetailPage(
+          recipeId: state.pathParameters['id']!,
+          initialRecipe: state.extra as Recipe?,
+        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
             child,
       ),

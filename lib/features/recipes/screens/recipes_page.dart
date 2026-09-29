@@ -283,7 +283,7 @@ class _RecipeList extends StatelessWidget {
           recipe: featured,
           child: FeaturedRecipeCard(
             recipe: featured,
-            onTap: () => context.push('/recipe/${featured.id}'),
+            onTap: () => context.push('/recipe/${featured.id}', extra: featured),
           ),
         ),
       ),
@@ -310,7 +310,7 @@ class _RecipeList extends StatelessWidget {
             recipe: rest[i],
             child: RecipeCard(
               recipe: rest[i],
-              onTap: () => context.push('/recipe/${rest[i].id}'),
+              onTap: () => context.push('/recipe/${rest[i].id}', extra: rest[i]),
             ),
           ),
           childCount: rest.length,

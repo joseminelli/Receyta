@@ -52,14 +52,19 @@ class FeaturedRecipeCard extends StatelessWidget {
                 height: _patternHeight,
                 child: Stack(
                   children: [
+                    // `ColoredBox` fora do `Hero` — mesma razão do
+                    // `RecipeCard`: cobre o buraco que o voo deixaria.
                     Positioned.fill(
-                      child: Hero(
-                        tag: recipeTileHeroTag(recipe.id),
-                        child: TilePattern(
-                          motif: tile.motif,
-                          background: tile.background,
-                          patternColor: tile.patternColor,
-                          patternColorAlt: tile.patternColorAlt,
+                      child: ColoredBox(
+                        color: tile.background,
+                        child: Hero(
+                          tag: recipeTileHeroTag(recipe.id),
+                          child: TilePattern(
+                            motif: tile.motif,
+                            background: tile.background,
+                            patternColor: tile.patternColor,
+                            patternColorAlt: tile.patternColorAlt,
+                          ),
                         ),
                       ),
                     ),

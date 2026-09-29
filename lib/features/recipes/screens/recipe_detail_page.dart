@@ -19,6 +19,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
+import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/expanding_create_menu.dart';
 import 'package:receyta/widgets/hero_number.dart';
 import 'package:receyta/widgets/metric_stat.dart';
@@ -33,9 +34,17 @@ import 'package:receyta/widgets/tile_style_picker.dart';
 /// (§9.8). Ingredientes e passos em fundo chapado — o padrão nunca entra atrás
 /// de texto que se lê linha a linha (§9.4).
 class RecipeDetailPage extends ConsumerStatefulWidget {
-  const RecipeDetailPage({super.key, required this.recipeId});
+  const RecipeDetailPage({super.key, required this.recipeId, this.initialRecipe});
 
   final String recipeId;
+
+  /// A receita já em mãos de quem navegou pra cá (o card tocado na lista) —
+  /// pré-preenche o hero (cor/azulejo/nome/métricas) no primeiro frame, sem
+  /// esperar o `recipeDetailProvider` resolver. Sem isso, o Hero de
+  /// card→detalhe às vezes não achava a tag de destino a tempo do voo
+  /// começar (ficava no skeleton genérico ainda) e não animava, ou animava
+  /// com a cor errada. Nulo em entradas sem card de origem (deep link).
+  final Recipe? initialRecipe;
 
   @override
   ConsumerState<RecipeDetailPage> createState() => _RecipeDetailPageState();
@@ -45,24 +54,49 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
   @override
   void initState() {
     super.initState();
-    // Sobe pro topo da prateleira "Recentes" da home (§ "recentes").
-    ref.read(recipeRepositoryProvider).markOpened(widget.recipeId);
+    // Sobe pro topo da prateleira "Recentes" da home (§ "recentes") — mas só
+    // depois que o voo do Hero (card→hero, ~300ms no router) termina. Se a
+    // lista de origem reordenar ENQUANTO o Hero ainda está voando (o card
+    // tocado pode até virar o `FeaturedRecipeCard`, widget diferente), o
+    // Flutter recria o Hero de origem no meio do voo e quebra com
+    // 'manifest.tag == newManifest.tag'.
+    Future.delayed(const Duration(milliseconds: 320), () {
+      if (mounted) {
+        ref.read(recipeRepositoryProvider).markOpened(widget.recipeId);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final detailAsync = ref.watch(recipeDetailProvider(widget.recipeId));
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 280),
       switchInCurve: Curves.easeOut,
       switchOutCurve: Curves.easeIn,
-      child: ref.watch(recipeDetailProvider(widget.recipeId)).when(
-            loading: () => const _DetailSkeleton(key: ValueKey('skeleton')),
-            error: (_, __) => const _Missing(key: ValueKey('missing')),
-            data: (detail) => detail == null
-                ? const _Missing(key: ValueKey('missing'))
-                : _Detail(key: const ValueKey('detail'), detail: detail),
-          ),
+      child: _resolveChild(detailAsync),
     );
+  }
+
+  Widget _resolveChild(AsyncValue<RecipeDetail?> detailAsync) {
+    if (detailAsync.hasError) {
+      return const _Missing(key: ValueKey('missing'));
+    }
+    final loaded = detailAsync.valueOrNull;
+    if (detailAsync is AsyncData<RecipeDetail?> && loaded == null) {
+      return const _Missing(key: ValueKey('missing'));
+    }
+    final recipe = loaded?.recipe ?? widget.initialRecipe;
+    if (recipe == null) {
+      // Sem receita otimista (deep link) e ainda carregando — não tem cor
+      // de verdade pra mostrar ainda, cai pro skeleton genérico.
+      return const _DetailSkeleton(key: ValueKey('skeleton'));
+    }
+    // Mesma key sempre: quando `detail` chega depois do `recipe` otimista,
+    // isto não conta como "trocar de filho" pro AnimatedSwitcher — só
+    // reconstrói no lugar, sem crossfade nem novo voo de Hero.
+    return _Detail(key: const ValueKey('detail'), recipe: recipe, detail: loaded);
   }
 }
 
@@ -189,21 +223,26 @@ class _DetailSkeleton extends StatelessWidget {
 }
 
 class _Detail extends StatelessWidget {
-  const _Detail({super.key, required this.detail});
+  const _Detail({super.key, required this.recipe, required this.detail});
 
-  final RecipeDetail detail;
+  final Recipe recipe;
+
+  /// Nulo enquanto o `recipeDetailProvider` ainda não resolveu — o [recipe]
+  /// (otimista, de quem navegou pra cá) já basta pro hero e pras métricas;
+  /// ingredientes/passos/tags mostram um loader curto até isto chegar.
+  final RecipeDetail? detail;
 
   @override
   Widget build(BuildContext context) {
-    final recipe = detail.recipe;
-    final hasSteps = detail.steps.isNotEmpty;
-    final hasIngredients = detail.ingredients.isNotEmpty;
+    final loadedDetail = detail;
+    final hasSteps = loadedDetail?.steps.isNotEmpty ?? false;
+    final hasIngredients = loadedDetail?.ingredients.isNotEmpty ?? false;
 
     // Calculado uma vez por carregamento da receita (não a cada rebuild de
     // linha): parsear a mesma string toda hora que a linha reconstrói é
     // trabalho refeito à toa.
     final parsedIngredients = [
-      for (final i in detail.ingredients)
+      for (final i in loadedDetail?.ingredients ?? const <RecipeIngredient>[])
         i.quantity == null ? null : parseIngredientLine(i.rawText),
     ];
 
@@ -214,18 +253,22 @@ class _Detail extends StatelessWidget {
           CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: _Hero(recipe: recipe, tags: detail.tags),
+                child: _Hero(recipe: recipe, tags: loadedDetail?.tags ?? const []),
               ),
               _buildIntroSliver(context, recipe, hasIngredients),
-              // Ingredientes e passos entram em slivers lazy próprios (em vez
-              // de dentro do Column acima): receitas longas deixam de montar
-              // todas as linhas de uma vez, só as visíveis (+ cache) chegam a
-              // ser construídas.
-              if (hasIngredients)
-                _buildIngredientsSliver(detail, parsedIngredients),
-              _buildPreparoHeaderSliver(context, hasSteps),
-              if (hasSteps) _buildStepsSliver(detail),
-              _buildNotesSliver(context, recipe, hasSteps),
+              if (loadedDetail == null)
+                _buildBodyLoadingSliver()
+              else ...[
+                // Ingredientes e passos entram em slivers lazy próprios (em
+                // vez de dentro do Column acima): receitas longas deixam de
+                // montar todas as linhas de uma vez, só as visíveis (+
+                // cache) chegam a ser construídas.
+                if (hasIngredients)
+                  _buildIngredientsSliver(loadedDetail, parsedIngredients),
+                _buildPreparoHeaderSliver(context, hasSteps),
+                if (hasSteps) _buildStepsSliver(loadedDetail),
+                _buildNotesSliver(context, recipe, hasSteps),
+              ],
             ],
           ),
           if (hasSteps)
@@ -270,12 +313,23 @@ class _Detail extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
               SectionHeader(
                 title: 'Ingredientes',
-                action: _CountPill(detail.ingredients.length, 'item', 'itens'),
+                action: _CountPill(detail!.ingredients.length, 'item', 'itens'),
               ),
               const SizedBox(height: AppSpacing.sm),
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  /// Loader curto pra seção de ingredientes/passos enquanto só o [recipe]
+  /// otimista chegou — o hero e as métricas já aparecem, só o corpo espera.
+  Widget _buildBodyLoadingSliver() {
+    return const SliverPadding(
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+      sliver: SliverToBoxAdapter(
+        child: Center(child: BrandLoader()),
       ),
     );
   }

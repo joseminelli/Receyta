@@ -382,7 +382,8 @@ class _GridBody extends StatelessWidget {
               delegate: SliverChildBuilderDelegate(
                 (context, i) => RecipeCard(
                   recipe: recipes[i],
-                  onTap: () => context.push('/recipe/${recipes[i].id}'),
+                  onTap: () =>
+                      context.push('/recipe/${recipes[i].id}', extra: recipes[i]),
                 ),
                 childCount: recipes.length,
               ),

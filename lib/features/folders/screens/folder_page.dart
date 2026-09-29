@@ -188,7 +188,8 @@ class _FolderPageState extends ConsumerState<FolderPage> {
             recipe: recipes[i],
             child: RecipeCard(
               recipe: recipes[i],
-              onTap: () => context.push('/recipe/${recipes[i].id}'),
+              onTap: () =>
+                  context.push('/recipe/${recipes[i].id}', extra: recipes[i]),
             ),
           ),
           childCount: recipes.length,
