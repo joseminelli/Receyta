@@ -43,9 +43,12 @@ final router = GoRouter(
     GoRoute(
       path: '/recipe/:id',
       name: 'recipe-detail',
-      // Sem fade/slide de página própria: só o Hero do azulejo (card→hero)
-      // se move. Com a transição padrão, as duas animações competiam e o
-      // bloco parecia "sumir" em vez de voar de um lugar pro outro.
+      // Sem transição de página padrão (fade+slide do Material colidia com
+      // o voo do Hero do azulejo, e o bloco parecia "sumir"). O Hero em si
+      // fica de fora do paint normal enquanto voa (o Flutter cuida disso
+      // sozinho), então dar um fade+leve subida só ao RESTO do conteúdo —
+      // sincronizado com a mesma janela do voo — deixa tudo parecendo uma
+      // coisa só, em vez do bloco animar liso e o resto cortar seco.
       pageBuilder: (context, state) => CustomTransitionPage(
         key: state.pageKey,
         transitionDuration: const Duration(milliseconds: 300),
@@ -54,8 +57,26 @@ final router = GoRouter(
           recipeId: state.pathParameters['id']!,
           initialRecipe: state.extra as Recipe?,
         ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-            child,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Content termina de entrar/começa a sair um pouco antes do fim
+          // dos 300ms do voo, pra nunca parecer que ainda tá "chegando"
+          // depois do bloco já ter assentado.
+          final fade = CurvedAnimation(
+            parent: animation,
+            curve: const Interval(0, 0.65, curve: Curves.easeOut),
+            reverseCurve: const Interval(0.35, 1, curve: Curves.easeIn),
+          );
+          return FadeTransition(
+            opacity: fade,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.02),
+                end: Offset.zero,
+              ).animate(fade),
+              child: child,
+            ),
+          );
+        },
       ),
     ),
     GoRoute(
