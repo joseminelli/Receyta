@@ -62,49 +62,53 @@ class MonthPage extends ConsumerWidget {
     };
     final entries = entriesByMonth[month]!;
 
-    return Scaffold(
-      backgroundColor: colors.paper,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            AppSpacing.xs,
-            AppSpacing.screen,
-            _navBarClearance,
+    // Fundo claro: hora e bateria escuras (`onLight`).
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemBars.onLight,
+      child: Scaffold(
+        backgroundColor: colors.paper,
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.xs,
+              AppSpacing.screen,
+              _navBarClearance,
+            ),
+            children: [
+              _buildHeader(context, ref, month),
+              const SizedBox(height: AppSpacing.md),
+              _MonthStats(month: month, entries: entries),
+              const SizedBox(height: AppSpacing.md),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: colors.textMuted.withValues(alpha: 0.25),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildWeekdayLabels(context),
+              const SizedBox(height: 4),
+              SlidePager(
+                index: monthIndex(month),
+                onChanged: (i) {
+                  HapticFeedback.selectionClick();
+                  ref.read(visibleMonthProvider.notifier).state =
+                      monthFromIndex(i);
+                },
+                builder: (i) {
+                  final m = monthFromIndex(i);
+                  return _buildGrid(
+                    context,
+                    ref,
+                    m,
+                    entriesByMonth[m] ?? const <MealPlanEntry>[],
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              const _UpcomingSection(),
+            ],
           ),
-          children: [
-            _buildHeader(context, ref, month),
-            const SizedBox(height: AppSpacing.md),
-            _MonthStats(month: month, entries: entries),
-            const SizedBox(height: AppSpacing.md),
-            Divider(
-              height: 1,
-              thickness: 1,
-              color: colors.textMuted.withValues(alpha: 0.25),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _buildWeekdayLabels(context),
-            const SizedBox(height: 4),
-            SlidePager(
-              index: monthIndex(month),
-              onChanged: (i) {
-                HapticFeedback.selectionClick();
-                ref.read(visibleMonthProvider.notifier).state =
-                    monthFromIndex(i);
-              },
-              builder: (i) {
-                final m = monthFromIndex(i);
-                return _buildGrid(
-                  context,
-                  ref,
-                  m,
-                  entriesByMonth[m] ?? const <MealPlanEntry>[],
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            const _UpcomingSection(),
-          ],
         ),
       ),
     );

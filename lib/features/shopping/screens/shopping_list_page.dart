@@ -62,23 +62,28 @@ class ShoppingListPage extends ConsumerWidget {
     final listAsync = ref.watch(shoppingListProvider(listId));
     final list = listAsync.valueOrNull;
 
-    return Scaffold(
-      backgroundColor: colors.ink,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(context, ref, list),
-            Expanded(
-              child: listAsync.when(
-                loading: () => const Center(child: BrandLoader()),
-                error: (_, __) =>
-                    _buildMessage(context, 'Não deu para carregar.'),
-                data: (list) => list == null
-                    ? _buildMessage(context, 'Esta lista não existe mais.')
-                    : _buildList(context, ref, list),
+    // Fundo escuro: hora e bateria claras (`onDark`), explícito pra não
+    // herdar o estilo da tela anterior.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemBars.onDark,
+      child: Scaffold(
+        backgroundColor: colors.ink,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(context, ref, list),
+              Expanded(
+                child: listAsync.when(
+                  loading: () => const Center(child: BrandLoader()),
+                  error: (_, __) =>
+                      _buildMessage(context, 'Não deu para carregar.'),
+                  data: (list) => list == null
+                      ? _buildMessage(context, 'Esta lista não existe mais.')
+                      : _buildList(context, ref, list),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -192,8 +197,10 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
   /// exige isso) enquanto o banco ainda apaga e o stream não reemitiu.
   final _removed = <String>{};
 
-  List<ShoppingListItem> get _visible =>
-      [for (final i in widget.items) if (!_removed.contains(i.id)) i];
+  List<ShoppingListItem> get _visible => [
+        for (final i in widget.items)
+          if (!_removed.contains(i.id)) i
+      ];
 
   void _setRemoved(String id, {required bool removed}) {
     setState(() => removed ? _removed.add(id) : _removed.remove(id));
@@ -309,8 +316,7 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
             enterDuration: _enterDuration,
             child: _ItemRow(
               item: item,
-              onRemoved: (removed) =>
-                  _setRemoved(item.id, removed: removed),
+              onRemoved: (removed) => _setRemoved(item.id, removed: removed),
             ),
           ),
         );

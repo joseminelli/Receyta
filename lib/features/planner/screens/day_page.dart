@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/repositories/meal_plan_repository.dart';
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/add_meal_sheet.dart';
@@ -13,6 +14,7 @@ import 'package:receyta/features/planner/screens/meal_slot_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
@@ -54,12 +56,17 @@ class _DayPageState extends ConsumerState<DayPage> {
     ref.watch(dayEntriesProvider(addDays(_day, -1)));
     ref.watch(dayEntriesProvider(addDays(_day, 1)));
 
-    return Scaffold(
-      backgroundColor: colors.paper,
-      body: SafeArea(
-        child: Column(
+    final count = ref.watch(dayEntriesProvider(_day)).valueOrNull?.length ?? 0;
+
+    // Cabeçalho violeta: hora e bateria em branco, então a barra do sistema
+    // é a "sobre fundo escuro" (`onDark`).
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemBars.onDark,
+      child: Scaffold(
+        backgroundColor: colors.paper,
+        body: Column(
           children: [
-            _buildTopBar(context),
+            _buildHeader(context, count),
             Expanded(
               child: SlidePager(
                 index: dayIndex(_day),
@@ -90,54 +97,104 @@ class _DayPageState extends ConsumerState<DayPage> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    final colors = context.colors;
+  /// Cabeçalho do dia: bloco violeta com a textura meia-lua (mesma linguagem
+  /// do cabeçalho de pasta), o dia em letra grande e o controle ‹ Hoje ›.
+  Widget _buildHeader(BuildContext context, int count) {
+    final tile = resolveTileAppearance(
+      context.colors,
+      color: TileColor.violet,
+      motif: TileMotif.meiaLua,
+    );
+    final onColor = tile.onColor;
     final isToday = isSameDay(_day, today());
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.xs,
-        AppSpacing.screen,
-        AppSpacing.sm,
+    final eyebrow = isToday
+        ? '${weekdayLong(_day).toUpperCase()}  ·  HOJE'
+        : weekdayLong(_day).toUpperCase();
+    final summary = count == 0
+        ? 'Nada planejado ainda'
+        : '$count ${count == 1 ? 'refeição' : 'refeições'}';
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppRadii.lg),
       ),
-      child: Row(
-        children: [
-          CircleIconButton(
-            icon: Icons.arrow_back,
-            tooltip: 'Voltar',
-            onTap: () => context.pop(),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  weekdayLong(_day),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.texts.displaySmall,
+      child: Container(
+        color: tile.background,
+        child: Stack(
+          children: [
+            Positioned(
+              top: -40,
+              right: -30,
+              child: SizedBox(
+                width: 240,
+                height: 240,
+                child: TilePattern(
+                  motif: tile.motif,
+                  background: tile.background,
+                  patternColor: tile.patternColor,
+                  patternColorAlt: tile.patternColorAlt,
                 ),
-                Text(
-                  isToday
-                      ? '${_day.day} ${monthLong(_day).toLowerCase()} · hoje'
-                      : '${_day.day} ${monthLong(_day).toLowerCase()}',
-                  style: context.texts.bodyMedium?.copyWith(
-                    color: isToday ? colors.violet : colors.textMuted,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
-          PeriodStepper(
-            atToday: isToday,
-            previousTooltip: 'Dia anterior',
-            nextTooltip: 'Próximo dia',
-            onPrevious: () => _shiftDay(-1),
-            onNext: () => _shiftDay(1),
-            onToday: () => setState(() => _day = today()),
-          ),
-        ],
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.xs,
+                  AppSpacing.screen,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleIconButton(
+                          icon: Icons.arrow_back,
+                          tooltip: 'Voltar',
+                          background: context.colors.paper,
+                          foreground: context.colors.ink,
+                          onTap: () => context.pop(),
+                        ),
+                        const Spacer(),
+                        PeriodStepper(
+                          atToday: isToday,
+                          previousTooltip: 'Dia anterior',
+                          nextTooltip: 'Próximo dia',
+                          onPrevious: () => _shiftDay(-1),
+                          onNext: () => _shiftDay(1),
+                          onToday: () => setState(() => _day = today()),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      eyebrow,
+                      style: context.texts.labelSmall?.copyWith(
+                        color: onColor,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '${_day.day} de ${monthLong(_day).toLowerCase()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.display(40).copyWith(color: onColor),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      summary,
+                      style: context.texts.bodyMedium
+                          ?.copyWith(color: onColor.withValues(alpha: 0.85)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

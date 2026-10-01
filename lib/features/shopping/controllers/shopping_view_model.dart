@@ -5,8 +5,7 @@ import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 
 /// Todas as listas de compras com o progresso de cada uma (RF-05.9).
-final shoppingListsProvider =
-    StreamProvider<List<ShoppingListSummary>>((ref) {
+final shoppingListsProvider = StreamProvider<List<ShoppingListSummary>>((ref) {
   return ref.watch(shoppingListRepositoryProvider).watchSummaries();
 });
 

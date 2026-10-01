@@ -113,8 +113,9 @@ class _RecipePickerSheetState extends State<_RecipePickerSheet> {
             ? 'Selecione ao menos uma'
             : 'Gerar lista com ${_selected.length} '
                 '${_selected.length > 1 ? 'receitas' : 'receita'}',
-        onPressed:
-            _selected.isEmpty ? null : () => Navigator.of(context).pop(_selected.toList()),
+        onPressed: _selected.isEmpty
+            ? null
+            : () => Navigator.of(context).pop(_selected.toList()),
       ),
     );
   }

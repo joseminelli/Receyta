@@ -51,22 +51,27 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
         if (!_removed.contains(s.list.id)) s,
     ];
 
-    return Scaffold(
-      backgroundColor: colors.ink,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(context, lists),
-            Expanded(
-              child: listsAsync.when(
-                loading: () => const Center(child: BrandLoader()),
-                error: (_, __) =>
-                    _buildMessage(context, 'Não deu para carregar.'),
-                data: (_) =>
-                    lists.isEmpty ? _buildEmpty(context) : _buildLists(lists),
+    // Fundo escuro: hora e bateria claras (`onDark`), explícito pra não
+    // herdar o estilo da tela anterior.
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemBars.onDark,
+      child: Scaffold(
+        backgroundColor: colors.ink,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(context, lists),
+              Expanded(
+                child: listsAsync.when(
+                  loading: () => const Center(child: BrandLoader()),
+                  error: (_, __) =>
+                      _buildMessage(context, 'Não deu para carregar.'),
+                  data: (_) =>
+                      lists.isEmpty ? _buildEmpty(context) : _buildLists(lists),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -173,8 +178,14 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
   }
 
   Widget _buildLists(List<ShoppingListSummary> lists) {
-    final active = [for (final s in lists) if (!_isComplete(s)) s];
-    final done = [for (final s in lists) if (_isComplete(s)) s];
+    final active = [
+      for (final s in lists)
+        if (!_isComplete(s)) s
+    ];
+    final done = [
+      for (final s in lists)
+        if (_isComplete(s)) s
+    ];
     final children = <Widget>[
       if (active.isNotEmpty) ...[
         _SectionLabel('Em andamento', count: active.length),

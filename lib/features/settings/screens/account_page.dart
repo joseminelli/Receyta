@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/theme/app_theme.dart';
@@ -22,12 +23,15 @@ class AccountPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          _buildHeader(context),
-          Expanded(child: _buildPlaceholder(context)),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemBars.onLight,
+      child: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(child: _buildPlaceholder(context)),
+          ],
+        ),
       ),
     );
   }

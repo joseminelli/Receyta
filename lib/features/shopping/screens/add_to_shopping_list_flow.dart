@@ -34,8 +34,8 @@ Future<void> addRecipesToShoppingListFlow(
   String? newListName,
 }) async {
   final router = GoRouter.of(context);
-  final lists =
-      ref.read(shoppingListsProvider).valueOrNull ?? const <ShoppingListSummary>[];
+  final lists = ref.read(shoppingListsProvider).valueOrNull ??
+      const <ShoppingListSummary>[];
   final choice = await showModalBottomSheet<_ListChoice>(
     context: context,
     showDragHandle: true,
@@ -115,7 +115,8 @@ class _ChooseListSheet extends StatelessWidget {
               leading: const Icon(Icons.add_circle_outline),
               title: const Text('Nova lista'),
               subtitle: const Text('Só com os ingredientes desta receita'),
-              onTap: () => Navigator.of(context).pop<_ListChoice>((listId: null)),
+              onTap: () =>
+                  Navigator.of(context).pop<_ListChoice>((listId: null)),
             ),
             if (lists.isNotEmpty) const Divider(height: 1),
             Flexible(

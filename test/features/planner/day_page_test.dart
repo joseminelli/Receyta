@@ -41,17 +41,31 @@ Widget _host(List<MealPlanEntry> entries, {DateTime? day}) => ProviderScope(
       ),
     );
 
+/// Tela de celular (390×844): o cabeçalho colorido ocupa bem mais que a
+/// superfície padrão do teste (800×600) deixa sobrar pras refeições.
+void _usePhoneSize(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 void main() {
   testWidgets('mostra o dia com as quatro refeições e as receitas agendadas',
       (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_host([
       _entry('Bolo de Fubá', MealType.breakfast),
       _entry('Sopa', MealType.dinner, done: true),
     ]));
     await tester.pumpAndSettle();
 
-    expect(find.text(weekdayLong(today())), findsOneWidget);
-    expect(find.textContaining('· hoje'), findsOneWidget);
+    expect(
+      find.textContaining(weekdayLong(today()).toUpperCase()),
+      findsOneWidget,
+    );
+    expect(find.textContaining('HOJE'), findsOneWidget);
+    expect(find.text('2 refeições'), findsOneWidget);
     expect(find.text('Bolo de Fubá'), findsOneWidget);
     expect(find.text('Sopa'), findsOneWidget);
     for (final m in MealType.values) {
@@ -61,12 +75,16 @@ void main() {
   });
 
   testWidgets('setas andam de dia em dia', (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('Próximo dia'));
     await tester.pumpAndSettle();
-    expect(find.text(weekdayLong(addDays(today(), 1))), findsOneWidget);
+    expect(
+      find.textContaining(weekdayLong(addDays(today(), 1)).toUpperCase()),
+      findsOneWidget,
+    );
     expect(find.text('Bolo'), findsNothing);
     expect(find.text('Nada planejado'), findsNWidgets(4));
 
@@ -77,6 +95,7 @@ void main() {
 
   testWidgets('nome sobre o azulejo; só um card por receita leva o Hero',
       (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_host([
       _entry('Bolo de Fubá', MealType.lunch, recipeId: 'bolo'),
       _entry('Bolo de Fubá', MealType.dinner, recipeId: 'bolo'),
@@ -84,7 +103,8 @@ void main() {
     ]));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TilePattern), findsNWidgets(3));
+    // 3 cards + o cabeçalho violeta.
+    expect(find.byType(TilePattern), findsNWidgets(4));
     expect(find.byType(Hero), findsNWidgets(2));
     final tags = tester.widgetList<Hero>(find.byType(Hero)).map((h) => h.tag);
     expect(tags, {recipeTileHeroTag('bolo'), recipeTileHeroTag('Sopa')});
@@ -92,17 +112,22 @@ void main() {
   });
 
   testWidgets('arrastar o dia com o dedo passa pro dia seguinte', (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
     await tester.pumpAndSettle();
 
     await tester.drag(find.text('Nada planejado').first, const Offset(-400, 0));
     await tester.pumpAndSettle();
 
-    expect(find.text(weekdayLong(addDays(today(), 1))), findsOneWidget);
+    expect(
+      find.textContaining(weekdayLong(addDays(today(), 1)).toUpperCase()),
+      findsOneWidget,
+    );
     expect(find.text('Bolo'), findsNothing);
   });
 
   testWidgets('"Hoje" só liga fora de hoje e traz de volta', (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
     await tester.pumpAndSettle();
 
