@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'package:receyta/features/folders/screens/recipe_drag.dart';
+import 'package:receyta/features/onboarding/controllers/tutorial.dart';
+import 'package:receyta/features/onboarding/screens/tutorial_overlay.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
 import 'package:receyta/features/planner/screens/month_page.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
@@ -44,6 +46,9 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // plugin (inclusive em teste de widget, sem o canal nativo) não pode
     // travar a home.
     _checkInitialShare();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => ref.read(tutorialControllerProvider).startIfNeeded(),
+    );
     _mediaSub = ReceiveSharingIntent.instance
         .getMediaStream()
         .listen(_handleSharedMedia, onError: (_) {});
@@ -138,13 +143,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           Align(
             alignment: Alignment.bottomCenter,
             child: SafeArea(
-              child: PillNavBar(
-                items: items,
-                currentIndex: _tab,
-                onSelected: (i) => setState(() {
-                  _tab = i;
-                  _visited.add(i);
-                }),
+              child: KeyedSubtree(
+                key: ref.read(tutorialTargetsProvider)[TutorialTarget.navBar],
+                child: PillNavBar(
+                  items: items,
+                  currentIndex: _tab,
+                  onSelected: (i) => setState(() {
+                    _tab = i;
+                    _visited.add(i);
+                  }),
+                ),
               ),
             ),
           ),
@@ -158,6 +166,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               ),
             ),
           ),
+          if (ref.watch(tutorialStepProvider) != null)
+            const Positioned.fill(child: TutorialOverlay()),
         ],
       ),
     );

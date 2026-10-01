@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/features/onboarding/controllers/onboarding_seen.dart';
+import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -35,6 +36,7 @@ class _WelcomePageState extends State<WelcomePage> {
 
   Future<void> _finish() async {
     await markOnboardingSeen();
+    await markTutorialPending();
     if (mounted) context.go('/');
   }
 

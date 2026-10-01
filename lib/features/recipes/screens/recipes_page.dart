@@ -13,6 +13,7 @@ import 'package:receyta/features/recipes/screens/ingredients_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_import_flow.dart';
 import 'package:receyta/features/recipes/screens/recipe_ocr_flow.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
+import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
@@ -275,7 +276,7 @@ class _HeaderChipState extends State<_HeaderChip>
   }
 }
 
-class _RecipeList extends StatelessWidget {
+class _RecipeList extends ConsumerWidget {
   const _RecipeList({required this.recipes, required this.showViewAll});
 
   final List<Recipe> recipes;
@@ -285,7 +286,7 @@ class _RecipeList extends StatelessWidget {
   final bool showViewAll;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final featured = recipes.first;
     final rest = recipes.skip(1).toList();
 
@@ -293,7 +294,11 @@ class _RecipeList extends StatelessWidget {
       slivers: [
         const SliverToBoxAdapter(child: FoldersStrip()),
         _buildSectionHeader(context),
-        _buildFeatured(context, featured),
+        _buildFeatured(
+          context,
+          featured,
+          ref.read(tutorialTargetsProvider)[TutorialTarget.firstRecipe],
+        ),
         _buildGrid(context, rest),
         const SliverPadding(
           padding: EdgeInsets.only(bottom: 96),
@@ -327,7 +332,7 @@ class _RecipeList extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatured(BuildContext context, Recipe featured) {
+  Widget _buildFeatured(BuildContext context, Recipe featured, Key? tourKey) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -342,12 +347,15 @@ class _RecipeList extends StatelessWidget {
         // reanimar (a troca de filtro continuaria cortando seco).
         child: _EntranceFade(
           key: ValueKey(featured.id),
-          child: DraggableRecipe(
-            recipe: featured,
-            child: FeaturedRecipeCard(
+          child: KeyedSubtree(
+            key: tourKey,
+            child: DraggableRecipe(
               recipe: featured,
-              onTap: () =>
-                  context.push('/recipe/${featured.id}', extra: featured),
+              child: FeaturedRecipeCard(
+                recipe: featured,
+                onTap: () =>
+                    context.push('/recipe/${featured.id}', extra: featured),
+              ),
             ),
           ),
         ),
@@ -522,41 +530,47 @@ class _Header extends ConsumerWidget {
                   style: context.texts.labelSmall?.copyWith(color: colors.lime),
                 ),
               ),
-              _CircleButton(
-                icon: Icons.search,
-                onTap: () => context.push('/search'),
+              KeyedSubtree(
+                key: ref.read(tutorialTargetsProvider)[TutorialTarget.search],
+                child: _CircleButton(
+                  icon: Icons.search,
+                  onTap: () => context.push('/search'),
+                ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              ExpandingCreateMenu(
-                buttonColor: colors.lime,
-                iconColor: colors.ink,
-                actions: [
-                  CreateMenuAction(
-                    icon: Icons.restaurant_menu,
-                    label: 'Nova receita',
-                    onSelected: onCreate,
-                  ),
-                  CreateMenuAction(
-                    icon: Icons.create_new_folder_outlined,
-                    label: 'Nova pasta',
-                    onSelected: () => createFolderFlow(context, ref),
-                  ),
-                  CreateMenuAction(
-                    icon: Icons.link,
-                    label: 'Importar de link',
-                    onSelected: () => importRecipeFromUrlFlow(context, ref),
-                  ),
-                  CreateMenuAction(
-                    icon: Icons.camera_alt_outlined,
-                    label: 'Importar de foto',
-                    onSelected: () => importRecipeFromPhotoFlow(context, ref),
-                  ),
-                  CreateMenuAction(
-                    icon: Icons.file_open_outlined,
-                    label: 'Importar arquivo .receyta',
-                    onSelected: () => importReceytaFileFlow(context, ref),
-                  ),
-                ],
+              KeyedSubtree(
+                key: ref.read(tutorialTargetsProvider)[TutorialTarget.create],
+                child: ExpandingCreateMenu(
+                  buttonColor: colors.lime,
+                  iconColor: colors.ink,
+                  actions: [
+                    CreateMenuAction(
+                      icon: Icons.restaurant_menu,
+                      label: 'Nova receita',
+                      onSelected: onCreate,
+                    ),
+                    CreateMenuAction(
+                      icon: Icons.create_new_folder_outlined,
+                      label: 'Nova pasta',
+                      onSelected: () => createFolderFlow(context, ref),
+                    ),
+                    CreateMenuAction(
+                      icon: Icons.link,
+                      label: 'Importar de link',
+                      onSelected: () => importRecipeFromUrlFlow(context, ref),
+                    ),
+                    CreateMenuAction(
+                      icon: Icons.camera_alt_outlined,
+                      label: 'Importar de foto',
+                      onSelected: () => importRecipeFromPhotoFlow(context, ref),
+                    ),
+                    CreateMenuAction(
+                      icon: Icons.file_open_outlined,
+                      label: 'Importar arquivo .receyta',
+                      onSelected: () => importReceytaFileFlow(context, ref),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
