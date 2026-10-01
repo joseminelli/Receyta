@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/services/alarm_driver.dart';
 import 'package:receyta/data/services/timer_notifications.dart';
 import 'package:receyta/data/services/timers_store.dart';
@@ -151,6 +152,11 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     final svc = ref.read(timerNotificationsProvider);
     final settings = ref.read(cookingAlertSettingsProvider);
     for (final t in state) {
+      if ((t.isRunning && t.endsAt != null) || t.isPaused) {
+        // Desenha o card (textura da receita + nome) que a notificação
+        // mostra expandida; os botões, em segundo plano, só reaproveitam.
+        await svc.prepareCard(t);
+      }
       if (t.isRunning && t.endsAt != null) {
         await svc.showRunning(
           timerId: t.id,
@@ -198,6 +204,8 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     required String label,
     required Duration duration,
     String? key,
+    TileColor? tileColor,
+    TileMotif? tileMotif,
   }) {
     final id = _nextId++;
     final timer = CookingTimer(
@@ -210,6 +218,8 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
       remaining: duration,
       phase: TimerPhase.running,
       endsAt: _now().add(duration),
+      tileColor: tileColor,
+      tileMotif: tileMotif,
     );
     _set([
       for (final t in state)

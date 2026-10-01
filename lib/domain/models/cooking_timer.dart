@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:receyta/core/tile_style.dart';
+
 enum TimerPhase { running, paused, finished }
 
 /// Um timer do modo cozinha. `key` identifica de onde veio ("cook" pro tempo
@@ -23,6 +25,8 @@ class CookingTimer {
     this.key,
     this.endsAt,
     this.finishedAt,
+    this.tileColor,
+    this.tileMotif,
   });
 
   final int id;
@@ -37,6 +41,11 @@ class CookingTimer {
   final TimerPhase phase;
   final DateTime? endsAt;
   final DateTime? finishedAt;
+
+  /// Aparência do azulejo da receita (a que ela tem no app), pro card da
+  /// notificação ficar com a mesma cor e textura. Nulo = a padrão da receita.
+  final TileColor? tileColor;
+  final TileMotif? tileMotif;
 
   bool get isRunning => phase == TimerPhase.running;
   bool get isFinished => phase == TimerPhase.finished;
@@ -65,6 +74,8 @@ class CookingTimer {
         phase: phase ?? this.phase,
         endsAt: clearEndsAt ? null : (endsAt ?? this.endsAt),
         finishedAt: clearFinishedAt ? null : (finishedAt ?? this.finishedAt),
+        tileColor: tileColor,
+        tileMotif: tileMotif,
       );
 
   /// Rodando -> pausado, guardando o que falta. Os outros estados não mudam.
@@ -116,6 +127,8 @@ class CookingTimer {
         'phase': phase.name,
         'endsAt': endsAt?.millisecondsSinceEpoch,
         'finishedAt': finishedAt?.millisecondsSinceEpoch,
+        'tileColor': tileColor?.name,
+        'tileMotif': tileMotif?.name,
       };
 
   static CookingTimer? fromJson(Map<String, Object?> json) {
@@ -134,6 +147,8 @@ class CookingTimer {
         phase: TimerPhase.values.byName(json['phase']! as String),
         endsAt: at(json['endsAt']),
         finishedAt: at(json['finishedAt']),
+        tileColor: tileColorFromName(json['tileColor'] as String?),
+        tileMotif: tileMotifFromName(json['tileMotif'] as String?),
       );
     } catch (_) {
       return null; // registro estragado: ignora, não derruba o app

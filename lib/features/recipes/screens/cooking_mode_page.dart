@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/step_duration.dart';
+import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
@@ -90,7 +92,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   /// Passo em cartão + subtítulo de grupo (§RF-01.4) quando muda em relação
   /// ao passo anterior. Chamado sob demanda pelo `SliverChildBuilderDelegate`
   /// — só os passos visíveis (+ cache) chegam a ser construídos.
-  Widget _stepItem(List<RecipeStep> steps, int i, String recipeName) {
+  Widget _stepItem(List<RecipeStep> steps, int i, Recipe recipe) {
     final g = steps[i].groupLabel;
     final prevGroup = i > 0 ? steps[i - 1].groupLabel : null;
     final showGroupLabel = g != prevGroup && g != null && g.isNotEmpty;
@@ -109,7 +111,9 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: _StepCard(
             recipeId: widget.recipeId,
-            recipeName: recipeName,
+            recipeName: recipe.name,
+            tileColor: recipe.tileColor,
+            tileMotif: recipe.tileMotif,
             index: i,
             text: steps[i].text,
             durations: _durationsByText.putIfAbsent(
@@ -176,6 +180,8 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
               _CookTimerCard(
                 recipeId: widget.recipeId,
                 recipeName: detail.recipe.name,
+                tileColor: detail.recipe.tileColor,
+                tileMotif: detail.recipe.tileMotif,
                 minutes: detail.recipe.cookMinutes!,
               ),
               const SizedBox(height: AppSpacing.md),
@@ -209,7 +215,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       ),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, i) => _stepItem(detail.steps, i, detail.recipe.name),
+          (context, i) => _stepItem(detail.steps, i, detail.recipe),
           childCount: detail.steps.length,
         ),
       ),
@@ -443,6 +449,8 @@ class _StepCard extends StatelessWidget {
   const _StepCard({
     required this.recipeId,
     required this.recipeName,
+    this.tileColor,
+    this.tileMotif,
     required this.index,
     required this.text,
     required this.durations,
@@ -451,6 +459,8 @@ class _StepCard extends StatelessWidget {
 
   final String recipeId;
   final String recipeName;
+  final TileColor? tileColor;
+  final TileMotif? tileMotif;
   final int index;
   final String text;
   final List<StepDuration> durations;
@@ -522,6 +532,8 @@ class _StepCard extends StatelessWidget {
                               _DurationChip(
                                 recipeId: recipeId,
                                 recipeName: recipeName,
+                                tileColor: tileColor,
+                                tileMotif: tileMotif,
                                 timerKey: 'step-$index-$k',
                                 label: 'Passo $number',
                                 duration: durations[k],
@@ -548,6 +560,8 @@ class _DurationChip extends ConsumerWidget {
   const _DurationChip({
     required this.recipeId,
     required this.recipeName,
+    this.tileColor,
+    this.tileMotif,
     required this.timerKey,
     required this.label,
     required this.duration,
@@ -555,6 +569,8 @@ class _DurationChip extends ConsumerWidget {
 
   final String recipeId;
   final String recipeName;
+  final TileColor? tileColor;
+  final TileMotif? tileMotif;
   final String timerKey;
   final String label;
   final StepDuration duration;
@@ -597,6 +613,8 @@ class _DurationChip extends ConsumerWidget {
             notifier.start(
               recipeId: recipeId,
               recipeName: recipeName,
+              tileColor: tileColor,
+              tileMotif: tileMotif,
               label: label,
               duration: duration.duration,
               key: timerKey,
@@ -644,11 +662,15 @@ class _CookTimerCard extends ConsumerWidget {
   const _CookTimerCard({
     required this.recipeId,
     required this.recipeName,
+    this.tileColor,
+    this.tileMotif,
     required this.minutes,
   });
 
   final String recipeId;
   final String recipeName;
+  final TileColor? tileColor;
+  final TileMotif? tileMotif;
   final int minutes;
 
   static const _key = 'cook';
@@ -673,6 +695,8 @@ class _CookTimerCard extends ConsumerWidget {
             : () => ref.read(cookingTimersProvider.notifier).start(
                   recipeId: recipeId,
                   recipeName: recipeName,
+                  tileColor: tileColor,
+                  tileMotif: tileMotif,
                   label: 'Cozimento',
                   duration: total,
                   key: _key,
@@ -696,9 +720,13 @@ class _CookTimerCard extends ConsumerWidget {
                           ?.copyWith(color: colors.lime),
                     ),
                     Text(
-                      running
-                          ? 'Timer em andamento'
-                          : '${formatTimer(total)} · toque pra iniciar',
+                      timer == null
+                          ? '${formatTimer(total)} · toque pra iniciar'
+                          : timer.isFinished
+                              ? 'Pronto!'
+                              : timer.isPaused
+                                  ? '${formatTimer(timer.remaining)} · pausado'
+                                  : formatTimer(timer.remaining),
                       style: context.texts.bodyLarge?.copyWith(
                         color: colors.onSaturated,
                         fontWeight: FontWeight.w700,

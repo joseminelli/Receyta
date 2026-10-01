@@ -1,14 +1,18 @@
+import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:receyta/data/services/timer_notification_actions.dart';
 import 'package:receyta/data/services/timers_store.dart';
+import 'package:receyta/domain/models/cooking_timer.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
+import 'package:receyta/widgets/timer_card_image.dart';
 
 /// Timers do modo cozinha como notificação do sistema: ficam à vista com o app
 /// minimizado (relógio regressivo na própria notificação) e, na hora certa,
@@ -27,6 +31,12 @@ abstract class TimerNotifications {
   /// Pede (uma vez) a permissão de notificação e de alarme exato. Não bloqueia
   /// nem derruba nada se negada — só degrada o aviso.
   Future<void> requestPermissions();
+
+  /// Desenha o card (cor e textura da receita, nome, rótulo) que a
+  /// notificação do timer mostra expandida. Precisa do app vivo (usa o motor
+  /// de desenho do Flutter); os botões, depois, só reaproveitam o arquivo.
+  /// Sem o card a notificação funciona igual, só sem a imagem.
+  Future<void> prepareCard(CookingTimer timer);
 
   /// Timer rodando: mostra a notificação "em andamento" com o tempo
   /// regressivo e agenda o aviso final pra [endsAt].
@@ -261,13 +271,16 @@ class PluginTimerNotifications implements TimerNotifications {
       final remaining = endsAt.difference(DateTime.now());
       if (remaining <= Duration.zero) return;
 
+      final body = 'Termina às ${_hhmm(endsAt)}';
+      final style = await _cardStyle(timerId, title: title, body: body);
+
       // Em andamento: o próprio Android desconta o relógio (cronômetro
       // regressivo) e some sozinho no fim (`timeoutAfter`) — nada de ficar
       // atualizando a cada segundo com o app em segundo plano.
       await _plugin.show(
         _ongoingId(timerId),
         title,
-        'Termina às ${_hhmm(endsAt)}',
+        body,
         NotificationDetails(
           android: AndroidNotificationDetails(
             _runningChannel,
@@ -276,6 +289,7 @@ class PluginTimerNotifications implements TimerNotifications {
                 'O relógio regressivo dos timers do modo cozinha.',
             icon: _statusIcon,
             largeIcon: _largeIcon,
+            styleInformation: style,
             color: _accent,
             actions: const [_pauseAction, _plusMinuteAction, _stopAction],
             importance: Importance.low,
@@ -352,11 +366,13 @@ class PluginTimerNotifications implements TimerNotifications {
       final total = remaining.inSeconds;
       final mm = (total ~/ 60).toString().padLeft(2, '0');
       final ss = (total % 60).toString().padLeft(2, '0');
+      final body = 'Pausado · faltam $mm:$ss';
+      final style = await _cardStyle(timerId, title: title, body: body);
       await _plugin.show(
         _ongoingId(timerId),
         title,
-        'Pausado · faltam $mm:$ss',
-        const NotificationDetails(
+        body,
+        NotificationDetails(
           android: AndroidNotificationDetails(
             _runningChannel,
             'Timers em andamento',
@@ -364,8 +380,9 @@ class PluginTimerNotifications implements TimerNotifications {
                 'O relógio regressivo dos timers do modo cozinha.',
             icon: _statusIcon,
             largeIcon: _largeIcon,
+            styleInformation: style,
             color: _accent,
-            actions: [_resumeAction, _plusMinuteAction, _stopAction],
+            actions: const [_resumeAction, _plusMinuteAction, _stopAction],
             importance: Importance.low,
             priority: Priority.low,
             ongoing: true,
@@ -383,10 +400,57 @@ class PluginTimerNotifications implements TimerNotifications {
   }
 
   @override
+  Future<void> prepareCard(CookingTimer timer) async {
+    try {
+      final png = await renderTimerCardPng(
+        recipeId: timer.recipeId,
+        name: timer.recipeName.isEmpty ? timer.label : timer.recipeName,
+        label: timer.recipeName.isEmpty ? '' : timer.label,
+        tileColor: timer.tileColor,
+        tileMotif: timer.tileMotif,
+      );
+      if (png == null) return;
+      final file = await _cardFile(timer.id);
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(png, flush: true);
+    } catch (e) {
+      debugPrint('TimerNotifications.prepareCard: $e');
+    }
+  }
+
+  Future<File> _cardFile(int timerId) async {
+    final dir = await getTemporaryDirectory();
+    return File('${dir.path}/timer_cards/$timerId.png');
+  }
+
+  /// Estilo expandido com o card, ou nulo (notificação simples) se o card
+  /// ainda não foi desenhado.
+  Future<StyleInformation?> _cardStyle(
+    int timerId, {
+    required String title,
+    required String body,
+  }) async {
+    try {
+      final file = await _cardFile(timerId);
+      if (!await file.exists()) return null;
+      return BigPictureStyleInformation(
+        FilePathAndroidBitmap(file.path),
+        hideExpandedLargeIcon: true,
+        contentTitle: title,
+        summaryText: body,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   Future<void> cancel(int timerId) async {
     try {
       await _plugin.cancel(_ongoingId(timerId));
       await _plugin.cancel(_alarmId(timerId));
+      final file = await _cardFile(timerId);
+      if (await file.exists()) await file.delete();
     } catch (e) {
       debugPrint('TimerNotifications.cancel: $e');
     }

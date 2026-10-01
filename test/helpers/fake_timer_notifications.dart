@@ -1,4 +1,5 @@
 import 'package:receyta/data/services/timer_notifications.dart';
+import 'package:receyta/domain/models/cooking_timer.dart';
 
 /// `TimerNotifications` de teste: sem plugin, só anota o que foi pedido.
 /// `calls` guarda `init`, `permissions`, `running:<id>`, `paused:<id>` e
@@ -18,6 +19,10 @@ class FakeTimerNotifications implements TimerNotifications {
 
   @override
   Future<void> requestPermissions() async => calls.add('permissions');
+
+  @override
+  Future<void> prepareCard(CookingTimer timer) async =>
+      calls.add('card:${timer.id}');
 
   @override
   Future<void> showRunning({
