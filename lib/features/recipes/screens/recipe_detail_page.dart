@@ -14,6 +14,7 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/screens/folder_actions.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/screens/recipe_status_cards.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -35,7 +36,8 @@ import 'package:receyta/widgets/tile_style_picker.dart';
 /// (§9.8). Ingredientes e passos em fundo chapado — o padrão nunca entra atrás
 /// de texto que se lê linha a linha (§9.4).
 class RecipeDetailPage extends ConsumerStatefulWidget {
-  const RecipeDetailPage({super.key, required this.recipeId, this.initialRecipe});
+  const RecipeDetailPage(
+      {super.key, required this.recipeId, this.initialRecipe});
 
   final String recipeId;
 
@@ -97,7 +99,8 @@ class _RecipeDetailPageState extends ConsumerState<RecipeDetailPage> {
     // Mesma key sempre: quando `detail` chega depois do `recipe` otimista,
     // isto não conta como "trocar de filho" pro AnimatedSwitcher — só
     // reconstrói no lugar, sem crossfade nem novo voo de Hero.
-    return _Detail(key: const ValueKey('detail'), recipe: recipe, detail: loaded);
+    return _Detail(
+        key: const ValueKey('detail'), recipe: recipe, detail: loaded);
   }
 }
 
@@ -254,7 +257,8 @@ class _Detail extends StatelessWidget {
           CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: _Hero(recipe: recipe, tags: loadedDetail?.tags ?? const []),
+                child:
+                    _Hero(recipe: recipe, tags: loadedDetail?.tags ?? const []),
               ),
               _buildIntroSliver(context, recipe, hasIngredients),
               if (loadedDetail == null)
@@ -306,6 +310,8 @@ class _Detail extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _Metrics(recipe: recipe),
+            const SizedBox(height: AppSpacing.md),
+            RecipeStatusCards(recipeId: recipe.id),
             if ((recipe.about ?? '').isNotEmpty) ...[
               const SizedBox(height: AppSpacing.lg),
               Text(recipe.about!, style: context.texts.bodyLarge),
@@ -675,7 +681,6 @@ class _Hero extends ConsumerWidget {
   }
 }
 
-
 /// Linha de ingrediente como texto corrido, com quantidade e unidade em
 /// negrito no meio da frase — sem coluna nem alinhamento forçado, lê como
 /// texto normal. Sem quantidade reconhecida (linha que o parser não deu
@@ -843,7 +848,6 @@ class _StackedFraction extends StatelessWidget {
     );
   }
 }
-
 
 /// Item de uma lista de ingredientes ou passos (§RF-01.4), com o subtítulo de
 /// grupo embutido acima dele quando o grupo muda em relação ao item anterior.
@@ -1104,7 +1108,8 @@ class _FavoriteButtonState extends State<_FavoriteButton>
     final colors = context.colors;
     final scale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 1.4).chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween(begin: 1.0, end: 1.4)
+            .chain(CurveTween(curve: Curves.easeOut)),
         weight: 35,
       ),
       TweenSequenceItem(
@@ -1268,7 +1273,8 @@ class _CookBar extends ConsumerWidget {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Icon(Icons.shopping_bag_outlined, size: 26, color: colors.ink),
+                  Icon(Icons.shopping_bag_outlined,
+                      size: 26, color: colors.ink),
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Icon(Icons.add, size: 14, color: colors.ink),

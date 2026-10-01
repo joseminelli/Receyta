@@ -77,7 +77,8 @@ void main() {
     expect(find.text('Nada planejado pros próximos dias.'), findsNothing);
   });
 
-  testWidgets('aba Compras mostra a tela de compras de verdade (não placeholder)',
+  testWidgets(
+      'aba Compras mostra a tela de compras de verdade (não placeholder)',
       (tester) async {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();

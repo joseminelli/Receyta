@@ -63,7 +63,8 @@ void main() {
         groups.map((g) => g.slug),
         ['hortifruti', 'frios_laticinios', 'mercearia'],
       );
-      expect(groups.first.items.map((i) => i.displayName), ['Cebola', 'Tomate']);
+      expect(
+          groups.first.items.map((i) => i.displayName), ['Cebola', 'Tomate']);
     });
   });
 
@@ -83,7 +84,8 @@ void main() {
         groups.map((g) => g.slug),
         ['hortifruti', 'mercearia', 'frios_laticinios'],
       );
-      expect(groups.first.items.map((i) => i.displayName), ['Tomate', 'Cebola']);
+      expect(
+          groups.first.items.map((i) => i.displayName), ['Tomate', 'Cebola']);
     });
   });
 

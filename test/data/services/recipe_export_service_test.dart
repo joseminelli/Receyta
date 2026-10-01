@@ -64,8 +64,7 @@ void main() {
     await folderRepo.moveRecipe(inFolder.id, folder.id);
     await repo.saveDetail(name: 'Bolo', ingredientLines: ['2 ovos']);
 
-    final payload =
-        (await service.buildFullBackupPayload() as Ok).value;
+    final payload = (await service.buildFullBackupPayload() as Ok).value;
 
     expect(payload['kind'], 'full');
     expect(payload['folders'], [
@@ -81,8 +80,7 @@ void main() {
     expect(recipes, hasLength(2));
     final names = recipes.map((r) => r['name']).toSet();
     expect(names, {'Lasanha', 'Bolo'});
-    final lasanha =
-        recipes.firstWhere((r) => r['name'] == 'Lasanha') as Map;
+    final lasanha = recipes.firstWhere((r) => r['name'] == 'Lasanha') as Map;
     expect(lasanha['folderId'], folder.id);
     expect(
       (lasanha['ingredients'] as List)[0]['name'],
@@ -91,12 +89,11 @@ void main() {
   });
 
   test('buildFullBackupPayload não inclui receita na lixeira', () async {
-    final recipe = (await repo.saveDetail(name: 'Descartada') as Ok<Recipe>)
-        .value;
+    final recipe =
+        (await repo.saveDetail(name: 'Descartada') as Ok<Recipe>).value;
     await repo.softDelete(recipe.id);
 
-    final payload =
-        (await service.buildFullBackupPayload() as Ok).value;
+    final payload = (await service.buildFullBackupPayload() as Ok).value;
 
     expect(payload['recipes'], isEmpty);
   });

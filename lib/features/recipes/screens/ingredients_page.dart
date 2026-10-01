@@ -152,7 +152,8 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
     return Column(
       children: [
         _buildSearchField(context),
-        Expanded(child: _buildResultsList(context, filtered, duplicateOf, query)),
+        Expanded(
+            child: _buildResultsList(context, filtered, duplicateOf, query)),
       ],
     );
   }
@@ -175,8 +176,7 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
           prefixIcon: Icon(Icons.search, color: colors.textMuted),
           filled: true,
           fillColor: colors.paperSoft,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.pill),
             borderSide: BorderSide.none,

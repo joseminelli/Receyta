@@ -23,12 +23,10 @@ void main() {
   }
 
   Future<bool> hasIndex(String name) async {
-    final rows = await db
-        .customSelect(
-          "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
-          variables: [Variable<String>(name)],
-        )
-        .get();
+    final rows = await db.customSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+      variables: [Variable<String>(name)],
+    ).get();
     return rows.isNotEmpty;
   }
 

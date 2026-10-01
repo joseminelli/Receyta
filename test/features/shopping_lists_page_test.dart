@@ -38,7 +38,8 @@ void main() {
     expect(find.text('Lista em branco'), findsOneWidget);
   });
 
-  testWidgets('cada lista mostra nome e progresso; concluída e vazia dizem isso',
+  testWidgets(
+      'cada lista mostra nome e progresso; concluída e vazia dizem isso',
       (tester) async {
     await tester.pumpWidget(_host([
       _summary('Semana', 12, 7),

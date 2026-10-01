@@ -48,7 +48,8 @@ class _HostState extends State<_Host> {
 }
 
 void main() {
-  testWidgets('a página segue o dedo e a vizinha entra do lado', (tester) async {
+  testWidgets('a página segue o dedo e a vizinha entra do lado',
+      (tester) async {
     final changes = <int>[];
     await tester.pumpWidget(_Host(changes: changes));
     final home = tester.getTopLeft(find.text('página 5')).dx;

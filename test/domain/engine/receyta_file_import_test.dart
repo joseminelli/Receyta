@@ -86,8 +86,7 @@ void main() {
     expect(recipe.steps.single.text, 'Tempere...');
   });
 
-  test('round trip: export de uma receita só (kind "recipes") sem pastas',
-      () {
+  test('round trip: export de uma receita só (kind "recipes") sem pastas', () {
     final json = buildRecipeExportJson(
       buildDetail(),
       ingredientNames: const {'ing1': 'peito de frango'},
@@ -176,8 +175,7 @@ void main() {
     expect(ingredients.single.name, 'farinha');
   });
 
-  test('posição do ingrediente/passo cai pro índice quando falta no JSON',
-      () {
+  test('posição do ingrediente/passo cai pro índice quando falta no JSON', () {
     final parsed = parseReceytaFile(jsonEncode({
       'schemaVersion': 1,
       'kind': 'recipes',

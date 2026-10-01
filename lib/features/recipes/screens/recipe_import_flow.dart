@@ -12,7 +12,8 @@ import 'package:receyta/widgets/pill_button.dart';
 /// Pergunta a URL, busca e abre o formulário já preenchido pra revisão
 /// (C7). Nunca salva sozinho — o usuário sempre confere antes de tocar em
 /// salvar, igual à digitação manual.
-Future<void> importRecipeFromUrlFlow(BuildContext context, WidgetRef ref) async {
+Future<void> importRecipeFromUrlFlow(
+    BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
   final url = await AppDialog.show<String>(
     context,

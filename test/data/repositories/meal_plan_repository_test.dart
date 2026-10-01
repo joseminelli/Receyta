@@ -28,8 +28,7 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    recipeRepo =
-        RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
+    recipeRepo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
     planRepo = MealPlanRepository(db.mealPlanDao);
     shoppingRepo = ShoppingListRepository(
       db.shoppingListDao,
@@ -65,8 +64,9 @@ void main() {
 
   test('mover troca dia e refeição; duplicar copia sem marcar como feita',
       () async {
-    final id = (await planRepo.add(bolo.id, monday, MealType.lunch) as Ok<String>)
-        .value;
+    final id =
+        (await planRepo.add(bolo.id, monday, MealType.lunch) as Ok<String>)
+            .value;
     await planRepo.setDone(id, true);
 
     await planRepo.move(id, addDays(monday, 2), MealType.dinner);
@@ -75,8 +75,8 @@ void main() {
     expect(entries.single.mealType, MealType.dinner);
     expect(entries.single.done, isTrue);
 
-    final copyId = (await planRepo.duplicate(id, addDays(monday, 3), MealType.lunch)
-            as Ok<String>)
+    final copyId = (await planRepo.duplicate(
+            id, addDays(monday, 3), MealType.lunch) as Ok<String>)
         .value;
     entries = await week();
     expect(entries, hasLength(2));
@@ -89,8 +89,9 @@ void main() {
   });
 
   test('remover e desfazer (restore)', () async {
-    final id = (await planRepo.add(bolo.id, monday, MealType.snack) as Ok<String>)
-        .value;
+    final id =
+        (await planRepo.add(bolo.id, monday, MealType.snack) as Ok<String>)
+            .value;
     final entry = (await week()).single;
 
     await planRepo.remove(id);
@@ -120,9 +121,9 @@ void main() {
   test('upcoming: pendentes dos próximos 14 dias, em ordem, no máximo 5',
       () async {
     final from = DateTime.utc(2026, 9, 29);
-    final doneId = (await planRepo.add(bolo.id, from, MealType.breakfast)
-            as Ok<String>)
-        .value;
+    final doneId =
+        (await planRepo.add(bolo.id, from, MealType.breakfast) as Ok<String>)
+            .value;
     await planRepo.setDone(doneId, true);
     await planRepo.add(sopa.id, addDays(from, 2), MealType.lunch);
     await planRepo.add(bolo.id, from, MealType.dinner);
@@ -151,6 +152,31 @@ void main() {
       ],
     );
     expect(upcoming.any((e) => e.done), isFalse);
+  });
+
+  test('watchUpcomingForRecipe: só a receita, de hoje em diante, sem as feitas',
+      () async {
+    final from = DateTime.utc(2026, 9, 29);
+    await planRepo.add(bolo.id, addDays(from, -1), MealType.lunch);
+    final doneId =
+        (await planRepo.add(bolo.id, from, MealType.lunch) as Ok<String>).value;
+    await planRepo.setDone(doneId, true);
+    await planRepo.add(bolo.id, addDays(from, 5), MealType.dinner);
+    await planRepo.add(bolo.id, addDays(from, 2), MealType.lunch);
+    await planRepo.add(sopa.id, addDays(from, 1), MealType.lunch);
+
+    final entries = await planRepo.watchUpcomingForRecipe(bolo.id, from).first;
+
+    expect(
+      entries.map((e) => (e.date, e.mealType)),
+      [
+        (addDays(from, 2), MealType.lunch),
+        (addDays(from, 5), MealType.dinner),
+      ],
+    );
+
+    await recipeRepo.softDelete(bolo.id);
+    expect(await planRepo.watchUpcomingForRecipe(bolo.id, from).first, isEmpty);
   });
 
   test('pendingRecipeCounts conta repetições e ignora feitas e passadas', () {
@@ -189,7 +215,8 @@ void main() {
         .value;
 
     final items = await shoppingRepo.itemsOf(list.id);
-    final farinha = items.firstWhere((i) => i.displayName == 'Farinha de Trigo');
+    final farinha =
+        items.firstWhere((i) => i.displayName == 'Farinha de Trigo');
     expect((farinha.quantity, farinha.unitId), (1.3, 'kg'));
     final ovos = items.firstWhere((i) => i.displayName == 'Ovos');
     expect(ovos.quantity, 4);
@@ -197,20 +224,49 @@ void main() {
     expect((fromBolo.quantity, fromBolo.unitId), (1000, 'g'));
   });
 
-  test('addRecipesToList pula receita que já está e soma o resto', () async {
-    final list = (await shoppingRepo.generateFromRecipes([bolo.id]) as Ok<ShoppingList>)
+  test('watchListsWithRecipe: listas com itens vindos da receita', () async {
+    final a = (await shoppingRepo.generateFromRecipes([bolo.id], name: 'A')
+            as Ok<ShoppingList>)
+        .value;
+    final b = (await shoppingRepo.generateFromRecipes(
+      [bolo.id, sopa.id],
+      name: 'B',
+    ) as Ok<ShoppingList>)
+        .value;
+    final c = (await shoppingRepo.generateFromRecipes([sopa.id], name: 'C')
+            as Ok<ShoppingList>)
         .value;
 
-    final result = await shoppingRepo
-        .addRecipesToList(list.id, {bolo.id: 1, sopa.id: 2});
+    final withBolo = await shoppingRepo.watchListsWithRecipe(bolo.id).first;
+    expect(withBolo.map((l) => l.id).toSet(), {a.id, b.id});
+    expect(withBolo.map((l) => l.id), isNot(contains(c.id)));
+    expect(
+        await shoppingRepo.watchListsWithRecipe('nao-existe').first, isEmpty);
+
+    await shoppingRepo.deleteList(a.id);
+    expect(
+      (await shoppingRepo.watchListsWithRecipe(bolo.id).first).map((l) => l.id),
+      [b.id],
+    );
+  });
+
+  test('addRecipesToList pula receita que já está e soma o resto', () async {
+    final list =
+        (await shoppingRepo.generateFromRecipes([bolo.id]) as Ok<ShoppingList>)
+            .value;
+
+    final result =
+        await shoppingRepo.addRecipesToList(list.id, {bolo.id: 1, sopa.id: 2});
     expect(result, isA<Ok<void>>());
 
     final items = await shoppingRepo.itemsOf(list.id);
-    final farinha = items.firstWhere((i) => i.displayName == 'Farinha de Trigo');
+    final farinha =
+        items.firstWhere((i) => i.displayName == 'Farinha de Trigo');
     expect((farinha.quantity, farinha.unitId), (1.1, 'kg'));
     expect(items.firstWhere((i) => i.displayName == 'Cebola').quantity, 2);
 
-    expect(await shoppingRepo.addRecipesToList(list.id, {bolo.id: 1, sopa.id: 1}),
+    expect(
+        await shoppingRepo.addRecipesToList(list.id, {bolo.id: 1, sopa.id: 1}),
         isA<Err<void>>());
   });
 }

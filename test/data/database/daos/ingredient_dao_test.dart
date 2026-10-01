@@ -22,8 +22,7 @@ void main() {
     expect(first.normalizedKey, 'tomate');
   });
 
-  test('getOrCreate normaliza o displayName pra Title Case ao criar',
-      () async {
+  test('getOrCreate normaliza o displayName pra Title Case ao criar', () async {
     final row = await db.ingredientDao.getOrCreate('farinha de trigo');
     expect(row.displayName, 'Farinha de Trigo');
   });
@@ -100,8 +99,7 @@ void main() {
       ingredientLines: ['3 tomates'],
     ) as Ok<Recipe>)
         .value;
-    final before =
-        (await repo.getDetail(recipe.id) as Ok<RecipeDetail>).value;
+    final before = (await repo.getDetail(recipe.id) as Ok<RecipeDetail>).value;
     final sourceId = before.ingredients.single.ingredientId!;
 
     final target = await db.ingredientDao.getOrCreate('Tomate Italiano');

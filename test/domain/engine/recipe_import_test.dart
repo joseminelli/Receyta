@@ -225,8 +225,8 @@ void main() {
     });
 
     test('domínio .com simples', () {
-      expect(siteTagFromUrl('https://www.allrecipes.com/recipe/1'),
-          'Allrecipes');
+      expect(
+          siteTagFromUrl('https://www.allrecipes.com/recipe/1'), 'Allrecipes');
     });
 
     test('sem URL ou sem host devolve null', () {

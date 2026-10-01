@@ -5,7 +5,6 @@ import 'package:receyta/domain/models/ingredient.dart';
 
 /// Catálogo inteiro com contagem de uso — a tela de gerenciar ingredientes
 /// (C6) lista daqui.
-final ingredientsWithCountsProvider =
-    StreamProvider<List<IngredientWithCount>>(
+final ingredientsWithCountsProvider = StreamProvider<List<IngredientWithCount>>(
   (ref) => ref.watch(ingredientRepositoryProvider).watchAllWithCounts(),
 );

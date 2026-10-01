@@ -86,7 +86,8 @@ void main() {
     expect(result.single.unitCode, 'l');
   });
 
-  test('soma cruzando unidade da mesma família sem passar de 1000 não converte', () {
+  test('soma cruzando unidade da mesma família sem passar de 1000 não converte',
+      () {
     final result = aggregateIngredients([
       _line(
         recipeId: 'r1',
@@ -116,7 +117,8 @@ void main() {
     expect(result.single.unitCode, 'kg');
   });
 
-  test('unidades incompatíveis do mesmo ingrediente ficam em linhas separadas', () {
+  test('unidades incompatíveis do mesmo ingrediente ficam em linhas separadas',
+      () {
     final result = aggregateIngredients([
       _line(
         recipeId: 'r1',
@@ -137,10 +139,12 @@ void main() {
     expect(units, {'g', 'unidade'});
   });
 
-  test('duas unidades de contagem diferentes não se misturam (dente x cabeça)', () {
+  test('duas unidades de contagem diferentes não se misturam (dente x cabeça)',
+      () {
     final result = aggregateIngredients([
       _line(recipeId: 'r1', ingredientId: 'alho', quantity: 2, unitId: 'dente'),
-      _line(recipeId: 'r2', ingredientId: 'alho', quantity: 1, unitId: 'cabeca'),
+      _line(
+          recipeId: 'r2', ingredientId: 'alho', quantity: 1, unitId: 'cabeca'),
     ]);
 
     expect(result, hasLength(2));
@@ -183,7 +187,11 @@ void main() {
   test('ingredientes diferentes nunca se misturam', () {
     final result = aggregateIngredients([
       _line(recipeId: 'r1', ingredientId: 'alho', quantity: 2, unitId: 'dente'),
-      _line(recipeId: 'r2', ingredientId: 'cebola', quantity: 1, unitId: 'unidade'),
+      _line(
+          recipeId: 'r2',
+          ingredientId: 'cebola',
+          quantity: 1,
+          unitId: 'unidade'),
     ]);
 
     expect(result, hasLength(2));
@@ -215,7 +223,9 @@ void main() {
     expect(result, hasLength(1));
     expect(result.single.quantity, 6);
     expect(result.single.unitCode, isNull);
-    final byRecipe = {for (final s in result.single.sources) s.recipeId: s.quantity};
+    final byRecipe = {
+      for (final s in result.single.sources) s.recipeId: s.quantity
+    };
     expect(byRecipe, {'r1': 3, 'r2': 3});
   });
 
@@ -223,7 +233,8 @@ void main() {
       () {
     final result = aggregateIngredients([
       _line(recipeId: 'r1', ingredientId: 'ovo', quantity: 3, unitId: null),
-      _line(recipeId: 'r2', ingredientId: 'ovo', quantity: 2, unitId: 'unidade'),
+      _line(
+          recipeId: 'r2', ingredientId: 'ovo', quantity: 2, unitId: 'unidade'),
     ]);
 
     expect(result, hasLength(2));
@@ -242,13 +253,11 @@ void main() {
 
     test('contagem sem unidade soma; contra unidade real é incompatível', () {
       expect(
-        combineQuantities(
-            quantityA: 2, unitA: null, quantityB: 3, unitB: null),
+        combineQuantities(quantityA: 2, unitA: null, quantityB: 3, unitB: null),
         (quantity: 5.0, unitCode: null),
       );
       expect(
-        combineQuantities(
-            quantityA: 2, unitA: null, quantityB: 3, unitB: 'g'),
+        combineQuantities(quantityA: 2, unitA: null, quantityB: 3, unitB: 'g'),
         isNull,
       );
     });

@@ -149,6 +149,11 @@ class ShoppingListRepository {
   Stream<List<ShoppingList>> watchAll() =>
       _dao.watchAll().map((rows) => rows.map(_listToDomain).toList());
 
+  /// Listas em que a receita está (tem algum item vindo dela), ao vivo.
+  Stream<List<ShoppingList>> watchListsWithRecipe(String recipeId) => _dao
+      .watchListsContainingRecipe(recipeId)
+      .map((rows) => rows.map(_listToDomain).toList());
+
   Stream<ShoppingList?> watchById(String id) {
     return _dao.watchById(id).map((r) => r == null ? null : _listToDomain(r));
   }

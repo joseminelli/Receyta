@@ -32,8 +32,7 @@ void main() {
     );
     return ProviderScope(
       overrides: [
-        tagRepositoryProvider
-            .overrideWithValue(TagRepository(db.tagDao)),
+        tagRepositoryProvider.overrideWithValue(TagRepository(db.tagDao)),
         tagsWithCountsProvider.overrideWith((ref) => tags.stream),
       ],
       child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
@@ -66,10 +65,9 @@ void main() {
     await tester.tap(find.text('Apagar'));
     await tester.pumpAndSettle();
 
-    final count = await tester.runAsync(() async => (await db
-            .customSelect('SELECT COUNT(*) c FROM tags')
-            .getSingle())
-        .read<int>('c'));
+    final count = await tester.runAsync(() async =>
+        (await db.customSelect('SELECT COUNT(*) c FROM tags').getSingle())
+            .read<int>('c'));
     expect(count, 0);
   });
 }

@@ -44,6 +44,34 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
         );
   }
 
+  /// Agendamentos ainda por fazer de [recipeId] de [from] em diante, do mais
+  /// próximo ao mais distante — o cartão "agenda" da receita.
+  Stream<List<({MealPlanEntryRow entry, RecipeRow recipe})>>
+      watchUpcomingForRecipe(String recipeId, DateTime from) {
+    final query = select(mealPlanEntries).join([
+      innerJoin(recipes, recipes.id.equalsExp(mealPlanEntries.recipeId)),
+    ])
+      ..where(
+        mealPlanEntries.recipeId.equals(recipeId) &
+            mealPlanEntries.done.equals(false) &
+            mealPlanEntries.date.isBiggerOrEqualValue(from) &
+            recipes.deletedAt.isNull(),
+      )
+      ..orderBy([
+        OrderingTerm.asc(mealPlanEntries.date),
+        OrderingTerm.asc(mealPlanEntries.createdAt),
+      ]);
+    return query.watch().map(
+          (rows) => [
+            for (final r in rows)
+              (
+                entry: r.readTable(mealPlanEntries),
+                recipe: r.readTable(recipes),
+              ),
+          ],
+        );
+  }
+
   Future<MealPlanEntryRow?> findById(String id) {
     return (select(mealPlanEntries)..where((e) => e.id.equals(id)))
         .getSingleOrNull();

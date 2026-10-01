@@ -23,7 +23,8 @@ Widget _host(Widget child) => MaterialApp(
 
 void main() {
   testWidgets('mostra nome e tempo total', (tester) async {
-    await tester.pumpWidget(_host(RecipeCard(recipe: _recipe(prep: 10, cook: 25))));
+    await tester
+        .pumpWidget(_host(RecipeCard(recipe: _recipe(prep: 10, cook: 25))));
     expect(find.text('Risoto de limão'), findsOneWidget);
     expect(find.text('35 min'), findsOneWidget);
   });

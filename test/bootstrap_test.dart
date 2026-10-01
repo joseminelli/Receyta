@@ -52,12 +52,12 @@ void main() {
     return row.read<int>('c');
   }
 
-  test('a abertura não espera a manutenção: lixeira vencida segue lá', () async {
+  test('a abertura não espera a manutenção: lixeira vencida segue lá',
+      () async {
     final t0 = DateTime.utc(2026, 1, 1);
     final old = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
         clock: () => t0);
-    final recipe =
-        (await old.saveDetail(name: 'Velha') as Ok<Recipe>).value;
+    final recipe = (await old.saveDetail(name: 'Velha') as Ok<Recipe>).value;
     await old.softDelete(recipe.id);
 
     final later = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao,
@@ -72,15 +72,15 @@ void main() {
   });
 
   test('runAppMaintenance resolve ingrediente de receita antiga', () async {
-    final repo =
-        RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
     final recipe = (await repo.saveDetail(
       name: 'Bolo',
       ingredientLines: ['2 ovos'],
     ) as Ok<Recipe>)
         .value;
     // Simula dado do bloco B: linha sem vínculo com o catálogo.
-    await db.customStatement('UPDATE recipe_ingredients SET ingredient_id = NULL');
+    await db
+        .customStatement('UPDATE recipe_ingredients SET ingredient_id = NULL');
     expect(await db.recipeDao.findUnresolvedIngredients(), isNotEmpty);
 
     await runAppMaintenance(repo);
@@ -90,8 +90,7 @@ void main() {
   });
 
   test('runAppMaintenance nunca lança, mesmo com o banco fechado', () async {
-    final repo =
-        RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
+    final repo = RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
     await db.close();
     await expectLater(runAppMaintenance(repo), completes);
     // tearDown fecha de novo: não pode reclamar.

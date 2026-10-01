@@ -28,6 +28,18 @@ class MealPlanRepository {
         );
   }
 
+  /// Próximos agendamentos (não feitos) de [recipeId] a partir de [from].
+  Stream<List<MealPlanEntry>> watchUpcomingForRecipe(
+    String recipeId,
+    DateTime from,
+  ) {
+    return _dao.watchUpcomingForRecipe(recipeId, dayOf(from)).map(
+          (rows) => [
+            for (final r in rows) _toDomain(r.entry, recipeFromRow(r.recipe)),
+          ],
+        );
+  }
+
   /// Agenda [recipeId] em [date] na refeição [mealType] (RF-04.2).
   Future<Result<String>> add(
     String recipeId,

@@ -46,4 +46,18 @@ void main() {
     expect(dayFromParam('bobagem'), today());
     expect(dayFromParam(null), today());
   });
+
+  test('relativeDayLabel: hoje, amanhã e data curta', () {
+    DateTime clock() => DateTime(2026, 9, 29, 23, 30);
+    expect(relativeDayLabel(DateTime.utc(2026, 9, 29), clock: clock), 'Hoje');
+    expect(relativeDayLabel(DateTime.utc(2026, 9, 30), clock: clock), 'Amanhã');
+    expect(
+      relativeDayLabel(DateTime.utc(2026, 10, 3), clock: clock),
+      'Sáb, 3 out',
+    );
+    expect(
+      relativeDayLabel(DateTime.utc(2026, 9, 28), clock: clock),
+      'Seg, 28 set',
+    );
+  });
 }

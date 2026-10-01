@@ -18,7 +18,8 @@ DateTime mondayOf(DateTime day) {
 }
 
 /// Soma [days] dias de calendário (imune a horário de verão: opera em UTC).
-DateTime addDays(DateTime day, int days) => dayOf(day).add(Duration(days: days));
+DateTime addDays(DateTime day, int days) =>
+    dayOf(day).add(Duration(days: days));
 
 /// Primeiro dia do mês de [day].
 DateTime firstOfMonth(DateTime day) => DateTime.utc(day.year, day.month);
@@ -41,8 +42,7 @@ int dayIndex(DateTime day) => dayOf(day).difference(DateTime.utc(1970)).inDays;
 DateTime dayFromIndex(int index) => addDays(DateTime.utc(1970), index);
 
 /// "2026-09-29" — como o dia viaja na rota da tela do dia.
-String dayToParam(DateTime day) =>
-    '${day.year.toString().padLeft(4, '0')}-'
+String dayToParam(DateTime day) => '${day.year.toString().padLeft(4, '0')}-'
     '${day.month.toString().padLeft(2, '0')}-'
     '${day.day.toString().padLeft(2, '0')}';
 
@@ -50,6 +50,15 @@ String dayToParam(DateTime day) =>
 DateTime dayFromParam(String? text) {
   final parsed = text == null ? null : DateTime.tryParse(text);
   return parsed == null ? today() : dayOf(parsed);
+}
+
+/// "Hoje", "Amanhã" ou "Ter, 29 set" — pra datas curtas em cartões e linhas.
+String relativeDayLabel(DateTime day,
+    {DateTime Function() clock = DateTime.now}) {
+  final diff = dayOf(day).difference(today(clock)).inDays;
+  if (diff == 0) return 'Hoje';
+  if (diff == 1) return 'Amanhã';
+  return '${weekdayShort(day)}, ${day.day} ${monthShort(day)}';
 }
 
 bool isSameDay(DateTime a, DateTime b) =>
@@ -66,12 +75,32 @@ const _weekdayLong = [
   'Domingo',
 ];
 const _monthLong = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
 ];
 const _monthShort = [
-  'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
-  'jul', 'ago', 'set', 'out', 'nov', 'dez',
+  'jan',
+  'fev',
+  'mar',
+  'abr',
+  'mai',
+  'jun',
+  'jul',
+  'ago',
+  'set',
+  'out',
+  'nov',
+  'dez',
 ];
 
 String weekdayShort(DateTime day) => _weekdayShort[day.weekday - 1];

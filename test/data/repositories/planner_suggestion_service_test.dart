@@ -27,9 +27,8 @@ void main() {
 
   Future<List<PlannerSuggestion>> suggest({DateTime? day}) async {
     final d = day ?? tuesday;
-    final window = await planRepo
-        .watchRange(addDays(d, -14), addDays(d, 15))
-        .first;
+    final window =
+        await planRepo.watchRange(addDays(d, -14), addDays(d, 15)).first;
     return service.suggestionsFor(d, window);
   }
 
@@ -64,9 +63,9 @@ void main() {
   test('não sugere a que já está na semana, nem sem nada pendente', () async {
     final a = await recipe('Frango com gengibre', ['500g de frango']);
     final b = await recipe('Strogonoff', ['400g de frango', '1 cebola']);
-    final aId = (await planRepo.add(a.id, tuesday, MealType.dinner)
-            as Ok<String>)
-        .value;
+    final aId =
+        (await planRepo.add(a.id, tuesday, MealType.dinner) as Ok<String>)
+            .value;
     await planRepo.add(b.id, addDays(tuesday, 2), MealType.lunch);
 
     // Strogonoff já está na semana: nada pra sugerir.
@@ -74,10 +73,9 @@ void main() {
 
     // Tudo feito = nada que "você já vai comprar".
     await planRepo.setDone(aId, true);
-    final bEntry = (await planRepo
-            .watchRange(tuesday, addDays(tuesday, 7))
-            .first)
-        .firstWhere((e) => e.recipeId == b.id);
+    final bEntry =
+        (await planRepo.watchRange(tuesday, addDays(tuesday, 7)).first)
+            .firstWhere((e) => e.recipeId == b.id);
     await planRepo.setDone(bEntry.id, true);
     await recipe('Sopa', ['400g de frango']);
     expect(await suggest(), isEmpty);

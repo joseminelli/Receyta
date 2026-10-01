@@ -74,6 +74,22 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// As listas que têm itens vindos de [recipeId] (a origem do item, RF-05.8),
+  /// da mais nova pra mais antiga — o cartão "na lista de compras" da receita.
+  Stream<List<ShoppingListRow>> watchListsContainingRecipe(String recipeId) {
+    return customSelect(
+      'SELECT DISTINCT l.* FROM shopping_lists l '
+      'JOIN shopping_list_items i ON i.list_id = l.id '
+      'JOIN shopping_item_sources s ON s.item_id = i.id '
+      'WHERE s.recipe_id = ?1 '
+      'ORDER BY l.created_at DESC',
+      variables: [Variable<String>(recipeId)],
+      readsFrom: {shoppingLists, shoppingListItems, shoppingItemSources},
+    ).watch().map(
+          (rows) => [for (final r in rows) shoppingLists.map(r.data)],
+        );
+  }
+
   Stream<ShoppingListRow?> watchById(String id) {
     return (select(shoppingLists)..where((l) => l.id.equals(id)))
         .watchSingleOrNull();

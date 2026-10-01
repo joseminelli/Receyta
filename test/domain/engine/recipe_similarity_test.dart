@@ -60,7 +60,8 @@ void main() {
     });
 
     test('peso uniforme é o Jaccard clássico', () {
-      expect(weightedJaccard({'a', 'b'}, {'b', 'c'}, uniform), closeTo(1 / 3, 1e-9));
+      expect(weightedJaccard({'a', 'b'}, {'b', 'c'}, uniform),
+          closeTo(1 / 3, 1e-9));
     });
 
     test('conjunto vazio ou peso total zero devolve 0, nunca NaN', () {

@@ -215,7 +215,8 @@ class TagsLink extends ConsumerWidget {
 
     return TextButton.icon(
       onPressed: () => context.push('/tags'),
-      icon: Icon(Icons.sell_outlined, size: 18, color: context.colors.textMuted),
+      icon:
+          Icon(Icons.sell_outlined, size: 18, color: context.colors.textMuted),
       label: Text(
         'Tags',
         style:

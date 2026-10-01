@@ -332,21 +332,21 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
     final (ingLines, ingGroups, ingIds) = _collect(_ingredients);
     final (stepLines, stepGroups, _) = _collect(_steps);
     final result = await ref.read(recipeFormViewModelProvider).submit(
-      original: _recipe,
-      name: _name.text,
-      about: _about.text,
-      prepText: _prep.text,
-      cookText: _cook.text,
-      servingsText: _servings.text,
-      notes: _notes.text,
-      ingredientLines: ingLines,
-      stepLines: stepLines,
-      ingredientGroups: ingGroups,
-      stepGroups: stepGroups,
-      ingredientIds: ingIds,
-      tagNames: [..._tags, _tagInput.text],
-      sourceUrl: _draft?.sourceUrl,
-    );
+          original: _recipe,
+          name: _name.text,
+          about: _about.text,
+          prepText: _prep.text,
+          cookText: _cook.text,
+          servingsText: _servings.text,
+          notes: _notes.text,
+          ingredientLines: ingLines,
+          stepLines: stepLines,
+          ingredientGroups: ingGroups,
+          stepGroups: stepGroups,
+          ingredientIds: ingIds,
+          tagNames: [..._tags, _tagInput.text],
+          sourceUrl: _draft?.sourceUrl,
+        );
 
     if (!mounted) return;
     result.when(
@@ -1056,8 +1056,9 @@ class _LineList extends StatelessWidget {
             index: i,
             child: Icon(
               line.heading ? Icons.segment : Icons.drag_indicator,
-              color:
-                  line.heading ? accentColor : accentColor.withValues(alpha: 0.55),
+              color: line.heading
+                  ? accentColor
+                  : accentColor.withValues(alpha: 0.55),
             ),
           ),
           const SizedBox(width: AppSpacing.xs / 2),
@@ -1164,12 +1165,14 @@ class _IngredientAutocompleteField extends ConsumerWidget {
         for (final s in suggestions) {
           final target = s.normalizedKey;
           final diff = (key.length - target.length).abs();
-          final maxLen = key.length > target.length ? key.length : target.length;
+          final maxLen =
+              key.length > target.length ? key.length : target.length;
           if (diff > 1 && diff > 0.15 * maxLen) continue;
 
           final lev = levenshteinDistance(key, target);
           final score = maxLen == 0 ? 1.0 : 1 - (lev / maxLen);
-          final shorter = key.length < target.length ? key.length : target.length;
+          final shorter =
+              key.length < target.length ? key.length : target.length;
           final closeEnough = score >= 0.85 || (shorter >= 4 && lev <= 1);
           if (closeEnough && score > bestScore) {
             bestScore = score;
@@ -1265,7 +1268,8 @@ class _IngredientAutocompleteField extends ConsumerWidget {
                 horizontal: AppSpacing.sm,
                 vertical: AppSpacing.sm,
               ),
-              child: Text(items[i].displayName, style: context.texts.bodyMedium),
+              child:
+                  Text(items[i].displayName, style: context.texts.bodyMedium),
             ),
           ),
         ],

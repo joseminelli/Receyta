@@ -11,8 +11,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
-MealPlanEntry _entry(String name, DateTime day, MealType meal) =>
-    MealPlanEntry(
+MealPlanEntry _entry(String name, DateTime day, MealType meal) => MealPlanEntry(
       id: '$name-${dayToParam(day)}-${meal.code}',
       recipe: Recipe(
         id: name,

@@ -157,8 +157,7 @@ void main() {
       final file = parsedFullFile(
         folders: const [
           ParsedFolderImport(sourceId: 'a', name: 'Massas'),
-          ParsedFolderImport(
-              sourceId: 'b', parentSourceId: 'a', name: 'Doces'),
+          ParsedFolderImport(sourceId: 'b', parentSourceId: 'a', name: 'Doces'),
         ],
       );
       await service.importParsedFile(file);
@@ -167,8 +166,7 @@ void main() {
       await service.importParsedFile(parsedFullFile(
         folders: const [
           ParsedFolderImport(sourceId: 'x', name: 'Massas'),
-          ParsedFolderImport(
-              sourceId: 'y', parentSourceId: 'x', name: 'Doces'),
+          ParsedFolderImport(sourceId: 'y', parentSourceId: 'x', name: 'Doces'),
         ],
       ));
 
@@ -213,8 +211,7 @@ void main() {
       expect(recipe.id, 'r1');
     });
 
-    test('resolution.duplicate cria uma segunda receita com id novo',
-        () async {
+    test('resolution.duplicate cria uma segunda receita com id novo', () async {
       await service.importParsedFile(parsedFullFile(recipes: const [
         ParsedRecipeImport(sourceId: 'r1', name: 'Bolo', notes: 'original'),
       ]));
@@ -323,8 +320,8 @@ void main() {
       final result = await service.parseFileAtPath(path);
 
       expect(result, isA<Ok<ParsedReceytaFile>>());
-      expect((result as Ok<ParsedReceytaFile>).value.recipes.single.name,
-          'Bolo');
+      expect(
+          (result as Ok<ParsedReceytaFile>).value.recipes.single.name, 'Bolo');
     });
 
     test('arquivo sem receita nenhuma devolve Err', () async {

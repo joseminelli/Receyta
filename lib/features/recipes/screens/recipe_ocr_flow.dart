@@ -17,7 +17,8 @@ import 'package:receyta/widgets/pill_button.dart';
 /// guarda a foto: ela só existe em memória durante o reconhecimento. O OCR
 /// pode demorar alguns segundos numa foto grande — por isso um loader
 /// bloqueante em vez de só um aviso discreto, pra não parecer travado.
-Future<void> importRecipeFromPhotoFlow(BuildContext context, WidgetRef ref) async {
+Future<void> importRecipeFromPhotoFlow(
+    BuildContext context, WidgetRef ref) async {
   final source = await _pickImageSource(context);
   if (source == null) return;
   if (!context.mounted) return;
@@ -29,7 +30,8 @@ Future<void> importRecipeFromPhotoFlow(BuildContext context, WidgetRef ref) asyn
     builder: (dialogContext) => const _OcrLoadingDialog(),
   );
 
-  final result = await ref.read(recipeOcrServiceProvider).importFromPhoto(source);
+  final result =
+      await ref.read(recipeOcrServiceProvider).importFromPhoto(source);
 
   if (context.mounted) navigator.pop();
   if (!context.mounted) return;
@@ -188,7 +190,8 @@ class _OcrLoadingDialog extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             Text(
               'Lendo o texto da foto...',
-              style: context.texts.displaySmall?.copyWith(color: colors.onSaturated),
+              style: context.texts.displaySmall
+                  ?.copyWith(color: colors.onSaturated),
               textAlign: TextAlign.center,
             ),
           ],
@@ -214,7 +217,8 @@ Future<ImageSource?> _pickImageSource(BuildContext context) {
             onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
           ),
           ListTile(
-            leading: Icon(Icons.photo_library_outlined, color: colors.textMuted),
+            leading:
+                Icon(Icons.photo_library_outlined, color: colors.textMuted),
             title: const Text('Escolher da galeria'),
             onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
           ),

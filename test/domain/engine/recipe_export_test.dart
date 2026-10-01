@@ -38,7 +38,10 @@ void main() {
           position: 0,
         ),
       ],
-      tags: const [Tag(id: 't1', name: 'Frango'), Tag(id: 't2', name: 'Rápido')],
+      tags: const [
+        Tag(id: 't1', name: 'Frango'),
+        Tag(id: 't2', name: 'Rápido')
+      ],
     );
   }
 
@@ -156,7 +159,8 @@ void main() {
       clock: () => exportedAt,
     );
 
-    final step = (json['recipes'][0]['steps'] as List)[0] as Map<String, dynamic>;
+    final step =
+        (json['recipes'][0]['steps'] as List)[0] as Map<String, dynamic>;
     expect(step['position'], 0);
     expect(step['groupLabel'], isNull);
     expect(step['text'], 'Tempere o frango...');

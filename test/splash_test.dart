@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/splash.dart';
 import 'package:receyta/theme/app_theme.dart';
 
-Widget _host(Splash splash) => MaterialApp(theme: AppTheme.light(), home: splash);
+Widget _host(Splash splash) =>
+    MaterialApp(theme: AppTheme.light(), home: splash);
 
 void main() {
   test('o orçamento de abertura fecha em 1,8s', () {

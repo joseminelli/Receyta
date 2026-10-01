@@ -69,9 +69,11 @@ void main() {
       "(id, recipe_id, ingredient_id, raw_text, position) "
       "VALUES ('ri2', 'r1', NULL, 'sal a gosto', 1)",
     );
-    final free = await db.customSelect(
-      "SELECT ingredient_id FROM recipe_ingredients WHERE id = 'ri2'",
-    ).getSingle();
+    final free = await db
+        .customSelect(
+          "SELECT ingredient_id FROM recipe_ingredients WHERE id = 'ri2'",
+        )
+        .getSingle();
     expect(free.read<String?>('ingredient_id'), isNull);
   });
 
@@ -143,8 +145,7 @@ void main() {
     await db.ensureReady();
 
     final recipe = await db
-        .customSelect(
-            "SELECT name, updated_at, last_opened_at FROM recipes")
+        .customSelect("SELECT name, updated_at, last_opened_at FROM recipes")
         .getSingle();
     expect(recipe.read<String>('name'), 'Bolo');
     expect(
@@ -153,8 +154,7 @@ void main() {
     );
 
     final folder = await db
-        .customSelect(
-            "SELECT name, updated_at, last_opened_at FROM folders")
+        .customSelect("SELECT name, updated_at, last_opened_at FROM folders")
         .getSingle();
     expect(folder.read<String>('name'), 'Doces');
     expect(

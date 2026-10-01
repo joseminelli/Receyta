@@ -29,7 +29,8 @@ void main() {
   tearDown(() => db.close());
 
   Recipe unwrapRecipe(Result<Recipe> r) => (r as Ok<Recipe>).value;
-  ShoppingList unwrapList(Result<ShoppingList> r) => (r as Ok<ShoppingList>).value;
+  ShoppingList unwrapList(Result<ShoppingList> r) =>
+      (r as Ok<ShoppingList>).value;
 
   test('lista sai correta a partir de 6 receitas', () async {
     // Farinha aparece em 3 receitas com unidades convertíveis (soma pra
@@ -184,7 +185,8 @@ void main() {
     final list =
         unwrapList(await shoppingRepo.generateFromRecipes([recipe.id]));
 
-    final added = await shoppingRepo.addManualItem(list.id, '2 caixas de leite');
+    final added =
+        await shoppingRepo.addManualItem(list.id, '2 caixas de leite');
     expect(added, isA<Ok<void>>());
 
     final items = await shoppingRepo.itemsOf(list.id);
@@ -222,8 +224,8 @@ void main() {
       name: 'Bolo',
       ingredientLines: ['1 ovo', '2 tomates'],
     ));
-    final generated = unwrapList(await shoppingRepo
-        .generateFromRecipes([recipe.id], name: 'Semana'));
+    final generated = unwrapList(
+        await shoppingRepo.generateFromRecipes([recipe.id], name: 'Semana'));
     clock = clock.add(const Duration(days: 1));
     final empty = unwrapList(await shoppingRepo.createEmpty(name: '  Festa '));
     expect(empty.name, 'Festa');
@@ -235,7 +237,8 @@ void main() {
     await shoppingRepo.setChecked(items.first.id, true);
 
     final summaries = await shoppingRepo.watchSummaries().first;
-    expect(summaries.map((s) => s.list.name), [unnamed.name, 'Festa', 'Semana']);
+    expect(
+        summaries.map((s) => s.list.name), [unnamed.name, 'Festa', 'Semana']);
     final week = summaries.last;
     expect((week.total, week.checked), (2, 1));
     expect((summaries[1].total, summaries[1].checked), (0, 0));
@@ -255,8 +258,8 @@ void main() {
       name: 'Bolo',
       ingredientLines: ['1 ovo', '2 tomates'],
     ));
-    final original = unwrapList(await shoppingRepo
-        .generateFromRecipes([recipe.id], name: 'Semana'));
+    final original = unwrapList(
+        await shoppingRepo.generateFromRecipes([recipe.id], name: 'Semana'));
     final items = await shoppingRepo.itemsOf(original.id);
     await shoppingRepo.setChecked(items.first.id, true);
 
@@ -265,13 +268,13 @@ void main() {
     expect(copy.id, isNot(original.id));
 
     final copied = await shoppingRepo.itemsOf(copy.id);
-    expect(copied.map((i) => i.displayName),
-        items.map((i) => i.displayName));
+    expect(copied.map((i) => i.displayName), items.map((i) => i.displayName));
     expect(copied.every((i) => !i.checked), isTrue);
     expect(copied.every((i) => i.sources.single.recipeName == 'Bolo'), isTrue);
     expect((await shoppingRepo.itemsOf(original.id)).first.checked, isTrue);
 
-    expect(await shoppingRepo.duplicate('nao-existe'), isA<Err<ShoppingList>>());
+    expect(
+        await shoppingRepo.duplicate('nao-existe'), isA<Err<ShoppingList>>());
   });
 
   test('addRecipeToList soma com itens iguais, acrescenta o resto e desmarca',
@@ -288,13 +291,13 @@ void main() {
         '3 tomates',
       ],
     ));
-    final list =
-        unwrapList(await shoppingRepo.generateFromRecipes([bolo.id]));
-    final farinha =
-        (await shoppingRepo.itemsOf(list.id)).firstWhere((i) => i.displayName == 'Farinha de Trigo');
+    final list = unwrapList(await shoppingRepo.generateFromRecipes([bolo.id]));
+    final farinha = (await shoppingRepo.itemsOf(list.id))
+        .firstWhere((i) => i.displayName == 'Farinha de Trigo');
     await shoppingRepo.setChecked(farinha.id, true);
 
-    expect(await shoppingRepo.addRecipeToList(list.id, pao.id), isA<Ok<void>>());
+    expect(
+        await shoppingRepo.addRecipeToList(list.id, pao.id), isA<Ok<void>>());
 
     final items = await shoppingRepo.itemsOf(list.id);
     expect(items, hasLength(3));
@@ -315,11 +318,10 @@ void main() {
       ingredientLines: ['1 ovo'],
     ));
     final vazia = unwrapRecipe(await recipeRepo.saveDetail(name: 'Vazia'));
-    final list =
-        unwrapList(await shoppingRepo.generateFromRecipes([bolo.id]));
+    final list = unwrapList(await shoppingRepo.generateFromRecipes([bolo.id]));
 
-    expect(await shoppingRepo.addRecipeToList(list.id, bolo.id),
-        isA<Err<void>>());
+    expect(
+        await shoppingRepo.addRecipeToList(list.id, bolo.id), isA<Err<void>>());
     expect(await shoppingRepo.addRecipeToList(list.id, vazia.id),
         isA<Err<void>>());
     expect(await shoppingRepo.itemsOf(list.id), hasLength(1));
@@ -341,10 +343,11 @@ void main() {
     await shoppingRepo.setChecked(items[1].id, true);
     await shoppingRepo.setChecked(otherItems[0].id, true);
 
-    final ids = (await shoppingRepo.uncheckAll(list.id) as Ok<List<String>>)
-        .value;
+    final ids =
+        (await shoppingRepo.uncheckAll(list.id) as Ok<List<String>>).value;
     expect(ids.toSet(), {items[0].id, items[1].id});
-    expect((await shoppingRepo.itemsOf(list.id)).any((i) => i.checked), isFalse);
+    expect(
+        (await shoppingRepo.itemsOf(list.id)).any((i) => i.checked), isFalse);
     expect((await shoppingRepo.itemsOf(other.id)).first.checked, isTrue);
 
     expect(await shoppingRepo.recheck(ids), isA<Ok<void>>());

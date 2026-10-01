@@ -72,7 +72,8 @@ void main() {
     expect(r!.stepLines, ['Tempere o frango.', 'Leve ao forno.']);
   });
 
-  test('nome tudo maiúsculo (comum em embalagem/livro impresso) normaliza '
+  test(
+      'nome tudo maiúsculo (comum em embalagem/livro impresso) normaliza '
       'igual tag; nome já em caixa mista fica intocado', () {
     final shouting = parseOcrLines([
       'BOLO DE FUBÁ',
@@ -111,7 +112,9 @@ void main() {
     expect(r.ingredientLines, ['Farinha']);
   });
 
-  test('tira marcador de lista do início da linha, sem mexer na barra da fração', () {
+  test(
+      'tira marcador de lista do início da linha, sem mexer na barra da fração',
+      () {
     final r = parseOcrLines([
       'Bolo',
       'Ingredientes',
@@ -164,7 +167,8 @@ void main() {
     expect(r.ingredientLines, ['Farinha']);
   });
 
-  test('print de site de receita: barra de status, abas, legenda e anúncio '
+  test(
+      'print de site de receita: barra de status, abas, legenda e anúncio '
       'no fim não entram no resultado', () {
     final r = parseOcrLines([
       '22:11 O',
@@ -198,7 +202,8 @@ void main() {
     ]);
   });
 
-  test('cabeçalho de anúncio ("Faltou algo?") sozinho, sem "Ingredientes" '
+  test(
+      'cabeçalho de anúncio ("Faltou algo?") sozinho, sem "Ingredientes" '
       'nenhum, ainda corta a lista no melhor esforço', () {
     final r = parseOcrLines([
       'Bolo simples',
@@ -211,7 +216,8 @@ void main() {
     expect(r.ingredientLines, ['farinha', 'açúcar']);
   });
 
-  test('print de post do Instagram: nome de conta, tempo, local, botão '
+  test(
+      'print de post do Instagram: nome de conta, tempo, local, botão '
       '"Seguir", contadores e "Responder" não entram no resultado', () {
     final r = parseOcrLines([
       '18:52',
@@ -260,7 +266,8 @@ void main() {
     expect(r.stepLines, ['no vídeo']);
   });
 
-  test('cabeçalho "Ingredientes:"/"Modo de Preparo:" com dois-pontos ainda '
+  test(
+      'cabeçalho "Ingredientes:"/"Modo de Preparo:" com dois-pontos ainda '
       'divide as seções (sem isso tudo cai dentro de ingredientes)', () {
     final r = parseOcrLines([
       'Bolo',
@@ -273,10 +280,10 @@ void main() {
     expect(r.stepLines, ['Asse.']);
   });
 
-  test('print de "Visão geral" de IA do Google: aba de busca e selo de IA '
+  test(
+      'print de "Visão geral" de IA do Google: aba de busca e selo de IA '
       'somem, nome vira o título de verdade (não o resumo gerado por IA, '
-      'nem a aba "Modo IA"), e o resumo + descrição do card viram sobre',
-      () {
+      'nem a aba "Modo IA"), e o resumo + descrição do card viram sobre', () {
     final r = parseOcrLines([
       'Modo IA',
       'Tudo Shopping',
@@ -310,7 +317,8 @@ void main() {
     ]);
   });
 
-  test('caderno de receita: ingredientes direto embaixo do nome, sem '
+  test(
+      'caderno de receita: ingredientes direto embaixo do nome, sem '
       'heading "Ingredientes" nenhum, ainda vão pro campo certo (achado por '
       'onde o "Preparo:" começa)', () {
     final r = parseOcrLines([
@@ -336,7 +344,8 @@ void main() {
     ]);
   });
 
-  test('caderno de receita sem heading nenhum (nem ingrediente, nem '
+  test(
+      'caderno de receita sem heading nenhum (nem ingrediente, nem '
       'preparo): a lista para onde a instrução de preparo começa, não onde '
       'a foto acaba', () {
     final r = parseOcrLines([
@@ -360,7 +369,8 @@ void main() {
     ]);
   });
 
-  test('nome vem depois da lista de ingredientes (recorte de post com nome '
+  test(
+      'nome vem depois da lista de ingredientes (recorte de post com nome '
       'estilizado no fim, "Ingredientes" já é a 1ª linha)', () {
     final r = parseOcrLines([
       'Ingredientes',
@@ -373,7 +383,8 @@ void main() {
     expect(r.ingredientLines, ['2 ovos', '1 xícara de farinha']);
   });
 
-  test('barra de abas do site com cada aba em linha separada some inteira '
+  test(
+      'barra de abas do site com cada aba em linha separada some inteira '
       '(sem confundir com o heading "Ingredientes" de verdade mais abaixo)',
       () {
     final r = parseOcrLines([
@@ -391,7 +402,8 @@ void main() {
     expect(r.ingredientLines, ['3 claras', '3 gemas']);
   });
 
-  test('"I"/"l" que o OCR devolve no lugar de "1" já sai corrigido na '
+  test(
+      '"I"/"l" que o OCR devolve no lugar de "1" já sai corrigido na '
       'própria linha de ingrediente (não só na quantidade por baixo dos '
       'panos) — "I dente de alho ralado" vira "1 dente de alho ralado"', () {
     final r = parseOcrLines([
@@ -410,7 +422,8 @@ void main() {
   });
 
   group('parseOcrLinesMulti', () {
-    test('foto com 2 receitas numeradas (livro/caderno) vira 2 receitas '
+    test(
+        'foto com 2 receitas numeradas (livro/caderno) vira 2 receitas '
         'separadas, sem misturar ingrediente/preparo de uma na outra', () {
       final recipes = parseOcrLinesMulti([
         '1) Toast',
@@ -438,10 +451,12 @@ void main() {
         '1 xícara de grão de bico cozido',
         '4 colheres de sopa de água',
       ]);
-      expect(recipes[1].stepLines, ['Bata tudo no processador até virar purê.']);
+      expect(
+          recipes[1].stepLines, ['Bata tudo no processador até virar purê.']);
     });
 
-    test('marcador "1)" lido pelo OCR como "I)" (fonte sem serifa, "1" e '
+    test(
+        'marcador "1)" lido pelo OCR como "I)" (fonte sem serifa, "1" e '
         '"I" maiúsculo idênticos) ainda conta como separador de receita', () {
       final recipes = parseOcrLinesMulti([
         'I) Toast',
@@ -466,7 +481,8 @@ void main() {
       expect(recipes[1].name, 'Pasta de grão de bico (homus)');
     });
 
-    test('só um marcador numerado (não é lista de receitas) continua caindo '
+    test(
+        'só um marcador numerado (não é lista de receitas) continua caindo '
         'no parser de receita única', () {
       final recipes = parseOcrLinesMulti([
         '10) Pão sem queijo',

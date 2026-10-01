@@ -97,8 +97,7 @@ class _IngredientPickerSheetState
           prefixIcon: Icon(Icons.search, color: colors.textMuted),
           filled: true,
           fillColor: colors.paperSoft,
-          contentPadding:
-              const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppRadii.pill),
             borderSide: BorderSide.none,

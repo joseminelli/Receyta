@@ -94,7 +94,9 @@ class _ConflictSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              single ? '"${names.single}" já existe' : '${names.length} receitas já existem',
+              single
+                  ? '"${names.single}" já existe'
+                  : '${names.length} receitas já existem',
               style: texts.displaySmall,
             ),
             const SizedBox(height: AppSpacing.xs),
