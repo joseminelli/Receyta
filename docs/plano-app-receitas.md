@@ -767,8 +767,9 @@ Esforço em dias de trabalho focado.
     agregador; agora soma entre si.
   - **Fora do bloco E**: F3 (lista a partir da semana) e o "levar pendentes pra
     outra lista" seguem em aberto.
-- **Bloco F (F1–F3)** — ✅ entregue em 2026-10-01; **F4/F5 (similaridade e
-  sugestão) não começados**.
+- **Bloco F (F1–F4)** — F1–F3 entregues em 2026-10-01; **F4** (similaridade por
+  IDF, Dart puro) entregue logo depois; **F5** (a sugestão na tela, com o
+  motivo) ainda não.
   - **F1**: aba "Semana" em **duas etapas**. (1) Calendário do mês: três números
     grandes do mês (refeições, receitas diferentes, feitas), a grade em mosaico —
     cada dia é dividido em até 3 faixas, uma por refeição, no azulejo da
@@ -791,7 +792,15 @@ Esforço em dias de trabalho focado.
     (`generateFromRecipes(counts:)` / `addRecipesToList`); receita já presente
     na lista escolhida é pulada.
   - Fora do previsto: `core/day.dart` (datas de calendário em UTC).
-- **Próximo passo real**: **F4** (similaridade por IDF, Dart puro) → F5.
+  - **F4**: `lib/domain/engine/recipe_similarity.dart`. `computeIdf` (peso
+    `ln(total/(1+n))`, nunca negativo — sal em tudo pesa 0; uniforme abaixo de
+    20 receitas), `weightedJaccard` (§8.3), `suggestRecipes(catalog, target,
+    excludeRecipeIds, lastScheduled, now, limit)`: nota por Jaccard ponderado,
+    ×0,4 se agendada nos últimos 14 dias, desempate por id, e cada sugestão
+    traz os ingredientes em comum do mais raro pro mais comum (o "motivo" do
+    F5). Sem banco e sem UI; 14 testes.
+- **Próximo passo real**: **F5** (montar o `catalog` e o `target` a partir do
+  plano da semana, mostrar a sugestão com o motivo).
 
 ---
 
