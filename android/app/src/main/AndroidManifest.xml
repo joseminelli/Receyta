@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Vibrar quando o timer do modo cozinha acaba (plugin `vibration`). -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
     <application
         android:label="Receyta"
         android:name="${applicationName}"

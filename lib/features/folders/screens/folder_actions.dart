@@ -81,7 +81,8 @@ Future<void> renameFolderFlow(
     initial: folder.name,
   );
   if (name == null || name.isEmpty || name == folder.name) return;
-  final result = await ref.read(folderRepositoryProvider).rename(folder.id, name);
+  final result =
+      await ref.read(folderRepositoryProvider).rename(folder.id, name);
   _reportError(result);
 }
 
@@ -133,9 +134,8 @@ Future<void> moveRecipeFlow(
 ) async {
   final choice = await pickFolder(context, ref, currentId: currentFolderId);
   if (choice == null || choice.id == currentFolderId) return;
-  final result = await ref
-      .read(folderRepositoryProvider)
-      .moveRecipe(recipeId, choice.id);
+  final result =
+      await ref.read(folderRepositoryProvider).moveRecipe(recipeId, choice.id);
   _reportError(result);
   if (result.isOk) {
     showAppSnackBar(message: 'Receita movida');

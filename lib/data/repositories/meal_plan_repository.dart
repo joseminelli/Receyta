@@ -107,7 +107,9 @@ class MealPlanRepository {
         mealType: mealType.code,
         at: _clock().toUtc(),
       );
-      if (row == null) return const Err(NotFoundFailure('Refeição não encontrada.'));
+      if (row == null) {
+        return const Err(NotFoundFailure('Refeição não encontrada.'));
+      }
       return Ok(row.id);
     } catch (e) {
       debugPrint('MealPlanRepository.duplicate: $e');

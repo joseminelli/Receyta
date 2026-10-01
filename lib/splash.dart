@@ -238,7 +238,8 @@ class _SplashPainter extends CustomPainter {
     if (enterT > 0.55) {
       final ridge = Paint()
         ..color = colors.coralPattern.withValues(
-            alpha: domeOpacity * ((enterT - 0.55) / 0.45).clamp(0.0, 1.0) * 0.55)
+            alpha:
+                domeOpacity * ((enterT - 0.55) / 0.45).clamp(0.0, 1.0) * 0.55)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.6
         ..strokeCap = StrokeCap.round;
@@ -275,8 +276,7 @@ class _SplashPainter extends CustomPainter {
       final peak = 90.0 + (i % 3) * 22;
 
       final x = _lerp(startX, cx, Curves.easeInOut.transform(p));
-      final y =
-          _lerp(startY, domeCenter.dy, p) - math.sin(p * math.pi) * peak;
+      final y = _lerp(startY, domeCenter.dy, p) - math.sin(p * math.pi) * peak;
 
       // some ao alcançar a cúpula
       final opacity = (1.0 - Curves.easeIn.transform(p)).clamp(0.0, 1.0);
@@ -310,7 +310,8 @@ class _SplashPainter extends CustomPainter {
 
     // --- wordmark: entra depois que a cúpula já saiu (outro ~0.4 em diante) ---
     if (outro > 0.4) {
-      final wm = Curves.easeOut.transform(((outro - 0.4) / 0.6).clamp(0.0, 1.0));
+      final wm =
+          Curves.easeOut.transform(((outro - 0.4) / 0.6).clamp(0.0, 1.0));
       if (wm > 0) {
         _paintWordmark(canvas, Offset(cx, barY - _wordmarkRise), wm);
       }
@@ -373,7 +374,8 @@ class _SplashPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     )..layout();
     final slide = _lerp(10.0, 0.0, t);
-    tp.paint(canvas, center - Offset(tp.width / 2, tp.height / 2) + Offset(0, slide));
+    tp.paint(canvas,
+        center - Offset(tp.width / 2, tp.height / 2) + Offset(0, slide));
   }
 
   @override

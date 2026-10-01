@@ -82,7 +82,8 @@ class _BrandLoaderPainter extends CustomPainter {
 
     // --- bandeja (fixa) ---
     final trayRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx, trayY), width: s * 0.82, height: s * 0.1),
+      Rect.fromCenter(
+          center: Offset(cx, trayY), width: s * 0.82, height: s * 0.1),
       const Radius.circular(99),
     );
     canvas.drawRRect(trayRect, fill);
@@ -115,7 +116,8 @@ class _BrandLoaderPainter extends CustomPainter {
 
     final domePath = Path()
       ..addArc(
-        Rect.fromCircle(center: Offset(cx, domeCenter.dy - lift), radius: domeRadius),
+        Rect.fromCircle(
+            center: Offset(cx, domeCenter.dy - lift), radius: domeRadius),
         math.pi,
         math.pi,
       )

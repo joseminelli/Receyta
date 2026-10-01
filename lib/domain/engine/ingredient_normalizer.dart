@@ -27,8 +27,8 @@ String _singularize(String word) {
 }
 
 String normalize(String input) {
-  final cleaned = stripAccents(input.toLowerCase())
-      .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
+  final cleaned =
+      stripAccents(input.toLowerCase()).replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
   final rawTokens =
       cleaned.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
 

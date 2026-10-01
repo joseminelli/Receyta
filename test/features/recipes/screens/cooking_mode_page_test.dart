@@ -7,11 +7,14 @@ import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
+import 'package:receyta/data/services/alarm_driver.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/sweep_strike_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../helpers/fake_alarm_driver.dart';
 
 RecipeDetail _detail({List<RecipeStep> steps = _steps, int? cook}) =>
     RecipeDetail(
@@ -67,6 +70,7 @@ Widget _host(RecipeDetail? detail, {DateTime Function()? clock}) {
       if (clock != null) cookingClockProvider.overrideWithValue(clock),
       // Sem vibrar nem tocar nada de verdade no teste.
       cookingAlertProvider.overrideWithValue(() {}),
+      alarmDriverProvider.overrideWithValue(_driver),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -82,6 +86,8 @@ Future<void> _open(
   await tester.tap(find.text('ir'));
   await tester.pumpAndSettle();
 }
+
+final _driver = FakeAlarmDriver();
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -191,14 +197,25 @@ void main() {
       await close(tester);
     });
 
-    testWidgets('a faixa grande também traz as chaves de vibrar e som',
+    testWidgets('as chaves de vibrar e som ficam dentro do cartão do timer',
         (tester) async {
       await _open(tester, _detail(steps: baking));
       await tester.tap(find.text('20 min'));
       await tester.pump();
 
-      expect(find.byIcon(Icons.vibration), findsOneWidget);
-      expect(find.byIcon(Icons.volume_up), findsOneWidget);
+      // Dentro do mesmo cartão (linha) do relógio, à direita dele.
+      final row = find.ancestor(
+        of: find.text('20:00').last,
+        matching: find.byType(Container),
+      );
+      expect(
+        find.descendant(of: row.first, matching: find.byIcon(Icons.vibration)),
+        findsOneWidget,
+      );
+      final time = tester.getTopLeft(find.text('20:00').last).dx;
+      final vibrate = tester.getTopLeft(find.byIcon(Icons.vibration)).dx;
+      expect(vibrate, greaterThan(time));
+      expect(find.byIcon(Icons.volume_off), findsOneWidget); // som: padrão off
       await close(tester);
     });
 

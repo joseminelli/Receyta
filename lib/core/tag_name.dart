@@ -3,8 +3,23 @@
 /// curtos ficam minúsculos, menos quando abrem o nome ("Bolo de Fubá", "Da
 /// Vó"). Usado pra tag (§RF-01.10, via [canonicalTagName]).
 const _connectors = {
-  'de', 'da', 'do', 'das', 'dos', 'e', 'com', 'sem',
-  'a', 'o', 'à', 'ao', 'aos', 'na', 'no', 'para', 'por',
+  'de',
+  'da',
+  'do',
+  'das',
+  'dos',
+  'e',
+  'com',
+  'sem',
+  'a',
+  'o',
+  'à',
+  'ao',
+  'aos',
+  'na',
+  'no',
+  'para',
+  'por',
 };
 
 String canonicalTitleCase(String raw) {
@@ -33,8 +48,7 @@ String canonicalTagName(String raw) => canonicalTitleCase(raw);
 /// vale a pena arriscar quando o texto de origem não distingue caixa
 /// nenhuma pra começo de conversa.
 String fixShoutyCase(String raw) {
-  final isShouting = raw.isNotEmpty &&
-      raw == raw.toUpperCase() &&
-      raw != raw.toLowerCase();
+  final isShouting =
+      raw.isNotEmpty && raw == raw.toUpperCase() && raw != raw.toLowerCase();
   return isShouting ? canonicalTitleCase(raw) : raw;
 }

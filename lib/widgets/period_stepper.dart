@@ -58,7 +58,8 @@ class PeriodStepper extends StatelessWidget {
                         onToday();
                       },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
                   child: Center(
                     child: AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 200),

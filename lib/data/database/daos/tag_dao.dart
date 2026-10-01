@@ -69,8 +69,8 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
   Future<List<TagRow>> ensureTags(List<String> names) async {
     if (names.isEmpty) return const [];
     return transaction(() async {
-      final existing = await (select(tags)..where((t) => t.name.isIn(names)))
-          .get();
+      final existing =
+          await (select(tags)..where((t) => t.name.isIn(names))).get();
       final byName = {for (final t in existing) t.name: t};
       final missing = names.where((n) => !byName.containsKey(n)).toList();
       if (missing.isNotEmpty) {

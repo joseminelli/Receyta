@@ -1,24 +1,25 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receyta/data/services/alarm_driver.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 
 /// Relógio dos timers — injetável pra teste (o relógio de verdade fica de fora).
 final cookingClockProvider =
     Provider<DateTime Function()>((ref) => DateTime.now);
 
-/// O que acontece quando um timer acaba: vibra e/ou toca o som de alerta do
-/// sistema, conforme as chaves da faixa de timers
-/// (`cookingAlertSettingsProvider`, lidas na hora de alertar). Injetável pra
+/// O que acontece quando um timer acaba: vibra e/ou toca o alarme do aparelho,
+/// conforme as chaves da faixa de timers (`cookingAlertSettingsProvider`, lidas
+/// na hora de alertar). Quem vibra e toca é o `AlarmDriver`. Injetável pra
 /// teste.
 final cookingAlertProvider = Provider<void Function()>((ref) {
   return () {
     final settings = ref.read(cookingAlertSettingsProvider);
-    if (settings.vibrate) HapticFeedback.vibrate();
-    if (settings.sound) SystemSound.play(SystemSoundType.alert);
+    final driver = ref.read(alarmDriverProvider);
+    if (settings.vibrate) unawaited(driver.vibrate());
+    if (settings.sound) unawaited(driver.playSound());
   };
 });
 
@@ -65,6 +66,7 @@ class CookingTimer {
     DateTime? endsAt,
     bool clearEndsAt = false,
     DateTime? finishedAt,
+    bool clearFinishedAt = false,
   }) =>
       CookingTimer(
         id: id,
@@ -76,7 +78,7 @@ class CookingTimer {
         remaining: remaining ?? this.remaining,
         phase: phase ?? this.phase,
         endsAt: clearEndsAt ? null : (endsAt ?? this.endsAt),
-        finishedAt: finishedAt ?? this.finishedAt,
+        finishedAt: clearFinishedAt ? null : (finishedAt ?? this.finishedAt),
       );
 }
 
@@ -156,22 +158,20 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
 
   /// Volta ao tempo inicial e roda de novo (também serve pra "mais uma vez"
   /// num timer que acabou).
-  void restart(int id) => _update(
-      id,
-      (t) => CookingTimer(
-            id: t.id,
-            recipeId: t.recipeId,
-            key: t.key,
-            label: t.label,
-            total: t.total,
-            remaining: t.total,
-            phase: TimerPhase.running,
-            endsAt: _now().add(t.total),
-          ));
+  void restart(int id) => _update(id, (t) {
+        if (t.isFinished) _stopSound();
+        return t.copyWith(
+          remaining: t.total,
+          phase: TimerPhase.running,
+          endsAt: _now().add(t.total),
+          clearFinishedAt: true,
+        );
+      });
 
   /// Tira o timer da tela (cancelar um em andamento ou dispensar um que
   /// acabou).
   void cancel(int id) {
+    if (state.any((t) => t.id == id && t.isFinished)) _stopSound();
     state = [
       for (final t in state)
         if (t.id != id) t,
@@ -221,6 +221,14 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
   void _update(int id, CookingTimer Function(CookingTimer) change) {
     state = [for (final t in state) t.id == id ? change(t) : t];
     _syncTicker();
+  }
+
+  void _stopSound() {
+    try {
+      unawaited(ref.read(alarmDriverProvider).stopSound());
+    } catch (_) {
+      // Parar o som é conveniência; falhar não pode travar o timer.
+    }
   }
 
   void _alert() {

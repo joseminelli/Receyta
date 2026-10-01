@@ -200,7 +200,8 @@ class _NavSlot extends StatefulWidget {
   State<_NavSlot> createState() => _NavSlotState();
 }
 
-class _NavSlotState extends State<_NavSlot> with SingleTickerProviderStateMixin {
+class _NavSlotState extends State<_NavSlot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pop;
 
   @override
@@ -309,4 +310,3 @@ class _NavSlotState extends State<_NavSlot> with SingleTickerProviderStateMixin 
     );
   }
 }
-

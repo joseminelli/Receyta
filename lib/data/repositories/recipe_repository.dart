@@ -377,7 +377,8 @@ class RecipeRepository {
         position: r.position,
         groupLabel: r.groupLabel,
         ingredientId: r.ingredientId,
-        ingredientName: r.ingredientId == null ? null : namesById[r.ingredientId],
+        ingredientName:
+            r.ingredientId == null ? null : namesById[r.ingredientId],
         quantity: r.quantity,
         unitId: r.unitId,
         qualifier: r.qualifier,

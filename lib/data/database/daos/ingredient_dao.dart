@@ -13,7 +13,12 @@ part 'ingredient_dao.g.dart';
 /// `normalized_key`, depois por alias confirmado; sem bater nenhum, cria um
 /// ingrediente novo. Fuzzy match com confirmação do usuário é o C4.
 @DriftAccessor(
-  tables: [Ingredients, IngredientAliases, RecipeIngredients, ShoppingListItems],
+  tables: [
+    Ingredients,
+    IngredientAliases,
+    RecipeIngredients,
+    ShoppingListItems
+  ],
 )
 class IngredientDao extends DatabaseAccessor<AppDatabase>
     with _$IngredientDaoMixin {

@@ -9,7 +9,8 @@ part 'recipe_dao.g.dart';
 /// suas listas em `recipe_ingredients` / `recipe_steps` / `recipe_tags`. Só
 /// linhas ativas — o soft delete do §RF-01.6 é escondido aqui, não no
 /// repositório. O catálogo de tags (getOrCreate por nome) fica na [TagDao].
-@DriftAccessor(tables: [Recipes, RecipeIngredients, RecipeSteps, Tags, RecipeTags])
+@DriftAccessor(
+    tables: [Recipes, RecipeIngredients, RecipeSteps, Tags, RecipeTags])
 class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   RecipeDao(super.db);
 
@@ -32,8 +33,7 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         (r) => existsQuery(
           select(recipeTags)
             ..where(
-              (rt) =>
-                  rt.recipeId.equalsExp(r.id) & rt.tagId.isIn(anyOfTagIds),
+              (rt) => rt.recipeId.equalsExp(r.id) & rt.tagId.isIn(anyOfTagIds),
             ),
         ),
       );
@@ -141,8 +141,7 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   /// antes do parser (C1) existir, ou qualquer linha que por algum motivo
   /// ficou sem `ingredient_id`. É o que o C5 reprocessa.
   Future<List<RecipeIngredientRow>> findUnresolvedIngredients() {
-    return (select(recipeIngredients)
-          ..where((i) => i.ingredientId.isNull()))
+    return (select(recipeIngredients)..where((i) => i.ingredientId.isNull()))
         .get();
   }
 
@@ -288,8 +287,7 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   Future<int> purgeExpired(DateTime cutoff) {
     return (delete(recipes)
           ..where((r) =>
-              r.deletedAt.isNotNull() &
-              r.deletedAt.isSmallerThanValue(cutoff)))
+              r.deletedAt.isNotNull() & r.deletedAt.isSmallerThanValue(cutoff)))
         .go();
   }
 }

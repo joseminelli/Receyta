@@ -37,10 +37,12 @@ Widget recipeTileHeroFlightShuttleBuilder(
   BuildContext toHeroContext,
 ) {
   final toHero = toHeroContext.widget as Hero;
-  final fromRadius =
-      direction == HeroFlightDirection.push ? _recipeCardRadius : _recipeHeroRadius;
-  final toRadius =
-      direction == HeroFlightDirection.push ? _recipeHeroRadius : _recipeCardRadius;
+  final fromRadius = direction == HeroFlightDirection.push
+      ? _recipeCardRadius
+      : _recipeHeroRadius;
+  final toRadius = direction == HeroFlightDirection.push
+      ? _recipeHeroRadius
+      : _recipeCardRadius;
   return AnimatedBuilder(
     animation: animation,
     child: toHero.child,
@@ -49,8 +51,9 @@ Widget recipeTileHeroFlightShuttleBuilder(
       // pop, o Flutter passa essa MESMA animação invertida — ela vai 1→0
       // nesse sentido. Sem desfazer isso aqui, o raio interpolava ao
       // contrário: chegava quadrado no card em vez de arredondado.
-      final progress =
-          direction == HeroFlightDirection.push ? animation.value : 1 - animation.value;
+      final progress = direction == HeroFlightDirection.push
+          ? animation.value
+          : 1 - animation.value;
       return ClipRRect(
         borderRadius: BorderRadius.lerp(fromRadius, toRadius, progress)!,
         child: child,

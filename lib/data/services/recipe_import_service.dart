@@ -11,7 +11,8 @@ import 'package:receyta/domain/engine/recipe_import.dart';
 /// User-Agent de navegador — vários sites de receita bloqueiam requisições
 /// sem um UA reconhecível.
 class RecipeImportService {
-  RecipeImportService({http.Client? client}) : _client = client ?? http.Client();
+  RecipeImportService({http.Client? client})
+      : _client = client ?? http.Client();
 
   final http.Client _client;
 

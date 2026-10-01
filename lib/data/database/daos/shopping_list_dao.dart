@@ -332,8 +332,7 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
 
   Future<List<ShoppingItemSourceRow>> sourcesOf(List<String> itemIds) {
     if (itemIds.isEmpty) return Future.value(const []);
-    return (select(shoppingItemSources)
-          ..where((s) => s.itemId.isIn(itemIds)))
+    return (select(shoppingItemSources)..where((s) => s.itemId.isIn(itemIds)))
         .get();
   }
 }

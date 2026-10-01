@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receyta/data/services/alarm_driver.dart';
 import 'package:receyta/domain/engine/step_duration.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
@@ -238,51 +239,83 @@ class _PillButton extends StatelessWidget {
   }
 }
 
-/// Chaves "vibrar" e "som" do aviso de timer, lado a lado numa pílula. Ligada,
-/// o ícone fica em `lime`; desligada, cinza e com o risco do ícone "off".
-/// Ligar dá uma amostra (vibra / toca) pra você saber como vai ser. Vive na
-/// faixa global e na faixa grande do modo cozinha.
+/// Chaves "vibrar" e "som" do aviso de timer. Ligada, o ícone fica em `lime`;
+/// desligada, em vermelho (e com o risco do "off"). Ligar dá uma amostra
+/// (vibra / toca); **desligar corta na hora** o que estiver vibrando ou
+/// tocando — mutar um alarme que está soando tem que calar o alarme.
+///
+/// Dois formatos: na faixa global, uma pílula `inkSoft` com as duas chaves; no
+/// cartão de um timer do modo cozinha ([embedded]), só os ícones, menores e sem
+/// fundo, à direita do relógio. Em cima de um bloco lime ([onAccent], o timer
+/// que acabou) o "ligado" vai em `ink`, que lime sobre lime não aparece.
 class TimerAlertToggles extends ConsumerWidget {
-  const TimerAlertToggles({super.key});
+  const TimerAlertToggles({
+    super.key,
+    this.embedded = false,
+    this.onAccent = false,
+  });
+
+  final bool embedded;
+  final bool onAccent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final settings = ref.watch(cookingAlertSettingsProvider);
     final notifier = ref.read(cookingAlertSettingsProvider.notifier);
+    final driver = ref.read(alarmDriverProvider);
+    final onColor = onAccent ? colors.ink : colors.lime;
+    final size = embedded ? 40.0 : 44.0;
 
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _AlertToggle(
+          on: settings.vibrate,
+          onIcon: Icons.vibration,
+          offIcon: Icons.phone_android,
+          label: 'Vibrar ao acabar',
+          onColor: onColor,
+          offColor: colors.danger,
+          size: size,
+          onTap: () {
+            final next = !settings.vibrate;
+            notifier.setVibrate(next);
+            if (next) {
+              driver.vibrate(preview: true);
+            } else {
+              driver.stopVibration();
+            }
+          },
+        ),
+        _AlertToggle(
+          on: settings.sound,
+          onIcon: Icons.volume_up,
+          offIcon: Icons.volume_off,
+          label: 'Tocar som ao acabar',
+          onColor: onColor,
+          offColor: colors.danger,
+          size: size,
+          onTap: () {
+            final next = !settings.sound;
+            notifier.setSound(next);
+            if (next) {
+              driver.previewSound();
+            } else {
+              driver.stopSound();
+            }
+          },
+        ),
+      ],
+    );
+
+    if (embedded) return row;
     return Container(
       decoration: BoxDecoration(
         color: colors.inkSoft,
         borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _AlertToggle(
-            on: settings.vibrate,
-            onIcon: Icons.vibration,
-            offIcon: Icons.phone_android,
-            label: 'Vibrar ao acabar',
-            onTap: () {
-              final next = !settings.vibrate;
-              notifier.setVibrate(next);
-              if (next) HapticFeedback.vibrate();
-            },
-          ),
-          _AlertToggle(
-            on: settings.sound,
-            onIcon: Icons.volume_up,
-            offIcon: Icons.volume_off,
-            label: 'Tocar som ao acabar',
-            onTap: () {
-              final next = !settings.sound;
-              notifier.setSound(next);
-              if (next) SystemSound.play(SystemSoundType.alert);
-            },
-          ),
-        ],
-      ),
+      child: row,
     );
   }
 }
@@ -293,6 +326,9 @@ class _AlertToggle extends StatelessWidget {
     required this.onIcon,
     required this.offIcon,
     required this.label,
+    required this.onColor,
+    required this.offColor,
+    required this.size,
     required this.onTap,
   });
 
@@ -300,11 +336,14 @@ class _AlertToggle extends StatelessWidget {
   final IconData onIcon;
   final IconData offIcon;
   final String label;
+  final Color onColor;
+  final Color offColor;
+  final double size;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
+    final color = on ? onColor : offColor;
     return Semantics(
       button: true,
       toggled: on,
@@ -312,29 +351,23 @@ class _AlertToggle extends StatelessWidget {
       excludeSemantics: true,
       child: InkResponse(
         onTap: onTap,
-        radius: 24,
+        radius: size / 2 + 4,
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: size,
+          height: size,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              Icon(
-                on ? onIcon : offIcon,
-                size: 22,
-                color: on
-                    ? colors.lime
-                    : colors.onSaturated.withValues(alpha: 0.45),
-              ),
-              // Desligado: um traço cortando o ícone (o "off" que os ícones
-              // de vibrar não têm).
+              Icon(on ? onIcon : offIcon, size: size * 0.5, color: color),
+              // Desligado: um traço cortando o ícone (o "off" que o ícone
+              // de vibrar não tem).
               if (!on && onIcon == Icons.vibration)
                 Transform.rotate(
                   angle: -0.785,
                   child: Container(
-                    width: 26,
+                    width: size * 0.6,
                     height: 2,
-                    color: colors.onSaturated.withValues(alpha: 0.6),
+                    color: color,
                   ),
                 ),
             ],

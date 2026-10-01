@@ -176,7 +176,8 @@ Shader tileShader({
   final canvas = Canvas(recorder);
   canvas.drawRect(Rect.fromLTWH(0, 0, px, px), Paint()..color = background);
   canvas.drawImage(shapes, Offset.zero, Paint());
-  final composed = recorder.endRecording().toImageSync(shapes.width, shapes.height);
+  final composed =
+      recorder.endRecording().toImageSync(shapes.width, shapes.height);
 
   final s = 1 / devicePixelRatio;
   final matrix = Float64List.fromList([
@@ -226,14 +227,14 @@ void _paintMotifTile(Canvas canvas, _TileKey key) {
       // direita apontando para dentro — repetidos, viram meias-luas alternadas.
       canvas.drawPath(
         Path()
-          ..addArc(
-              Rect.fromCircle(center: Offset(0, t / 2), radius: t / 2), -math.pi / 2, math.pi),
+          ..addArc(Rect.fromCircle(center: Offset(0, t / 2), radius: t / 2),
+              -math.pi / 2, math.pi),
         fill,
       );
       canvas.drawPath(
         Path()
-          ..addArc(
-              Rect.fromCircle(center: Offset(t, t / 2), radius: t / 2), math.pi / 2, math.pi),
+          ..addArc(Rect.fromCircle(center: Offset(t, t / 2), radius: t / 2),
+              math.pi / 2, math.pi),
         fill,
       );
 

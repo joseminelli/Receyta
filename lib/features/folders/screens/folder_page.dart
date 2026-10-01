@@ -93,8 +93,8 @@ class _FolderPageState extends ConsumerState<FolderPage> {
               backgroundColor: context.colors.paper,
               appBar: AppBar(leading: const BackButton()),
               body: Center(
-                child:
-                    Text('Pasta não encontrada', style: context.texts.bodyMedium),
+                child: Text('Pasta não encontrada',
+                    style: context.texts.bodyMedium),
               ),
             ),
     );
@@ -131,7 +131,8 @@ class _FolderPageState extends ConsumerState<FolderPage> {
           ),
           if (subfolders.isNotEmpty)
             SliverToBoxAdapter(child: _Subfolders(items: subfolders)),
-          if (recipes.isNotEmpty) _buildRecipesHeaderSliver(context, recipes.length),
+          if (recipes.isNotEmpty)
+            _buildRecipesHeaderSliver(context, recipes.length),
           if (recipes.isEmpty && subfolders.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,

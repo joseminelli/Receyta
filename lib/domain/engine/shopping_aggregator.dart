@@ -199,7 +199,8 @@ List<ShoppingSourceLine> _mergeSourcesByRecipe(
   }
   final base = _baseUnitCode(unitA);
   if (base != _baseUnitCode(unitB)) return null;
-  final total = quantityA * _factorToBase(unitA) + quantityB * _factorToBase(unitB);
+  final total =
+      quantityA * _factorToBase(unitA) + quantityB * _factorToBase(unitB);
   final (quantity, unitCode) = _pickDisplayUnit(base, total);
   return (quantity: quantity, unitCode: unitCode);
 }

@@ -1,10 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:receyta/data/services/alarm_driver.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
+
+import '../../helpers/fake_alarm_driver.dart';
 
 void main() {
   late DateTime now;
   late int alerts;
+  late FakeAlarmDriver driver;
   late ProviderContainer container;
 
   CookingTimersNotifier notifier() =>
@@ -14,10 +18,12 @@ void main() {
   setUp(() {
     now = DateTime.utc(2026, 10, 1, 12);
     alerts = 0;
+    driver = FakeAlarmDriver();
     container = ProviderContainer(
       overrides: [
         cookingClockProvider.overrideWithValue(() => now),
         cookingAlertProvider.overrideWithValue(() => alerts++),
+        alarmDriverProvider.overrideWithValue(driver),
       ],
     );
     addTearDown(container.dispose);
@@ -214,5 +220,47 @@ void main() {
     now = now.add(const Duration(seconds: 2));
     n.tick();
     expect(broken.read(cookingTimersProvider).single.isFinished, isTrue);
+  });
+
+  test('repetir mantém o nome da receita e limpa o "acabou"', () {
+    final id = notifier().start(
+      recipeId: 'r1',
+      recipeName: 'Frango ao curry',
+      label: 'Passo 2',
+      duration: const Duration(minutes: 1),
+    );
+    advance(const Duration(minutes: 2));
+    expect(timers().single.finishedAt, isNotNull);
+
+    notifier().restart(id);
+    final t = timers().single;
+    expect(t.recipeName, 'Frango ao curry');
+    expect(t.finishedAt, isNull);
+    expect(t.phase, TimerPhase.running);
+  });
+
+  test('dispensar ou repetir um timer que está tocando para o som', () {
+    final a = notifier().start(
+      recipeId: 'r1',
+      label: 'a',
+      duration: const Duration(seconds: 5),
+    );
+    final b = notifier().start(
+      recipeId: 'r1',
+      label: 'b',
+      duration: const Duration(minutes: 30),
+    );
+    advance(const Duration(seconds: 6));
+    expect(driver.calls, isEmpty);
+
+    notifier().cancel(b); // em andamento: não mexe no som
+    expect(driver.calls, isEmpty);
+
+    notifier().restart(a); // estava tocando: para
+    expect(driver.calls, ['stopSound']);
+
+    advance(const Duration(minutes: 1));
+    notifier().cancel(a); // tocando de novo e dispensado: para
+    expect(driver.calls, ['stopSound', 'stopSound']);
   });
 }

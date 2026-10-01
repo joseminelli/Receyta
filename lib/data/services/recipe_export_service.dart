@@ -53,7 +53,8 @@ class RecipeExportService {
     final recipeName =
         (payload['recipes'] as List)[0]['name'] as String? ?? 'receita';
 
-    return _writeAndShare(payload, fileName: _fileName(recipeName), text: recipeName);
+    return _writeAndShare(payload,
+        fileName: _fileName(recipeName), text: recipeName);
   }
 
   /// PDF de uma receita (D6, RF-06.6) — layout próprio via `buildRecipePdf`,

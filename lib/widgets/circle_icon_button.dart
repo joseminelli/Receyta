@@ -37,7 +37,8 @@ class CircleIconButton extends StatelessWidget {
           message: tooltip,
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.sm),
-            child: Icon(icon, size: 20, color: foreground ?? colors.onSaturated),
+            child:
+                Icon(icon, size: 20, color: foreground ?? colors.onSaturated),
           ),
         ),
       ),

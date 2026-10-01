@@ -752,16 +752,9 @@ class _TimersDock extends ConsumerWidget {
       ),
       child: ListView.separated(
         shrinkWrap: true,
-        // O primeiro item são as chaves de aviso (vibrar / som); depois, uma
-        // linha por timer.
-        itemCount: timers.length + 1,
+        itemCount: timers.length,
         separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-        itemBuilder: (context, i) => i == 0
-            ? const Align(
-                alignment: Alignment.centerRight,
-                child: TimerAlertToggles(),
-              )
-            : _TimerRow(timer: timers[i - 1]),
+        itemBuilder: (context, i) => _TimerRow(timer: timers[i]),
       ),
     );
   }
@@ -840,6 +833,9 @@ class _TimerRow extends ConsumerWidget {
               onTap: () => notifier.cancel(timer.id),
             ),
           ],
+          // As chaves de vibrar / som moram no próprio cartão, à direita do
+          // relógio e dos botões.
+          TimerAlertToggles(embedded: true, onAccent: done),
         ],
       ),
     );

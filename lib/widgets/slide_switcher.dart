@@ -51,8 +51,8 @@ class _SlideSwitcherState extends State<SlideSwitcher> {
               ? Offset(_forward ? 1 : -1, 0)
               : Offset(_forward ? -1 : 1, 0);
           return SlideTransition(
-            position: Tween<Offset>(begin: from, end: Offset.zero)
-                .animate(animation),
+            position:
+                Tween<Offset>(begin: from, end: Offset.zero).animate(animation),
             child: FadeTransition(opacity: animation, child: child),
           );
         },

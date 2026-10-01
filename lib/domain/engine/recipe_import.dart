@@ -195,9 +195,8 @@ List<String> _extractSteps(Object? value) {
 final _sentenceSplitRegex = RegExp(r'(?<=[.!?])\s+(?=\S)');
 
 List<String> _splitIntoSentences(String text) {
-  final pieces = text.contains('\n')
-      ? text.split('\n')
-      : text.split(_sentenceSplitRegex);
+  final pieces =
+      text.contains('\n') ? text.split('\n') : text.split(_sentenceSplitRegex);
   return [for (final p in pieces) p.trim()].where((s) => s.isNotEmpty).toList();
 }
 
@@ -206,8 +205,17 @@ List<String> _splitIntoSentences(String text) {
 /// "tudogostoso". Lista curta de propósito: não é uma lista pública de
 /// sufixos completa, só cobre os TLDs mais comuns entre sites de receita.
 const _twoPartSuffixes = {
-  'com.br', 'com.au', 'com.mx', 'com.pt', 'com.ar', 'co.uk', 'co.jp',
-  'org.br', 'net.br', 'gov.br', 'edu.br',
+  'com.br',
+  'com.au',
+  'com.mx',
+  'com.pt',
+  'com.ar',
+  'co.uk',
+  'co.jp',
+  'org.br',
+  'net.br',
+  'gov.br',
+  'edu.br',
 };
 
 /// Nome de tag a partir do domínio de onde a receita foi importada (C7) —
@@ -223,8 +231,9 @@ String? siteTagFromUrl(String? sourceUrl) {
   if (labels.length < 2) return canonicalTagName(host);
 
   final lastTwo = '${labels[labels.length - 2]}.${labels[labels.length - 1]}';
-  final brandIndex =
-      _twoPartSuffixes.contains(lastTwo) ? labels.length - 3 : labels.length - 2;
+  final brandIndex = _twoPartSuffixes.contains(lastTwo)
+      ? labels.length - 3
+      : labels.length - 2;
   final brand = brandIndex >= 0 ? labels[brandIndex] : labels.last;
   return canonicalTagName(brand);
 }

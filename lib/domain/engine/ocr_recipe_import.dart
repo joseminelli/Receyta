@@ -55,7 +55,8 @@ final _leadingBullet = RegExp(r'^[•●○◦▪‣∙·*\-–—»>]+\s*');
 
 /// "Bolo de nozes — Foto: Receitas" — legenda de foto de site, comum vir
 /// grudada no nome de verdade. Tira só o pedaço da legenda.
-final _photoCaptionSuffix = RegExp(r'\s*[—–-]\s*foto:.*$', caseSensitive: false);
+final _photoCaptionSuffix =
+    RegExp(r'\s*[—–-]\s*foto:.*$', caseSensitive: false);
 
 /// Ícone (compartilhar/link) que sobra colado no fim de um título de card
 /// ("Cookie Saudável de Maçã e Aveia (Sem Açúcar) •"). Só no fim da linha —
@@ -291,8 +292,10 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     final ingredientsEnd = _ingredientRunEnd(body, 0, body.length);
     return ImportedRecipe(
       name: fixShoutyCase(lines.first),
-      ingredientLines:
-          body.sublist(0, ingredientsEnd).map(fixOcrDigitLetterConfusion).toList(),
+      ingredientLines: body
+          .sublist(0, ingredientsEnd)
+          .map(fixOcrDigitLetterConfusion)
+          .toList(),
       stepLines: _splitSteps(body.sublist(ingredientsEnd))
           .map(fixOcrDigitLetterConfusion)
           .toList(),
@@ -339,8 +342,8 @@ ImportedRecipe? parseOcrLines(List<String> rawLines) {
     ].reduce((a, b) => a < b ? a : b);
     final ingredientsRest =
         _ingredientsHeading.firstMatch(lines[ingredientsAt])?.namedGroup(
-      'rest',
-    );
+              'rest',
+            );
     final rawIngredientLines = [
       if (ingredientsRest != null) ingredientsRest,
       ...lines.sublist(ingredientsAt + 1, ingredientsEnd),

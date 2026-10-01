@@ -8,7 +8,8 @@ void main() {
   group('findStepDurations', () {
     test('minutos, por extenso e abreviado', () {
       expect(_found('Cozinhe por 20 minutos.'), [const Duration(minutes: 20)]);
-      expect(_found('Asse 45 min em forno médio'), [const Duration(minutes: 45)]);
+      expect(
+          _found('Asse 45 min em forno médio'), [const Duration(minutes: 45)]);
       expect(_found('Deixe descansar 1 minuto'), [const Duration(minutes: 1)]);
     });
 
@@ -28,7 +29,8 @@ void main() {
           [const Duration(seconds: 30)]);
     });
 
-    test('faixa ("20 a 25 minutos") usa o menor: o lembrete é pra ir olhar', () {
+    test('faixa ("20 a 25 minutos") usa o menor: o lembrete é pra ir olhar',
+        () {
       expect(_found('Asse de 20 a 25 minutos'), [const Duration(minutes: 20)]);
       expect(_found('Cozinhe 20-25 min'), [const Duration(minutes: 20)]);
     });

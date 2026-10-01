@@ -67,8 +67,7 @@ class ShoppingListRepository {
       final trimmed = name?.trim() ?? '';
       final listName = trimmed.isEmpty ? _defaultName(at) : trimmed;
 
-      final row =
-          await _dao.create(name: listName, items: aggregated, at: at);
+      final row = await _dao.create(name: listName, items: aggregated, at: at);
       return Ok(_listToDomain(row));
     } catch (e) {
       debugPrint('ShoppingListRepository.generateFromRecipes: $e');
@@ -408,8 +407,7 @@ class ShoppingListRepository {
       '${at.month.toString().padLeft(2, '0')}';
 }
 
-final shoppingListRepositoryProvider =
-    Provider<ShoppingListRepository>((ref) {
+final shoppingListRepositoryProvider = Provider<ShoppingListRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return ShoppingListRepository(
     db.shoppingListDao,

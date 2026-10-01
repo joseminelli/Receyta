@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
+import 'package:receyta/data/services/alarm_driver.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/screens/global_timers_bar.dart';
 import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/theme/tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../helpers/fake_alarm_driver.dart';
 
 DateTime _now = DateTime.utc(2026, 10, 1, 12);
 final _opened = <String>[];
@@ -15,6 +19,7 @@ Widget _host() => ProviderScope(
       overrides: [
         cookingClockProvider.overrideWithValue(() => _now),
         cookingAlertProvider.overrideWithValue(() {}),
+        alarmDriverProvider.overrideWithValue(_driver),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -42,11 +47,14 @@ CookingTimersNotifier _timers(WidgetTester tester) =>
 Future<void> _close(WidgetTester tester) =>
     tester.pumpWidget(const SizedBox.shrink());
 
+final _driver = FakeAlarmDriver();
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     _now = DateTime.utc(2026, 10, 1, 12);
     _opened.clear();
+    _driver.calls.clear();
   });
 
   testWidgets('sem timers não há faixa e a tela mantém o topo seguro',
@@ -179,7 +187,7 @@ void main() {
     await _close(tester);
   });
 
-  testWidgets('a faixa traz as chaves de vibrar e som e elas desligam o aviso',
+  testWidgets('chaves de vibrar e som: som começa desligado e em vermelho',
       (tester) async {
     await tester.pumpWidget(_host());
     _timers(tester).start(
@@ -189,27 +197,42 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.vibration), findsOneWidget);
-    expect(find.byIcon(Icons.volume_up), findsOneWidget);
     CookingAlertSettings settings() =>
         _container(tester).read(cookingAlertSettingsProvider);
-    expect(settings().vibrate, isTrue);
-    expect(settings().sound, isTrue);
+    Color? colorOf(IconData icon) =>
+        tester.widget<Icon>(find.byIcon(icon)).color;
 
-    await tester.tap(find.byIcon(Icons.volume_up));
-    await tester.pump();
+    // Padrão: vibra, não toca. Ligado em lime, desligado em vermelho.
+    expect(settings().vibrate, isTrue);
     expect(settings().sound, isFalse);
-    expect(settings().vibrate, isTrue);
+    expect(find.byIcon(Icons.vibration), findsOneWidget);
     expect(find.byIcon(Icons.volume_off), findsOneWidget);
+    expect(colorOf(Icons.vibration), AppColors.light.lime);
+    expect(colorOf(Icons.volume_off), AppColors.light.danger);
 
-    await tester.tap(find.byIcon(Icons.vibration));
-    await tester.pump();
-    expect(settings().vibrate, isFalse);
-
+    // Ligar o som: amostra, ícone muda e deixa de ser vermelho.
     await tester.tap(find.byIcon(Icons.volume_off));
     await tester.pump();
     expect(settings().sound, isTrue);
+    expect(_driver.calls, ['previewSound']);
     expect(find.byIcon(Icons.volume_up), findsOneWidget);
+    expect(colorOf(Icons.volume_up), AppColors.light.lime);
+
+    // Desligar a vibração: o ícone fica vermelho e a vibração corta na hora.
+    _driver.calls.clear();
+    await tester.tap(find.byIcon(Icons.vibration));
+    await tester.pump();
+    expect(settings().vibrate, isFalse);
+    expect(_driver.calls, ['stopVibration']);
+    expect(colorOf(Icons.phone_android), AppColors.light.danger);
+
+    // Desligar o som de novo: volta ao vermelho e o som corta na hora.
+    _driver.calls.clear();
+    await tester.tap(find.byIcon(Icons.volume_up));
+    await tester.pump();
+    expect(settings().sound, isFalse);
+    expect(_driver.calls, ['stopSound']);
+    expect(colorOf(Icons.volume_off), AppColors.light.danger);
     await _close(tester);
   });
 }

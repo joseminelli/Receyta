@@ -174,10 +174,10 @@ class ReceytaImportService {
 
       final folder = bySourceId[sourceId]!;
       final parentSourceId = folder.parentSourceId;
-      final parentId = (parentSourceId != null &&
-              bySourceId.containsKey(parentSourceId))
-          ? await resolve(parentSourceId)
-          : null;
+      final parentId =
+          (parentSourceId != null && bySourceId.containsKey(parentSourceId))
+              ? await resolve(parentSourceId)
+              : null;
 
       final existing =
           await _folderDao.findByNameAndParent(folder.name, parentId);
