@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:receyta/domain/engine/step_duration.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
+import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -14,8 +16,10 @@ import 'package:receyta/widgets/sweep_strike_text.dart';
 
 /// Modo cozinha mínimo (RF-01.11 / G1 parcial): superfície escura reaproveitada
 /// de Compras, tela que não apaga (wakelock), passos numa lista de corpo grande
-/// que você rola com a mão suja, ingredientes num toque no topo. Timers e
-/// escala de porção ficam pro G1 completo.
+/// que você rola com a mão suja, ingredientes num toque no topo e timers (G1):
+/// um do tempo de cozimento da receita e um botão em cada tempo que o texto do
+/// passo menciona ("20 minutos"). Os timers rodando ficam numa faixa no
+/// rodapé. Escala de porção é o G2.
 class CookingModePage extends ConsumerStatefulWidget {
   const CookingModePage({super.key, required this.recipeId});
 
@@ -28,6 +32,10 @@ class CookingModePage extends ConsumerStatefulWidget {
 class _CookingModePageState extends ConsumerState<CookingModePage> {
   final _ingredientsOpen = ValueNotifier<bool>(true);
   final _doneNotifiers = <int, ValueNotifier<bool>>{};
+
+  /// Tempos achados em cada texto de passo — procurar é regex, então guarda
+  /// (a lista de passos reconstrói ao rolar).
+  final _durationsByText = <String, List<StepDuration>>{};
 
   @override
   void initState() {
@@ -79,8 +87,13 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: _StepCard(
-            number: i + 1,
+            recipeId: widget.recipeId,
+            index: i,
             text: steps[i].text,
+            durations: _durationsByText.putIfAbsent(
+              steps[i].text,
+              () => findStepDurations(steps[i].text),
+            ),
             doneListenable: _doneNotifierFor(i),
           ),
         ),
@@ -119,6 +132,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
               ],
             ),
           ),
+          _TimersDock(recipeId: widget.recipeId),
         ],
       ),
     );
@@ -136,6 +150,13 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if ((detail.recipe.cookMinutes ?? 0) > 0) ...[
+              _CookTimerCard(
+                recipeId: widget.recipeId,
+                minutes: detail.recipe.cookMinutes!,
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
             _IngredientsCard(
               ingredients: detail.ingredients,
               openListenable: _ingredientsOpen,
@@ -393,21 +414,27 @@ class _GroupLabel extends StatelessWidget {
 }
 
 /// Passo em cartão largo, número em escala grande. Toque marca como feito —
-/// o cartão recua e o texto risca, pra achar onde parou de relance.
+/// o cartão recua e o texto risca, pra achar onde parou de relance. Cada tempo
+/// que o texto menciona vira um botão de timer embaixo do texto.
 class _StepCard extends StatelessWidget {
   const _StepCard({
-    required this.number,
+    required this.recipeId,
+    required this.index,
     required this.text,
+    required this.durations,
     required this.doneListenable,
   });
 
-  final int number;
+  final String recipeId;
+  final int index;
   final String text;
+  final List<StepDuration> durations;
   final ValueNotifier<bool> doneListenable;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final number = index + 1;
     return ValueListenableBuilder<bool>(
       valueListenable: doneListenable,
       builder: (context, done, _) => Material(
@@ -442,20 +469,41 @@ class _StepCard extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: AppSpacing.xs / 2),
-                    child: SweepStrikeText(
-                      text: text,
-                      done: done,
-                      style: context.texts.bodyLarge?.copyWith(
-                        color: done
-                            ? colors.onSaturated.withValues(alpha: 0.4)
-                            : colors.onSaturated,
-                        fontSize: 20,
-                        height: 1.4,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.xs / 2),
+                        child: SweepStrikeText(
+                          text: text,
+                          done: done,
+                          style: context.texts.bodyLarge?.copyWith(
+                            color: done
+                                ? colors.onSaturated.withValues(alpha: 0.4)
+                                : colors.onSaturated,
+                            fontSize: 20,
+                            height: 1.4,
+                          ),
+                          lineColor: colors.onSaturated.withValues(alpha: 0.4),
+                        ),
                       ),
-                      lineColor: colors.onSaturated.withValues(alpha: 0.4),
-                    ),
+                      if (durations.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        Wrap(
+                          spacing: AppSpacing.xs,
+                          runSpacing: AppSpacing.xs,
+                          children: [
+                            for (var k = 0; k < durations.length; k++)
+                              _DurationChip(
+                                recipeId: recipeId,
+                                timerKey: 'step-$index-$k',
+                                label: 'Passo $number',
+                                duration: durations[k],
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -463,6 +511,321 @@ class _StepCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Botão de timer de um tempo achado no passo: "⏱ 20 min". Sem timer ainda,
+/// toque inicia; com timer, vira o relógio ao vivo e o toque pausa/retoma (ou
+/// reinicia, se já acabou). Grande o bastante pra acertar de mão suja.
+class _DurationChip extends ConsumerWidget {
+  const _DurationChip({
+    required this.recipeId,
+    required this.timerKey,
+    required this.label,
+    required this.duration,
+  });
+
+  final String recipeId;
+  final String timerKey;
+  final String label;
+  final StepDuration duration;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final timer = ref
+        .watch(cookingTimersProvider)
+        .where((t) => t.recipeId == recipeId && t.key == timerKey)
+        .firstOrNull;
+    final notifier = ref.read(cookingTimersProvider.notifier);
+
+    final IconData icon;
+    final String text;
+    if (timer == null) {
+      icon = Icons.timer_outlined;
+      text = duration.label;
+    } else if (timer.isFinished) {
+      icon = Icons.alarm_on;
+      text = 'Pronto';
+    } else if (timer.isRunning) {
+      icon = Icons.pause;
+      text = formatTimer(timer.remaining);
+    } else {
+      icon = Icons.play_arrow;
+      text = formatTimer(timer.remaining);
+    }
+    final active = timer != null;
+
+    return Material(
+      color: active ? colors.lime : Colors.transparent,
+      shape: StadiumBorder(
+        side: BorderSide(color: colors.lime, width: 1.5),
+      ),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: () {
+          if (timer == null) {
+            notifier.start(
+              recipeId: recipeId,
+              label: label,
+              duration: duration.duration,
+              key: timerKey,
+            );
+          } else if (timer.isFinished) {
+            notifier.restart(timer.id);
+          } else {
+            notifier.toggle(timer.id);
+          }
+        },
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: active ? colors.ink : colors.lime,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  text,
+                  style: context.texts.titleMedium?.copyWith(
+                    color: active ? colors.ink : colors.lime,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Cartão do tempo de cozimento da receita (`cookMinutes`) no topo: um toque
+/// inicia o timer. Com o timer rodando, o controle fica na faixa do rodapé e
+/// aqui só aparece que está em andamento.
+class _CookTimerCard extends ConsumerWidget {
+  const _CookTimerCard({required this.recipeId, required this.minutes});
+
+  final String recipeId;
+  final int minutes;
+
+  static const _key = 'cook';
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final timer = ref
+        .watch(cookingTimersProvider)
+        .where((t) => t.recipeId == recipeId && t.key == _key)
+        .firstOrNull;
+    final running = timer != null;
+    final total = Duration(minutes: minutes);
+
+    return Material(
+      color: colors.inkSoft,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: running
+            ? null
+            : () => ref.read(cookingTimersProvider.notifier).start(
+                  recipeId: recipeId,
+                  label: 'Cozimento',
+                  duration: total,
+                  key: _key,
+                ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Icon(
+                running ? Icons.hourglass_top : Icons.local_fire_department,
+                color: colors.lime,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'COZIMENTO',
+                      style: context.texts.labelSmall
+                          ?.copyWith(color: colors.lime),
+                    ),
+                    Text(
+                      running
+                          ? 'Timer em andamento'
+                          : '${formatTimer(total)} · toque pra iniciar',
+                      style: context.texts.bodyLarge?.copyWith(
+                        color: colors.onSaturated,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!running)
+                Icon(Icons.play_circle_fill, color: colors.lime, size: 36),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Faixa fixa no rodapé com os timers desta receita (vários ao mesmo tempo).
+/// Cada linha: de onde veio, o relógio grande, pausar/retomar e cancelar; o
+/// que acabou vira um bloco lime ("Pronto!") com "Parar" e "+ Repetir".
+class _TimersDock extends ConsumerWidget {
+  const _TimersDock({required this.recipeId});
+
+  final String recipeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final timers = [
+      for (final t in ref.watch(cookingTimersProvider))
+        if (t.recipeId == recipeId) t,
+    ];
+    if (timers.isEmpty) return const SizedBox.shrink();
+    final colors = context.colors;
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 210),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.xs,
+        AppSpacing.screen,
+        AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: colors.ink,
+        border: Border(
+          top: BorderSide(
+            color: colors.onSaturated.withValues(alpha: 0.12),
+          ),
+        ),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        itemCount: timers.length,
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
+        itemBuilder: (context, i) => _TimerRow(timer: timers[i]),
+      ),
+    );
+  }
+}
+
+class _TimerRow extends ConsumerWidget {
+  const _TimerRow({required this.timer});
+
+  final CookingTimer timer;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final notifier = ref.read(cookingTimersProvider.notifier);
+    final done = timer.isFinished;
+    final fg = done ? colors.ink : colors.onSaturated;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: done ? colors.lime : colors.inkSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  done ? '${timer.label} · Pronto!' : timer.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.labelMedium?.copyWith(
+                    color: done ? colors.ink : colors.lime,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  done ? '00:00' : formatTimer(timer.remaining),
+                  style: AppTextStyles.display(34).copyWith(
+                    color: fg,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (done) ...[
+            _DockButton(
+              icon: Icons.replay,
+              tooltip: 'Repetir',
+              color: fg,
+              onTap: () => notifier.restart(timer.id),
+            ),
+            _DockButton(
+              icon: Icons.check,
+              tooltip: 'Parar',
+              color: fg,
+              onTap: () => notifier.cancel(timer.id),
+            ),
+          ] else ...[
+            _DockButton(
+              icon: timer.isRunning ? Icons.pause : Icons.play_arrow,
+              tooltip: timer.isRunning ? 'Pausar' : 'Retomar',
+              color: fg,
+              onTap: () => notifier.toggle(timer.id),
+            ),
+            _DockButton(
+              icon: Icons.close,
+              tooltip: 'Cancelar',
+              color: fg.withValues(alpha: 0.7),
+              onTap: () => notifier.cancel(timer.id),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Botão redondo e grande (48) da faixa de timers.
+class _DockButton extends StatelessWidget {
+  const _DockButton({
+    required this.icon,
+    required this.tooltip,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      tooltip: tooltip,
+      iconSize: 28,
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+      icon: Icon(icon, color: color),
     );
   }
 }

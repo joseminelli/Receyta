@@ -809,6 +809,18 @@ Esforço em dias de trabalho focado.
   - **Ainda não**: sugestão no calendário do mês, e `servingsOverride` /
     G12 ("tenho X, Y, Z", reaproveita `suggestRecipes`).
 
+- **Bloco G (em andamento, 2026-10-01)** — **G1 ✅ timers do modo cozinha**
+  (wakelock e passos grandes já existiam). Cartão "Cozimento" no topo inicia um
+  timer com o `cookMinutes` da receita; cada tempo que o texto de um passo
+  menciona ("20 minutos", "1h30", "meia hora", "20 a 25 min" → o menor) vira um
+  botão de timer no passo (`findStepDurations`); os timers rodando ficam numa
+  faixa no rodapé (vários ao mesmo tempo, pausar/retomar/cancelar; ao acabar vira
+  bloco lime "Pronto!" com "Repetir"/"Parar", vibra e toca o alerta do sistema,
+  repetindo a cada 3 s por 30 s). O tempo é calculado pelo horário de fim, então
+  segue certo se o app for pro segundo plano. **Não toca com o app fechado — isso é
+  o G6** (notificação agendada). Dá pra reaproveitar `CookingTimersNotifier` lá.
+  G0 (vídeo `/brag`) fica por último, por decisão do usuário.
+
 ---
 
 ### Bloco A — Fundação
