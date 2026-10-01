@@ -13,6 +13,7 @@ import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/widgets/slide_switcher.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -85,8 +86,8 @@ class MonthPage extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               _buildWeekdayLabels(context),
               const SizedBox(height: 4),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
+              SlideSwitcher(
+                index: month.year * 12 + month.month,
                 child: _buildGrid(context, ref, month, entries),
               ),
               const SizedBox(height: AppSpacing.xl),

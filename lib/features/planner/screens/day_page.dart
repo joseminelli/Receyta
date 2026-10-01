@@ -16,6 +16,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/slide_switcher.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -48,11 +49,9 @@ class _DayPageState extends ConsumerState<DayPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final entriesAsync = ref.watch(dayEntriesProvider(_day));
-    final entries = [
-      for (final e in entriesAsync.valueOrNull ?? const <MealPlanEntry>[])
-        if (!_removed.contains(e.id)) e,
-    ];
+    // O dia vira variável local: o filho que está saindo, durante o deslize,
+    // continua mostrando o dia dele e não o novo.
+    final day = _day;
 
     return Scaffold(
       backgroundColor: colors.paper,
@@ -61,9 +60,22 @@ class _DayPageState extends ConsumerState<DayPage> {
           children: [
             _buildTopBar(context),
             Expanded(
-              child: entriesAsync.isLoading && entries.isEmpty
-                  ? const Center(child: BrandLoader())
-                  : _buildMeals(context, entries),
+              child: SlideSwitcher(
+                index: day.difference(DateTime.utc(1970)).inDays,
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final entriesAsync = ref.watch(dayEntriesProvider(day));
+                    final entries = [
+                      for (final e in entriesAsync.valueOrNull ??
+                          const <MealPlanEntry>[])
+                        if (!_removed.contains(e.id)) e,
+                    ];
+                    return entriesAsync.isLoading && entries.isEmpty
+                        ? const Center(child: BrandLoader())
+                        : _buildMeals(context, day, entries);
+                  },
+                ),
+              ),
             ),
           ],
         ),
@@ -126,7 +138,11 @@ class _DayPageState extends ConsumerState<DayPage> {
     );
   }
 
-  Widget _buildMeals(BuildContext context, List<MealPlanEntry> entries) {
+  Widget _buildMeals(
+    BuildContext context,
+    DateTime day,
+    List<MealPlanEntry> entries,
+  ) {
     // Duas refeições do mesmo dia com a mesma receita dividiriam a tag do
     // Hero (o Flutter recusa); só a primeira ocorrência do dia voa.
     final heroOwners = <String, String>{};
@@ -159,10 +175,10 @@ class _DayPageState extends ConsumerState<DayPage> {
               ],
               onAdd: () => showAddMealSheet(
                 context,
-                day: _day,
+                day: day,
                 initialMeal: meal,
               ),
-              onDrop: (entry) => _moveTo(entry, _day, meal: meal),
+              onDrop: (entry) => _moveTo(entry, day, meal: meal),
               buildTile: (entry) => _EntryTile(
                 entry: entry,
                 useHero: heroOwners[entry.recipeId] == entry.id,
