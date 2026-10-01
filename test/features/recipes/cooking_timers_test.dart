@@ -1,14 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/data/services/alarm_driver.dart';
+import 'package:receyta/data/services/timer_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 
 import '../../helpers/fake_alarm_driver.dart';
+import '../../helpers/fake_timer_notifications.dart';
 
 void main() {
   late DateTime now;
   late int alerts;
   late FakeAlarmDriver driver;
+  late FakeTimerNotifications notifications;
   late ProviderContainer container;
 
   CookingTimersNotifier notifier() =>
@@ -19,11 +24,14 @@ void main() {
     now = DateTime.utc(2026, 10, 1, 12);
     alerts = 0;
     driver = FakeAlarmDriver();
+    notifications = FakeTimerNotifications();
+    SharedPreferences.setMockInitialValues({});
     container = ProviderContainer(
       overrides: [
         cookingClockProvider.overrideWithValue(() => now),
         cookingAlertProvider.overrideWithValue(() => alerts++),
         alarmDriverProvider.overrideWithValue(driver),
+        timerNotificationsProvider.overrideWithValue(notifications),
       ],
     );
     addTearDown(container.dispose);
@@ -262,5 +270,243 @@ void main() {
     advance(const Duration(minutes: 1));
     notifier().cancel(a); // tocando de novo e dispensado: para
     expect(driver.calls, ['stopSound', 'stopSound']);
+  });
+
+  group('notificações (app minimizado)', () {
+    test('minimizar: rodando vira notificação com o horário de fim e as chaves',
+        () async {
+      final id = notifier().start(
+        recipeId: 'r1',
+        recipeName: 'Frango ao curry',
+        label: 'Passo 2',
+        duration: const Duration(minutes: 20),
+      );
+      await container
+          .read(cookingAlertSettingsProvider.notifier)
+          .setSound(true);
+
+      await notifier().onBackground();
+
+      final shown = notifications.runningDetails[id]!;
+      expect(shown.title, 'Frango ao curry · Passo 2');
+      expect(shown.recipeId, 'r1');
+      expect(shown.endsAt, now.add(const Duration(minutes: 20)));
+      expect(shown.vibrate, isTrue);
+      expect(shown.sound, isTrue);
+    });
+
+    test('minimizar: pausado mostra o que falta, sem aviso; pronto não mostra',
+        () async {
+      final paused = notifier().start(
+        recipeId: 'r1',
+        label: 'a',
+        duration: const Duration(minutes: 10),
+      );
+      advance(const Duration(minutes: 3));
+      notifier().pause(paused);
+      final done = notifier().start(
+        recipeId: 'r1',
+        label: 'b',
+        duration: const Duration(seconds: 5),
+      );
+      advance(const Duration(seconds: 6));
+      expect(timers().firstWhere((t) => t.id == done).isFinished, isTrue);
+      notifications.calls.clear();
+
+      await notifier().onBackground();
+
+      expect(notifications.pausedDetails[paused]!.remaining,
+          const Duration(minutes: 7));
+      expect(notifications.calls, ['paused:$paused']);
+    });
+
+    test('voltar: tira as notificações de todos os timers', () async {
+      final a = notifier().start(
+        recipeId: 'r1',
+        label: 'a',
+        duration: const Duration(minutes: 5),
+      );
+      final b = notifier().start(
+        recipeId: 'r1',
+        label: 'b',
+        duration: const Duration(minutes: 9),
+      );
+      await notifier().onBackground();
+      notifications.calls.clear();
+
+      await notifier().onForeground();
+
+      expect(notifications.calls, containsAll(['cancel:$a', 'cancel:$b']));
+    });
+
+    test('acabou com o app em segundo plano: na volta não vibra/toca de novo',
+        () async {
+      notifier().start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 1),
+      );
+      await notifier().onBackground();
+
+      now = now.add(const Duration(minutes: 10)); // app minimizado esse tempo
+      await notifier().onForeground();
+
+      final t = timers().single;
+      expect(t.isFinished, isTrue);
+      expect(alerts, 0); // a notificação já avisou
+      // "Acabou" conta a partir do fim de verdade, não da volta.
+      expect(t.finishedAt, now.subtract(const Duration(minutes: 9)));
+    });
+
+    test('acabou com o app aberto: avisa na hora (não é "velho")', () {
+      notifier().start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(seconds: 30),
+      );
+      advance(const Duration(seconds: 31));
+      expect(alerts, 1);
+    });
+
+    test('cancelar tira a notificação do timer', () {
+      final id = notifier().start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 5),
+      );
+      notifications.calls.clear();
+      notifier().cancel(id);
+      expect(notifications.calls, ['cancel:$id']);
+    });
+
+    test('a permissão de notificação é pedida só na primeira vez', () async {
+      notifier().start(
+        recipeId: 'r1',
+        label: 'a',
+        duration: const Duration(minutes: 1),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      notifier().start(
+        recipeId: 'r1',
+        label: 'b',
+        duration: const Duration(minutes: 1),
+      );
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+          notifications.calls.where((c) => c == 'permissions'), hasLength(1));
+    });
+  });
+
+  group('persistência', () {
+    Future<void> settle() async {
+      for (var i = 0; i < 4; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    ProviderContainer reopen() {
+      final c = ProviderContainer(
+        overrides: [
+          cookingClockProvider.overrideWithValue(() => now),
+          cookingAlertProvider.overrideWithValue(() => alerts++),
+          alarmDriverProvider.overrideWithValue(driver),
+          timerNotificationsProvider.overrideWithValue(notifications),
+        ],
+      );
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    test('os timers sobrevivem ao app ser fechado e recalculam pelo fim',
+        () async {
+      final running = notifier().start(
+        recipeId: 'r1',
+        recipeName: 'Bolo',
+        label: 'Cozimento',
+        duration: const Duration(minutes: 40),
+        key: 'cook',
+      );
+      final paused = notifier().start(
+        recipeId: 'r1',
+        label: 'Passo 3',
+        duration: const Duration(minutes: 10),
+      );
+      advance(const Duration(minutes: 4));
+      notifier().pause(paused);
+      await settle();
+
+      // "Fecha e reabre o app" 15 min depois.
+      now = now.add(const Duration(minutes: 15));
+      final c2 = reopen();
+      c2.read(cookingTimersProvider);
+      await settle();
+
+      final list = c2.read(cookingTimersProvider);
+      expect(list, hasLength(2));
+      final r = list.firstWhere((t) => t.id == running);
+      expect(r.recipeName, 'Bolo');
+      expect(r.key, 'cook');
+      expect(r.isRunning, isTrue);
+      expect(r.remaining, const Duration(minutes: 21)); // 40 - 4 - 15
+      final p = list.firstWhere((t) => t.id == paused);
+      expect(p.phase, TimerPhase.paused);
+      expect(p.remaining, const Duration(minutes: 6));
+
+      // O próximo timer não repete id.
+      final next = c2.read(cookingTimersProvider.notifier).start(
+            recipeId: 'r1',
+            label: 'novo',
+            duration: const Duration(minutes: 1),
+          );
+      expect(next, greaterThan(paused));
+    });
+
+    test('rodando que já passou do fim volta como "pronto", sem alertar',
+        () async {
+      notifier().start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 5),
+      );
+      await settle();
+
+      now = now.add(const Duration(hours: 2));
+      final c2 = reopen();
+      c2.read(cookingTimersProvider);
+      await settle();
+
+      final t = c2.read(cookingTimersProvider).single;
+      expect(t.isFinished, isTrue);
+      expect(alerts, 0);
+    });
+
+    test('cancelar tudo limpa o que estava guardado', () async {
+      final id = notifier().start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 5),
+      );
+      await settle();
+      notifier().cancel(id);
+      await settle();
+
+      final c2 = reopen();
+      c2.read(cookingTimersProvider);
+      await settle();
+      expect(c2.read(cookingTimersProvider), isEmpty);
+    });
+
+    test('registro estragado é ignorado, não derruba', () async {
+      SharedPreferences.setMockInitialValues({
+        'cooking_timers_v1': '[{"id": "isso não é um timer"}, 42]',
+      });
+      final c2 = reopen();
+      c2.read(cookingTimersProvider);
+      await settle();
+      expect(c2.read(cookingTimersProvider), isEmpty);
+    });
   });
 }

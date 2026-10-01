@@ -785,6 +785,8 @@ class _TimerRow extends ConsumerWidget {
         children: [
           // À esquerda, as chaves de vibrar / som; à direita, pausar e
           // cancelar — cada grupo de um lado do relógio, no mesmo cartão.
+          TimerAlertToggles(embedded: true, onAccent: done),
+          const SizedBox(width: AppSpacing.xs),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -808,9 +810,6 @@ class _TimerRow extends ConsumerWidget {
               ],
             ),
           ),
-
-          TimerAlertToggles(embedded: true, onAccent: done),
-          const SizedBox(width: AppSpacing.xs),
           if (done) ...[
             _DockButton(
               icon: Icons.replay,

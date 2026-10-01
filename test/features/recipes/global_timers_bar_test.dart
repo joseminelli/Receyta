@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/data/services/alarm_driver.dart';
+import 'package:receyta/data/services/timer_notifications.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/screens/global_timers_bar.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -10,6 +11,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/fake_alarm_driver.dart';
+import '../../helpers/fake_timer_notifications.dart';
 
 DateTime _now = DateTime.utc(2026, 10, 1, 12);
 final _opened = <String>[];
@@ -20,6 +22,7 @@ Widget _host() => ProviderScope(
         cookingClockProvider.overrideWithValue(() => _now),
         cookingAlertProvider.overrideWithValue(() {}),
         alarmDriverProvider.overrideWithValue(_driver),
+        timerNotificationsProvider.overrideWithValue(_notifications),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -48,6 +51,7 @@ Future<void> _close(WidgetTester tester) =>
     tester.pumpWidget(const SizedBox.shrink());
 
 final _driver = FakeAlarmDriver();
+final _notifications = FakeTimerNotifications();
 
 void main() {
   setUp(() {
@@ -55,6 +59,9 @@ void main() {
     _now = DateTime.utc(2026, 10, 1, 12);
     _opened.clear();
     _driver.calls.clear();
+    _notifications.calls.clear();
+    _notifications.runningDetails.clear();
+    _notifications.tapCallback = null;
   });
 
   testWidgets('sem timers não há faixa e a tela mantém o topo seguro',
@@ -292,4 +299,57 @@ void main() {
       await _close(tester);
     });
   }
+
+  group('app minimizado', () {
+    testWidgets('minimizar vira notificação; voltar tira', (tester) async {
+      await tester.pumpWidget(_host());
+      _timers(tester).start(
+        recipeId: 'r1',
+        recipeName: 'Frango',
+        label: 'Passo 2',
+        duration: const Duration(minutes: 20),
+      );
+      await tester.pumpAndSettle();
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      await tester.pump();
+      expect(_notifications.calls.where((c) => c.startsWith('running:')),
+          hasLength(1)); // só uma vez, mesmo com hidden + paused
+
+      _notifications.calls.clear();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
+      expect(_notifications.calls.where((c) => c.startsWith('cancel:')),
+          hasLength(1));
+      await _close(tester);
+    });
+
+    testWidgets('inactive (gaveta de notificações, diálogo) não minimiza',
+        (tester) async {
+      await tester.pumpWidget(_host());
+      _timers(tester).start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 5),
+      );
+      await tester.pumpAndSettle();
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      expect(
+          _notifications.calls.where((c) => c.startsWith('running:')), isEmpty);
+      await _close(tester);
+    });
+
+    testWidgets('tocar numa notificação abre o modo cozinha da receita',
+        (tester) async {
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+
+      expect(_notifications.calls, contains('init'));
+      _notifications.tapCallback!('r42');
+      expect(_opened, ['r42']);
+    });
+  });
 }

@@ -8,6 +8,7 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
 import 'package:receyta/data/services/alarm_driver.dart';
+import 'package:receyta/data/services/timer_notifications.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -15,6 +16,7 @@ import 'package:receyta/widgets/sweep_strike_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/fake_alarm_driver.dart';
+import '../../../helpers/fake_timer_notifications.dart';
 
 RecipeDetail _detail({List<RecipeStep> steps = _steps, int? cook}) =>
     RecipeDetail(
@@ -71,6 +73,7 @@ Widget _host(RecipeDetail? detail, {DateTime Function()? clock}) {
       // Sem vibrar nem tocar nada de verdade no teste.
       cookingAlertProvider.overrideWithValue(() {}),
       alarmDriverProvider.overrideWithValue(_driver),
+      timerNotificationsProvider.overrideWithValue(_notifications),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -88,6 +91,7 @@ Future<void> _open(
 }
 
 final _driver = FakeAlarmDriver();
+final _notifications = FakeTimerNotifications();
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));

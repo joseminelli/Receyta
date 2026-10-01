@@ -824,6 +824,15 @@ Esforço em dias de trabalho focado.
   receita; dentro do modo cozinha de uma receita ela esconde os timers dela, que
   já têm a faixa grande). Na faixa há duas chaves, **vibrar** e **som**, salvas no
   aparelho (`shared_preferences`, nova dependência), padrão ligadas.
+  **Timers como notificação (adianta G6)**: com o app minimizado cada timer vira
+  notificação do sistema — relógio regressivo nativo (`chronometerCountDown`, some
+  sozinho no fim com `timeoutAfter`) — e um aviso agendado (`zonedSchedule`,
+  alarme exato se o usuário permitiu "Alarmes e lembretes") que vibra/toca mesmo com
+  o app em segundo plano, respeitando as chaves de vibrar/som (um canal por
+  combinação, no volume de alarme). Ao voltar ao app as notificações saem. Os
+  timers ficam guardados no aparelho e sobrevivem ao app ser morto. **Só Android**
+  (`flutter_local_notifications`, `timezone`, desugaring no Gradle, receivers e
+  permissões no manifest). iOS não configurado.
   G0 (vídeo `/brag`) fica por último, por decisão do usuário.
 
 ---

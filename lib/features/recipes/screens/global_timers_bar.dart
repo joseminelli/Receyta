@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/data/services/alarm_driver.dart';
+import 'package:receyta/data/services/timer_notifications.dart';
 import 'package:receyta/domain/engine/step_duration.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
@@ -19,7 +20,7 @@ import 'package:receyta/theme/typography.dart';
 /// usa `Tooltip` nem nada que precise do `Overlay` (ele mora dentro do
 /// `Navigator`). Os timers da receita cujo modo cozinha está aberto ficam de
 /// fora: ali já existe a faixa grande.
-class GlobalTimersBar extends ConsumerWidget {
+class GlobalTimersBar extends ConsumerStatefulWidget {
   const GlobalTimersBar({
     super.key,
     required this.child,
@@ -29,11 +30,57 @@ class GlobalTimersBar extends ConsumerWidget {
   /// O app (o `Navigator`).
   final Widget child;
 
-  /// Abre o modo cozinha da receita.
+  /// Abre o modo cozinha da receita (toque no timer da faixa ou numa
+  /// notificação de timer).
   final void Function(String recipeId) onOpenRecipe;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GlobalTimersBar> createState() => _GlobalTimersBarState();
+}
+
+/// Também é o ponto onde o app vira "minimizado" ou "de volta": ao minimizar,
+/// os timers viram notificações do sistema (relógio regressivo à vista e aviso
+/// agendado); ao voltar, as notificações saem e a faixa assume.
+class _GlobalTimersBarState extends ConsumerState<GlobalTimersBar>
+    with WidgetsBindingObserver {
+  bool _inBackground = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final notifications = ref.read(timerNotificationsProvider);
+    notifications.onTapRecipe(widget.onOpenRecipe);
+    notifications.init();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final timers = ref.read(cookingTimersProvider.notifier);
+    switch (state) {
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.paused:
+        if (_inBackground) return;
+        _inBackground = true;
+        timers.onBackground();
+      case AppLifecycleState.resumed:
+        if (!_inBackground) return;
+        _inBackground = false;
+        timers.onForeground();
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final inCookingMode = ref.watch(cookingModeRecipeIdProvider);
     final timers = [
       for (final t in ref.watch(cookingTimersProvider))
@@ -49,7 +96,7 @@ class GlobalTimersBar extends ConsumerWidget {
           curve: Curves.easeOutCubic,
           alignment: Alignment.topCenter,
           child: visible
-              ? _Bar(timers: timers, onOpenRecipe: onOpenRecipe)
+              ? _Bar(timers: timers, onOpenRecipe: widget.onOpenRecipe)
               : const SizedBox(width: double.infinity),
         ),
         Expanded(
@@ -63,7 +110,7 @@ class GlobalTimersBar extends ConsumerWidget {
                     viewPadding: media.viewPadding.copyWith(top: 0),
                   )
                 : media,
-            child: child,
+            child: widget.child,
           ),
         ),
       ],
@@ -207,11 +254,19 @@ class _TimerPill extends ConsumerWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    Text(
-                      done ? '00:00' : formatTimer(timer.remaining),
-                      style: AppTextStyles.display(22).copyWith(
-                        color: fg,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                    // O relógio nunca quebra linha: se não couber ("1:02:03" em
+                    // tela estreita), encolhe.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        done ? '00:00' : formatTimer(timer.remaining),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: AppTextStyles.display(22).copyWith(
+                          color: fg,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
                   ],

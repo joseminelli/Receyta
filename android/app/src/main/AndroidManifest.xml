@@ -1,6 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Vibrar quando o timer do modo cozinha acaba (plugin `vibration`). -->
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Timers do modo cozinha como notificação (ficam à vista com o app
+         minimizado e avisam quando acabam): -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Aviso na hora certa mesmo em modo de economia (Doze). O usuário
+         concede em "Alarmes e lembretes" quando o app pede; sem isso o aviso
+         cai pra um agendamento aproximado. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- Refazer os agendamentos depois de reiniciar o aparelho. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:label="Receyta"
@@ -92,6 +101,26 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Receivers do `flutter_local_notifications` (o plugin não os
+             declara sozinho): disparar o aviso agendado, refazer
+             agendamentos após o boot e ações da notificação. -->
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:exported="false"
+            android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
