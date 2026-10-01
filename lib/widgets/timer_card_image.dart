@@ -9,33 +9,32 @@ import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
-/// Tamanho (px) do card da notificação: 2:1, que é a proporção que o Android
-/// reserva pra imagem grande de uma notificação expandida.
-const timerCardWidth = 1024;
-const timerCardHeight = 512;
-
-/// Desenha, fora da árvore de widgets, o card que a notificação de timer
-/// mostra expandida — a mesma linguagem do card da receita no plano: bloco com
-/// a cor e a textura da receita, o nome grande por cima e, à direita, a
-/// pílula clara com sombra (aqui com o rótulo do timer). Devolve o PNG, com
-/// cantos transparentes.
+/// Desenha, fora da árvore de widgets, o bloco colorido do card da notificação
+/// de timer: a cor e a textura que a receita tem no app, com o nome por cima
+/// em Bricolage — o mesmo bloco do card do dia. O painel claro, o relógio e os
+/// botões são do layout nativo (`receyta_timer_card`), que é quem anda.
 ///
-/// Desenhar em código (e não montar um layout nativo) é o que garante a
-/// Bricolage, a textura de arcos/luas e as mesmas cores do app. O relógio ao
-/// vivo continua sendo do Android (cronômetro regressivo da notificação).
-Future<Uint8List?> renderTimerCardPng({
+/// A imagem é esticada pelo Android num espaço de proporção fixa, então
+/// [width] e [height] precisam seguir a proporção do espaço no layout (ex.:
+/// 130×120 dp → 520×480 px). [fontSizes] vai do maior ao menor: vale o
+/// primeiro com o nome cabendo em [maxLines]. [cornerRadius] arredonda só os
+/// cantos da esquerda; [rightInset] reserva a faixa da direita, que o painel
+/// claro cobre (o nome não pode ir pra baixo dele).
+Future<Uint8List?> renderTimerBlockPng({
   required String recipeId,
   required String name,
-  required String label,
+  required int width,
+  required int height,
+  required List<double> fontSizes,
+  int maxLines = 4,
+  double tile = 96,
+  double cornerRadius = 0,
+  double rightInset = 0,
   TileColor? tileColor,
   TileMotif? tileMotif,
 }) async {
-  const w = timerCardWidth;
-  const h = timerCardHeight;
-  const colors = AppColors.light;
-  const radius = 64.0;
-
-  final tile = resolveTileAppearance(
+  final colors = AppColors.light;
+  final appearance = resolveTileAppearance(
     colors,
     color: tileColor,
     motif: tileMotif,
@@ -44,124 +43,93 @@ Future<Uint8List?> renderTimerCardPng({
 
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
-  final full = Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble());
-  canvas.clipRRect(
-    RRect.fromRectAndRadius(full, const Radius.circular(radius)),
-    doAntiAlias: true,
-  );
-
-  // Bloco com a textura da receita (módulo grande: a imagem é reduzida na tela).
+  final full = Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble());
+  if (cornerRadius > 0) {
+    canvas.clipRRect(
+      RRect.fromRectAndCorners(
+        full,
+        topLeft: Radius.circular(cornerRadius),
+        bottomLeft: Radius.circular(cornerRadius),
+      ),
+      doAntiAlias: true,
+    );
+  }
   canvas.drawRect(
     full,
     Paint()
       ..shader = tileShader(
-        motif: tile.motif,
-        background: tile.background,
-        patternColor: tile.patternColor,
-        patternColorAlt: tile.patternColorAlt,
-        tile: 128,
+        motif: appearance.motif,
+        background: appearance.background,
+        patternColor: appearance.patternColor,
+        patternColorAlt: appearance.patternColorAlt,
+        tile: tile,
         devicePixelRatio: 1,
       ),
   );
 
-  // Pílula clara à direita, por cima do bloco, com sombra.
-  const panelLeft = w * 0.64;
-  final panel = RRect.fromRectAndCorners(
-    Rect.fromLTRB(panelLeft, 0, w.toDouble(), h.toDouble()),
-    topLeft: const Radius.circular(radius),
-    bottomLeft: const Radius.circular(radius),
-  );
-  canvas.drawRRect(
-    panel.shift(const Offset(-8, 0)),
-    Paint()
-      ..color = const Color(0x55000000)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 22),
-  );
-  canvas.drawRRect(panel, Paint()..color = colors.paperSoft);
-
-  // Nome da receita no bloco: o maior tamanho que cabe em até 4 linhas.
-  const nameLeft = 64.0;
-  final nameWidth = panelLeft - nameLeft - 56;
-  TextPainter? namePainter;
-  for (final size in const [92.0, 80.0, 68.0, 58.0, 50.0, 44.0]) {
-    final painter = TextPainter(
+  final inset = width * 0.07;
+  final textWidth = width - inset - rightInset;
+  TextPainter? painter;
+  for (final size in fontSizes) {
+    final candidate = TextPainter(
       text: TextSpan(
         text: name,
         style: AppTextStyles.display(size).copyWith(
-          color: tile.onColor,
+          color: appearance.onColor,
           height: 1.02,
         ),
       ),
       textDirection: TextDirection.ltr,
-      maxLines: 4,
+      maxLines: maxLines,
       ellipsis: '…',
-    )..layout(maxWidth: nameWidth);
-    namePainter = painter;
-    if (!painter.didExceedMaxLines) break;
+    )..layout(maxWidth: textWidth);
+    painter = candidate;
+    if (!candidate.didExceedMaxLines) break;
   }
-  namePainter!.paint(
-    canvas,
-    Offset(nameLeft, (h - namePainter.height) / 2),
-  );
+  painter!.paint(canvas, Offset(inset, (height - painter.height) / 2));
 
-  // Conteúdo da pílula: ícone, "TIMER" e o rótulo (Passo 2, Cozimento...).
-  final panelCenterX = panelLeft + (w - panelLeft) / 2;
-  final panelInner = w - panelLeft - 72;
-
-  final icon = TextPainter(
-    text: TextSpan(
-      text: String.fromCharCode(Icons.timer_outlined.codePoint),
-      style: TextStyle(
-        fontFamily: Icons.timer_outlined.fontFamily,
-        package: Icons.timer_outlined.fontPackage,
-        fontSize: 132,
-        color: colors.ink,
-      ),
-    ),
-    textDirection: TextDirection.ltr,
-  )..layout();
-
-  final caption = TextPainter(
-    text: TextSpan(
-      text: 'TIMER',
-      style: AppTextStyles.display(30).copyWith(
-        color: colors.textMuted,
-        letterSpacing: 6,
-      ),
-    ),
-    textDirection: TextDirection.ltr,
-  )..layout();
-
-  TextPainter? labelPainter;
-  for (final size in const [56.0, 48.0, 40.0, 34.0]) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: label,
-        style: AppTextStyles.display(size).copyWith(color: colors.ink),
-      ),
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-      maxLines: 2,
-      ellipsis: '…',
-    )..layout(maxWidth: panelInner);
-    labelPainter = painter;
-    if (!painter.didExceedMaxLines) break;
-  }
-
-  final stackHeight =
-      icon.height + 8 + caption.height + 16 + labelPainter!.height;
-  var y = (h - stackHeight) / 2;
-  icon.paint(canvas, Offset(panelCenterX - icon.width / 2, y));
-  y += icon.height + 8;
-  caption.paint(canvas, Offset(panelCenterX - caption.width / 2, y));
-  y += caption.height + 16;
-  labelPainter.paint(
-    canvas,
-    Offset(panelCenterX - labelPainter.width / 2, y),
-  );
-
-  final image = await recorder.endRecording().toImage(w, h);
+  final image = await recorder.endRecording().toImage(width, height);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
   image.dispose();
   return data?.buffer.asUint8List();
 }
+
+/// Bloco do card recolhido (96×64 dp no layout nativo).
+Future<Uint8List?> renderCollapsedTimerBlock({
+  required String recipeId,
+  required String name,
+  TileColor? tileColor,
+  TileMotif? tileMotif,
+}) =>
+    renderTimerBlockPng(
+      recipeId: recipeId,
+      name: name,
+      width: 576,
+      height: 384,
+      fontSizes: const [78, 66, 56, 48],
+      maxLines: 3,
+      cornerRadius: 96,
+      rightInset: 144,
+      tileColor: tileColor,
+      tileMotif: tileMotif,
+    );
+
+/// Bloco do card expandido (112×132 dp no layout nativo).
+Future<Uint8List?> renderExpandedTimerBlock({
+  required String recipeId,
+  required String name,
+  TileColor? tileColor,
+  TileMotif? tileMotif,
+}) =>
+    renderTimerBlockPng(
+      recipeId: recipeId,
+      name: name,
+      width: 448,
+      height: 528,
+      fontSizes: const [68, 58, 50, 44, 38],
+      maxLines: 5,
+      cornerRadius: 64,
+      rightInset: 104,
+      tileColor: tileColor,
+      tileMotif: tileMotif,
+    );

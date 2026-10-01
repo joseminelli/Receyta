@@ -1,0 +1,19 @@
+name: receyta_timer_card
+description: Notificação de timer do Receyta com layout próprio (Kotlin/RemoteViews), registrada como plugin pra existir também no isolate de segundo plano dos botões.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.3.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.whisklinestudio.timer_card
+        pluginClass: TimerCardPlugin

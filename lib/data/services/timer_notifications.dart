@@ -3,9 +3,11 @@ import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show Color;
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:receyta_timer_card/receyta_timer_card.dart';
 import 'package:timezone/timezone.dart' as tz;
 
 import 'package:receyta/data/services/timer_notification_actions.dart';
@@ -116,13 +118,17 @@ class PluginTimerNotifications implements TimerNotifications {
 
   static const _runningChannel = 'timer_running';
 
+  /// Plugin nativo (`packages/receyta_timer_card`): o card da notificação.
+  static const _cardChannel = MethodChannel(timerCardChannelName);
+
   /// Ícone da barra de status: silhueta própria (`res/drawable-*/ic_stat_receyta.png`, gerado de assets/brand/logoIcon.png por tool/gen_notification_icon.dart)
   /// — o ícone do app não serve, o Android o pinta como um bloco branco.
   static const _statusIcon = 'ic_stat_receyta';
 
   /// Cor de destaque da notificação (o `lime` da marca): tinge o ícone e o
   /// nome do app na gaveta.
-  static const _accent = Color(0xFFD6F45A);
+  static const _accentArgb = 0xFFD6F45A;
+  static const _accent = Color(_accentArgb);
 
   /// Imagem à esquerda da notificação: o cloche do Receyta em branco sobre o
   /// laranja da marca com a textura de arcos
@@ -271,43 +277,50 @@ class PluginTimerNotifications implements TimerNotifications {
       final remaining = endsAt.difference(DateTime.now());
       if (remaining <= Duration.zero) return;
 
-      final body = 'Termina às ${_hhmm(endsAt)}';
-      final style = await _cardStyle(timerId, title: title, body: body);
-
       // Em andamento: o próprio Android desconta o relógio (cronômetro
       // regressivo) e some sozinho no fim (`timeoutAfter`) — nada de ficar
-      // atualizando a cada segundo com o app em segundo plano.
-      await _plugin.show(
-        _ongoingId(timerId),
-        title,
-        body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _runningChannel,
-            'Timers em andamento',
-            channelDescription:
-                'O relógio regressivo dos timers do modo cozinha.',
-            icon: _statusIcon,
-            largeIcon: _largeIcon,
-            styleInformation: style,
-            color: _accent,
-            actions: const [_pauseAction, _plusMinuteAction, _stopAction],
-            importance: Importance.low,
-            priority: Priority.low,
-            ongoing: true,
-            autoCancel: false,
-            onlyAlertOnce: true,
-            showWhen: true,
-            when: endsAt.millisecondsSinceEpoch,
-            usesChronometer: true,
-            chronometerCountDown: true,
-            timeoutAfter: remaining.inMilliseconds,
-            category: AndroidNotificationCategory.progress,
-            visibility: NotificationVisibility.public,
-          ),
-        ),
-        payload: _payload(recipeId, timerId),
+      // atualizando a cada segundo com o app em segundo plano. Primeiro o
+      // card nativo; sem ele, a notificação comum.
+      final native = await _showCard(
+        timerId: timerId,
+        recipeId: recipeId,
+        title: title,
+        running: true,
+        remaining: remaining,
+        actions: const [_pauseAction, _plusMinuteAction, _stopAction],
       );
+      if (!native) {
+        await _plugin.show(
+          _ongoingId(timerId),
+          title,
+          'Termina às ${_hhmm(endsAt)}',
+          NotificationDetails(
+            android: AndroidNotificationDetails(
+              _runningChannel,
+              'Timers em andamento',
+              channelDescription:
+                  'O relógio regressivo dos timers do modo cozinha.',
+              icon: _statusIcon,
+              largeIcon: _largeIcon,
+              color: _accent,
+              actions: const [_pauseAction, _plusMinuteAction, _stopAction],
+              importance: Importance.low,
+              priority: Priority.low,
+              ongoing: true,
+              autoCancel: false,
+              onlyAlertOnce: true,
+              showWhen: true,
+              when: endsAt.millisecondsSinceEpoch,
+              usesChronometer: true,
+              chronometerCountDown: true,
+              timeoutAfter: remaining.inMilliseconds,
+              category: AndroidNotificationCategory.progress,
+              visibility: NotificationVisibility.public,
+            ),
+          ),
+          payload: _payload(recipeId, timerId),
+        );
+      }
 
       // Aviso final, na hora certa. Alarme exato se o usuário permitiu;
       // senão aproximado (pode atrasar em economia de energia).
@@ -366,13 +379,20 @@ class PluginTimerNotifications implements TimerNotifications {
       final total = remaining.inSeconds;
       final mm = (total ~/ 60).toString().padLeft(2, '0');
       final ss = (total % 60).toString().padLeft(2, '0');
-      final body = 'Pausado · faltam $mm:$ss';
-      final style = await _cardStyle(timerId, title: title, body: body);
+      final native = await _showCard(
+        timerId: timerId,
+        recipeId: recipeId,
+        title: title,
+        running: false,
+        remaining: remaining,
+        actions: const [_resumeAction, _plusMinuteAction, _stopAction],
+      );
+      if (native) return;
       await _plugin.show(
         _ongoingId(timerId),
         title,
-        body,
-        NotificationDetails(
+        'Pausado · faltam $mm:$ss',
+        const NotificationDetails(
           android: AndroidNotificationDetails(
             _runningChannel,
             'Timers em andamento',
@@ -380,9 +400,8 @@ class PluginTimerNotifications implements TimerNotifications {
                 'O relógio regressivo dos timers do modo cozinha.',
             icon: _statusIcon,
             largeIcon: _largeIcon,
-            styleInformation: style,
             color: _accent,
-            actions: const [_resumeAction, _plusMinuteAction, _stopAction],
+            actions: [_resumeAction, _plusMinuteAction, _stopAction],
             importance: Importance.low,
             priority: Priority.low,
             ongoing: true,
@@ -402,45 +421,85 @@ class PluginTimerNotifications implements TimerNotifications {
   @override
   Future<void> prepareCard(CookingTimer timer) async {
     try {
-      final png = await renderTimerCardPng(
+      final name = timer.recipeName.isEmpty ? timer.label : timer.recipeName;
+      final collapsed = await renderCollapsedTimerBlock(
         recipeId: timer.recipeId,
-        name: timer.recipeName.isEmpty ? timer.label : timer.recipeName,
-        label: timer.recipeName.isEmpty ? '' : timer.label,
+        name: name,
         tileColor: timer.tileColor,
         tileMotif: timer.tileMotif,
       );
-      if (png == null) return;
-      final file = await _cardFile(timer.id);
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(png, flush: true);
+      final expanded = await renderExpandedTimerBlock(
+        recipeId: timer.recipeId,
+        name: name,
+        tileColor: timer.tileColor,
+        tileMotif: timer.tileMotif,
+      );
+      final dir = await _cardDir();
+      await dir.create(recursive: true);
+      if (collapsed != null) {
+        await File(_cardPath(dir, timer.id, 'c'))
+            .writeAsBytes(collapsed, flush: true);
+      }
+      if (expanded != null) {
+        await File(_cardPath(dir, timer.id, 'e'))
+            .writeAsBytes(expanded, flush: true);
+      }
     } catch (e) {
       debugPrint('TimerNotifications.prepareCard: $e');
     }
   }
 
-  Future<File> _cardFile(int timerId) async {
-    final dir = await getTemporaryDirectory();
-    return File('${dir.path}/timer_cards/$timerId.png');
-  }
+  Future<Directory> _cardDir() async =>
+      Directory('${(await getTemporaryDirectory()).path}/timer_cards');
 
-  /// Estilo expandido com o card, ou nulo (notificação simples) se o card
-  /// ainda não foi desenhado.
-  Future<StyleInformation?> _cardStyle(
-    int timerId, {
+  String _cardPath(Directory dir, int timerId, String kind) =>
+      '${dir.path}/${timerId}_$kind.png';
+
+  /// "Frango · Passo 2" -> "Passo 2" (o painel do card mostra só o rótulo; o
+  /// nome da receita já está no bloco colorido).
+  static String _labelOf(String title) => title.split(' · ').last;
+
+  /// Mostra a notificação com o layout nativo (relógio regressivo de verdade
+  /// e botões). Devolve `false` se o plugin nativo não responder — aí quem
+  /// chamou cai na notificação comum.
+  Future<bool> _showCard({
+    required int timerId,
+    required String recipeId,
     required String title,
-    required String body,
+    required bool running,
+    required Duration remaining,
+    required List<AndroidNotificationAction> actions,
   }) async {
     try {
-      final file = await _cardFile(timerId);
-      if (!await file.exists()) return null;
-      return BigPictureStyleInformation(
-        FilePathAndroidBitmap(file.path),
-        hideExpandedLargeIcon: true,
-        contentTitle: title,
-        summaryText: body,
-      );
-    } catch (_) {
-      return null;
+      final dir = await _cardDir();
+      final collapsed = File(_cardPath(dir, timerId, 'c'));
+      final expanded = File(_cardPath(dir, timerId, 'e'));
+      await _cardChannel.invokeMethod<void>('show', {
+        'id': _ongoingId(timerId),
+        'channelId': _runningChannel,
+        'payload': _payload(recipeId, timerId),
+        'title': title,
+        'label': _labelOf(title),
+        'running': running,
+        'remainingMs': remaining.inMilliseconds,
+        'timeoutMs': running ? remaining.inMilliseconds : 0,
+        'accent': _accentArgb,
+        'smallIcon': _statusIcon,
+        'collapsedImage': await collapsed.exists() ? collapsed.path : null,
+        'expandedImage': await expanded.exists() ? expanded.path : null,
+        'actions': [
+          for (final a in actions)
+            {
+              'id': a.id,
+              'title': a.title,
+              'cancel': a.cancelNotification,
+            },
+        ],
+      });
+      return true;
+    } catch (e) {
+      debugPrint('TimerNotifications._showCard: $e');
+      return false;
     }
   }
 
@@ -449,8 +508,11 @@ class PluginTimerNotifications implements TimerNotifications {
     try {
       await _plugin.cancel(_ongoingId(timerId));
       await _plugin.cancel(_alarmId(timerId));
-      final file = await _cardFile(timerId);
-      if (await file.exists()) await file.delete();
+      final dir = await _cardDir();
+      for (final kind in ['c', 'e']) {
+        final file = File(_cardPath(dir, timerId, kind));
+        if (await file.exists()) await file.delete();
+      }
     } catch (e) {
       debugPrint('TimerNotifications.cancel: $e');
     }

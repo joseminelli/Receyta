@@ -7,18 +7,20 @@ import 'package:receyta/widgets/timer_card_image.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('desenha o card como PNG não vazio', (tester) async {
-    final png = await tester.runAsync(
-      () => renderTimerCardPng(
-        recipeId: 'r1',
-        name: 'Pasta de grão de bico (homus) com um nome bem comprido',
-        label: 'Passo 2',
-      ),
-    );
+  testWidgets('desenha os dois blocos como PNG não vazio', (tester) async {
+    final pngs = await tester.runAsync(() async => [
+          await renderCollapsedTimerBlock(
+            recipeId: 'r1',
+            name: 'Pasta de grão de bico (homus) com um nome bem comprido',
+          ),
+          await renderExpandedTimerBlock(recipeId: 'r1', name: 'Homus'),
+        ]);
 
-    expect(png, isNotNull);
-    expect(png!.sublist(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
-    expect(png.length, greaterThan(1000));
+    for (final png in pngs!) {
+      expect(png, isNotNull);
+      expect(png!.sublist(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
+      expect(png.length, greaterThan(1000));
+    }
   });
 
   test('o estilo do azulejo sobrevive ao json e ao copyWith', () {

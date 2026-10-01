@@ -77,6 +77,8 @@ dependencies:
   flutter_ringtone_player: ^4.0.0+4
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
+  receyta_timer_card:
+    path: packages/receyta_timer_card
 
 dev_dependencies:
   flutter_test:
