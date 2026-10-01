@@ -882,14 +882,39 @@ Esforço em dias de trabalho focado.
 ---
 
 ### Bloco G — Acabamento
-*Cada item é independente; pegue por ordem de incômodo. ~3,5 dias.*
+*G0–G4 são independentes; pegue por ordem de incômodo. G5–G12 (automações) dependem de G5 primeiro. ~3,5 dias + ~6 dias de automações.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
+| G0 | Vídeo de divulgação com [brag](https://github.com/latent-spaces/brag) (skill de agente, MIT): `winget install Gyan.FFmpeg`, `/plugin marketplace add latent-spaces/brag` + `/plugin install brag@brag`, reiniciar o Claude Code, `/brag` na pasta do app | 0,5 | `brag-output/brag.mp4` gerado e revisado; conferido que o vídeo não expõe nada interno (nomes, chaves) |
 | G1 | Modo cozinha: wakelock, passos grandes, timers | 1 | Cozinhar sem tocar na tela com a mão suja |
 | G2 | Escalar porções | 0,5 | Dobrar a receita recalcula tudo |
 | G3 | Estados vazios e onboarding | 1 | App recém-instalado não parece quebrado |
 | G4 | Configurações (RF-08): fonte grande, alto contraste, limpar dados | 1 | Alguém sem prática com celular acha e usa os três sem ajuda |
+
+#### G — Automações (app inteligente, local-first)
+
+Tudo com notificações locais e regras sobre os dados do próprio usuário, sem
+backend. Tudo **opt-in**, um interruptor por tipo em G4, horário silencioso e
+no máximo 1–2 notificações proativas por dia. A permissão de notificação é
+pedida ao ativar o primeiro lembrete, nunca na abertura do app.
+
+| ID | Entrega | Esforço | Pronto quando |
+|---|---|---|---|
+| G5 | Infra de notificações locais (`flutter_local_notifications`) + preferências por tipo + horário silencioso | 1 | Ligar/desligar cada tipo funciona e respeita o horário silencioso |
+| G6 | Timers de passo como notificação agendada (estende G1; alarme exato no Android) | 0,5 | Timer toca com o app fechado e a tela bloqueada |
+| G7 | Histórico "cozinhei" (data + nota) | 0,5 | Marcar como feito alimenta as sugestões de G8 e G9 |
+| G8 | Lembretes: planejar a semana (dia/hora configuráveis) e compras pendentes | 0,5 | Domingo 18h chega "planejar a semana"; lista com itens abertos lembra no dia escolhido |
+| G9 | "O que cozinhar hoje?" (fim da tarde) e resgate de receita esquecida, por regra: favoritas, refeição do dia, tempo sem fazer | 1 | Sugestão diz o motivo e abre a receita direto |
+| G10 | Auto-categorizar itens da lista por corredor (reaproveita E4) | 0,5 | Item digitado à mão cai na categoria certa na maioria dos casos |
+| G11 | Despensa: itens fixos que saem da lista de compras | 1 | Sal e azeite marcados como "sempre tenho" não aparecem na lista gerada |
+| G12 | Sugestão por ingredientes disponíveis ("tenho X, Y, Z") | 1 | Receitas ordenadas por quanto já se tem; reaproveita IDF de F4 |
+
+> **Fora do G, depende de decisão de backend/custo (candidatos ao H):**
+> importar receita por foto, link ou texto colado com parsing por IA;
+> substituição e adaptação de ingredientes (vegano, sem glúten); cardápio
+> semanal gerado por IA; validade de itens da despensa com aviso; lembrete de
+> compras por geofence perto do mercado.
 
 ---
 
