@@ -4,16 +4,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
+
 /// Relógio dos timers — injetável pra teste (o relógio de verdade fica de fora).
 final cookingClockProvider =
     Provider<DateTime Function()>((ref) => DateTime.now);
 
-/// O que acontece quando um timer acaba: vibra e toca o som de alerta do
-/// sistema. Injetável pra teste.
+/// O que acontece quando um timer acaba: vibra e/ou toca o som de alerta do
+/// sistema, conforme as chaves da faixa de timers
+/// (`cookingAlertSettingsProvider`, lidas na hora de alertar). Injetável pra
+/// teste.
 final cookingAlertProvider = Provider<void Function()>((ref) {
   return () {
-    HapticFeedback.vibrate();
-    SystemSound.play(SystemSoundType.alert);
+    final settings = ref.read(cookingAlertSettingsProvider);
+    if (settings.vibrate) HapticFeedback.vibrate();
+    if (settings.sound) SystemSound.play(SystemSoundType.alert);
   };
 });
 
@@ -28,6 +33,7 @@ class CookingTimer {
   const CookingTimer({
     required this.id,
     required this.recipeId,
+    this.recipeName = '',
     required this.label,
     required this.total,
     required this.remaining,
@@ -39,6 +45,9 @@ class CookingTimer {
 
   final int id;
   final String recipeId;
+
+  /// Nome da receita, pra faixa global dizer de qual é ("Frango · Passo 2").
+  final String recipeName;
   final String? key;
   final String label;
   final Duration total;
@@ -60,6 +69,7 @@ class CookingTimer {
       CookingTimer(
         id: id,
         recipeId: recipeId,
+        recipeName: recipeName,
         key: key,
         label: label,
         total: total,
@@ -95,6 +105,7 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
   /// Cria e inicia um timer. Um [key] que já existe é reiniciado do zero.
   int start({
     required String recipeId,
+    String recipeName = '',
     required String label,
     required Duration duration,
     String? key,
@@ -103,6 +114,7 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     final timer = CookingTimer(
       id: id,
       recipeId: recipeId,
+      recipeName: recipeName,
       key: key,
       label: label,
       total: duration,
@@ -236,6 +248,10 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     }
   }
 }
+
+/// Receita cujo modo cozinha está aberto agora (ou `null`). A faixa global de
+/// timers esconde os dessa receita — a tela dela já tem a faixa grande.
+final cookingModeRecipeIdProvider = StateProvider<String?>((ref) => null);
 
 final cookingTimersProvider =
     NotifierProvider<CookingTimersNotifier, List<CookingTimer>>(

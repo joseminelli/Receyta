@@ -11,6 +11,7 @@ import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/sweep_strike_text.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 RecipeDetail _detail({List<RecipeStep> steps = _steps, int? cook}) =>
     RecipeDetail(
@@ -83,6 +84,8 @@ Future<void> _open(
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   testWidgets('lista todos os passos e os ingredientes de cara',
       (tester) async {
     await _open(tester, _detail());
@@ -185,6 +188,17 @@ void main() {
           .widgetList<SweepStrikeText>(find.byType(SweepStrikeText))
           .map((w) => w.done);
       expect(strikes.every((d) => !d), isTrue);
+      await close(tester);
+    });
+
+    testWidgets('a faixa grande também traz as chaves de vibrar e som',
+        (tester) async {
+      await _open(tester, _detail(steps: baking));
+      await tester.tap(find.text('20 min'));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.vibration), findsOneWidget);
+      expect(find.byIcon(Icons.volume_up), findsOneWidget);
       await close(tester);
     });
 

@@ -819,6 +819,11 @@ Esforço em dias de trabalho focado.
   repetindo a cada 3 s por 30 s). O tempo é calculado pelo horário de fim, então
   segue certo se o app for pro segundo plano. **Não toca com o app fechado — isso é
   o G6** (notificação agendada). Dá pra reaproveitar `CookingTimersNotifier` lá.
+  **Faixa global**: os timers aparecem numa faixa fixa no **topo de qualquer tela**
+  (`GlobalTimersBar` no `builder` do `MaterialApp`; tocar abre o modo cozinha da
+  receita; dentro do modo cozinha de uma receita ela esconde os timers dela, que
+  já têm a faixa grande). Na faixa há duas chaves, **vibrar** e **som**, salvas no
+  aparelho (`shared_preferences`, nova dependência), padrão ligadas.
   G0 (vídeo `/brag`) fica por último, por decisão do usuário.
 
 ---

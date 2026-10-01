@@ -8,6 +8,8 @@ import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
+import 'package:receyta/features/recipes/screens/global_timers_bar.dart'
+    show TimerAlertToggles;
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -37,14 +39,33 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   /// (a lista de passos reconstrói ao rolar).
   final _durationsByText = <String, List<StepDuration>>{};
 
+  late final ProviderContainer _container;
+
   @override
   void initState() {
     super.initState();
     _setWakelock(true);
+    // A faixa global de timers esconde os desta receita enquanto o modo
+    // cozinha dela está aberto (aqui já tem a faixa grande). Mexer num
+    // provider durante o build não pode: vai pro fim do quadro.
+    _container = ProviderScope.containerOf(context, listen: false);
+    Future.microtask(
+      () => _container.read(cookingModeRecipeIdProvider.notifier).state =
+          widget.recipeId,
+    );
   }
 
   @override
   void dispose() {
+    final container = _container;
+    Future.microtask(() {
+      try {
+        final notifier = container.read(cookingModeRecipeIdProvider.notifier);
+        if (notifier.state == widget.recipeId) notifier.state = null;
+      } catch (_) {
+        // Container já descartado (fim do app/teste): nada a limpar.
+      }
+    });
     _setWakelock(false);
     _ingredientsOpen.dispose();
     for (final n in _doneNotifiers.values) {
@@ -69,7 +90,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   /// Passo em cartão + subtítulo de grupo (§RF-01.4) quando muda em relação
   /// ao passo anterior. Chamado sob demanda pelo `SliverChildBuilderDelegate`
   /// — só os passos visíveis (+ cache) chegam a ser construídos.
-  Widget _stepItem(List<RecipeStep> steps, int i) {
+  Widget _stepItem(List<RecipeStep> steps, int i, String recipeName) {
     final g = steps[i].groupLabel;
     final prevGroup = i > 0 ? steps[i - 1].groupLabel : null;
     final showGroupLabel = g != prevGroup && g != null && g.isNotEmpty;
@@ -88,6 +109,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: _StepCard(
             recipeId: widget.recipeId,
+            recipeName: recipeName,
             index: i,
             text: steps[i].text,
             durations: _durationsByText.putIfAbsent(
@@ -153,6 +175,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             if ((detail.recipe.cookMinutes ?? 0) > 0) ...[
               _CookTimerCard(
                 recipeId: widget.recipeId,
+                recipeName: detail.recipe.name,
                 minutes: detail.recipe.cookMinutes!,
               ),
               const SizedBox(height: AppSpacing.md),
@@ -186,7 +209,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       ),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, i) => _stepItem(detail.steps, i),
+          (context, i) => _stepItem(detail.steps, i, detail.recipe.name),
           childCount: detail.steps.length,
         ),
       ),
@@ -419,6 +442,7 @@ class _GroupLabel extends StatelessWidget {
 class _StepCard extends StatelessWidget {
   const _StepCard({
     required this.recipeId,
+    required this.recipeName,
     required this.index,
     required this.text,
     required this.durations,
@@ -426,6 +450,7 @@ class _StepCard extends StatelessWidget {
   });
 
   final String recipeId;
+  final String recipeName;
   final int index;
   final String text;
   final List<StepDuration> durations;
@@ -496,6 +521,7 @@ class _StepCard extends StatelessWidget {
                             for (var k = 0; k < durations.length; k++)
                               _DurationChip(
                                 recipeId: recipeId,
+                                recipeName: recipeName,
                                 timerKey: 'step-$index-$k',
                                 label: 'Passo $number',
                                 duration: durations[k],
@@ -521,12 +547,14 @@ class _StepCard extends StatelessWidget {
 class _DurationChip extends ConsumerWidget {
   const _DurationChip({
     required this.recipeId,
+    required this.recipeName,
     required this.timerKey,
     required this.label,
     required this.duration,
   });
 
   final String recipeId;
+  final String recipeName;
   final String timerKey;
   final String label;
   final StepDuration duration;
@@ -568,6 +596,7 @@ class _DurationChip extends ConsumerWidget {
           if (timer == null) {
             notifier.start(
               recipeId: recipeId,
+              recipeName: recipeName,
               label: label,
               duration: duration.duration,
               key: timerKey,
@@ -612,9 +641,14 @@ class _DurationChip extends ConsumerWidget {
 /// inicia o timer. Com o timer rodando, o controle fica na faixa do rodapé e
 /// aqui só aparece que está em andamento.
 class _CookTimerCard extends ConsumerWidget {
-  const _CookTimerCard({required this.recipeId, required this.minutes});
+  const _CookTimerCard({
+    required this.recipeId,
+    required this.recipeName,
+    required this.minutes,
+  });
 
   final String recipeId;
+  final String recipeName;
   final int minutes;
 
   static const _key = 'cook';
@@ -638,6 +672,7 @@ class _CookTimerCard extends ConsumerWidget {
             ? null
             : () => ref.read(cookingTimersProvider.notifier).start(
                   recipeId: recipeId,
+                  recipeName: recipeName,
                   label: 'Cozimento',
                   duration: total,
                   key: _key,
@@ -717,9 +752,16 @@ class _TimersDock extends ConsumerWidget {
       ),
       child: ListView.separated(
         shrinkWrap: true,
-        itemCount: timers.length,
+        // O primeiro item são as chaves de aviso (vibrar / som); depois, uma
+        // linha por timer.
+        itemCount: timers.length + 1,
         separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-        itemBuilder: (context, i) => _TimerRow(timer: timers[i]),
+        itemBuilder: (context, i) => i == 0
+            ? const Align(
+                alignment: Alignment.centerRight,
+                child: TimerAlertToggles(),
+              )
+            : _TimerRow(timer: timers[i - 1]),
       ),
     );
   }

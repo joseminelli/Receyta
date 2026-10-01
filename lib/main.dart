@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:receyta/features/recipes/screens/global_timers_bar.dart';
 import 'package:receyta/router.dart';
 import 'package:receyta/theme/app_theme.dart';
 
@@ -24,6 +25,11 @@ class ReceytaApp extends StatelessWidget {
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.light,
       routerConfig: router,
+      // Faixa de timers fixa no topo de qualquer tela (G1).
+      builder: (context, child) => GlobalTimersBar(
+        onOpenRecipe: (id) => router.push('/recipe/$id/cook'),
+        child: child ?? const SizedBox.shrink(),
+      ),
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
