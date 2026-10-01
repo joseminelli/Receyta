@@ -32,28 +32,30 @@ final monthEntriesProvider = StreamProvider<List<MealPlanEntry>>((ref) {
 /// As refeições de um dia, ao vivo — a tela do dia.
 final dayEntriesProvider =
     StreamProvider.family<List<MealPlanEntry>, DateTime>((ref, day) {
-  return ref
-      .watch(mealPlanRepositoryProvider)
-      .watchRange(day, addDays(day, 1));
+  return ref.watch(mealPlanRepositoryProvider).watchRange(day, addDays(day, 1));
 });
 
-/// A refeição que "representa" o dia no calendário: a principal (almoço,
-/// depois jantar, café, lanche), a mais antiga em caso de empate. `null`
-/// quando o dia está vazio.
-MealPlanEntry? mainEntryOfDay(List<MealPlanEntry> dayEntries) {
-  const priority = [
-    MealType.lunch,
-    MealType.dinner,
-    MealType.breakfast,
-    MealType.snack,
-  ];
-  for (final meal in priority) {
-    for (final e in dayEntries) {
-      if (e.mealType == meal) return e;
-    }
-  }
-  return null;
-}
+/// Até cinco refeições ainda por fazer nos 14 dias a partir de [from], em
+/// ordem de dia e de refeição — o "Próximas refeições" do calendário. Família
+/// por dia: virou o dia, a tela pede outra chave e recalcula sozinha.
+final upcomingEntriesProvider =
+    StreamProvider.family<List<MealPlanEntry>, DateTime>((ref, from) {
+  return ref
+      .watch(mealPlanRepositoryProvider)
+      .watchRange(from, addDays(from, 14))
+      .map((entries) {
+    final pending = [
+      for (final e in entries)
+        if (!e.done) e,
+    ]..sort((a, b) {
+        final byDay = a.date.compareTo(b.date);
+        return byDay != 0
+            ? byDay
+            : a.mealType.index.compareTo(b.mealType.index);
+      });
+    return pending.take(3).toList();
+  });
+});
 
 /// Quantas vezes cada receita aparece nas refeições ainda por fazer
 /// (`done == false`) a partir de [from] — é o que a lista de compras da

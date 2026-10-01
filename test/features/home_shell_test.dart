@@ -25,6 +25,9 @@ Widget _host() => ProviderScope(
         ),
         // A aba Compras é montada de cara pelo `IndexedStack`, mesmo sem
         // trocar de aba — sem isto cairia no banco de verdade.
+        upcomingEntriesProvider.overrideWith(
+          (ref, from) => Stream.value(const <MealPlanEntry>[]),
+        ),
         monthEntriesProvider.overrideWith(
           (ref) => Stream.value(const <MealPlanEntry>[]),
         ),
@@ -65,13 +68,13 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Semana'));
     await tester.pumpAndSettle();
-    expect(find.text('Toque num dia pra planejar as refeições.'), findsOneWidget);
+    expect(find.text('Nada planejado pros próximos dias.'), findsOneWidget);
 
     expect(find.byType(RecipesPage, skipOffstage: false), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('Receitas'));
     await tester.pumpAndSettle();
-    expect(find.text('Toque num dia pra planejar as refeições.'), findsNothing);
+    expect(find.text('Nada planejado pros próximos dias.'), findsNothing);
   });
 
   testWidgets('aba Compras mostra a tela de compras de verdade (não placeholder)',

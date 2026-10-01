@@ -769,14 +769,16 @@ Esforço em dias de trabalho focado.
     outra lista" seguem em aberto.
 - **Bloco F (F1–F3)** — ✅ entregue em 2026-10-01; **F4/F5 (similaridade e
   sugestão) não começados**.
-  - **F1**: aba "Semana" em **duas etapas**. (1) Calendário do mês como mosaico
-    de azulejos: dia com refeição vira o azulejo da receita principal (almoço >
-    jantar > café > lanche), "×N" quando há várias, anel de `ink` em hoje, dias
-    de fora do mês apagados, mês anterior/próximo por setas ou deslizando,
-    "Hoje" pra voltar — cobre a visão mensal (RF-04.1). (2) Tela do dia
-    (`/planner/day/:date`): Café/Almoço/Jantar/Lanche com "+" pra agendar
-    (busca de receita no sheet) e setas de dia anterior/próximo. Tabela
-    `meal_plan_entries` já existia desde o A7 — **sem mudança de schema**.
+  - **F1**: aba "Semana" em **duas etapas**. (1) Calendário do mês: três números
+    grandes do mês (refeições, receitas diferentes, feitas), a grade em mosaico —
+    cada dia é dividido em até 3 faixas, uma por refeição, no azulejo da
+    receita ("+N" se passar disso), anel de `ink` em hoje, dias de fora do mês
+    apagados — e "Próximas refeições" (até 5 pendentes dos próximos 14 dias,
+    com atalho pro dia; vazio convida a "Planejar hoje"). Mês anterior/próximo
+    por setas ou deslizando, "Hoje" pra voltar (cobre RF-04.1 visão mensal).
+    (2) Tela do dia (`/planner/day/:date`): Café/Almoço/Jantar/Lanche com "+"
+    pra agendar (busca de receita no sheet) e setas de dia anterior/próximo.
+    Tabela `meal_plan_entries` já existia desde o A7 — **sem mudança de schema**.
   - **Card da receita no plano**: nome sobre o azulejo (cor e textura da
     receita, com Hero pro detalhe) e faixa branca arredondada por cima com a
     bolinha de "feita" e o ⋯.

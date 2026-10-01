@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/core/result.dart';
@@ -114,6 +115,42 @@ void main() {
 
     await recipeRepo.deleteForever(bolo.id);
     expect((await week()).map((e) => e.recipeName), ['Sopa']);
+  });
+
+  test('upcoming: pendentes dos próximos 14 dias, em ordem, no máximo 5',
+      () async {
+    final from = DateTime.utc(2026, 9, 29);
+    final doneId = (await planRepo.add(bolo.id, from, MealType.breakfast)
+            as Ok<String>)
+        .value;
+    await planRepo.setDone(doneId, true);
+    await planRepo.add(sopa.id, addDays(from, 2), MealType.lunch);
+    await planRepo.add(bolo.id, from, MealType.dinner);
+    await planRepo.add(sopa.id, from, MealType.lunch);
+    await planRepo.add(bolo.id, addDays(from, 1), MealType.snack);
+    await planRepo.add(sopa.id, addDays(from, 3), MealType.dinner);
+    await planRepo.add(bolo.id, addDays(from, 13), MealType.lunch);
+    await planRepo.add(bolo.id, addDays(from, 14), MealType.lunch);
+    await planRepo.add(bolo.id, addDays(from, -1), MealType.lunch);
+
+    final container = ProviderContainer(
+      overrides: [mealPlanRepositoryProvider.overrideWithValue(planRepo)],
+    );
+    addTearDown(container.dispose);
+    final upcoming = await container.read(upcomingEntriesProvider(from).future);
+
+    expect(upcoming, hasLength(5));
+    expect(
+      upcoming.map((e) => (e.date, e.mealType)),
+      [
+        (from, MealType.lunch),
+        (from, MealType.dinner),
+        (addDays(from, 1), MealType.snack),
+        (addDays(from, 2), MealType.lunch),
+        (addDays(from, 3), MealType.dinner),
+      ],
+    );
+    expect(upcoming.any((e) => e.done), isFalse);
   });
 
   test('pendingRecipeCounts conta repetições e ignora feitas e passadas', () {

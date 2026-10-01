@@ -23,7 +23,11 @@ MealPlanEntry _entry(String name, DateTime day, MealType meal) =>
       mealType: meal,
     );
 
-Widget _host(List<MealPlanEntry> entries, {List<String>? visited}) {
+Widget _host(
+  List<MealPlanEntry> entries, {
+  List<String>? visited,
+  List<MealPlanEntry> upcoming = const [],
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(path: '/', builder: (_, __) => const MonthPage()),
@@ -39,6 +43,8 @@ Widget _host(List<MealPlanEntry> entries, {List<String>? visited}) {
   return ProviderScope(
     overrides: [
       monthEntriesProvider.overrideWith((ref) => Stream.value(entries)),
+      upcomingEntriesProvider
+          .overrideWith((ref, from) => Stream.value(upcoming)),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -65,24 +71,75 @@ void main() {
     expect(find.text('SEG'), findsOneWidget);
     expect(find.text('DOM'), findsOneWidget);
     expect(find.byType(TilePattern), findsNothing);
-    expect(find.text('Toque num dia pra planejar as refeições.'), findsOneWidget);
+    expect(find.text('Nada planejado pros próximos dias.'), findsOneWidget);
+    expect(find.text('Planejar hoje'), findsOneWidget);
     expect(find.text('Hoje'), findsNothing);
   });
 
-  testWidgets('dia com refeição vira azulejo; vários mostram a contagem',
+  testWidgets('dia vira faixas de azulejo, uma por refeição, e "+N" passa de 3',
       (tester) async {
     _usePhoneSize(tester);
     final t = today();
+    final other = addDays(t, t.day < 28 ? 1 : -1);
     await tester.pumpWidget(_host([
-      _entry('Bolo', t, MealType.lunch),
-      _entry('Sopa', t, MealType.dinner),
-      _entry('Pão', addDays(t, t.day < 28 ? 1 : -1), MealType.breakfast),
+      _entry('Bolo', t, MealType.breakfast),
+      _entry('Sopa', t, MealType.lunch),
+      _entry('Pão', t, MealType.dinner),
+      _entry('Chá', t, MealType.snack),
+      _entry('Arroz', other, MealType.lunch),
     ]));
     await tester.pumpAndSettle();
 
-    expect(find.byType(TilePattern), findsNWidgets(2));
-    expect(find.text('×2'), findsOneWidget);
-    expect(find.text('Toque num dia pra planejar as refeições.'), findsNothing);
+    // 3 faixas no dia cheio + 1 no outro dia.
+    expect(find.byType(TilePattern), findsNWidgets(4));
+    expect(find.text('+1'), findsOneWidget);
+  });
+
+  testWidgets('números do mês: refeições, receitas diferentes e feitas',
+      (tester) async {
+    _usePhoneSize(tester);
+    final t = today();
+    final other = addDays(t, t.day < 28 ? 1 : -1);
+    final done = _entry('Pão', other, MealType.lunch).copyWith(done: true);
+    await tester.pumpWidget(_host([
+      _entry('Bolo', t, MealType.lunch),
+      _entry('Bolo', t, MealType.dinner),
+      done,
+    ]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('REFEIÇÕES'), findsOneWidget);
+    expect(find.text('RECEITAS'), findsOneWidget);
+    expect(find.text('FEITA'), findsOneWidget);
+    expect(find.text('3', findRichText: true), findsWidgets);
+  });
+
+  testWidgets('"Próximas refeições" lista o que vem a seguir e abre o dia',
+      (tester) async {
+    _usePhoneSize(tester);
+    final visited = <String>[];
+    final t = today();
+    await tester.pumpWidget(_host(
+      const [],
+      visited: visited,
+      upcoming: [
+        _entry('Bolo de Fubá', t, MealType.lunch),
+        _entry('Sopa', addDays(t, 1), MealType.dinner),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Próximas refeições'), findsOneWidget);
+    expect(find.text('Bolo de Fubá'), findsOneWidget);
+    expect(find.text('Hoje · Almoço'), findsOneWidget);
+    expect(find.text('Amanhã · Jantar'), findsOneWidget);
+    expect(find.text('Nada planejado pros próximos dias.'), findsNothing);
+
+    await tester.ensureVisible(find.text('Bolo de Fubá'));
+    await tester.tap(find.text('Bolo de Fubá'));
+    await tester.pumpAndSettle();
+    expect(find.text('tela do dia'), findsOneWidget);
+    expect(visited.single, dayToParam(t));
   });
 
   testWidgets('tocar num dia abre a tela do dia com a data na rota',

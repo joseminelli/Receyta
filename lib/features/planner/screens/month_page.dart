@@ -10,7 +10,9 @@ import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/pill_button.dart';
+import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -21,11 +23,22 @@ const _navBarClearance = 96.0;
 /// Coluna à direita da grade com o carrinho de cada semana.
 const _cartColumn = 40.0;
 
-/// Aba "Semana" (§RF-04.1), primeira etapa do planejamento: o mês como um
-/// mosaico de azulejos. Dia com refeição ganha o azulejo da receita principal
-/// dele (mesma cor e textura do card), dia vazio fica em `paperSoft`. Tocar
-/// num dia abre a tela do dia; o carrinho no fim de cada linha gera a lista de
-/// compras daquela semana (RF-05.1/F3).
+/// Proporção (largura/altura) de uma célula da grade: mais alta que larga pra
+/// caber até três faixas de refeição empilhadas.
+const _cellAspect = 0.8;
+
+/// Máximo de faixas (refeições) desenhadas numa célula.
+const _maxBands = 3;
+
+void _openDay(BuildContext context, DateTime day) =>
+    context.push('/planner/day/${dayToParam(day)}');
+
+/// Aba "Semana" (§RF-04.1), primeira etapa do planejamento. De cima pra
+/// baixo: o mês (números do mês, a grade em mosaico de azulejos e o carrinho
+/// de cada semana) e "Próximas refeições" — o que vem a seguir, já com atalho
+/// pro dia. Cada dia da grade é dividido em faixas, uma por refeição, na cor e
+/// textura da receita (mesmo azulejo do card). Tocar num dia abre a tela do
+/// dia.
 class MonthPage extends ConsumerWidget {
   const MonthPage({super.key});
 
@@ -62,13 +75,22 @@ class MonthPage extends ConsumerWidget {
             children: [
               _buildHeader(context, ref, month),
               const SizedBox(height: AppSpacing.md),
+              _MonthStats(month: month, entries: entries),
+              const SizedBox(height: AppSpacing.md),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: colors.textMuted.withValues(alpha: 0.25),
+              ),
+              const SizedBox(height: AppSpacing.md),
               _buildWeekdayLabels(context),
               const SizedBox(height: 4),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
                 child: _buildGrid(context, ref, month, entries),
               ),
-              if (entries.isEmpty) _buildHint(context),
+              const SizedBox(height: AppSpacing.xl),
+              const _UpcomingSection(),
             ],
           ),
         ),
@@ -157,8 +179,7 @@ class MonthPage extends ConsumerWidget {
             monday: monday,
             month: month,
             byDay: byDay,
-            onOpenDay: (day) =>
-                context.push('/planner/day/${dayToParam(day)}'),
+            onOpenDay: (day) => _openDay(context, day),
             onShopping: (counts) => addRecipesToShoppingListFlow(
               context,
               ref,
@@ -169,16 +190,48 @@ class MonthPage extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Widget _buildHint(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.lg),
-      child: Text(
-        'Toque num dia pra planejar as refeições.',
-        textAlign: TextAlign.center,
-        style: context.texts.bodyMedium
-            ?.copyWith(color: context.colors.textMuted),
-      ),
+/// Três números grandes do mês mostrado: refeições planejadas, receitas
+/// diferentes e quantas já foram feitas.
+class _MonthStats extends StatelessWidget {
+  const _MonthStats({required this.month, required this.entries});
+
+  final DateTime month;
+  final List<MealPlanEntry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final inMonth = [
+      for (final e in entries)
+        if (e.date.year == month.year && e.date.month == month.month) e,
+    ];
+    final recipes = {for (final e in inMonth) e.recipeId}.length;
+    final done = inMonth.where((e) => e.done).length;
+    return Row(
+      children: [
+        Expanded(
+          child: MetricStat(
+            value: '${inMonth.length}',
+            label: inMonth.length == 1 ? 'refeição' : 'refeições',
+            valueSize: 34,
+          ),
+        ),
+        Expanded(
+          child: MetricStat(
+            value: '$recipes',
+            label: recipes == 1 ? 'receita' : 'receitas',
+            valueSize: 34,
+          ),
+        ),
+        Expanded(
+          child: MetricStat(
+            value: '$done',
+            label: done == 1 ? 'feita' : 'feitas',
+            valueSize: 34,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -239,9 +292,9 @@ class _WeekRow extends StatelessWidget {
   }
 }
 
-/// Um dia da grade. Com refeição, vira o azulejo da principal; "hoje" ganha
-/// um anel de `ink` com respiro; o número de refeições aparece embaixo à
-/// direita quando passa de uma.
+/// Um dia da grade, dividido em faixas — uma por refeição (café, almoço,
+/// jantar, lanche, nessa ordem), até três, cada uma no azulejo da receita; o
+/// que passar disso vira "+N". "Hoje" ganha um anel de `ink` com respiro.
 class _DayCell extends StatelessWidget {
   const _DayCell({
     required this.day,
@@ -259,36 +312,52 @@ class _DayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final isToday = isSameDay(day, today());
-    final main = mainEntryOfDay(entries);
     final allDone = entries.isNotEmpty && entries.every((e) => e.done);
-    final tile = main == null
-        ? null
-        : resolveTileAppearance(
-            colors,
-            color: main.recipe.tileColor,
-            motif: main.recipe.tileMotif,
-            seedId: main.recipe.id,
-          );
-    final numberColor = tile?.onColor ?? colors.ink;
+    final ordered = [...entries]
+      ..sort((a, b) => a.mealType.index.compareTo(b.mealType.index));
+    final shown = ordered.take(_maxBands).toList();
+    final extra = ordered.length - shown.length;
+    final tiles = [
+      for (final e in shown)
+        resolveTileAppearance(
+          colors,
+          color: e.recipe.tileColor,
+          motif: e.recipe.tileMotif,
+          seedId: e.recipe.id,
+        ),
+    ];
+    final numberColor = tiles.isEmpty ? colors.ink : tiles.first.onColor;
     final radius = BorderRadius.circular(AppRadii.sm - 4);
 
     final cell = AspectRatio(
-      aspectRatio: 1,
+      aspectRatio: _cellAspect,
       child: ClipRRect(
         borderRadius: radius,
         child: Material(
-          color: tile?.background ?? colors.paperSoft,
+          color: colors.paperSoft,
           child: InkWell(
             onTap: onTap,
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (tile != null)
-                  TilePattern(
-                    motif: tile.motif,
-                    background: tile.background,
-                    patternColor: tile.patternColor,
-                    patternColorAlt: tile.patternColorAlt,
+                if (tiles.isNotEmpty)
+                  Column(
+                    children: [
+                      for (final t in tiles)
+                        Expanded(
+                          child: SizedBox.expand(
+                            child: ColoredBox(
+                              color: t.background,
+                              child: TilePattern(
+                                motif: t.motif,
+                                background: t.background,
+                                patternColor: t.patternColor,
+                                patternColorAlt: t.patternColorAlt,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 Positioned(
                   top: 4,
@@ -301,14 +370,14 @@ class _DayCell extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (entries.length > 1)
+                if (extra > 0)
                   Positioned(
                     right: 5,
                     bottom: 3,
                     child: Text(
-                      '×${entries.length}',
+                      '+$extra',
                       style: context.texts.labelSmall?.copyWith(
-                        color: numberColor.withValues(alpha: 0.9),
+                        color: tiles.last.onColor.withValues(alpha: 0.95),
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -337,6 +406,147 @@ class _DayCell extends StatelessWidget {
             ),
           ),
           child: cell,
+        ),
+      ),
+    );
+  }
+}
+
+/// "Próximas refeições": até cinco refeições pendentes dos próximos 14 dias,
+/// cada uma com o azulejo, o nome e "Hoje · Almoço". Tocar abre o dia. Sem
+/// nada agendado, convida a planejar hoje.
+class _UpcomingSection extends ConsumerWidget {
+  const _UpcomingSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final upcoming = ref.watch(upcomingEntriesProvider(today())).valueOrNull ??
+        const <MealPlanEntry>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SectionHeader(title: 'Próximas refeições', eyebrow: 'A seguir'),
+        const SizedBox(height: AppSpacing.sm),
+        if (upcoming.isEmpty)
+          _buildEmpty(context)
+        else
+          for (final e in upcoming)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: _UpcomingRow(
+                entry: e,
+                onTap: () => _openDay(context, e.date),
+              ),
+            ),
+      ],
+    );
+  }
+
+  Widget _buildEmpty(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Nada planejado pros próximos dias.',
+            style: context.texts.bodyLarge,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Toque num dia do calendário ou comece por hoje.',
+            style:
+                context.texts.bodyMedium?.copyWith(color: colors.textMuted),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          PillButton(
+            label: 'Planejar hoje',
+            icon: Icons.add,
+            dense: true,
+            onPressed: () => _openDay(context, today()),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingRow extends StatelessWidget {
+  const _UpcomingRow({required this.entry, required this.onTap});
+
+  final MealPlanEntry entry;
+  final VoidCallback onTap;
+
+  String get _when {
+    final diff = entry.date.difference(today()).inDays;
+    final day = diff == 0
+        ? 'Hoje'
+        : diff == 1
+            ? 'Amanhã'
+            : '${weekdayShort(entry.date)} ${entry.date.day} '
+                '${monthShort(entry.date)}';
+    return '$day · ${entry.mealType.label}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final tile = resolveTileAppearance(
+      colors,
+      color: entry.recipe.tileColor,
+      motif: entry.recipe.tileMotif,
+      seedId: entry.recipe.id,
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Material(
+        color: colors.paperSoft,
+        child: InkWell(
+          onTap: onTap,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: ColoredBox(
+                  color: tile.background,
+                  child: TilePattern(
+                    motif: tile.motif,
+                    background: tile.background,
+                    patternColor: tile.patternColor,
+                    patternColorAlt: tile.patternColorAlt,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      entry.recipeName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.bodyLarge
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      _when,
+                      style: context.texts.bodySmall
+                          ?.copyWith(color: colors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: colors.textMuted),
+              const SizedBox(width: AppSpacing.xs),
+            ],
+          ),
         ),
       ),
     );
