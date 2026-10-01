@@ -6,7 +6,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
-import 'package:receyta/features/planner/screens/week_page.dart';
+import 'package:receyta/features/planner/screens/month_page.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_lists_page.dart';
@@ -120,7 +120,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             children: [
               for (final (i, page) in const [
                 RecipesPage(),
-                WeekPage(),
+                MonthPage(),
                 ShoppingListsPage(),
                 AccountPage(),
               ].indexed)

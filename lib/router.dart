@@ -7,6 +7,8 @@ import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/folders/screens/all_folders_page.dart';
 import 'package:receyta/features/folders/screens/folder_page.dart';
+import 'package:receyta/core/day.dart';
+import 'package:receyta/features/planner/screens/day_page.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
 import 'package:receyta/features/recipes/screens/ingredients_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_detail_page.dart';
@@ -108,6 +110,13 @@ final router = GoRouter(
       name: 'shopping-list',
       builder: (context, state) =>
           ShoppingListPage(listId: state.pathParameters['id']!),
+    ),
+    GoRoute(
+      path: '/planner/day/:date',
+      name: 'planner-day',
+      builder: (context, state) => DayPage(
+        initialDay: dayFromParam(state.pathParameters['date']),
+      ),
     ),
     GoRoute(
       path: '/trash',

@@ -20,6 +20,25 @@ DateTime mondayOf(DateTime day) {
 /// Soma [days] dias de calendário (imune a horário de verão: opera em UTC).
 DateTime addDays(DateTime day, int days) => dayOf(day).add(Duration(days: days));
 
+/// Primeiro dia do mês de [day].
+DateTime firstOfMonth(DateTime day) => DateTime.utc(day.year, day.month);
+
+/// [months] meses depois de [day], sempre no dia 1 (mês negativo volta).
+DateTime addMonths(DateTime day, int months) =>
+    DateTime.utc(day.year, day.month + months);
+
+/// "2026-09-29" — como o dia viaja na rota da tela do dia.
+String dayToParam(DateTime day) =>
+    '${day.year.toString().padLeft(4, '0')}-'
+    '${day.month.toString().padLeft(2, '0')}-'
+    '${day.day.toString().padLeft(2, '0')}';
+
+/// Inverso de [dayToParam]; texto inválido cai em hoje.
+DateTime dayFromParam(String? text) {
+  final parsed = text == null ? null : DateTime.tryParse(text);
+  return parsed == null ? today() : dayOf(parsed);
+}
+
 bool isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
@@ -33,6 +52,10 @@ const _weekdayLong = [
   'Sábado',
   'Domingo',
 ];
+const _monthLong = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
 const _monthShort = [
   'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
   'jul', 'ago', 'set', 'out', 'nov', 'dez',
@@ -41,6 +64,7 @@ const _monthShort = [
 String weekdayShort(DateTime day) => _weekdayShort[day.weekday - 1];
 String weekdayLong(DateTime day) => _weekdayLong[day.weekday - 1];
 String monthShort(DateTime day) => _monthShort[day.month - 1];
+String monthLong(DateTime day) => _monthLong[day.month - 1];
 
 /// "29 set – 5 out" (ou "1 – 7 out" dentro do mesmo mês).
 String weekRangeLabel(DateTime monday) {

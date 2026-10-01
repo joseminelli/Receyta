@@ -4,58 +4,51 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/day.dart';
+import 'package:receyta/core/result.dart';
 import 'package:receyta/data/repositories/meal_plan_repository.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/add_meal_sheet.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart';
-import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
-import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
-import 'package:receyta/core/result.dart';
 
-/// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
-/// home_shell usa `extendBody`, então a aba desenha por baixo dela.
-const _navBarClearance = 96.0;
+/// Tela do dia (§RF-04.2/04.3), segunda etapa do planejamento: as quatro
+/// refeições (café, almoço, jantar, lanche) com as receitas agendadas. Rota
+/// empilhada aberta pelo calendário do mês; as setas do topo andam de dia em
+/// dia sem voltar. Agendar é pelo "+" de cada refeição; mover entre refeições
+/// do dia é arrastar o card, e pro resto (outro dia) o menu ⋯.
+class DayPage extends ConsumerStatefulWidget {
+  const DayPage({super.key, required this.initialDay});
 
-/// Aba "Semana" (§RF-04): faixa com os 7 dias da semana (segunda a domingo),
-/// o dia escolhido detalhado em refeições embaixo. Agendar é pelo "+" de cada
-/// refeição; mover é arrastar uma refeição até outro dia da faixa (ou outra
-/// refeição do mesmo dia) e também pelo menu ⋯.
-class WeekPage extends ConsumerStatefulWidget {
-  const WeekPage({super.key});
+  final DateTime initialDay;
 
   @override
-  ConsumerState<WeekPage> createState() => _WeekPageState();
+  ConsumerState<DayPage> createState() => _DayPageState();
 }
 
-class _WeekPageState extends ConsumerState<WeekPage> {
+class _DayPageState extends ConsumerState<DayPage> {
+  late DateTime _day = dayOf(widget.initialDay);
+
   /// Refeições já deslizadas pra fora: somem na hora (o `Dismissible` exige
   /// sair da árvore) enquanto o banco apaga e o stream não reemitiu.
   final _removed = <String>{};
 
   MealPlanRepository get _repo => ref.read(mealPlanRepositoryProvider);
 
-  void _selectDay(DateTime day) =>
-      ref.read(selectedDayProvider.notifier).state = dayOf(day);
-
-  void _shiftWeek(int weeks) =>
-      _selectDay(addDays(ref.read(selectedDayProvider), weeks * 7));
+  void _shiftDay(int days) => setState(() => _day = addDays(_day, days));
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final selected = ref.watch(selectedDayProvider);
-    final monday = ref.watch(weekStartProvider);
-    final entriesAsync = ref.watch(weekEntriesProvider);
+    final entriesAsync = ref.watch(dayEntriesProvider(_day));
     final entries = [
       for (final e in entriesAsync.valueOrNull ?? const <MealPlanEntry>[])
         if (!_removed.contains(e.id)) e,
@@ -66,12 +59,11 @@ class _WeekPageState extends ConsumerState<WeekPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopBar(context, monday, selected, entries),
-            _buildDayStrip(context, monday, selected, entries),
+            _buildTopBar(context),
             Expanded(
               child: entriesAsync.isLoading && entries.isEmpty
                   ? const Center(child: BrandLoader())
-                  : _buildDay(context, selected, entries),
+                  : _buildMeals(context, entries),
             ),
           ],
         ),
@@ -79,14 +71,9 @@ class _WeekPageState extends ConsumerState<WeekPage> {
     );
   }
 
-  Widget _buildTopBar(
-    BuildContext context,
-    DateTime monday,
-    DateTime selected,
-    List<MealPlanEntry> entries,
-  ) {
+  Widget _buildTopBar(BuildContext context) {
     final colors = context.colors;
-    final isCurrentWeek = isSameDay(monday, mondayOf(today()));
+    final isToday = isSameDay(_day, today());
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -96,151 +83,100 @@ class _WeekPageState extends ConsumerState<WeekPage> {
       ),
       child: Row(
         children: [
+          CircleIconButton(
+            icon: Icons.arrow_back,
+            tooltip: 'Voltar',
+            onTap: () => context.pop(),
+          ),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Semana', style: context.texts.displaySmall),
                 Text(
-                  weekRangeLabel(monday),
-                  style: context.texts.bodyMedium
-                      ?.copyWith(color: colors.textMuted),
+                  weekdayLong(_day),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.displaySmall,
+                ),
+                Text(
+                  isToday
+                      ? '${_day.day} ${monthLong(_day).toLowerCase()} · hoje'
+                      : '${_day.day} ${monthLong(_day).toLowerCase()}',
+                  style: context.texts.bodyMedium?.copyWith(
+                    color: isToday ? colors.violet : colors.textMuted,
+                  ),
                 ),
               ],
             ),
           ),
-          if (!isSameDay(selected, today())) ...[
-            PillButton(
-              label: 'Hoje',
-              variant: PillButtonVariant.ghost,
-              dense: true,
-              onPressed: () => _selectDay(today()),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-          ],
           CircleIconButton(
             icon: Icons.chevron_left,
-            tooltip: 'Semana anterior',
-            onTap: () => _shiftWeek(-1),
+            tooltip: 'Dia anterior',
+            onTap: () => _shiftDay(-1),
           ),
           const SizedBox(width: AppSpacing.xs),
           CircleIconButton(
             icon: Icons.chevron_right,
-            tooltip: 'Próxima semana',
-            onTap: () => _shiftWeek(1),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          CircleIconButton(
-            icon: Icons.add_shopping_cart_outlined,
-            tooltip: isCurrentWeek
-                ? 'Lista de compras desta semana'
-                : 'Lista de compras da semana',
-            onTap: () => _shoppingFromWeek(monday, entries),
+            tooltip: 'Próximo dia',
+            onTap: () => _shiftDay(1),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDayStrip(
-    BuildContext context,
-    DateTime monday,
-    DateTime selected,
-    List<MealPlanEntry> entries,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-      child: Row(
-        children: [
-          for (var i = 0; i < 7; i++) ...[
-            if (i > 0) const SizedBox(width: 6),
-            Expanded(
-              child: _DayChip(
-                day: addDays(monday, i),
-                selected: isSameDay(addDays(monday, i), selected),
-                count: entries
-                    .where((e) => isSameDay(e.date, addDays(monday, i)))
-                    .length,
-                onTap: () => _selectDay(addDays(monday, i)),
-                onDrop: (entry) => _moveTo(entry, addDays(monday, i)),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDay(
-    BuildContext context,
-    DateTime day,
-    List<MealPlanEntry> entries,
-  ) {
-    final colors = context.colors;
-    final dayEntries = [
-      for (final e in entries)
-        if (isSameDay(e.date, day)) e,
-    ];
-    final isToday = isSameDay(day, today());
+  Widget _buildMeals(BuildContext context, List<MealPlanEntry> entries) {
     // Duas refeições do mesmo dia com a mesma receita dividiriam a tag do
     // Hero (o Flutter recusa); só a primeira ocorrência do dia voa.
     final heroOwners = <String, String>{};
     for (final meal in MealType.values) {
-      for (final e in dayEntries.where((e) => e.mealType == meal)) {
+      for (final e in entries.where((e) => e.mealType == meal)) {
         heroOwners.putIfAbsent(e.recipeId, () => e.id);
       }
     }
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.md,
-        AppSpacing.screen,
-        _navBarClearance,
-      ),
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '${weekdayLong(day)}, ${day.day} ${monthShort(day)}',
-                style: context.texts.titleLarge,
-              ),
-            ),
-            if (isToday)
-              Text(
-                'HOJE',
-                style: context.texts.labelMedium
-                    ?.copyWith(color: colors.violet, letterSpacing: 1.2),
-              ),
-          ],
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v > 400) _shiftDay(-1);
+        if (v < -400) _shiftDay(1);
+      },
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.xs,
+          AppSpacing.screen,
+          AppSpacing.xxl,
         ),
-        const SizedBox(height: AppSpacing.xs),
-        for (final meal in MealType.values)
-          _MealSection(
-            meal: meal,
-            entries: [
-              for (final e in dayEntries)
-                if (e.mealType == meal) e,
-            ],
-            onAdd: () => showAddMealSheet(
-              context,
-              day: day,
-              initialMeal: meal,
-            ),
-            onDrop: (entry) => _moveTo(entry, day, meal: meal),
-            buildTile: (entry) => _EntryTile(
-              entry: entry,
-              useHero: heroOwners[entry.recipeId] == entry.id,
-              onOpen: () => context.push(
-                '/recipe/${entry.recipeId}',
-                extra: entry.recipe,
+        children: [
+          for (final meal in MealType.values)
+            _MealSection(
+              meal: meal,
+              entries: [
+                for (final e in entries)
+                  if (e.mealType == meal) e,
+              ],
+              onAdd: () => showAddMealSheet(
+                context,
+                day: _day,
+                initialMeal: meal,
               ),
-              onToggleDone: () => _repo.setDone(entry.id, !entry.done),
-              onRemove: () => _remove(entry),
-              onMenu: () => _openMenu(entry),
+              onDrop: (entry) => _moveTo(entry, _day, meal: meal),
+              buildTile: (entry) => _EntryTile(
+                entry: entry,
+                useHero: heroOwners[entry.recipeId] == entry.id,
+                onOpen: () => context.push(
+                  '/recipe/${entry.recipeId}',
+                  extra: entry.recipe,
+                ),
+                onToggleDone: () => _repo.setDone(entry.id, !entry.done),
+                onRemove: () => _remove(entry),
+                onMenu: () => _openMenu(entry),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -319,7 +255,7 @@ class _WeekPageState extends ConsumerState<WeekPage> {
       context,
       title: 'Mover "${entry.recipeName}"',
       confirmLabel: 'Mover',
-      weekStart: ref.read(weekStartProvider),
+      weekStart: mondayOf(_day),
       initialDay: entry.date,
       initialMeal: entry.mealType,
     );
@@ -332,7 +268,7 @@ class _WeekPageState extends ConsumerState<WeekPage> {
       context,
       title: 'Duplicar "${entry.recipeName}"',
       confirmLabel: 'Duplicar',
-      weekStart: ref.read(weekStartProvider),
+      weekStart: mondayOf(_day),
       initialDay: addDays(entry.date, 1),
       initialMeal: entry.mealType,
     );
@@ -347,128 +283,10 @@ class _WeekPageState extends ConsumerState<WeekPage> {
     );
   }
 
-  /// F3: lista de compras do que ainda falta cozinhar na semana mostrada
-  /// (de hoje em diante, refeições não marcadas como feitas).
-  Future<void> _shoppingFromWeek(
-    DateTime monday,
-    List<MealPlanEntry> entries,
-  ) async {
-    final counts = pendingRecipeCounts(entries, today());
-    if (counts.isEmpty) {
-      showAppSnackBar(
-        message: 'Nenhuma refeição pendente nesta semana.',
-        variant: AppSnackBarVariant.error,
-      );
-      return;
-    }
-    await addRecipesToShoppingListFlow(
-      context,
-      ref,
-      counts,
-      newListName: 'Semana ${weekRangeLabel(monday)}',
-    );
-  }
-
   void _reportError(String message) => showAppSnackBar(
         message: message,
         variant: AppSnackBarVariant.error,
       );
-}
-
-/// Chip de um dia da faixa: dia da semana, número e pontinhos (1 por
-/// refeição, até 3). Também é alvo de soltar — arrastar uma refeição até ele
-/// move pro dia.
-class _DayChip extends StatelessWidget {
-  const _DayChip({
-    required this.day,
-    required this.selected,
-    required this.count,
-    required this.onTap,
-    required this.onDrop,
-  });
-
-  final DateTime day;
-  final bool selected;
-  final int count;
-  final VoidCallback onTap;
-  final ValueChanged<MealPlanEntry> onDrop;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final isToday = isSameDay(day, today());
-    return DragTarget<MealPlanEntry>(
-      onWillAcceptWithDetails: (d) => !isSameDay(d.data.date, day),
-      onAcceptWithDetails: (d) => onDrop(d.data),
-      builder: (context, candidates, _) {
-        final hovering = candidates.isNotEmpty;
-        final fg = selected ? colors.paper : colors.ink;
-        return AnimatedScale(
-          scale: hovering ? 1.08 : 1,
-          duration: const Duration(milliseconds: 150),
-          child: Material(
-            color: selected ? colors.ink : colors.paperSoft,
-            borderRadius: BorderRadius.circular(AppRadii.sm),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadii.sm),
-              onTap: onTap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadii.sm),
-                  border: Border.all(
-                    color: hovering
-                        ? colors.violet
-                        : isToday && !selected
-                            ? colors.violet
-                            : Colors.transparent,
-                    width: hovering ? 2.5 : 1.5,
-                  ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      weekdayShort(day).toUpperCase(),
-                      style: context.texts.labelSmall?.copyWith(
-                        color: fg.withValues(alpha: selected ? 0.8 : 0.6),
-                      ),
-                    ),
-                    Text(
-                      '${day.day}',
-                      style: context.texts.titleMedium?.copyWith(
-                        color: fg,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(
-                      height: 8,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var i = 0; i < count.clamp(0, 3); i++)
-                            Container(
-                              width: 5,
-                              height: 5,
-                              margin: const EdgeInsets.symmetric(horizontal: 1),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: selected ? colors.paper : colors.violet,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 /// Uma refeição do dia: cabeçalho com "+", as receitas agendadas (ou uma

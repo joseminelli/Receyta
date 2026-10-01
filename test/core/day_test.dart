@@ -31,4 +31,19 @@ void main() {
     expect(weekdayLong(tue), 'Terça-feira');
     expect(monthShort(tue), 'set');
   });
+
+  test('mês: primeiro dia, somar meses e nome', () {
+    expect(firstOfMonth(DateTime.utc(2026, 9, 29)), DateTime.utc(2026, 9));
+    expect(addMonths(DateTime.utc(2026, 11), 2), DateTime.utc(2027, 1));
+    expect(addMonths(DateTime.utc(2026, 1), -1), DateTime.utc(2025, 12));
+    expect(monthLong(DateTime.utc(2026, 3)), 'Março');
+  });
+
+  test('dayToParam / dayFromParam são inversos; lixo cai em hoje', () {
+    final d = DateTime.utc(2026, 9, 5);
+    expect(dayToParam(d), '2026-09-05');
+    expect(dayFromParam('2026-09-05'), d);
+    expect(dayFromParam('bobagem'), today());
+    expect(dayFromParam(null), today());
+  });
 }

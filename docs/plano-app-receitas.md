@@ -769,18 +769,25 @@ Esforço em dias de trabalho focado.
     outra lista" seguem em aberto.
 - **Bloco F (F1–F3)** — ✅ entregue em 2026-10-01; **F4/F5 (similaridade e
   sugestão) não começados**.
-  - **F1**: aba "Semana" real. Faixa com os 7 dias (segunda a domingo) com
-    pontinhos de quantas refeições cada um tem, semana anterior/próxima, "Hoje";
-    o dia escolhido detalhado em Café/Almoço/Jantar/Lanche, cada um com "+" pra
-    agendar (busca de receita no sheet). Tabela `meal_plan_entries` já existia
-    desde o A7 — **sem mudança de schema**. Visão mensal (RF-04.1) não entrou.
-  - **F2**: mover por **arrastar** a refeição até outro dia da faixa (ou outra
-    refeição do mesmo dia), ou pelo ⋯ ("Mover para…" / "Duplicar para…", com
-    "Outra data…"); deslizar → marca como feita, ← remove com "Desfazer".
-  - **F3**: botão de carrinho no topo gera/soma a lista de compras da semana
-    mostrada: só refeições **ainda não feitas e de hoje em diante**; receita
-    agendada 2× entra em dobro (`generateFromRecipes(counts:)` /
-    `addRecipesToList`); receita já presente na lista escolhida é pulada.
+  - **F1**: aba "Semana" em **duas etapas**. (1) Calendário do mês como mosaico
+    de azulejos: dia com refeição vira o azulejo da receita principal (almoço >
+    jantar > café > lanche), "×N" quando há várias, anel de `ink` em hoje, dias
+    de fora do mês apagados, mês anterior/próximo por setas ou deslizando,
+    "Hoje" pra voltar — cobre a visão mensal (RF-04.1). (2) Tela do dia
+    (`/planner/day/:date`): Café/Almoço/Jantar/Lanche com "+" pra agendar
+    (busca de receita no sheet) e setas de dia anterior/próximo. Tabela
+    `meal_plan_entries` já existia desde o A7 — **sem mudança de schema**.
+  - **Card da receita no plano**: nome sobre o azulejo (cor e textura da
+    receita, com Hero pro detalhe) e faixa branca arredondada por cima com a
+    bolinha de "feita" e o ⋯.
+  - **F2**: arrastar o card entre refeições do mesmo dia; mover/duplicar pra
+    outro dia pelo ⋯ ("Mover para…" / "Duplicar para…", com "Outra data…");
+    deslizar → marca como feita, ← remove com "Desfazer".
+  - **F3**: carrinho no fim de cada semana do calendário gera/soma a lista de
+    compras daquela semana: só refeições **ainda não feitas e de hoje em
+    diante**; receita agendada 2× entra em dobro
+    (`generateFromRecipes(counts:)` / `addRecipesToList`); receita já presente
+    na lista escolhida é pulada.
   - Fora do previsto: `core/day.dart` (datas de calendário em UTC).
 - **Próximo passo real**: **F4** (similaridade por IDF, Dart puro) → F5.
 

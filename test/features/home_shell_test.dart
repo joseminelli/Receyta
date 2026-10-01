@@ -25,7 +25,7 @@ Widget _host() => ProviderScope(
         ),
         // A aba Compras é montada de cara pelo `IndexedStack`, mesmo sem
         // trocar de aba — sem isto cairia no banco de verdade.
-        weekEntriesProvider.overrideWith(
+        monthEntriesProvider.overrideWith(
           (ref) => Stream.value(const <MealPlanEntry>[]),
         ),
         shoppingListsProvider
@@ -33,6 +33,15 @@ Widget _host() => ProviderScope(
       ],
       child: MaterialApp(theme: AppTheme.light(), home: const HomeShell()),
     );
+
+/// Tela de celular (390×844): na superfície padrão do teste (800×600) as
+/// células quadradas ficam enormes e a grade passa da altura da tela.
+void _usePhoneSize(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
 
 void main() {
   testWidgets('inicia em Receitas com as 4 abas', (tester) async {
@@ -50,18 +59,19 @@ void main() {
 
   testWidgets('trocar de aba mostra a semana e o estado da home é preservado',
       (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Semana'));
     await tester.pumpAndSettle();
-    expect(find.text('Nada planejado'), findsNWidgets(4));
+    expect(find.text('Toque num dia pra planejar as refeições.'), findsOneWidget);
 
     expect(find.byType(RecipesPage, skipOffstage: false), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('Receitas'));
     await tester.pumpAndSettle();
-    expect(find.text('Nada planejado'), findsNothing);
+    expect(find.text('Toque num dia pra planejar as refeições.'), findsNothing);
   });
 
   testWidgets('aba Compras mostra a tela de compras de verdade (não placeholder)',
