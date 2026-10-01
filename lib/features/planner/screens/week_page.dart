@@ -632,17 +632,36 @@ class _EntryTile extends StatelessWidget {
     final colors = context.colors;
     return Material(
       color: colors.paperSoft,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: _buildNameTile(context)),
-            _buildActions(context),
-          ],
-        ),
+      child: Stack(
+        children: [
+          // O azulejo vai até a borda direita; a faixa de ações fica por cima
+          // dele, com os cantos da esquerda arredondados e uma sombra leve —
+          // parece uma folha branca sobre o colorido.
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildNameTile(context)),
+                const SizedBox(width: _actionsWidth - _actionsOverlap),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: _actionsWidth,
+            child: _buildActions(context),
+          ),
+        ],
       ),
     );
   }
+
+  /// Largura da faixa de ações (bolinha + ⋯) e quanto dela entra sobre o
+  /// azulejo.
+  static const _actionsWidth = 96.0;
+  static const _actionsOverlap = 20.0;
 
   /// Nome sobre o azulejo. O `ColoredBox` fica fora do `Hero` (mesmo truque
   /// do `RecipeCard`): enquanto o padrão voa, esta cópia parada da cor cobre
@@ -683,23 +702,28 @@ class _EntryTile extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                AppSpacing.sm,
+                AppSpacing.md + _actionsOverlap,
+                AppSpacing.sm,
               ),
-              child: Center(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    recipe.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.texts.titleMedium?.copyWith(
-                      color: tile.onColor,
-                      fontWeight: FontWeight.w700,
-                      decoration:
-                          entry.done ? TextDecoration.lineThrough : null,
-                      decorationColor: tile.onColor,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 40),
+                child: Center(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      recipe.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.titleMedium?.copyWith(
+                        color: tile.onColor,
+                        fontWeight: FontWeight.w700,
+                        decoration:
+                            entry.done ? TextDecoration.lineThrough : null,
+                        decorationColor: tile.onColor,
+                      ),
                     ),
                   ),
                 ),
@@ -714,38 +738,53 @@ class _EntryTile extends StatelessWidget {
   Widget _buildActions(BuildContext context) {
     final colors = context.colors;
     final done = entry.done;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onToggleDone,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: done ? colors.ink : Colors.transparent,
-                border: Border.all(
-                  color: done ? colors.ink : colors.textMuted,
-                  width: 2,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: const BorderRadius.horizontal(
+          left: Radius.circular(AppRadii.md),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.ink.withValues(alpha: 0.18),
+            blurRadius: 10,
+            offset: const Offset(-3, 0),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onToggleDone,
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: done ? colors.ink : Colors.transparent,
+                  border: Border.all(
+                    color: done ? colors.ink : colors.textMuted,
+                    width: 2,
+                  ),
                 ),
+                child: done
+                    ? Icon(Icons.check, size: 16, color: colors.paper)
+                    : null,
               ),
-              child: done
-                  ? Icon(Icons.check, size: 16, color: colors.paper)
-                  : null,
             ),
           ),
-        ),
-        IconButton(
-          tooltip: 'Mais opções',
-          onPressed: onMenu,
-          icon: Icon(Icons.more_horiz, color: colors.textMuted),
-        ),
-      ],
+          IconButton(
+            tooltip: 'Mais opções',
+            onPressed: onMenu,
+            icon: Icon(Icons.more_horiz, color: colors.textMuted),
+          ),
+        ],
+      ),
     );
   }
 }
