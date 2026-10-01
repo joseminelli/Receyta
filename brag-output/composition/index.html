@@ -40,39 +40,44 @@
       .abs { position: absolute; }
       .arco { background-color: var(--coral); background-image: radial-gradient(circle at 0 0, var(--coralPat) 0 52%, transparent 53%); background-size: 108px 108px; }
       .lua { background-color: var(--violet); background-image: radial-gradient(circle at 50% 100%, var(--violetPat) 0 50%, transparent 51%); background-size: 108px 108px; }
-      .ponto { background-color: var(--ink); background-image: radial-gradient(circle, var(--inkSoft) 0 22%, transparent 23%); background-size: 72px 72px; }
-      .ponto-soft { background-color: var(--inkSoft); background-image: radial-gradient(circle, #37362a 0 22%, transparent 23%); background-size: 72px 72px; }
 
-      #s1 { z-index: 1; } #s2 { z-index: 2; } #s3 { z-index: 3; } #s4 { z-index: 4; } #s5 { z-index: 5; } #s6 { z-index: 6; }
+      #s1 { z-index: 1; } #sHome { z-index: 2; } #sDet { z-index: 3; } #s3 { z-index: 4; } #s4 { z-index: 5; } #sCal { z-index: 6; } #sShop { z-index: 7; } #s6 { z-index: 8; }
 
       #s1 .bg { background: var(--paper); }
       #h1 { left: 90px; top: 340px; width: 900px; font-size: 190px; color: var(--ink); }
       #h1b { left: 90px; top: 1000px; width: 820px; font-size: 62px; line-height: 1.12; color: var(--muted); font-weight: 500; }
-      #s1tile { left: 90px; top: 1480px; width: 900px; height: 260px; border-radius: 52px; }
+      #s1tile { left: 0; top: 1500px; width: 1080px; height: 420px; }
 
-      #s2 .bg { background-color: var(--coral); background-image: radial-gradient(circle at 0 0, var(--coralPat) 0 52%, transparent 53%); background-size: 108px 108px; }
-      #t2 { left: 90px; top: 110px; width: 900px; font-size: 104px; color: #fff; }
       .device { left: 130px; top: 360px; width: 820px; height: 1480px; border-radius: 84px; background: #0e0d09; padding: 14px; box-shadow: 0 40px 90px rgba(0, 0, 0, 0.35); }
       .screen { position: relative; width: 792px; height: 1452px; border-radius: 72px; overflow: hidden; background: var(--paper); }
-      #hdr { left: 0; top: 0; width: 792px; height: 330px; background: var(--ink); border-radius: 0 0 56px 56px; overflow: hidden; }
-      #hdrpat { left: 380px; top: -80px; width: 480px; height: 480px; background-image: radial-gradient(circle at 0 0, var(--inkSoft) 0 52%, transparent 53%); background-size: 108px 108px; }
-      #hdr1 { left: 48px; top: 96px; font-size: 26px; color: var(--lime); }
-      #hdr2 { left: 48px; top: 150px; font-size: 92px; color: #fff; }
-      .rc { border-radius: 48px; overflow: hidden; }
-      #c1 { left: 36px; top: 370px; width: 720px; height: 360px; }
-      #c2 { left: 36px; top: 760px; width: 346px; height: 400px; }
-      #c3 { left: 410px; top: 760px; width: 346px; height: 400px; }
-      .cn { left: 36px; bottom: 34px; color: #fff; }
-      #c1 .cn { font-size: 84px; width: 600px; }
-      #c2 .cn, #c3 .cn { font-size: 54px; width: 280px; left: 30px; bottom: 30px; }
-      .chip { height: 84px; padding: 0 38px; border-radius: 42px; border: 4px solid var(--ink); color: var(--ink); font-size: 38px; font-weight: 600; display: flex; align-items: center; background: var(--paper); }
-      #ch1 { left: 36px; top: 1230px; } #ch2 { left: 300px; top: 1230px; } #ch3 { left: 36px; top: 1332px; }
+      .pan { position: absolute; left: 0; top: 0; width: 792px; }
+      .shot { position: absolute; left: 0; width: 792px; background-repeat: no-repeat; background-size: 792px auto; }
+      .fit { left: 28px; width: 736px; top: 0; height: 1452px; background-size: 736px auto; background-position: 0 0; }
+      .real { left: 156px; top: 330px; width: 772px; height: 1530px; padding: 16px; border-radius: 96px; background: linear-gradient(150deg, #4a493e 0%, #15140e 38%, #0b0a07 62%, #3a392f 100%); box-shadow: 0 50px 100px rgba(0, 0, 0, 0.4), inset 0 0 0 3px #5b5a4d; }
+      .real::before { content: ""; position: absolute; right: -9px; top: 380px; width: 10px; height: 170px; border-radius: 5px; background: #2a2920; }
+      .real::after { content: ""; position: absolute; left: -9px; top: 300px; width: 10px; height: 230px; border-radius: 5px; background: #2a2920; }
+      .real .screen { width: 740px; height: 1498px; border-radius: 74px; box-shadow: 0 0 0 6px #000; }
+      .cam { position: absolute; left: 50%; top: 24px; width: 30px; height: 30px; margin-left: -15px; border-radius: 15px; background: #000; box-shadow: 0 0 0 3px #1b1a14; z-index: 20; }
+      .real .pan { width: 740px; }
+      .real .fit { left: 0; top: 0; width: 740px; height: 1498px; background-size: 740px auto; background-position: 0 0; }
+      .patch { position: absolute; right: 0; top: 0; width: 50px; height: 40px; }
+      .cap { left: 90px; top: 110px; width: 900px; font-size: 104px; }
 
-      #s3 .bg { background: var(--ink); }
-      #t3 { left: 90px; top: 110px; width: 900px; font-size: 96px; color: #fff; }
+      #sHome .bg { background-color: var(--coral); background-image: radial-gradient(circle at 0 0, var(--coralPat) 0 52%, transparent 53%); background-size: 108px 108px; }
+      #sHome .cap { color: #fff; }
+      #homeImg { background-image: url("assets/app/home.png"); }
+      #homePatch { background: #17160f; }
+
+      #sDet .bg { background: var(--ink); }
+      #sDet .cap { color: #fff; }
+      #sDet .screen { background: var(--paper); }
+      #detImg { background-image: url("assets/app/DetalheReceita.png"); }
+
+      #s3 .bg { background: var(--lime); }
+      #t3 { left: 90px; top: 110px; width: 900px; font-size: 96px; color: var(--ink); }
       #s3 .screen { background: var(--ink); }
       #s3top { left: 48px; top: 64px; font-size: 62px; color: #fff; }
-      #ing { left: 36px; top: 190px; width: 720px; height: 650px; background: var(--inkSoft); border-radius: 48px; }
+      #ing { left: 36px; top: 190px; width: 668px; height: 650px; background: var(--inkSoft); border-radius: 48px; }
       #ing1 { left: 40px; top: 40px; font-size: 26px; color: var(--lime); }
       #ing2 { left: 300px; top: 42px; font-size: 26px; color: rgba(255, 255, 255, 0.55); opacity: 0; }
       #srv { left: 40px; top: 124px; font-size: 26px; color: var(--lime); }
@@ -83,10 +88,10 @@
       #plus i.a { width: 32px; height: 6px; position: absolute; } #plus i.b { width: 6px; height: 32px; position: absolute; }
       #srvn { left: 296px; top: 106px; width: 90px; height: 60px; }
       .num { position: absolute; left: 0; top: 0; width: 90px; text-align: center; font-size: 60px; color: #fff; opacity: 0; }
-      .ir { left: 40px; width: 640px; height: 90px; font-size: 48px; color: #fff; }
+      .ir { left: 40px; width: 590px; height: 90px; font-size: 48px; color: #fff; }
       .ir .v { position: absolute; left: 0; top: 0; white-space: nowrap; opacity: 0; }
       #ir1 { top: 250px; } #ir2 { top: 360px; } #ir3 { top: 470px; }
-      #cook { left: 36px; top: 900px; width: 720px; height: 200px; background: var(--inkSoft); border-radius: 48px; }
+      #cook { left: 36px; top: 900px; width: 668px; height: 200px; background: var(--inkSoft); border-radius: 48px; }
       #cook1 { left: 44px; top: 40px; font-size: 26px; color: var(--lime); }
       #cook2 { left: 44px; top: 100px; font-size: 54px; color: #fff; white-space: nowrap; }
       #cook2 span { position: absolute; left: 0; top: 0; }
@@ -101,7 +106,7 @@
       #nh img { width: 48px; height: 38px; object-fit: contain; }
       #nrow { left: 30px; top: 110px; width: 920px; height: 320px; }
       #nblock { left: 0; top: 0; width: 360px; height: 320px; border-radius: 44px 0 0 44px; }
-      #nblock .cn { font-size: 54px; left: 34px; bottom: 34px; width: 240px; }
+      #nblock .cn { position: absolute; color: #fff; font-size: 54px; left: 34px; bottom: 34px; width: 240px; }
       #npanel { left: 316px; top: 0; width: 604px; height: 320px; border-radius: 44px; background: var(--paperSoft); }
       #nlabel { left: 74px; top: 34px; font-size: 28px; color: var(--muted); }
       #badge { left: 396px; top: 28px; padding: 6px 18px; border: 3px solid var(--danger); border-radius: 22px; font-size: 24px; font-weight: 800; letter-spacing: 0.1em; color: var(--danger); opacity: 0; }
@@ -110,32 +115,29 @@
       .nb { width: 92px; height: 92px; border-radius: 46px; top: 206px; display: flex; align-items: center; justify-content: center; }
       #nb1 { left: 74px; background: var(--ink); } #nb2 { left: 188px; border: 4px solid var(--ink); background: #f6f3ea; color: var(--ink); font-size: 40px; font-weight: 800; } #nb3 { left: 302px; background: #f3d6d1; }
       #nb1 i { display: block; width: 14px; height: 40px; background: var(--paperSoft); border-radius: 3px; margin: 0 5px; }
-      #nb1 u { display: none; }
       #nb3 i { display: block; width: 34px; height: 34px; background: var(--danger); border-radius: 4px; }
       #t4 { left: 90px; top: 1180px; width: 900px; font-size: 92px; color: #fff; }
       #touch4 { left: 0; top: 0; width: 100px; height: 100px; margin: -50px 0 0 -50px; border-radius: 50px; background: rgba(22, 21, 15, 0.25); border: 5px solid var(--ink); }
 
-      #s5 .bg { background: var(--ink); }
-      #t5 { left: 90px; top: 130px; width: 900px; font-size: 128px; color: #fff; }
-      #t5b { left: 90px; top: 590px; width: 820px; font-size: 46px; line-height: 1.2; color: rgba(255, 255, 255, 0.75); }
-      .li { left: 70px; width: 940px; height: 150px; border-radius: 48px; background: var(--inkSoft); display: flex; align-items: center; padding-left: 44px; gap: 34px; }
-      .li .ck { position: relative; width: 74px; height: 74px; border-radius: 37px; border: 5px solid rgba(255, 255, 255, 0.6); flex: none; }
-      .li .ck b { position: absolute; inset: -5px; border-radius: 37px; background: var(--lime); opacity: 0; }
-      .li .ck b::after { content: ""; position: absolute; left: 22px; top: 12px; width: 18px; height: 34px; border-right: 8px solid var(--ink); border-bottom: 8px solid var(--ink); transform: rotate(40deg); }
-      .li .tx { font-size: 54px; color: #fff; font-weight: 600; white-space: nowrap; position: relative; }
-      #li1 { top: 820px; } #li2 { top: 990px; } #li3 { top: 1160px; } #li4 { top: 1330px; }
+      #sCal .bg { background: var(--paperSoft); }
+      #sCal .cap { color: var(--ink); }
+      #sCal .screen { background: var(--paper); }
+      #calImg { background-image: url("assets/app/PaginaCalendario.png"); }
 
-      #s6 .bg { background: var(--paper); }
-      #logo { left: 370px; top: 560px; width: 340px; height: 265px; object-fit: contain; }
-      #wm { left: 0; top: 880px; width: 1080px; text-align: center; font-size: 230px; color: var(--ink); }
-      #tag { left: 0; top: 1160px; width: 1080px; text-align: center; font-size: 52px; color: var(--muted); font-weight: 500; }
-      #s6tile { left: 90px; top: 1380px; width: 900px; height: 260px; border-radius: 52px; }
+      #sShop .bg { background: var(--lime); }
+      #sShop .cap { color: var(--ink); }
+      #sShop .screen { background: #16150f; }
+      #shopImg { background-image: url("assets/app/listaListaDeCompras.png"); }
+
+      #s6 .bg { background-color: var(--ink); background-image: radial-gradient(circle at 0 0, var(--inkSoft) 0 52%, transparent 53%); background-size: 108px 108px; }
+      #logo { left: 350px; top: 470px; width: 380px; height: 296px; object-fit: contain; }
+      #wm { left: 0; top: 830px; width: 1080px; text-align: center; font-size: 250px; color: #fff; }
+      #tag { left: 90px; top: 1150px; width: 900px; text-align: center; font-size: 76px; color: var(--lime); }
     </style>
   </head>
   <body>
     <div id="root" data-composition-id="main" data-start="0" data-duration="24.6" data-width="1080" data-height="1920">
 
-      <!-- S1 hook -->
       <div id="s1" class="scene clip" data-start="0" data-duration="3.0" data-track-index="0">
         <div class="bg"></div>
         <div id="h1" class="abs disp">Nenhuma receita ainda.</div>
@@ -143,33 +145,33 @@
         <div id="s1tile" class="abs arco"></div>
       </div>
 
-      <!-- S2 receitas -->
-      <div id="s2" class="scene clip" data-start="2.6" data-duration="6.2" data-track-index="1">
+      <div id="sHome" class="scene clip" data-start="2.46" data-duration="4.0" data-track-index="1">
         <div class="bg"></div>
-        <div id="t2" class="abs disp">Suas receitas, num lugar só</div>
-        <div id="dev2" class="abs device">
-          <div class="screen">
-            <div id="hdr" class="abs">
-              <div id="hdrpat" class="abs"></div>
-              <div id="hdr1" class="abs label">3 receitas</div>
-              <div id="hdr2" class="abs disp">Receyta</div>
-            </div>
-            <div id="c1" class="abs rc arco"><div class="abs cn disp">Frango ao curry</div></div>
-            <div id="c2" class="abs rc lua"><div class="abs cn disp">Homus</div></div>
-            <div id="c3" class="abs rc ponto"><div class="abs cn disp">Sopa de abóbora</div></div>
-            <div id="ch1" class="abs chip">De um link</div>
-            <div id="ch2" class="abs chip">De uma foto</div>
-            <div id="ch3" class="abs chip">De um arquivo</div>
+        <div class="abs cap disp">Suas receitas, num lugar só</div>
+        <div id="devHome" class="abs device real">
+          <div class="screen"><div class="cam"></div>
+            <div id="panHome" class="pan"><div id="homeImg" class="shot fit"></div></div>
+            <div id="homePatch" class="patch"></div>
           </div>
         </div>
       </div>
 
-      <!-- S3 modo cozinha -->
-      <div id="s3" class="scene clip" data-start="8.4" data-duration="5.5" data-track-index="2">
+      <div id="sDet" class="scene clip" data-start="6.28" data-duration="3.4" data-track-index="2">
+        <div class="bg"></div>
+        <div class="abs cap disp">Tempos e porções de relance.</div>
+        <div id="devDet" class="abs device real">
+          <div class="screen"><div class="cam"></div>
+            <div id="panDet" class="pan"><div id="detImg" class="shot fit"></div></div>
+            <div class="patch" style="background:#ee6a4c"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s3" class="scene clip" data-start="9.29" data-duration="4.0" data-track-index="3">
         <div class="bg"></div>
         <div id="t3" class="abs disp">Mais porções, quantidades certas.</div>
-        <div id="dev3" class="abs device">
-          <div class="screen">
+        <div id="dev3" class="abs device real">
+          <div class="screen"><div class="cam"></div>
             <div id="s3top" class="abs disp">Frango ao curry</div>
             <div id="ing" class="abs">
               <div id="ing1" class="abs label">Ingredientes 3</div>
@@ -196,14 +198,13 @@
         </div>
       </div>
 
-      <!-- S4 notificação -->
-      <div id="s4" class="scene clip" data-start="13.5" data-duration="4.4" data-track-index="3">
+      <div id="s4" class="scene clip" data-start="13.11" data-duration="3.6" data-track-index="4">
         <div class="bg"></div>
         <div id="lock" class="abs disp">9:41</div>
         <div id="notif" class="abs">
           <div id="nh" class="abs"><img src="assets/brand/logoIcon.png" alt="" /><span>Receyta · Timers em andamento</span></div>
           <div id="nrow" class="abs">
-            <div id="nblock" class="abs arco"><div class="abs cn disp">Frango ao curry</div></div>
+            <div id="nblock" class="abs arco"><div class="cn disp">Frango ao curry</div></div>
             <div id="npanel" class="abs">
               <div id="nlabel" class="abs label">Cozimento</div>
               <div id="badge" class="abs">PAUSADO</div>
@@ -218,48 +219,60 @@
         <div id="touch4" class="abs"></div>
       </div>
 
-      <!-- S5 compras -->
-      <div id="s5" class="scene clip" data-start="17.5" data-duration="4.5" data-track-index="4">
+      <div id="sCal" class="scene clip" data-start="16.38" data-duration="2.72" data-track-index="5">
         <div class="bg"></div>
-        <div id="t5" class="abs disp">Compras sem conta de cabeça</div>
-        <div id="t5b" class="abs">A lista sai das receitas, com as quantidades já somadas.</div>
-        <div id="li1" class="abs li"><div class="ck"><b></b></div><div class="tx">1,3 kg de farinha</div></div>
-        <div id="li2" class="abs li"><div class="ck"><b></b></div><div class="tx">6 ovos</div></div>
-        <div id="li3" class="abs li"><div class="ck"><b></b></div><div class="tx">400 g de tomate</div></div>
-        <div id="li4" class="abs li"><div class="ck"><b></b></div><div class="tx">3 dentes de alho</div></div>
+        <div class="abs cap disp">Planeje a semana</div>
+        <div id="devCal" class="abs device real">
+          <div class="screen"><div class="cam"></div>
+            <div id="panCal" class="pan"><div id="calImg" class="shot fit"></div></div>
+            <div class="patch" style="background:#f5f2ea"></div>
+          </div>
+        </div>
       </div>
 
-      <!-- S6 outro -->
-      <div id="s6" class="scene clip" data-start="21.6" data-duration="3.0" data-track-index="5">
+      <div id="sShop" class="scene clip" data-start="18.55" data-duration="3.4" data-track-index="6">
+        <div class="bg"></div>
+        <div class="abs cap disp">Compras sem conta de cabeça</div>
+        <div id="devShop" class="abs device real">
+          <div class="screen"><div class="cam"></div>
+            <div id="panShop" class="pan"><div id="shopImg" class="shot fit"></div></div>
+            <div class="patch" style="background:#16150f"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s6" class="scene clip" data-start="21.6" data-duration="3.0" data-track-index="7">
         <div class="bg"></div>
         <img id="logo" class="abs" src="assets/brand/logoIcon.png" alt="" />
         <div id="wm" class="abs disp">Receyta</div>
-        <div id="tag" class="abs">Seus dados ficam só neste aparelho.</div>
-        <div id="s6tile" class="abs lua"></div>
+        <div id="tag" class="abs disp">Suas receitas, num lugar só</div>
       </div>
 
       <audio id="music" data-start="0" data-duration="24.6" data-track-index="20" data-volume="0.5" data-fade-in="0.5" data-fade-out="1.6" src="assets/music/happy-beats-business-moves-vol-10-by-ende-dot-app.mp3"></audio>
-      <audio id="sfx-1" data-start="4.10" data-duration="0.3" data-track-index="21" data-volume="0.55" src="assets/sfx/bong_001.ogg"></audio>
-      <audio id="sfx-2" data-start="10.38" data-duration="0.2" data-track-index="22" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
-      <audio id="sfx-3" data-start="10.93" data-duration="0.2" data-track-index="23" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
-      <audio id="sfx-4" data-start="12.56" data-duration="0.2" data-track-index="24" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
-      <audio id="sfx-5" data-start="14.20" data-duration="0.3" data-track-index="25" data-volume="0.6" src="assets/sfx/bong_001.ogg"></audio>
-      <audio id="sfx-6" data-start="16.40" data-duration="0.2" data-track-index="26" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
-      <audio id="sfx-7" data-start="20.19" data-duration="0.2" data-track-index="27" data-volume="0.5" src="assets/sfx/rollover2.ogg"></audio>
-      <audio id="sfx-8" data-start="20.74" data-duration="0.2" data-track-index="28" data-volume="0.5" src="assets/sfx/rollover2.ogg"></audio>
-      <audio id="sfx-9" data-start="21.28" data-duration="0.2" data-track-index="29" data-volume="0.5" src="assets/sfx/rollover2.ogg"></audio>
-      <audio id="sfx-10" data-start="21.83" data-duration="0.4" data-track-index="30" data-volume="0.7" src="assets/sfx/impactSoft_medium_001.ogg"></audio>
+      <audio id="sfx-1" data-start="3.01" data-duration="0.12" data-track-index="21" data-volume="0.5" src="assets/sfx/bong_001.ogg"></audio>
+      <audio id="sfx-2" data-start="6.82" data-duration="0.12" data-track-index="22" data-volume="0.5" src="assets/sfx/bong_001.ogg"></audio>
+      <audio id="sfx-3" data-start="10.93" data-duration="0.05" data-track-index="23" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-4" data-start="11.47" data-duration="0.05" data-track-index="24" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-5" data-start="12.56" data-duration="0.05" data-track-index="25" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-6" data-start="13.64" data-duration="0.12" data-track-index="26" data-volume="0.6" src="assets/sfx/bong_001.ogg"></audio>
+      <audio id="sfx-7" data-start="15.82" data-duration="0.05" data-track-index="27" data-volume="0.7" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-8" data-start="16.93" data-duration="0.06" data-track-index="28" data-volume="0.5" src="assets/sfx/rollover2.ogg"></audio>
+      <audio id="sfx-9" data-start="19.1" data-duration="0.06" data-track-index="29" data-volume="0.5" src="assets/sfx/rollover2.ogg"></audio>
+      <audio id="sfx-10" data-start="21.83" data-duration="0.18" data-track-index="30" data-volume="0.7" src="assets/sfx/impactSoft_medium_001.ogg"></audio>
     </div>
 
     <script>
       window.__timelines = window.__timelines || {};
       const tl = gsap.timeline({ paused: true });
-      const $ = (s) => document.querySelector(s);
       const $$ = (s) => document.querySelectorAll(s);
       const rise = (sel, at, dur = 0.5, y = 50) =>
         tl.fromTo(sel, { opacity: 0, y }, { opacity: 1, y: 0, duration: dur, ease: "power3.out" }, at);
       const wipeIn = (id, at) =>
         tl.fromTo(`#${id} .bg`, { yPercent: 100 }, { yPercent: 0, duration: 0.55, ease: "power3.inOut" }, at);
+      const deviceIn = (sel, at) =>
+        tl.fromTo(sel, { opacity: 0, y: 160 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, at);
+      const panDown = (sel, at, dur, dy) =>
+        tl.fromTo(sel, { y: 0 }, { y: -dy, duration: dur, ease: "sine.inOut", immediateRender: false }, at);
       const showAt = (el, t) => tl.set(el, { opacity: 1 }, t);
       const hideAt = (el, t) => tl.set(el, { opacity: 0 }, t);
       function states(els, times) {
@@ -281,70 +294,63 @@
       rise("#h1b", 1.37, 0.5, 40);
       tl.fromTo("#s1tile", { opacity: 0, y: 120 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 1.9);
 
-      // S2 receitas — wipe in at 2.6
-      wipeIn("s2", 2.6);
-      rise("#t2", 3.1, 0.55);
-      tl.fromTo("#dev2", { opacity: 0, y: 160 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 3.2);
-      // beat-grid: cards at 4.10 / 4.64 / 5.19 (names are short, held until the end of the scene)
-      ["#c1", "#c2", "#c3"].forEach((s, i) =>
-        tl.fromTo(s, { opacity: 0, y: 60, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: "back.out(1.4)" }, [4.1, 4.64, 5.19][i])
-      );
-      // beat-grid: chips at 6.28 / 6.82 / 7.35
-      ["#ch1", "#ch2", "#ch3"].forEach((s, i) =>
-        tl.fromTo(s, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, [6.28, 6.82, 7.35][i])
-      );
+      // Home real — wipe 2.46, device 3.01 (beat)
+      wipeIn("sHome", 2.46);
+      rise("#sHome .cap", 3.01, 0.55);
+      deviceIn("#devHome", 3.01);
 
-      // S3 modo cozinha — wipe at 8.4
-      wipeIn("s3", 8.4);
-      rise("#t3", 8.9, 0.55);
-      tl.fromTo("#dev3", { opacity: 0, y: 160 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 9.0);
-      rise("#ing", 9.5, 0.5, 40);
-      // estados: porções 4 -> 5 (10.38) -> 6 (10.93)
-      const T = [9.9, 10.38, 10.93];
+      // Detalhe real — wipe 6.28, device 6.82 (beat)
+      wipeIn("sDet", 6.28);
+      rise("#sDet .cap", 6.82, 0.55);
+      deviceIn("#devDet", 6.82);
+
+      // Modo cozinha — wipe 9.29
+      wipeIn("s3", 9.29);
+      rise("#t3", 9.83, 0.55);
+      deviceIn("#dev3", 9.83);
+      rise("#ing", 10.38, 0.5, 40);
+      const T = [10.5, 10.93, 11.47];
       states([...$$("#srvn .num")], T);
       states([...$$("#ir1 .v")], T);
       states([...$$("#ir2 .v")], T);
       states([...$$("#ir3 .v")], T);
-      showAt("#ing2", 10.93);
-      tap("#touch", 452, 328, 10.38);
-      tap("#touch", 452, 328, 10.93);
-      tl.to("#plus", { scale: 0.88, duration: 0.08, yoyo: true, repeat: 1 }, 10.38);
+      showAt("#ing2", 11.47);
+      tap("#touch", 464, 326, 10.93);
+      tap("#touch", 464, 326, 11.47);
       tl.to("#plus", { scale: 0.88, duration: 0.08, yoyo: true, repeat: 1 }, 10.93);
+      tl.to("#plus", { scale: 0.88, duration: 0.08, yoyo: true, repeat: 1 }, 11.47);
       rise("#cook", 12.02, 0.5, 60);
       tap("#touch", 220, 1000, 12.56);
       hideAt("#cook2 .a", 12.56);
       showAt("#cook2 .b", 12.56);
 
-      // S4 notificação — wipe at 13.5, chegada em 14.20 (beat)
-      wipeIn("s4", 13.5);
-      rise("#lock", 14.0, 0.5, 40);
-      tl.fromTo("#notif", { opacity: 0, y: -260 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, 14.2);
-      states([...$$("#nclock span")], [14.2, 15.2, 16.2]);
-      rise("#t4", 15.0, 0.5, 50);
-      tap("#touch4", 120, 800, 16.4);
-      showAt("#badge", 16.4);
+      // Notificação — wipe 13.11, chegada 13.64 (beat)
+      wipeIn("s4", 13.11);
+      rise("#lock", 13.5, 0.5, 40);
+      tl.fromTo("#notif", { opacity: 0, y: -260 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, 13.64);
+      states([...$$("#nclock span")], [13.64, 14.64, 15.64]);
+      rise("#t4", 14.2, 0.5, 50);
+      // beat-locked: 15.82s (strong cue)
+      tap("#touch4", 120, 800, 15.82);
+      showAt("#badge", 15.82);
 
-      // S5 compras — wipe at 17.5
-      wipeIn("s5", 17.5);
-      rise("#t5", 18.0, 0.55);
-      rise("#t5b", 18.55, 0.5, 30);
-      // beat-grid: linhas em 18.55 / 19.10 / 19.64 / 20.19 (ficam na tela), marcações em strong cues 20.19 / 20.74 / 21.28
-      ["#li1", "#li2", "#li3", "#li4"].forEach((s, i) =>
-        tl.fromTo(s, { opacity: 0, x: 120 }, { opacity: 1, x: 0, duration: 0.45, ease: "power3.out" }, [18.55, 19.1, 19.64, 20.19][i])
-      );
-      ["#li1", "#li2", "#li3"].forEach((s, i) => {
-        const t = [20.19, 20.74, 21.28][i];
-        tl.to(`${s} .ck b`, { opacity: 1, duration: 0.2 }, t);
-        tl.to(`${s} .tx`, { opacity: 0.55, duration: 0.2 }, t);
-      });
+      // Semana real — wipe 16.38
+      wipeIn("sCal", 16.38);
+      rise("#sCal .cap", 16.93, 0.55);
+      deviceIn("#devCal", 16.93);
 
-      // S6 outro — wipe at 21.6, logo no strong cue 21.83
+      // Compras real — wipe 18.55 (strong cue)
+      // beat-locked: 18.55s
+      wipeIn("sShop", 18.55);
+      rise("#sShop .cap", 19.1, 0.55);
+      deviceIn("#devShop", 19.1);
+
+      // Outro — wipe 21.6, logo no strong cue 21.83
       wipeIn("s6", 21.6);
       // beat-locked: 21.83s
       tl.fromTo("#logo", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.6)" }, 21.83);
       rise("#wm", 22.2, 0.5, 40);
       rise("#tag", 22.7, 0.5, 30);
-      tl.fromTo("#s6tile", { opacity: 0, y: 100 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 22.4);
 
       window.__timelines["main"] = tl;
       tl.seek(0);
