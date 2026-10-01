@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -57,6 +58,14 @@ class PluginTimerNotifications implements TimerNotifications {
 
   static const _runningChannel = 'timer_running';
 
+  /// Ícone da barra de status: silhueta própria (`res/drawable-*/ic_stat_receyta.png`, gerado de assets/brand/logoIcon.png por tool/gen_notification_icon.dart)
+  /// — o ícone do app não serve, o Android o pinta como um bloco branco.
+  static const _statusIcon = 'ic_stat_receyta';
+
+  /// Cor de destaque da notificação (o `lime` da marca): tinge o ícone e o
+  /// nome do app na gaveta.
+  static const _accent = Color(0xFFD6F45A);
+
   /// Android fixa som e vibração no CANAL (não na notificação): um canal pra
   /// cada combinação das chaves de vibrar/som da faixa de timers.
   static String _alarmChannel({required bool vibrate, required bool sound}) =>
@@ -72,7 +81,7 @@ class PluginTimerNotifications implements TimerNotifications {
     try {
       await _plugin.initialize(
         const InitializationSettings(
-          android: AndroidInitializationSettings('@mipmap/launcher_icon'),
+          android: AndroidInitializationSettings(_statusIcon),
         ),
         onDidReceiveNotificationResponse: (response) {
           final id = response.payload;
@@ -164,6 +173,8 @@ class PluginTimerNotifications implements TimerNotifications {
             'Timers em andamento',
             channelDescription:
                 'O relógio regressivo dos timers do modo cozinha.',
+            icon: _statusIcon,
+            color: _accent,
             importance: Importance.low,
             priority: Priority.low,
             ongoing: true,
@@ -199,6 +210,8 @@ class PluginTimerNotifications implements TimerNotifications {
             _alarmChannel(vibrate: vibrate, sound: sound),
             _alarmChannelName(vibrate: vibrate, sound: sound),
             channelDescription: 'Aviso de que um timer do modo cozinha acabou.',
+            icon: _statusIcon,
+            color: _accent,
             importance: Importance.max,
             priority: Priority.max,
             category: AndroidNotificationCategory.alarm,
@@ -244,6 +257,8 @@ class PluginTimerNotifications implements TimerNotifications {
             'Timers em andamento',
             channelDescription:
                 'O relógio regressivo dos timers do modo cozinha.',
+            icon: _statusIcon,
+            color: _accent,
             importance: Importance.low,
             priority: Priority.low,
             ongoing: true,
