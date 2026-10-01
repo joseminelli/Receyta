@@ -11,17 +11,28 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 
-/// Escolha do sheet: `listId` nulo = lista nova só com esta receita.
+/// Escolha do sheet: `listId` nulo = lista nova só com estas receitas.
 typedef _ListChoice = ({String? listId});
 
-/// "Adicionar à lista de compras" a partir da receita: o usuário escolhe uma
-/// lista existente (os ingredientes somam com os itens iguais) ou uma nova.
-/// Ao terminar, avisa e oferece abrir a lista.
+/// "Adicionar à lista de compras" a partir da receita. Ver
+/// [addRecipesToShoppingListFlow].
 Future<void> addRecipeToShoppingListFlow(
   BuildContext context,
   WidgetRef ref,
   String recipeId,
-) async {
+) =>
+    addRecipesToShoppingListFlow(context, ref, {recipeId: 1});
+
+/// O usuário escolhe uma lista existente (os ingredientes somam com os itens
+/// iguais) ou uma nova pras receitas de [counts] (id → quantas vezes). Ao
+/// terminar, avisa e oferece abrir a lista. [newListName] nomeia a lista
+/// nova; sem ele, vale o nome padrão com a data.
+Future<void> addRecipesToShoppingListFlow(
+  BuildContext context,
+  WidgetRef ref,
+  Map<String, int> counts, {
+  String? newListName,
+}) async {
   final router = GoRouter.of(context);
   final lists =
       ref.read(shoppingListsProvider).valueOrNull ?? const <ShoppingListSummary>[];
@@ -38,21 +49,25 @@ Future<void> addRecipeToShoppingListFlow(
   final String listName;
   final Result<Object?> result;
   if (choice.listId == null) {
-    final created = await repo.generateFromRecipes([recipeId]);
+    final created = await repo.generateFromRecipes(
+      counts.keys.toList(),
+      name: newListName,
+      counts: counts,
+    );
     listId = created is Ok<ShoppingList> ? created.value.id : null;
     listName = created is Ok<ShoppingList> ? created.value.name : '';
     result = created;
   } else {
     listId = choice.listId;
     listName = lists.firstWhere((s) => s.list.id == listId).list.name;
-    result = await repo.addRecipeToList(choice.listId!, recipeId);
+    result = await repo.addRecipesToList(choice.listId!, counts);
   }
 
   result.when(
     ok: (_) => showAppSnackBar(
       message: choice.listId == null
           ? 'Lista criada: $listName'
-          : 'Adicionada a "$listName"',
+          : 'Adicionado a "$listName"',
       actionLabel: 'Ver lista',
       onAction: () => router.push('/shopping/$listId'),
     ),

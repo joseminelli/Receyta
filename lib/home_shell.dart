@@ -6,13 +6,12 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
+import 'package:receyta/features/planner/screens/week_page.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_lists_page.dart';
 import 'package:receyta/theme/app_theme.dart';
-import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
-import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Casca do app: as quatro seções (§9.2) sob a `PillNavBar` flutuante
@@ -117,11 +116,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             index: _tab,
             children: [
               const RecipesPage(),
-              _ComingSoon(
-                'Semana',
-                icon: Icons.calendar_today_rounded,
-                color: colors.violet,
-              ),
+              const WeekPage(),
               const ShoppingListsPage(),
               const AccountPage(),
             ],
@@ -147,35 +142,6 @@ class _HomeShellState extends ConsumerState<HomeShell> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ComingSoon extends StatelessWidget {
-  const _ComingSoon(this.section, {required this.icon, required this.color});
-
-  final String section;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final foreground =
-        color.computeLuminance() > 0.5 ? colors.ink : colors.onSaturated;
-    return SafeArea(
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            StateBadge(icon: icon, background: color, foreground: foreground),
-            const SizedBox(height: AppSpacing.lg),
-            Text(section, style: context.texts.displaySmall),
-            const SizedBox(height: AppSpacing.xs),
-            Text('Em breve', style: context.texts.bodyMedium),
-          ],
-        ),
       ),
     );
   }

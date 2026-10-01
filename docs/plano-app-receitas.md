@@ -767,8 +767,22 @@ Esforço em dias de trabalho focado.
     agregador; agora soma entre si.
   - **Fora do bloco E**: F3 (lista a partir da semana) e o "levar pendentes pra
     outra lista" seguem em aberto.
-- **Bloco F em diante** — não começado. Próximo passo real: **F1** (tela
-  semanal).
+- **Bloco F (F1–F3)** — ✅ entregue em 2026-10-01; **F4/F5 (similaridade e
+  sugestão) não começados**.
+  - **F1**: aba "Semana" real. Faixa com os 7 dias (segunda a domingo) com
+    pontinhos de quantas refeições cada um tem, semana anterior/próxima, "Hoje";
+    o dia escolhido detalhado em Café/Almoço/Jantar/Lanche, cada um com "+" pra
+    agendar (busca de receita no sheet). Tabela `meal_plan_entries` já existia
+    desde o A7 — **sem mudança de schema**. Visão mensal (RF-04.1) não entrou.
+  - **F2**: mover por **arrastar** a refeição até outro dia da faixa (ou outra
+    refeição do mesmo dia), ou pelo ⋯ ("Mover para…" / "Duplicar para…", com
+    "Outra data…"); deslizar → marca como feita, ← remove com "Desfazer".
+  - **F3**: botão de carrinho no topo gera/soma a lista de compras da semana
+    mostrada: só refeições **ainda não feitas e de hoje em diante**; receita
+    agendada 2× entra em dobro (`generateFromRecipes(counts:)` /
+    `addRecipesToList`); receita já presente na lista escolhida é pulada.
+  - Fora do previsto: `core/day.dart` (datas de calendário em UTC).
+- **Próximo passo real**: **F4** (similaridade por IDF, Dart puro) → F5.
 
 ---
 

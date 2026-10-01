@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
@@ -23,6 +25,9 @@ Widget _host() => ProviderScope(
         ),
         // A aba Compras é montada de cara pelo `IndexedStack`, mesmo sem
         // trocar de aba — sem isto cairia no banco de verdade.
+        weekEntriesProvider.overrideWith(
+          (ref) => Stream.value(const <MealPlanEntry>[]),
+        ),
         shoppingListsProvider
             .overrideWith((ref) => Stream.value(const <ShoppingListSummary>[])),
       ],
@@ -43,20 +48,20 @@ void main() {
     expect(find.text('Em breve'), findsNothing);
   });
 
-  testWidgets('trocar de aba mostra o placeholder e o estado é preservado',
+  testWidgets('trocar de aba mostra a semana e o estado da home é preservado',
       (tester) async {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel('Semana'));
     await tester.pumpAndSettle();
-    expect(find.text('Em breve'), findsOneWidget);
+    expect(find.text('Nada planejado'), findsNWidgets(4));
 
     expect(find.byType(RecipesPage, skipOffstage: false), findsOneWidget);
 
     await tester.tap(find.bySemanticsLabel('Receitas'));
     await tester.pumpAndSettle();
-    expect(find.text('Em breve'), findsNothing);
+    expect(find.text('Nada planejado'), findsNothing);
   });
 
   testWidgets('aba Compras mostra a tela de compras de verdade (não placeholder)',

@@ -34,9 +34,13 @@ class ShoppingListRepository {
   /// Gera uma lista nova a partir das receitas selecionadas (RF-05.1):
   /// busca os ingredientes de todas, agrega (E1) e grava lista + itens +
   /// origem numa transação. Recusa quando não há nada pra agregar.
+  ///
+  /// [counts] diz quantas vezes cada receita entra (receita feita duas vezes
+  /// na semana pede o dobro dos ingredientes); ausente = uma vez cada.
   Future<Result<ShoppingList>> generateFromRecipes(
     List<String> recipeIds, {
     String? name,
+    Map<String, int>? counts,
   }) async {
     if (recipeIds.isEmpty) {
       return const Err(ValidationFailure('Escolha ao menos uma receita.'));
@@ -56,8 +60,8 @@ class ShoppingListRepository {
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
 
-      final lines = [for (final r in rows) _lineToDomain(r, namesById)];
-      final aggregated = aggregateIngredients(lines);
+      final aggregated =
+          aggregateIngredients(_repeatedLines(rows, namesById, counts));
 
       final at = _clock().toUtc();
       final trimmed = name?.trim() ?? '';
@@ -72,22 +76,43 @@ class ShoppingListRepository {
     }
   }
 
-  /// Junta uma receita numa lista que já existe (RF-05.1): os ingredientes
-  /// somam com os itens iguais e o resto entra no fim. Recusa receita sem
-  /// ingrediente e receita que já contribuiu pra essa lista (somaria em
-  /// dobro sem o usuário perceber).
-  Future<Result<void>> addRecipeToList(String listId, String recipeId) async {
+  /// Junta uma receita numa lista que já existe (RF-05.1). Ver
+  /// [addRecipesToList].
+  Future<Result<void>> addRecipeToList(String listId, String recipeId) =>
+      addRecipesToList(listId, {recipeId: 1});
+
+  /// Junta receitas ([counts]: id → quantas vezes) numa lista que já existe:
+  /// os ingredientes somam com os itens iguais e o resto entra no fim.
+  /// Receita que já contribuiu pra essa lista é pulada (somaria em dobro sem
+  /// o usuário perceber); sem sobrar nenhuma com ingrediente, recusa.
+  Future<Result<void>> addRecipesToList(
+    String listId,
+    Map<String, int> counts,
+  ) async {
+    final plural = counts.length > 1;
     try {
-      final rows = await _recipeDao.ingredientsForRecipes([recipeId]);
-      if (rows.isEmpty) {
-        return const Err(
-          ValidationFailure('Essa receita não tem ingredientes.'),
-        );
-      }
       final items = await _dao.itemsOf(listId);
       final sources = await _dao.sourcesOf([for (final i in items) i.id]);
-      if (sources.any((s) => s.recipeId == recipeId)) {
-        return const Err(ValidationFailure('Essa receita já está na lista.'));
+      final already = {for (final s in sources) s.recipeId};
+      final fresh = {
+        for (final e in counts.entries)
+          if (!already.contains(e.key)) e.key: e.value,
+      };
+      if (fresh.isEmpty) {
+        return Err(ValidationFailure(
+          plural
+              ? 'Essas receitas já estão na lista.'
+              : 'Essa receita já está na lista.',
+        ));
+      }
+
+      final rows = await _recipeDao.ingredientsForRecipes(fresh.keys.toList());
+      if (rows.isEmpty) {
+        return Err(ValidationFailure(
+          plural
+              ? 'Essas receitas não têm ingredientes.'
+              : 'Essa receita não tem ingredientes.',
+        ));
       }
 
       final ingredientIds = {
@@ -96,16 +121,29 @@ class ShoppingListRepository {
       }.toList();
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
-      final aggregated = aggregateIngredients(
-        [for (final r in rows) _lineToDomain(r, namesById)],
-      );
+      final aggregated =
+          aggregateIngredients(_repeatedLines(rows, namesById, fresh));
 
       await _dao.addAggregated(listId, aggregated);
       return const Ok(null);
     } catch (e) {
-      debugPrint('ShoppingListRepository.addRecipeToList: $e');
+      debugPrint('ShoppingListRepository.addRecipesToList: $e');
       return Err(DatabaseFailure('Falha ao adicionar à lista', cause: e));
     }
+  }
+
+  /// Linhas de ingrediente, cada uma repetida [counts] vezes pra receita
+  /// dela (o agregador soma as repetições numa origem só).
+  List<RecipeIngredient> _repeatedLines(
+    List<RecipeIngredientRow> rows,
+    Map<String, String> namesById,
+    Map<String, int>? counts,
+  ) {
+    return [
+      for (final r in rows)
+        for (var n = 0; n < (counts?[r.recipeId] ?? 1); n++)
+          _lineToDomain(r, namesById),
+    ];
   }
 
   Stream<List<ShoppingList>> watchAll() =>
