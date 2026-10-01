@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/data/services/alarm_driver.dart';
+import 'package:receyta/data/services/timer_notification_actions.dart';
 import 'package:receyta/data/services/timer_notifications.dart';
+import 'package:receyta/data/services/timers_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
@@ -509,4 +511,132 @@ void main() {
       expect(c2.read(cookingTimersProvider), isEmpty);
     });
   });
+
+  group('segundo plano e botões da notificação', () {
+    Future<void> settle() async {
+      for (var i = 0; i < 4; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    TimerNotificationActions buttons() => TimerNotificationActions(
+          store: PrefsTimersStore(),
+          notifications: notifications,
+          alertFlags: () async => (vibrate: true, sound: false),
+          clock: () => now,
+        );
+
+    test(
+        'minimizado, a tela se cala: não grava por cima do que a notificação gravou',
+        () async {
+      final id = notifier().start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 10),
+      );
+      await settle();
+      await notifier().onBackground();
+
+      // Com o app vivo em segundo plano, o relógio da tela ainda poderia
+      // girar e regravar o estado antigo. Não pode.
+      advance(const Duration(minutes: 3));
+      await settle();
+      final stored = await PrefsTimersStore().load();
+      expect(stored!.single.remaining, const Duration(minutes: 10));
+
+      // Botão "Pausar" da notificação 5 min depois.
+      now = now.add(const Duration(minutes: 2));
+      await buttons().handle(actionId: kTimerActionPause, timerId: id);
+      advance(const Duration(minutes: 1)); // a tela segue quieta
+      await settle();
+      expect((await PrefsTimersStore().load())!.single.isPaused, isTrue);
+    });
+
+    test('na volta, o que os botões fizeram vale (pausar, +1 min, parar)',
+        () async {
+      final a = notifier().start(
+        recipeId: 'r1',
+        label: 'a',
+        duration: const Duration(minutes: 10),
+      );
+      final b = notifier().start(
+        recipeId: 'r1',
+        label: 'b',
+        duration: const Duration(minutes: 20),
+      );
+      final c = notifier().start(
+        recipeId: 'r1',
+        label: 'c',
+        duration: const Duration(minutes: 30),
+      );
+      await settle();
+      await notifier().onBackground();
+
+      now = now.add(const Duration(minutes: 4));
+      await buttons().handle(actionId: kTimerActionPause, timerId: a);
+      await buttons().handle(actionId: kTimerActionPlusMinute, timerId: b);
+      await buttons().handle(actionId: kTimerActionStop, timerId: c);
+
+      await notifier().onForeground();
+
+      expect(timers().map((t) => t.id), [a, b]);
+      final ta = timers().firstWhere((t) => t.id == a);
+      expect(ta.isPaused, isTrue);
+      expect(ta.remaining, const Duration(minutes: 6));
+      final tb = timers().firstWhere((t) => t.id == b);
+      expect(tb.isRunning, isTrue);
+      expect(tb.remaining, const Duration(minutes: 17)); // 20 - 4 + 1
+    });
+
+    test('na volta o relógio da tela volta a girar (e para de novo ao pausar)',
+        () async {
+      final id = notifier().start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 5),
+      );
+      await settle();
+      await notifier().onBackground();
+      now = now.add(const Duration(minutes: 1));
+      await notifier().onForeground();
+
+      advance(const Duration(minutes: 1));
+      expect(timers().single.remaining, const Duration(minutes: 3));
+      notifier().pause(id);
+      expect(timers().single.isPaused, isTrue);
+    });
+
+    test('nada guardado na volta não zera a lista da tela', () async {
+      final fresh = ProviderContainer(
+        overrides: [
+          cookingClockProvider.overrideWithValue(() => now),
+          cookingAlertProvider.overrideWithValue(() => alerts++),
+          alarmDriverProvider.overrideWithValue(driver),
+          timerNotificationsProvider.overrideWithValue(notifications),
+          timersStoreProvider.overrideWithValue(_NullStore()),
+        ],
+      );
+      addTearDown(fresh.dispose);
+      final n = fresh.read(cookingTimersProvider.notifier);
+      n.start(
+        recipeId: 'r1',
+        label: 'x',
+        duration: const Duration(minutes: 5),
+      );
+
+      await n.onBackground();
+      await n.onForeground();
+
+      expect(fresh.read(cookingTimersProvider), hasLength(1));
+    });
+  });
+}
+
+/// Um disco que nunca tem nada (ou que falhou): `load` devolve `null`.
+class _NullStore implements TimersStore {
+  @override
+  Future<List<CookingTimer>?> load() async => null;
+
+  @override
+  Future<void> save(List<CookingTimer> timers) async {}
 }

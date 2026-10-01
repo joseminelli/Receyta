@@ -32,6 +32,21 @@ class CookingAlertSettings {
   int get hashCode => Object.hash(vibrate, sound);
 }
 
+/// Lê as chaves direto do disco, sem Riverpod — é o que o segundo plano da
+/// notificação usa (escolher o canal de aviso certo pra combinação vibrar/som).
+Future<CookingAlertSettings> loadCookingAlertSettings() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
+    return CookingAlertSettings(
+      vibrate: prefs.getBool(_kVibrate) ?? true,
+      sound: prefs.getBool(_kSound) ?? false,
+    );
+  } catch (_) {
+    return const CookingAlertSettings();
+  }
+}
+
 class CookingAlertSettingsNotifier extends Notifier<CookingAlertSettings> {
   /// Chaves que o usuário já mexeu antes da leitura do disco terminar: o que
   /// ele escolheu vale, e a leitura só preenche as que ele ainda não tocou

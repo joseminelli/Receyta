@@ -1,8 +1,14 @@
+import 'dart:ui' show DartPluginRegistrant;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:timezone/timezone.dart' as tz;
+
+import 'package:receyta/data/services/timer_notification_actions.dart';
+import 'package:receyta/data/services/timers_store.dart';
+import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 
 /// Timers do modo cozinha como notificação do sistema: ficam à vista com o app
 /// minimizado (relógio regressivo na própria notificação) e, na hora certa,
@@ -48,6 +54,48 @@ abstract class TimerNotifications {
 int _ongoingId(int timerId) => timerId * 2;
 int _alarmId(int timerId) => timerId * 2 + 1;
 
+/// O `payload` leva a receita (pro toque) e o timer (pros botões).
+String _payload(String recipeId, int timerId) => '$recipeId|$timerId';
+
+({String recipeId, int timerId})? _parsePayload(String? payload) {
+  if (payload == null) return null;
+  final i = payload.lastIndexOf('|');
+  if (i <= 0) return null;
+  final timerId = int.tryParse(payload.substring(i + 1));
+  if (timerId == null) return null;
+  return (recipeId: payload.substring(0, i), timerId: timerId);
+}
+
+/// Um botão da notificação foi tocado: pausar/retomar/+1 min/parar/repetir,
+/// sobre os timers guardados. Roda no isolate principal (app vivo em segundo
+/// plano) ou no de segundo plano ([timerNotificationBackgroundHandler]).
+Future<void> _runAction(NotificationResponse response) async {
+  final actionId = response.actionId;
+  final ref = _parsePayload(response.payload);
+  if (actionId == null || actionId.isEmpty || ref == null) return;
+  final notifications = PluginTimerNotifications();
+  await notifications.init();
+  await TimerNotificationActions(
+    store: PrefsTimersStore(),
+    notifications: notifications,
+    alertFlags: () async {
+      final s = await loadCookingAlertSettings();
+      return (vibrate: s.vibrate, sound: s.sound);
+    },
+  ).handle(actionId: actionId, timerId: ref.timerId);
+}
+
+/// Ponto de entrada do isolate de segundo plano pros botões da notificação
+/// (o app minimizado ou até fechado). Função de topo, de propósito: o Android
+/// a chama pelo nome.
+@pragma('vm:entry-point')
+Future<void> timerNotificationBackgroundHandler(
+  NotificationResponse response,
+) async {
+  DartPluginRegistrant.ensureInitialized();
+  await _runAction(response);
+}
+
 class PluginTimerNotifications implements TimerNotifications {
   PluginTimerNotifications([FlutterLocalNotificationsPlugin? plugin])
       : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
@@ -65,6 +113,52 @@ class PluginTimerNotifications implements TimerNotifications {
   /// Cor de destaque da notificação (o `lime` da marca): tinge o ícone e o
   /// nome do app na gaveta.
   static const _accent = Color(0xFFD6F45A);
+
+  /// Imagem à esquerda da notificação: o cloche do Receyta em branco sobre o
+  /// laranja da marca com a textura de arcos
+  /// (`res/drawable-nodpi/ic_notification_large.png`, gerado por
+  /// `tool/gen_notification_icon.dart`).
+  static const _largeIcon =
+      DrawableResourceAndroidBitmap('ic_notification_large');
+
+  /// Botões. Os de ação não abrem o app (`showsUserInterface: false`): rodam
+  /// em segundo plano sobre os timers guardados.
+  static const _pauseAction = AndroidNotificationAction(
+    kTimerActionPause,
+    'Pausar',
+    showsUserInterface: false,
+    cancelNotification: false,
+  );
+  static const _resumeAction = AndroidNotificationAction(
+    kTimerActionResume,
+    'Retomar',
+    showsUserInterface: false,
+    cancelNotification: false,
+  );
+  static const _plusMinuteAction = AndroidNotificationAction(
+    kTimerActionPlusMinute,
+    '+1 min',
+    showsUserInterface: false,
+    cancelNotification: false,
+  );
+  static const _stopAction = AndroidNotificationAction(
+    kTimerActionStop,
+    'Parar',
+    showsUserInterface: false,
+    cancelNotification: true,
+  );
+  static const _restartAction = AndroidNotificationAction(
+    kTimerActionRestart,
+    'Repetir',
+    showsUserInterface: false,
+    cancelNotification: true,
+  );
+
+  static String _hhmm(DateTime t) {
+    final l = t.toLocal();
+    return '${l.hour.toString().padLeft(2, '0')}:'
+        '${l.minute.toString().padLeft(2, '0')}';
+  }
 
   /// Android fixa som e vibração no CANAL (não na notificação): um canal pra
   /// cada combinação das chaves de vibrar/som da faixa de timers.
@@ -84,9 +178,16 @@ class PluginTimerNotifications implements TimerNotifications {
           android: AndroidInitializationSettings(_statusIcon),
         ),
         onDidReceiveNotificationResponse: (response) {
-          final id = response.payload;
-          if (id != null && id.isNotEmpty) _onTap?.call(id);
+          // Botão: mexe nos timers guardados. Toque no corpo: abre a receita.
+          if (response.actionId != null && response.actionId!.isNotEmpty) {
+            _runAction(response);
+            return;
+          }
+          final ref = _parsePayload(response.payload);
+          if (ref != null) _onTap?.call(ref.recipeId);
         },
+        onDidReceiveBackgroundNotificationResponse:
+            timerNotificationBackgroundHandler,
       );
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
@@ -166,7 +267,7 @@ class PluginTimerNotifications implements TimerNotifications {
       await _plugin.show(
         _ongoingId(timerId),
         title,
-        'Timer em andamento',
+        'Termina às ${_hhmm(endsAt)}',
         NotificationDetails(
           android: AndroidNotificationDetails(
             _runningChannel,
@@ -174,7 +275,9 @@ class PluginTimerNotifications implements TimerNotifications {
             channelDescription:
                 'O relógio regressivo dos timers do modo cozinha.',
             icon: _statusIcon,
+            largeIcon: _largeIcon,
             color: _accent,
+            actions: const [_pauseAction, _plusMinuteAction, _stopAction],
             importance: Importance.low,
             priority: Priority.low,
             ongoing: true,
@@ -189,7 +292,7 @@ class PluginTimerNotifications implements TimerNotifications {
             visibility: NotificationVisibility.public,
           ),
         ),
-        payload: recipeId,
+        payload: _payload(recipeId, timerId),
       );
 
       // Aviso final, na hora certa. Alarme exato se o usuário permitiu;
@@ -211,7 +314,9 @@ class PluginTimerNotifications implements TimerNotifications {
             _alarmChannelName(vibrate: vibrate, sound: sound),
             channelDescription: 'Aviso de que um timer do modo cozinha acabou.',
             icon: _statusIcon,
+            largeIcon: _largeIcon,
             color: _accent,
+            actions: const [_restartAction, _stopAction],
             importance: Importance.max,
             priority: Priority.max,
             category: AndroidNotificationCategory.alarm,
@@ -226,7 +331,7 @@ class PluginTimerNotifications implements TimerNotifications {
         androidScheduleMode: exact
             ? AndroidScheduleMode.alarmClock
             : AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: recipeId,
+        payload: _payload(recipeId, timerId),
       );
     } catch (e) {
       debugPrint('TimerNotifications.showRunning: $e');
@@ -258,7 +363,9 @@ class PluginTimerNotifications implements TimerNotifications {
             channelDescription:
                 'O relógio regressivo dos timers do modo cozinha.',
             icon: _statusIcon,
+            largeIcon: _largeIcon,
             color: _accent,
+            actions: [_resumeAction, _plusMinuteAction, _stopAction],
             importance: Importance.low,
             priority: Priority.low,
             ongoing: true,
@@ -268,7 +375,7 @@ class PluginTimerNotifications implements TimerNotifications {
             visibility: NotificationVisibility.public,
           ),
         ),
-        payload: recipeId,
+        payload: _payload(recipeId, timerId),
       );
     } catch (e) {
       debugPrint('TimerNotifications.showPaused: $e');

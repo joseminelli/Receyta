@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:receyta/data/services/alarm_driver.dart';
 import 'package:receyta/data/services/timer_notifications.dart';
+import 'package:receyta/data/services/timers_store.dart';
+import 'package:receyta/domain/models/cooking_timer.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
+
+export 'package:receyta/domain/models/cooking_timer.dart';
 
 /// Relógio dos timers — injetável pra teste (o relógio de verdade fica de fora).
 final cookingClockProvider =
@@ -26,111 +29,16 @@ final cookingAlertProvider = Provider<void Function()>((ref) {
   };
 });
 
-enum TimerPhase { running, paused, finished }
-
-/// Um timer do modo cozinha. `key` identifica de onde veio ("cook" pro tempo
-/// de cozimento da receita, "step-2-0" pro primeiro tempo do passo 3) — assim
-/// o mesmo botão sabe se o timer dele já existe. `endsAt` só vale rodando;
-/// parado, o que sobra está em `remaining`.
-@immutable
-class CookingTimer {
-  const CookingTimer({
-    required this.id,
-    required this.recipeId,
-    this.recipeName = '',
-    required this.label,
-    required this.total,
-    required this.remaining,
-    required this.phase,
-    this.key,
-    this.endsAt,
-    this.finishedAt,
-  });
-
-  final int id;
-  final String recipeId;
-
-  /// Nome da receita, pra faixa global dizer de qual é ("Frango · Passo 2").
-  final String recipeName;
-  final String? key;
-  final String label;
-  final Duration total;
-  final Duration remaining;
-  final TimerPhase phase;
-  final DateTime? endsAt;
-  final DateTime? finishedAt;
-
-  bool get isRunning => phase == TimerPhase.running;
-  bool get isFinished => phase == TimerPhase.finished;
-
-  /// Pra guardar no aparelho: o timer sobrevive ao app ser fechado ou morto
-  /// em segundo plano (o horário de fim é o que manda).
-  Map<String, Object?> toJson() => {
-        'id': id,
-        'recipeId': recipeId,
-        'recipeName': recipeName,
-        'key': key,
-        'label': label,
-        'total': total.inMilliseconds,
-        'remaining': remaining.inMilliseconds,
-        'phase': phase.name,
-        'endsAt': endsAt?.millisecondsSinceEpoch,
-        'finishedAt': finishedAt?.millisecondsSinceEpoch,
-      };
-
-  static CookingTimer? fromJson(Map<String, Object?> json) {
-    try {
-      DateTime? at(Object? ms) => ms == null
-          ? null
-          : DateTime.fromMillisecondsSinceEpoch(ms as int, isUtc: true);
-      return CookingTimer(
-        id: json['id']! as int,
-        recipeId: json['recipeId']! as String,
-        recipeName: (json['recipeName'] as String?) ?? '',
-        key: json['key'] as String?,
-        label: json['label']! as String,
-        total: Duration(milliseconds: json['total']! as int),
-        remaining: Duration(milliseconds: json['remaining']! as int),
-        phase: TimerPhase.values.byName(json['phase']! as String),
-        endsAt: at(json['endsAt']),
-        finishedAt: at(json['finishedAt']),
-      );
-    } catch (_) {
-      return null; // registro estragado: ignora, não derruba o app
-    }
-  }
-
-  CookingTimer copyWith({
-    Duration? remaining,
-    TimerPhase? phase,
-    DateTime? endsAt,
-    bool clearEndsAt = false,
-    DateTime? finishedAt,
-    bool clearFinishedAt = false,
-  }) =>
-      CookingTimer(
-        id: id,
-        recipeId: recipeId,
-        recipeName: recipeName,
-        key: key,
-        label: label,
-        total: total,
-        remaining: remaining ?? this.remaining,
-        phase: phase ?? this.phase,
-        endsAt: clearEndsAt ? null : (endsAt ?? this.endsAt),
-        finishedAt: clearFinishedAt ? null : (finishedAt ?? this.finishedAt),
-      );
-}
-
 /// Timers de cozinha (G1): vários ao mesmo tempo, cada um por receita. Sair do
 /// modo cozinha pra olhar outra coisa não os derruba, e eles ficam guardados no
 /// aparelho (sobrevivem ao app ser morto). O tempo é calculado pelo horário de
 /// fim (`endsAt`), não por contagem de ticks.
 ///
 /// Com o app minimizado ([onBackground]) cada timer vira uma notificação do
-/// sistema — relógio regressivo à vista e um aviso agendado pra hora certa,
-/// que toca/vibra mesmo com o app em segundo plano. Ao voltar ([onForeground])
-/// as notificações saem e a tela assume de novo.
+/// sistema — relógio regressivo à vista, botões (pausar, +1 min, parar) e um
+/// aviso agendado pra hora certa, que toca/vibra mesmo com o app em segundo
+/// plano. Os botões mexem nos timers guardados; ao voltar ([onForeground]) o
+/// app relê o que foi guardado, as notificações saem e a tela assume.
 class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
   /// Depois de acabar o alerta repete a cada [_repeatEvery] por até
   /// [_alertFor] — se você está de mão suja longe do celular, ele insiste.
@@ -141,11 +49,15 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
   /// notificação já avisou, então a tela não vibra/toca de novo na volta.
   static const _staleAfter = Duration(seconds: 5);
 
-  static const _prefsKey = 'cooking_timers_v1';
   static const _askedPermissionsKey = 'timer_notifications_asked';
 
   Timer? _ticker;
   int _nextId = 1;
+
+  /// Com o app minimizado a notificação é quem manda (os botões dela mexem nos
+  /// timers guardados). A tela fica quieta: sem relógio de 1 s e sem gravar o
+  /// estado dela por cima do que a notificação gravou.
+  bool _inBackground = false;
 
   @override
   List<CookingTimer> build() {
@@ -158,46 +70,48 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
 
   void _set(List<CookingTimer> timers) {
     state = timers;
-    _persist();
+    if (!_inBackground) _persist();
   }
 
-  /// Lê os timers guardados: rodando recalcula pelo horário de fim (se já
-  /// passou, está "pronto"), parado fica como estava.
-  Future<void> _restore() async {
+  /// Rodando recalcula pelo horário de fim (se já passou, está "pronto", com o
+  /// fim de verdade como hora em que acabou); parado fica como estava.
+  CookingTimer _recalc(CookingTimer t, DateTime now) {
+    if (!t.isRunning || t.endsAt == null) return t;
+    final left = t.endsAt!.difference(now);
+    return left <= Duration.zero
+        ? t.copyWith(
+            remaining: Duration.zero,
+            phase: TimerPhase.finished,
+            clearEndsAt: true,
+            finishedAt: t.endsAt,
+          )
+        : t.copyWith(remaining: left);
+  }
+
+  /// Lê os timers guardados. Na abertura, só acrescenta (o usuário pode ter
+  /// iniciado um antes da leitura terminar); com [replace], na volta de
+  /// segundo plano, a lista guardada manda — os botões da notificação
+  /// pausaram/cancelaram timers lá.
+  Future<void> _restore({bool replace = false}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_prefsKey);
-      if (raw == null) return;
+      final stored = await ref.read(timersStoreProvider).load();
+      if (stored == null) return;
       final now = _now();
-      final restored = <CookingTimer>[];
-      for (final item in jsonDecode(raw) as List<Object?>) {
-        final t = CookingTimer.fromJson((item! as Map).cast<String, Object?>());
-        if (t == null) continue;
-        if (t.isRunning && t.endsAt != null) {
-          final left = t.endsAt!.difference(now);
-          restored.add(left <= Duration.zero
-              ? t.copyWith(
-                  remaining: Duration.zero,
-                  phase: TimerPhase.finished,
-                  clearEndsAt: true,
-                  finishedAt: t.endsAt,
-                )
-              : t.copyWith(remaining: left));
-        } else {
-          restored.add(t);
-        }
+      final restored = [for (final t in stored) _recalc(t, now)];
+
+      if (replace) {
+        state = restored;
+      } else {
+        if (restored.isEmpty) return;
+        final liveIds = {for (final t in state) t.id};
+        state = [
+          for (final t in restored)
+            if (!liveIds.contains(t.id)) t,
+          ...state,
+        ];
       }
-      if (restored.isEmpty) return;
-      // O usuário pode ter iniciado um timer antes da leitura terminar.
-      final liveIds = {for (final t in state) t.id};
-      final merged = [
-        for (final t in restored)
-          if (!liveIds.contains(t.id)) t,
-        ...state,
-      ];
-      final maxId = merged.fold<int>(0, (m, t) => t.id > m ? t.id : m);
+      final maxId = state.fold<int>(0, (m, t) => t.id > m ? t.id : m);
       if (maxId >= _nextId) _nextId = maxId + 1;
-      state = merged;
       _syncTicker();
     } catch (e) {
       debugPrint('CookingTimers._restore: $e');
@@ -206,15 +120,7 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
 
   Future<void> _persist() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      if (state.isEmpty) {
-        await prefs.remove(_prefsKey);
-      } else {
-        await prefs.setString(
-          _prefsKey,
-          jsonEncode([for (final t in state) t.toJson()]),
-        );
-      }
+      await ref.read(timersStoreProvider).save(state);
     } catch (e) {
       debugPrint('CookingTimers._persist: $e');
     }
@@ -233,12 +139,15 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     }
   }
 
-  String _title(CookingTimer t) =>
-      [if (t.recipeName.isNotEmpty) t.recipeName, t.label].join(' · ');
-
   /// O app foi pro segundo plano: cada timer vira notificação (rodando: relógio
   /// regressivo + aviso agendado; pausado: o que falta, sem aviso).
   Future<void> onBackground() async {
+    // O disco em dia antes de o processo poder ser morto: os botões da
+    // notificação partem do que está guardado. Dali em diante a tela se cala.
+    await _persist();
+    _inBackground = true;
+    _ticker?.cancel();
+    _ticker = null;
     final svc = ref.read(timerNotificationsProvider);
     final settings = ref.read(cookingAlertSettingsProvider);
     for (final t in state) {
@@ -246,24 +155,27 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
         await svc.showRunning(
           timerId: t.id,
           recipeId: t.recipeId,
-          title: _title(t),
+          title: t.title,
           endsAt: t.endsAt!,
           vibrate: settings.vibrate,
           sound: settings.sound,
         );
-      } else if (t.phase == TimerPhase.paused) {
+      } else if (t.isPaused) {
         await svc.showPaused(
           timerId: t.id,
           recipeId: t.recipeId,
-          title: _title(t),
+          title: t.title,
           remaining: t.remaining,
         );
       }
     }
   }
 
-  /// O app voltou: tira as notificações (a tela assume) e acerta o relógio.
+  /// O app voltou: relê os timers guardados (os botões da notificação podem
+  /// ter pausado/estendido/cancelado), tira as notificações e acerta o relógio.
   Future<void> onForeground() async {
+    _inBackground = false;
+    await _restore(replace: true);
     final svc = ref.read(timerNotificationsProvider);
     for (final t in state) {
       await svc.cancel(t.id);
@@ -309,22 +221,9 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     return id;
   }
 
-  void pause(int id) => _update(id, (t) {
-        if (!t.isRunning) return t;
-        return t.copyWith(
-          remaining: _clamp(t.endsAt!.difference(_now())),
-          phase: TimerPhase.paused,
-          clearEndsAt: true,
-        );
-      });
+  void pause(int id) => _update(id, (t) => t.paused(_now()));
 
-  void resume(int id) => _update(id, (t) {
-        if (t.phase != TimerPhase.paused) return t;
-        return t.copyWith(
-          phase: TimerPhase.running,
-          endsAt: _now().add(t.remaining),
-        );
-      });
+  void resume(int id) => _update(id, (t) => t.resumed(_now()));
 
   void toggle(int id) {
     final t = state.where((t) => t.id == id).firstOrNull;
@@ -332,16 +231,14 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     t.isRunning ? pause(id) : resume(id);
   }
 
+  /// Soma [by] ao que falta (rodando ou pausado).
+  void addTime(int id, Duration by) => _update(id, (t) => t.extended(by));
+
   /// Volta ao tempo inicial e roda de novo (também serve pra "mais uma vez"
   /// num timer que acabou).
   void restart(int id) => _update(id, (t) {
         if (t.isFinished) _stopSound();
-        return t.copyWith(
-          remaining: t.total,
-          phase: TimerPhase.running,
-          endsAt: _now().add(t.total),
-          clearFinishedAt: true,
-        );
+        return t.restarted(_now());
       });
 
   /// Tira o timer da tela (cancelar um em andamento ou dispensar um que
@@ -369,14 +266,9 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
           // Acabou na hora certa -> avisa. Acabou faz tempo (app em segundo
           // plano): a notificação já avisou, não repete.
           if (-left <= _staleAfter) _alert();
-          next.add(t.copyWith(
-            remaining: Duration.zero,
-            phase: TimerPhase.finished,
-            clearEndsAt: true,
-            finishedAt: t.endsAt,
-          ));
+          next.add(_recalc(t, now));
         } else {
-          next.add(t.copyWith(remaining: _clamp(left)));
+          next.add(t.copyWith(remaining: left));
         }
         changed = true;
       } else if (t.isFinished) {
@@ -394,8 +286,6 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
     if (changed) _set(next);
     _syncTicker();
   }
-
-  Duration _clamp(Duration d) => d.isNegative ? Duration.zero : d;
 
   void _update(int id, CookingTimer Function(CookingTimer) change) {
     _set([for (final t in state) t.id == id ? change(t) : t]);
@@ -421,6 +311,7 @@ class CookingTimersNotifier extends Notifier<List<CookingTimer>> {
   /// O relógio de 1 s só gira enquanto há algo rodando ou ainda alertando;
   /// sem isso, nada de trabalho de fundo.
   void _syncTicker() {
+    if (_inBackground) return;
     final now = _now();
     final needed = state.any(
       (t) =>
