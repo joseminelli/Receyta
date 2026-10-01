@@ -8,6 +8,7 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/month_page.dart';
 import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 MealPlanEntry _entry(String name, DateTime day, MealType meal) =>
@@ -42,7 +43,7 @@ Widget _host(
   );
   return ProviderScope(
     overrides: [
-      monthEntriesProvider.overrideWith((ref) => Stream.value(entries)),
+      monthEntriesProvider.overrideWith((ref, month) => Stream.value(entries)),
       upcomingEntriesProvider
           .overrideWith((ref, from) => Stream.value(upcoming)),
     ],
@@ -189,5 +190,23 @@ void main() {
           (w.tooltip ?? '').startsWith('Lista de compras da semana'),
     );
     expect(enabled, findsOneWidget);
+  });
+
+  testWidgets('arrastar a grade com o dedo passa de mês', (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host(const []));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(SlidePager), const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(monthLong(addMonths(firstOfMonth(today()), 1))),
+      findsOneWidget,
+    );
+
+    await tester.drag(find.byType(SlidePager), const Offset(250, 0));
+    await tester.pumpAndSettle();
+    expect(find.text(monthLong(today())), findsOneWidget);
+    expect(find.text('Hoje'), findsNothing);
   });
 }

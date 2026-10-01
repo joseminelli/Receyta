@@ -16,7 +16,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
-import 'package:receyta/widgets/slide_switcher.dart';
+import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -49,9 +49,9 @@ class _DayPageState extends ConsumerState<DayPage> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    // O dia vira variável local: o filho que está saindo, durante o deslize,
-    // continua mostrando o dia dele e não o novo.
-    final day = _day;
+    // Os dias vizinhos já carregam: o dedo puxa uma página pronta.
+    ref.watch(dayEntriesProvider(addDays(_day, -1)));
+    ref.watch(dayEntriesProvider(addDays(_day, 1)));
 
     return Scaffold(
       backgroundColor: colors.paper,
@@ -60,26 +60,32 @@ class _DayPageState extends ConsumerState<DayPage> {
           children: [
             _buildTopBar(context),
             Expanded(
-              child: SlideSwitcher(
-                index: day.difference(DateTime.utc(1970)).inDays,
-                child: Consumer(
-                  builder: (context, ref, _) {
-                    final entriesAsync = ref.watch(dayEntriesProvider(day));
-                    final entries = [
-                      for (final e in entriesAsync.valueOrNull ??
-                          const <MealPlanEntry>[])
-                        if (!_removed.contains(e.id)) e,
-                    ];
-                    return entriesAsync.isLoading && entries.isEmpty
-                        ? const Center(child: BrandLoader())
-                        : _buildMeals(context, day, entries);
-                  },
-                ),
+              child: SlidePager(
+                index: dayIndex(_day),
+                onChanged: (i) => setState(() => _day = dayFromIndex(i)),
+                builder: (i) => _buildDayBody(dayFromIndex(i)),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Um dia inteiro (as refeições dele). Cada página observa o próprio dia —
+  /// por isso a que está saindo, durante o deslize, não troca de conteúdo.
+  Widget _buildDayBody(DateTime day) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final entriesAsync = ref.watch(dayEntriesProvider(day));
+        final entries = [
+          for (final e in entriesAsync.valueOrNull ?? const <MealPlanEntry>[])
+            if (!_removed.contains(e.id)) e,
+        ];
+        return entriesAsync.isLoading && entries.isEmpty
+            ? const Center(child: BrandLoader())
+            : _buildMeals(context, day, entries);
+      },
     );
   }
 
@@ -151,48 +157,40 @@ class _DayPageState extends ConsumerState<DayPage> {
         heroOwners.putIfAbsent(e.recipeId, () => e.id);
       }
     }
-    return GestureDetector(
-      behavior: HitTestBehavior.translucent,
-      onHorizontalDragEnd: (d) {
-        final v = d.primaryVelocity ?? 0;
-        if (v > 400) _shiftDay(-1);
-        if (v < -400) _shiftDay(1);
-      },
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screen,
-          AppSpacing.xs,
-          AppSpacing.screen,
-          AppSpacing.xxl,
-        ),
-        children: [
-          for (final meal in MealType.values)
-            _MealSection(
-              meal: meal,
-              entries: [
-                for (final e in entries)
-                  if (e.mealType == meal) e,
-              ],
-              onAdd: () => showAddMealSheet(
-                context,
-                day: day,
-                initialMeal: meal,
-              ),
-              onDrop: (entry) => _moveTo(entry, day, meal: meal),
-              buildTile: (entry) => _EntryTile(
-                entry: entry,
-                useHero: heroOwners[entry.recipeId] == entry.id,
-                onOpen: () => context.push(
-                  '/recipe/${entry.recipeId}',
-                  extra: entry.recipe,
-                ),
-                onToggleDone: () => _repo.setDone(entry.id, !entry.done),
-                onRemove: () => _remove(entry),
-                onMenu: () => _openMenu(entry),
-              ),
-            ),
-        ],
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.xs,
+        AppSpacing.screen,
+        AppSpacing.xxl,
       ),
+      children: [
+        for (final meal in MealType.values)
+          _MealSection(
+            meal: meal,
+            entries: [
+              for (final e in entries)
+                if (e.mealType == meal) e,
+            ],
+            onAdd: () => showAddMealSheet(
+              context,
+              day: day,
+              initialMeal: meal,
+            ),
+            onDrop: (entry) => _moveTo(entry, day, meal: meal),
+            buildTile: (entry) => _EntryTile(
+              entry: entry,
+              useHero: heroOwners[entry.recipeId] == entry.id,
+              onOpen: () => context.push(
+                '/recipe/${entry.recipeId}',
+                extra: entry.recipe,
+              ),
+              onToggleDone: () => _repo.setDone(entry.id, !entry.done),
+              onRemove: () => _remove(entry),
+              onMenu: () => _openMenu(entry),
+            ),
+          ),
+      ],
     );
   }
 

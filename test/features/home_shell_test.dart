@@ -29,7 +29,7 @@ Widget _host() => ProviderScope(
           (ref, from) => Stream.value(const <MealPlanEntry>[]),
         ),
         monthEntriesProvider.overrideWith(
-          (ref) => Stream.value(const <MealPlanEntry>[]),
+          (ref, month) => Stream.value(const <MealPlanEntry>[]),
         ),
         shoppingListsProvider
             .overrideWith((ref) => Stream.value(const <ShoppingListSummary>[])),

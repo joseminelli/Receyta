@@ -27,6 +27,19 @@ DateTime firstOfMonth(DateTime day) => DateTime.utc(day.year, day.month);
 DateTime addMonths(DateTime day, int months) =>
     DateTime.utc(day.year, day.month + months);
 
+/// Ordem estável de um mês (ano*12 + mês-1): vizinhos diferem em 1. É o
+/// índice que o deslize do calendário usa.
+int monthIndex(DateTime day) => day.year * 12 + day.month - 1;
+
+/// Inverso de [monthIndex]: o dia 1 do mês.
+DateTime monthFromIndex(int index) => DateTime.utc(index ~/ 12, index % 12 + 1);
+
+/// Ordem estável de um dia (dias desde 1970): vizinhos diferem em 1.
+int dayIndex(DateTime day) => dayOf(day).difference(DateTime.utc(1970)).inDays;
+
+/// Inverso de [dayIndex].
+DateTime dayFromIndex(int index) => addDays(DateTime.utc(1970), index);
+
 /// "2026-09-29" — como o dia viaja na rota da tela do dia.
 String dayToParam(DateTime day) =>
     '${day.year.toString().padLeft(4, '0')}-'

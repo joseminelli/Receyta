@@ -90,4 +90,15 @@ void main() {
     expect(tags, {recipeTileHeroTag('bolo'), recipeTileHeroTag('Sopa')});
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('arrastar o dia com o dedo passa pro dia seguinte', (tester) async {
+    await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.text('Nada planejado').first, const Offset(-400, 0));
+    await tester.pumpAndSettle();
+
+    expect(find.text(weekdayLong(addDays(today(), 1))), findsOneWidget);
+    expect(find.text('Bolo'), findsNothing);
+  });
 }

@@ -21,9 +21,12 @@ List<DateTime> monthWeeks(DateTime month) {
   return [for (var i = 0; i < count; i++) addDays(start, i * 7)];
 }
 
-/// Todas as refeições agendadas no que a grade do mês mostra, ao vivo.
-final monthEntriesProvider = StreamProvider<List<MealPlanEntry>>((ref) {
-  final weeks = monthWeeks(ref.watch(visibleMonthProvider));
+/// Todas as refeições agendadas no que a grade de [month] mostra, ao vivo.
+/// Família por mês: a tela também observa os dois vizinhos, então o deslize
+/// com o dedo já encontra a grade ao lado pronta.
+final monthEntriesProvider =
+    StreamProvider.family<List<MealPlanEntry>, DateTime>((ref, month) {
+  final weeks = monthWeeks(month);
   return ref
       .watch(mealPlanRepositoryProvider)
       .watchRange(weeks.first, addDays(weeks.last, 7));

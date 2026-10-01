@@ -13,7 +13,7 @@ import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
-import 'package:receyta/widgets/slide_switcher.dart';
+import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -53,47 +53,58 @@ class MonthPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final month = ref.watch(visibleMonthProvider);
-    final entries =
-        ref.watch(monthEntriesProvider).valueOrNull ?? const <MealPlanEntry>[];
+    // Observa o mês e os dois vizinhos: a grade ao lado já está pronta
+    // quando o dedo a puxa pra dentro.
+    final entriesByMonth = {
+      for (final m in [addMonths(month, -1), month, addMonths(month, 1)])
+        m: ref.watch(monthEntriesProvider(m)).valueOrNull ??
+            const <MealPlanEntry>[],
+    };
+    final entries = entriesByMonth[month]!;
 
     return Scaffold(
       backgroundColor: colors.paper,
       body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onHorizontalDragEnd: (d) {
-            final v = d.primaryVelocity ?? 0;
-            if (v > 500) _shiftMonth(ref, -1);
-            if (v < -500) _shiftMonth(ref, 1);
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.xs,
-              AppSpacing.screen,
-              _navBarClearance,
-            ),
-            children: [
-              _buildHeader(context, ref, month),
-              const SizedBox(height: AppSpacing.md),
-              _MonthStats(month: month, entries: entries),
-              const SizedBox(height: AppSpacing.md),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: colors.textMuted.withValues(alpha: 0.25),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _buildWeekdayLabels(context),
-              const SizedBox(height: 4),
-              SlideSwitcher(
-                index: month.year * 12 + month.month,
-                child: _buildGrid(context, ref, month, entries),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              const _UpcomingSection(),
-            ],
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            AppSpacing.xs,
+            AppSpacing.screen,
+            _navBarClearance,
           ),
+          children: [
+            _buildHeader(context, ref, month),
+            const SizedBox(height: AppSpacing.md),
+            _MonthStats(month: month, entries: entries),
+            const SizedBox(height: AppSpacing.md),
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: colors.textMuted.withValues(alpha: 0.25),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _buildWeekdayLabels(context),
+            const SizedBox(height: 4),
+            SlidePager(
+              index: monthIndex(month),
+              onChanged: (i) {
+                HapticFeedback.selectionClick();
+                ref.read(visibleMonthProvider.notifier).state =
+                    monthFromIndex(i);
+              },
+              builder: (i) {
+                final m = monthFromIndex(i);
+                return _buildGrid(
+                  context,
+                  ref,
+                  m,
+                  entriesByMonth[m] ?? const <MealPlanEntry>[],
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            const _UpcomingSection(),
+          ],
         ),
       ),
     );
@@ -461,8 +472,7 @@ class _UpcomingSection extends ConsumerWidget {
           const SizedBox(height: 2),
           Text(
             'Toque num dia do calendário ou comece por hoje.',
-            style:
-                context.texts.bodyMedium?.copyWith(color: colors.textMuted),
+            style: context.texts.bodyMedium?.copyWith(color: colors.textMuted),
           ),
           const SizedBox(height: AppSpacing.sm),
           PillButton(
