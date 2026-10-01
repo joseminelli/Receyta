@@ -8,6 +8,7 @@ import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/settings/controllers/library_stats.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/home_shell.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -33,6 +34,17 @@ Widget _host() => ProviderScope(
         ),
         shoppingListsProvider
             .overrideWith((ref) => Stream.value(const <ShoppingListSummary>[])),
+        libraryStatsProvider.overrideWithValue(
+          const AsyncData((
+            recipes: 0,
+            folders: 0,
+            lists: 0,
+            plannedMeals: 0,
+            doneMeals: 0,
+            topRecipe: null,
+            topRecipeCount: 0,
+          )),
+        ),
       ],
       child: MaterialApp(theme: AppTheme.light(), home: const HomeShell()),
     );
@@ -91,15 +103,17 @@ void main() {
     expect(find.text('Gerar de receitas'), findsOneWidget);
   });
 
-  testWidgets('aba Conta mostra o placeholder de perfil e o botão de config',
+  testWidgets('aba Conta mostra o perfil local e o botão de config',
       (tester) async {
+    _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
     await tester.tap(find.bySemanticsLabel(RegExp('Conta')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sem login por enquanto'), findsOneWidget);
+    expect(find.text('Seu nome aqui'), findsOneWidget);
+    expect(find.text('Sincronização em breve'), findsOneWidget);
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
   });
 }

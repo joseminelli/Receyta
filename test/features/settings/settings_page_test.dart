@@ -23,7 +23,7 @@ Widget _host({AppSettings initial = const AppSettings()}) {
 }
 
 void _usePhoneSize(WidgetTester tester) {
-  tester.view.physicalSize = const Size(1170, 3400);
+  tester.view.physicalSize = const Size(1170, 7200);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -90,13 +90,12 @@ void main() {
     expect(find.text('Maior'), findsOneWidget);
   });
 
-  testWidgets('o interruptor de alto contraste liga e desliga',
-      (tester) async {
+  testWidgets('o interruptor de alto contraste liga e desliga', (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    final finder = find.widgetWithText(Switch, '').first;
+    final finder = find.byType(Switch).first;
     expect(tester.widget<Switch>(finder).value, isFalse);
 
     await tester.tap(find.text('Alto contraste'));

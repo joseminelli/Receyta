@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/data/services/app_info.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
+import 'package:receyta/features/settings/screens/feedback_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -93,6 +95,7 @@ class SettingsPage extends ConsumerWidget {
     final alerts = ref.watch(cookingAlertSettingsProvider);
     final settingsNotifier = ref.read(appSettingsProvider.notifier);
     final alertsNotifier = ref.read(cookingAlertSettingsProvider.notifier);
+    final version = ref.watch(appVersionProvider).valueOrNull ?? '';
 
     return Scaffold(
       backgroundColor: colors.paper,
@@ -180,6 +183,24 @@ class SettingsPage extends ConsumerWidget {
                         title: 'Ver a introdução de novo',
                         subtitle: 'Revê as boas-vindas e o tour do app',
                         onTap: () => context.go('/welcome'),
+                      ),
+                    ],
+                  ),
+                  _Section(
+                    title: 'Sobre',
+                    children: [
+                      _InfoRow(
+                        icon: Icons.info_outline,
+                        title: 'Versão do app',
+                        value: version.isEmpty ? '—' : version,
+                      ),
+                      _NavRow(
+                        icon: Icons.chat_bubble_outline,
+                        title: 'Enviar feedback',
+                        subtitle: 'Em breve',
+                        enabled: false,
+                        onTap: () =>
+                            showFeedbackSheet(context, version: version),
                       ),
                     ],
                   ),
@@ -305,8 +326,8 @@ class _Section extends StatelessWidget {
               header: true,
               child: Text(
                 title.toUpperCase(),
-                style: context.texts.labelSmall
-                    ?.copyWith(color: colors.textMuted),
+                style:
+                    context.texts.labelSmall?.copyWith(color: colors.textMuted),
               ),
             ),
           ),
@@ -407,6 +428,7 @@ class _NavRow extends StatelessWidget {
     required this.onTap,
     this.warn = false,
     this.danger = false,
+    this.enabled = true,
   });
 
   final IconData icon;
@@ -416,33 +438,85 @@ class _NavRow extends StatelessWidget {
   final bool warn;
   final bool danger;
 
+  /// Desligada: aparece apagada, sem seta e sem reagir ao toque.
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return InkWell(
-      onTap: onTap,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 72),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1 : 0.45,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 72),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                _Medallion(icon: icon, danger: danger),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _RowText(
+                    title: title,
+                    subtitle: subtitle,
+                    warn: warn,
+                    danger: danger,
+                  ),
+                ),
+                if (enabled) Icon(Icons.chevron_right, color: colors.textMuted),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              _Medallion(icon: icon, danger: danger),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _RowText(
-                  title: title,
-                  subtitle: subtitle,
-                  warn: warn,
-                  danger: danger,
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.title,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            _Medallion(icon: icon),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                title,
+                style: context.texts.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colors.ink,
                 ),
               ),
-              Icon(Icons.chevron_right, color: colors.textMuted),
-            ],
-          ),
+            ),
+            Text(
+              value,
+              style:
+                  context.texts.bodyMedium?.copyWith(color: colors.textMuted),
+            ),
+          ],
         ),
       ),
     );
@@ -556,9 +630,8 @@ class _TextSizeRow extends StatelessWidget {
                               textScaler: TextScaler.noScaling,
                               style: AppTextStyles.display(_glyphSizes[i])
                                   .copyWith(
-                                color: step == current
-                                    ? colors.lime
-                                    : colors.ink,
+                                color:
+                                    step == current ? colors.lime : colors.ink,
                               ),
                             ),
                           ),
