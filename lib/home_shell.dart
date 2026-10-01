@@ -25,6 +25,11 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _tab = 0;
+
+  /// Abas já visitadas: só elas são montadas. O `IndexedStack` mantém vivo
+  /// o que está montado (o estado de cada aba se preserva), mas montar as
+  /// quatro de cara faz trabalho — e reações a dados — que ninguém vê.
+  final _visited = <int>{0};
   StreamSubscription<List<SharedMediaFile>>? _mediaSub;
 
   @override
@@ -124,7 +129,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 ShoppingListsPage(),
                 AccountPage(),
               ].indexed)
-                HeroMode(enabled: i == _tab, child: page),
+                if (_visited.contains(i))
+                  HeroMode(enabled: i == _tab, child: page)
+                else
+                  const SizedBox.shrink(),
             ],
           ),
           Align(
@@ -133,7 +141,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               child: PillNavBar(
                 items: items,
                 currentIndex: _tab,
-                onSelected: (i) => setState(() => _tab = i),
+                onSelected: (i) => setState(() {
+                  _tab = i;
+                  _visited.add(i);
+                }),
               ),
             ),
           ),

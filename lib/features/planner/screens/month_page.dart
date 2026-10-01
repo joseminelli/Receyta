@@ -332,6 +332,7 @@ class _DayCell extends StatelessWidget {
     ];
     final numberColor = tiles.isEmpty ? colors.ink : tiles.first.onColor;
     final radius = BorderRadius.circular(AppRadii.sm - 4);
+    final fade = !inMonth ? 0.65 : (allDone ? 0.4 : 0.0);
 
     final cell = AspectRatio(
       aspectRatio: _cellAspect,
@@ -386,6 +387,17 @@ class _DayCell extends StatelessWidget {
                       ),
                     ),
                   ),
+                // Apagar o dia = um véu `paper` translúcido por cima. Um
+                // `Opacity` no widget forçaria uma camada separada (saveLayer)
+                // por célula — 42 delas — só pra isso.
+                if (fade > 0)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: ColoredBox(
+                        color: colors.paper.withValues(alpha: fade),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -397,9 +409,8 @@ class _DayCell extends StatelessWidget {
       button: true,
       label: '${weekdayLong(day)}, ${day.day} de ${monthLong(day)}'
           '${entries.isEmpty ? '' : ', ${entries.length} refeições'}',
-      child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 200),
-        opacity: !inMonth ? 0.35 : (allDone ? 0.6 : 1),
+      // Cada célula na própria camada: pintar uma não invalida as outras.
+      child: RepaintBoundary(
         child: Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(

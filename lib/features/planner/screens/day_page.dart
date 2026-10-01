@@ -536,14 +536,14 @@ class _EntryTile extends StatelessWidget {
           // O azulejo vai até a borda direita; a faixa de ações fica por cima
           // dele, com os cantos da esquerda arredondados e uma sombra leve —
           // parece uma folha branca sobre o colorido.
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildNameTile(context)),
-                const SizedBox(width: _actionsWidth - _actionsOverlap),
-              ],
+          // Sem `IntrinsicHeight`: o próprio azulejo (fundo `Positioned.fill`
+          // + o nome) define a altura, e a faixa de ações, `Positioned` com
+          // top/bottom, acompanha.
+          Padding(
+            padding: const EdgeInsets.only(
+              right: _actionsWidth - _actionsOverlap,
             ),
+            child: _buildNameTile(context),
           ),
           Positioned(
             top: 0,

@@ -23,6 +23,9 @@ const List<String> _indexStatements = [
       'ON meal_plan_entries (date)',
   'CREATE INDEX IF NOT EXISTS idx_ingredient_aliases_normalized_alias '
       'ON ingredient_aliases (normalized_alias)',
+  // Filtro por tag e contagem de uso das tags procuram por `tag_id` (a chave
+  // primária composta só ajuda a busca que começa por `recipe_id`).
+  'CREATE INDEX IF NOT EXISTS idx_recipe_tags_tag_id ON recipe_tags (tag_id)',
 ];
 
 /// FTS5 externo sobre `recipes` (§6), mantido em sincronia por triggers.
@@ -194,7 +197,18 @@ class AppDatabase extends _$AppDatabase {
   Future<void> ensureReady() async {
     await customSelect('SELECT 1').get();
     await _seed();
+    await _ensureIndexes();
     await _backfillLastOpenedAt();
+  }
+
+  /// Índices que entraram depois da instalação original (ex.: `recipe_tags`)
+  /// — sem isso quem já tem o app nunca os ganharia, já que o `onCreate` só
+  /// roda uma vez. `IF NOT EXISTS`: no-op quando já estão lá, sem mudar a
+  /// versão do schema.
+  Future<void> _ensureIndexes() async {
+    for (final stmt in _indexStatements) {
+      await customStatement(stmt);
+    }
   }
 
   /// Migração v4: `last_opened_at` nasce nula pra dado existente — aqui ela

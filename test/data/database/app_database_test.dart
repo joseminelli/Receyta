@@ -22,6 +22,28 @@ void main() {
     return rows.map((r) => r.read<String>('name')).toSet();
   }
 
+  Future<bool> hasIndex(String name) async {
+    final rows = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?",
+          variables: [Variable<String>(name)],
+        )
+        .get();
+    return rows.isNotEmpty;
+  }
+
+  test('índice de recipe_tags(tag_id) existe e é refeito pra banco antigo',
+      () async {
+    await db.ensureReady();
+    expect(await hasIndex('idx_recipe_tags_tag_id'), isTrue);
+
+    // Banco instalado antes do índice existir: o ensureReady recria.
+    await db.customStatement('DROP INDEX idx_recipe_tags_tag_id');
+    expect(await hasIndex('idx_recipe_tags_tag_id'), isFalse);
+    await db.ensureReady();
+    expect(await hasIndex('idx_recipe_tags_tag_id'), isTrue);
+  });
+
   test('schema v4', () {
     expect(db.schemaVersion, 4);
   });
