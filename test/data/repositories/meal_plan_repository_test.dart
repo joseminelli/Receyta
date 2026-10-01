@@ -120,8 +120,12 @@ void main() {
     MealPlanEntry e(String recipe, DateTime d, {bool done = false}) =>
         MealPlanEntry(
           id: '$recipe$d',
-          recipeId: recipe,
-          recipeName: recipe,
+          recipe: Recipe(
+            id: recipe,
+            name: recipe,
+            createdAt: DateTime.utc(2026),
+            updatedAt: DateTime.utc(2026),
+          ),
           date: d,
           mealType: MealType.lunch,
           done: done,

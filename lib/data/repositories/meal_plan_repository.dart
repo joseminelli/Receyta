@@ -6,7 +6,9 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/meal_plan_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
+import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
+import 'package:receyta/domain/models/recipe.dart';
 
 /// Fonte de verdade do planejamento semanal (§RF-04). Toda data que entra é
 /// normalizada pra data de calendário (`dayOf`); timestamps sempre UTC.
@@ -21,7 +23,7 @@ class MealPlanRepository {
   Stream<List<MealPlanEntry>> watchRange(DateTime from, DateTime toExclusive) {
     return _dao.watchRange(dayOf(from), dayOf(toExclusive)).map(
           (rows) => [
-            for (final r in rows) _toDomain(r.entry, r.recipeName),
+            for (final r in rows) _toDomain(r.entry, recipeFromRow(r.recipe)),
           ],
         );
   }
@@ -120,11 +122,9 @@ class MealPlanRepository {
         note: entry.note,
       );
 
-  MealPlanEntry _toDomain(MealPlanEntryRow r, String recipeName) =>
-      MealPlanEntry(
+  MealPlanEntry _toDomain(MealPlanEntryRow r, Recipe recipe) => MealPlanEntry(
         id: r.id,
-        recipeId: r.recipeId,
-        recipeName: recipeName,
+        recipe: recipe,
         date: dayOf(r.date),
         mealType: MealType.fromCode(r.mealType),
         servingsOverride: r.servingsOverride,

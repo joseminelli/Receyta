@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'package:receyta/domain/models/recipe.dart';
+
 part 'meal_plan_entry.freezed.dart';
 
 /// Refeição do dia (RF-04.2). `code` é o que vai pro banco
@@ -24,17 +26,22 @@ enum MealType {
 }
 
 /// Uma receita agendada num dia e refeição (RF-04.2). `date` é a data de
-/// calendário (ver `core/day.dart`).
+/// calendário (ver `core/day.dart`). Carrega a [recipe] inteira: o card da
+/// semana usa a cor/textura dela e abrir o detalhe já sai com ela pronta.
 @freezed
 class MealPlanEntry with _$MealPlanEntry {
+  const MealPlanEntry._();
+
   const factory MealPlanEntry({
     required String id,
-    required String recipeId,
-    required String recipeName,
+    required Recipe recipe,
     required DateTime date,
     required MealType mealType,
     int? servingsOverride,
     String? note,
     @Default(false) bool done,
   }) = _MealPlanEntry;
+
+  String get recipeId => recipe.id;
+  String get recipeName => recipe.name;
 }

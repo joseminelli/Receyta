@@ -17,8 +17,7 @@ final _privateConstructorUsedError = UnsupportedError(
 /// @nodoc
 mixin _$MealPlanEntry {
   String get id => throw _privateConstructorUsedError;
-  String get recipeId => throw _privateConstructorUsedError;
-  String get recipeName => throw _privateConstructorUsedError;
+  Recipe get recipe => throw _privateConstructorUsedError;
   DateTime get date => throw _privateConstructorUsedError;
   MealType get mealType => throw _privateConstructorUsedError;
   int? get servingsOverride => throw _privateConstructorUsedError;
@@ -40,13 +39,14 @@ abstract class $MealPlanEntryCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
-      String recipeId,
-      String recipeName,
+      Recipe recipe,
       DateTime date,
       MealType mealType,
       int? servingsOverride,
       String? note,
       bool done});
+
+  $RecipeCopyWith<$Res> get recipe;
 }
 
 /// @nodoc
@@ -65,8 +65,7 @@ class _$MealPlanEntryCopyWithImpl<$Res, $Val extends MealPlanEntry>
   @override
   $Res call({
     Object? id = null,
-    Object? recipeId = null,
-    Object? recipeName = null,
+    Object? recipe = null,
     Object? date = null,
     Object? mealType = null,
     Object? servingsOverride = freezed,
@@ -78,14 +77,10 @@ class _$MealPlanEntryCopyWithImpl<$Res, $Val extends MealPlanEntry>
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      recipeId: null == recipeId
-          ? _value.recipeId
-          : recipeId // ignore: cast_nullable_to_non_nullable
-              as String,
-      recipeName: null == recipeName
-          ? _value.recipeName
-          : recipeName // ignore: cast_nullable_to_non_nullable
-              as String,
+      recipe: null == recipe
+          ? _value.recipe
+          : recipe // ignore: cast_nullable_to_non_nullable
+              as Recipe,
       date: null == date
           ? _value.date
           : date // ignore: cast_nullable_to_non_nullable
@@ -108,6 +103,16 @@ class _$MealPlanEntryCopyWithImpl<$Res, $Val extends MealPlanEntry>
               as bool,
     ) as $Val);
   }
+
+  /// Create a copy of MealPlanEntry
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $RecipeCopyWith<$Res> get recipe {
+    return $RecipeCopyWith<$Res>(_value.recipe, (value) {
+      return _then(_value.copyWith(recipe: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -120,13 +125,15 @@ abstract class _$$MealPlanEntryImplCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
-      String recipeId,
-      String recipeName,
+      Recipe recipe,
       DateTime date,
       MealType mealType,
       int? servingsOverride,
       String? note,
       bool done});
+
+  @override
+  $RecipeCopyWith<$Res> get recipe;
 }
 
 /// @nodoc
@@ -143,8 +150,7 @@ class __$$MealPlanEntryImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? id = null,
-    Object? recipeId = null,
-    Object? recipeName = null,
+    Object? recipe = null,
     Object? date = null,
     Object? mealType = null,
     Object? servingsOverride = freezed,
@@ -156,14 +162,10 @@ class __$$MealPlanEntryImplCopyWithImpl<$Res>
           ? _value.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      recipeId: null == recipeId
-          ? _value.recipeId
-          : recipeId // ignore: cast_nullable_to_non_nullable
-              as String,
-      recipeName: null == recipeName
-          ? _value.recipeName
-          : recipeName // ignore: cast_nullable_to_non_nullable
-              as String,
+      recipe: null == recipe
+          ? _value.recipe
+          : recipe // ignore: cast_nullable_to_non_nullable
+              as Recipe,
       date: null == date
           ? _value.date
           : date // ignore: cast_nullable_to_non_nullable
@@ -190,23 +192,21 @@ class __$$MealPlanEntryImplCopyWithImpl<$Res>
 
 /// @nodoc
 
-class _$MealPlanEntryImpl implements _MealPlanEntry {
+class _$MealPlanEntryImpl extends _MealPlanEntry {
   const _$MealPlanEntryImpl(
       {required this.id,
-      required this.recipeId,
-      required this.recipeName,
+      required this.recipe,
       required this.date,
       required this.mealType,
       this.servingsOverride,
       this.note,
-      this.done = false});
+      this.done = false})
+      : super._();
 
   @override
   final String id;
   @override
-  final String recipeId;
-  @override
-  final String recipeName;
+  final Recipe recipe;
   @override
   final DateTime date;
   @override
@@ -221,7 +221,7 @@ class _$MealPlanEntryImpl implements _MealPlanEntry {
 
   @override
   String toString() {
-    return 'MealPlanEntry(id: $id, recipeId: $recipeId, recipeName: $recipeName, date: $date, mealType: $mealType, servingsOverride: $servingsOverride, note: $note, done: $done)';
+    return 'MealPlanEntry(id: $id, recipe: $recipe, date: $date, mealType: $mealType, servingsOverride: $servingsOverride, note: $note, done: $done)';
   }
 
   @override
@@ -230,10 +230,7 @@ class _$MealPlanEntryImpl implements _MealPlanEntry {
         (other.runtimeType == runtimeType &&
             other is _$MealPlanEntryImpl &&
             (identical(other.id, id) || other.id == id) &&
-            (identical(other.recipeId, recipeId) ||
-                other.recipeId == recipeId) &&
-            (identical(other.recipeName, recipeName) ||
-                other.recipeName == recipeName) &&
+            (identical(other.recipe, recipe) || other.recipe == recipe) &&
             (identical(other.date, date) || other.date == date) &&
             (identical(other.mealType, mealType) ||
                 other.mealType == mealType) &&
@@ -244,8 +241,8 @@ class _$MealPlanEntryImpl implements _MealPlanEntry {
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, id, recipeId, recipeName, date,
-      mealType, servingsOverride, note, done);
+  int get hashCode => Object.hash(
+      runtimeType, id, recipe, date, mealType, servingsOverride, note, done);
 
   /// Create a copy of MealPlanEntry
   /// with the given fields replaced by the non-null parameter values.
@@ -256,23 +253,21 @@ class _$MealPlanEntryImpl implements _MealPlanEntry {
       __$$MealPlanEntryImplCopyWithImpl<_$MealPlanEntryImpl>(this, _$identity);
 }
 
-abstract class _MealPlanEntry implements MealPlanEntry {
+abstract class _MealPlanEntry extends MealPlanEntry {
   const factory _MealPlanEntry(
       {required final String id,
-      required final String recipeId,
-      required final String recipeName,
+      required final Recipe recipe,
       required final DateTime date,
       required final MealType mealType,
       final int? servingsOverride,
       final String? note,
       final bool done}) = _$MealPlanEntryImpl;
+  const _MealPlanEntry._() : super._();
 
   @override
   String get id;
   @override
-  String get recipeId;
-  @override
-  String get recipeName;
+  Recipe get recipe;
   @override
   DateTime get date;
   @override

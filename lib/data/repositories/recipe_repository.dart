@@ -344,25 +344,7 @@ class RecipeRepository {
 
   Tag _tagToDomain(TagRow r) => Tag(id: r.id, name: r.name);
 
-  Recipe _toDomain(RecipeRow r) => Recipe(
-        id: r.id,
-        name: r.name,
-        createdAt: r.createdAt,
-        updatedAt: r.updatedAt,
-        folderId: r.folderId,
-        about: r.about,
-        prepMinutes: r.prepMinutes,
-        cookMinutes: r.cookMinutes,
-        servings: r.servings,
-        imagePath: r.imagePath,
-        sourceUrl: r.sourceUrl,
-        notes: r.notes,
-        tileColor: tileColorFromName(r.tileColor),
-        tileMotif: tileMotifFromName(r.tileMotif),
-        isFavorite: r.isFavorite,
-        deletedAt: r.deletedAt,
-        lastOpenedAt: r.lastOpenedAt,
-      );
+  Recipe _toDomain(RecipeRow r) => recipeFromRow(r);
 
   RecipeRow _toRow(Recipe r) => RecipeRow(
         id: r.id,
@@ -414,3 +396,25 @@ final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
   final db = ref.watch(databaseProvider);
   return RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
 });
+
+/// Linha do banco → domínio. Pública porque outros repositórios que juntam
+/// receitas (ex.: o plano da semana) montam o mesmo [Recipe].
+Recipe recipeFromRow(RecipeRow r) => Recipe(
+      id: r.id,
+      name: r.name,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      folderId: r.folderId,
+      about: r.about,
+      prepMinutes: r.prepMinutes,
+      cookMinutes: r.cookMinutes,
+      servings: r.servings,
+      imagePath: r.imagePath,
+      sourceUrl: r.sourceUrl,
+      notes: r.notes,
+      tileColor: tileColorFromName(r.tileColor),
+      tileMotif: tileMotifFromName(r.tileMotif),
+      isFavorite: r.isFavorite,
+      deletedAt: r.deletedAt,
+      lastOpenedAt: r.lastOpenedAt,
+    );

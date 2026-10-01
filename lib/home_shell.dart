@@ -114,11 +114,17 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         children: [
           IndexedStack(
             index: _tab,
+            // `HeroMode`: o `IndexedStack` mantém as abas escondidas montadas,
+            // e os `Hero` delas continuavam valendo — abrir uma receita pela
+            // Semana fazia voar o card da aba Receitas, que nem estava na tela.
             children: [
-              const RecipesPage(),
-              const WeekPage(),
-              const ShoppingListsPage(),
-              const AccountPage(),
+              for (final (i, page) in const [
+                RecipesPage(),
+                WeekPage(),
+                ShoppingListsPage(),
+                AccountPage(),
+              ].indexed)
+                HeroMode(enabled: i == _tab, child: page),
             ],
           ),
           Align(

@@ -15,9 +15,9 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
 
   final Uuid _uuid;
 
-  /// Entradas de [from] (inclusive) até [toExclusive], com o nome da receita,
-  /// em ordem de dia e de criação. Stream vivo.
-  Stream<List<({MealPlanEntryRow entry, String recipeName})>> watchRange(
+  /// Entradas de [from] (inclusive) até [toExclusive], com a receita, em
+  /// ordem de dia e de criação. Stream vivo.
+  Stream<List<({MealPlanEntryRow entry, RecipeRow recipe})>> watchRange(
     DateTime from,
     DateTime toExclusive,
   ) {
@@ -38,7 +38,7 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
             for (final r in rows)
               (
                 entry: r.readTable(mealPlanEntries),
-                recipeName: r.read(recipes.name)!,
+                recipe: r.readTable(recipes),
               ),
           ],
         );

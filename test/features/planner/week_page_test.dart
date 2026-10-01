@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
+import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/week_page.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
+import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/theme/app_theme.dart';
 
 Widget _host(List<MealPlanEntry> entries) => ProviderScope(
@@ -14,11 +17,20 @@ Widget _host(List<MealPlanEntry> entries) => ProviderScope(
       child: MaterialApp(theme: AppTheme.light(), home: const WeekPage()),
     );
 
-MealPlanEntry _entry(String name, MealType meal, {bool done = false}) =>
+MealPlanEntry _entry(
+  String name,
+  MealType meal, {
+  bool done = false,
+  String? recipeId,
+}) =>
     MealPlanEntry(
-      id: name,
-      recipeId: name,
-      recipeName: name,
+      id: '$name-${meal.code}',
+      recipe: Recipe(
+        id: recipeId ?? name,
+        name: name,
+        createdAt: DateTime.utc(2026),
+        updatedAt: DateTime.utc(2026),
+      ),
       date: today(),
       mealType: meal,
       done: done,
@@ -60,5 +72,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('HOJE'), findsOneWidget);
     expect(find.text('Bolo de Fubá'), findsOneWidget);
+  });
+
+  testWidgets('o nome fica sobre o azulejo e só um card por receita leva o Hero',
+      (tester) async {
+    await tester.pumpWidget(_host([
+      _entry('Bolo de Fubá', MealType.lunch, recipeId: 'bolo'),
+      _entry('Bolo de Fubá', MealType.dinner, recipeId: 'bolo'),
+      _entry('Sopa', MealType.dinner),
+    ]));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TilePattern), findsNWidgets(3));
+    expect(find.byType(Hero), findsNWidgets(2));
+    final tags = tester.widgetList<Hero>(find.byType(Hero)).map((h) => h.tag);
+    expect(tags, {recipeTileHeroTag('bolo'), recipeTileHeroTag('Sopa')});
+    expect(tester.takeException(), isNull);
   });
 }

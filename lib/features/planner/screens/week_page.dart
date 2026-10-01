@@ -18,6 +18,8 @@ import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
+import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/core/result.dart';
 
 /// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
@@ -180,6 +182,14 @@ class _WeekPageState extends ConsumerState<WeekPage> {
         if (isSameDay(e.date, day)) e,
     ];
     final isToday = isSameDay(day, today());
+    // Duas refeições do mesmo dia com a mesma receita dividiriam a tag do
+    // Hero (o Flutter recusa); só a primeira ocorrência do dia voa.
+    final heroOwners = <String, String>{};
+    for (final meal in MealType.values) {
+      for (final e in dayEntries.where((e) => e.mealType == meal)) {
+        heroOwners.putIfAbsent(e.recipeId, () => e.id);
+      }
+    }
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -220,7 +230,11 @@ class _WeekPageState extends ConsumerState<WeekPage> {
             onDrop: (entry) => _moveTo(entry, day, meal: meal),
             buildTile: (entry) => _EntryTile(
               entry: entry,
-              onOpen: () => context.push('/recipe/${entry.recipeId}'),
+              useHero: heroOwners[entry.recipeId] == entry.id,
+              onOpen: () => context.push(
+                '/recipe/${entry.recipeId}',
+                extra: entry.recipe,
+              ),
               onToggleDone: () => _repo.setDone(entry.id, !entry.done),
               onRemove: () => _remove(entry),
               onMenu: () => _openMenu(entry),
@@ -545,11 +559,14 @@ class _MealSection extends StatelessWidget {
   }
 }
 
-/// Uma receita agendada: bolinha de "feita", nome e ⋯. Segurar e arrastar
-/// move; deslizar pra direita marca feita, pra esquerda remove (com desfazer).
+/// Uma receita agendada. À esquerda o nome sobre o azulejo da receita (cor e
+/// textura dela, o mesmo bloco que voa pro detalhe ao abrir); à direita, na
+/// faixa `paperSoft`, a bolinha de "feita" e o ⋯. Segurar e arrastar move;
+/// deslizar pra direita marca feita, pra esquerda remove (com desfazer).
 class _EntryTile extends StatelessWidget {
   const _EntryTile({
     required this.entry,
+    required this.useHero,
     required this.onOpen,
     required this.onToggleDone,
     required this.onRemove,
@@ -557,6 +574,9 @@ class _EntryTile extends StatelessWidget {
   });
 
   final MealPlanEntry entry;
+
+  /// Só um card por receita na tela leva o `Hero` (tags não podem repetir).
+  final bool useHero;
   final VoidCallback onOpen;
   final VoidCallback onToggleDone;
   final VoidCallback onRemove;
@@ -610,64 +630,122 @@ class _EntryTile extends StatelessWidget {
 
   Widget _buildCard(BuildContext context) {
     final colors = context.colors;
-    final done = entry.done;
     return Material(
       color: colors.paperSoft,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.sm,
-            AppSpacing.xs,
-            0,
-            AppSpacing.xs,
-          ),
-          child: Row(
-            children: [
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onToggleDone,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xs),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: done ? colors.ink : Colors.transparent,
-                      border: Border.all(
-                        color: done ? colors.ink : colors.textMuted,
-                        width: 2,
-                      ),
-                    ),
-                    child: done
-                        ? Icon(Icons.check, size: 16, color: colors.paper)
-                        : null,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  entry.recipeName,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.texts.bodyLarge?.copyWith(
-                    color: done ? colors.textMuted : colors.ink,
-                    decoration: done ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Mais opções',
-                onPressed: onMenu,
-                icon: Icon(Icons.more_horiz, color: colors.textMuted),
-              ),
-            ],
-          ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _buildNameTile(context)),
+            _buildActions(context),
+          ],
         ),
       ),
+    );
+  }
+
+  /// Nome sobre o azulejo. O `ColoredBox` fica fora do `Hero` (mesmo truque
+  /// do `RecipeCard`): enquanto o padrão voa, esta cópia parada da cor cobre
+  /// o buraco e o nome não fica solto sobre o `paperSoft`.
+  Widget _buildNameTile(BuildContext context) {
+    final colors = context.colors;
+    final recipe = entry.recipe;
+    final tile = resolveTileAppearance(
+      colors,
+      color: recipe.tileColor,
+      motif: recipe.tileMotif,
+      seedId: recipe.id,
+    );
+    final pattern = TilePattern(
+      motif: tile.motif,
+      background: tile.background,
+      patternColor: tile.patternColor,
+      patternColorAlt: tile.patternColorAlt,
+    );
+    return InkWell(
+      onTap: onOpen,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: entry.done ? 0.5 : 1,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ColoredBox(
+                color: tile.background,
+                child: useHero
+                    ? Hero(
+                        tag: recipeTileHeroTag(recipe.id),
+                        flightShuttleBuilder:
+                            recipeTileHeroFlightShuttleBuilder,
+                        child: pattern,
+                      )
+                    : pattern,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              child: Center(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    recipe.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.titleMedium?.copyWith(
+                      color: tile.onColor,
+                      fontWeight: FontWeight.w700,
+                      decoration:
+                          entry.done ? TextDecoration.lineThrough : null,
+                      decorationColor: tile.onColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context) {
+    final colors = context.colors;
+    final done = entry.done;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onToggleDone,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? colors.ink : Colors.transparent,
+                border: Border.all(
+                  color: done ? colors.ink : colors.textMuted,
+                  width: 2,
+                ),
+              ),
+              child: done
+                  ? Icon(Icons.check, size: 16, color: colors.paper)
+                  : null,
+            ),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Mais opções',
+          onPressed: onMenu,
+          icon: Icon(Icons.more_horiz, color: colors.textMuted),
+        ),
+      ],
     );
   }
 }
