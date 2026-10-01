@@ -16,6 +16,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/period_stepper.dart';
 import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
@@ -128,16 +129,13 @@ class _DayPageState extends ConsumerState<DayPage> {
               ],
             ),
           ),
-          CircleIconButton(
-            icon: Icons.chevron_left,
-            tooltip: 'Dia anterior',
-            onTap: () => _shiftDay(-1),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          CircleIconButton(
-            icon: Icons.chevron_right,
-            tooltip: 'Próximo dia',
-            onTap: () => _shiftDay(1),
+          PeriodStepper(
+            atToday: isToday,
+            previousTooltip: 'Dia anterior',
+            nextTooltip: 'Próximo dia',
+            onPrevious: () => _shiftDay(-1),
+            onNext: () => _shiftDay(1),
+            onToday: () => setState(() => _day = today()),
           ),
         ],
       ),

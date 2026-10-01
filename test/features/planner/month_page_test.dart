@@ -60,6 +60,11 @@ void _usePhoneSize(WidgetTester tester) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
+/// "Hoje" do stepper está ligado (toca) ou apagado (já no período atual).
+bool _todayEnabled(WidgetTester tester) =>
+    tester.widget<InkWell>(find.byKey(const ValueKey('stepper-today'))).onTap !=
+    null;
+
 void main() {
   testWidgets('mostra o mês atual, os dias da semana e a dica quando vazio',
       (tester) async {
@@ -74,7 +79,7 @@ void main() {
     expect(find.byType(TilePattern), findsNothing);
     expect(find.text('Nada planejado pros próximos dias.'), findsOneWidget);
     expect(find.text('Planejar hoje'), findsOneWidget);
-    expect(find.text('Hoje'), findsNothing);
+    expect(_todayEnabled(tester), isFalse);
   });
 
   testWidgets('dia vira faixas de azulejo, uma por refeição, e "+N" passa de 3',
@@ -164,7 +169,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Próximo mês'));
     await tester.pumpAndSettle();
-    expect(find.text('Hoje'), findsOneWidget);
+    expect(_todayEnabled(tester), isTrue);
     expect(
       find.text(monthLong(addMonths(firstOfMonth(today()), 1))),
       findsOneWidget,
@@ -173,7 +178,7 @@ void main() {
     await tester.tap(find.text('Hoje'));
     await tester.pumpAndSettle();
     expect(find.text(monthLong(today())), findsOneWidget);
-    expect(find.text('Hoje'), findsNothing);
+    expect(_todayEnabled(tester), isFalse);
   });
 
   testWidgets('carrinho da semana só liga quando há refeição pendente',
@@ -207,6 +212,6 @@ void main() {
     await tester.drag(find.byType(SlidePager), const Offset(250, 0));
     await tester.pumpAndSettle();
     expect(find.text(monthLong(today())), findsOneWidget);
-    expect(find.text('Hoje'), findsNothing);
+    expect(_todayEnabled(tester), isFalse);
   });
 }

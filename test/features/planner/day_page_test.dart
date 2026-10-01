@@ -101,4 +101,23 @@ void main() {
     expect(find.text(weekdayLong(addDays(today(), 1))), findsOneWidget);
     expect(find.text('Bolo'), findsNothing);
   });
+
+  testWidgets('"Hoje" só liga fora de hoje e traz de volta', (tester) async {
+    await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
+    await tester.pumpAndSettle();
+
+    bool enabled() => tester
+        .widget<InkWell>(find.byKey(const ValueKey('stepper-today')))
+        .onTap != null;
+    expect(enabled(), isFalse);
+
+    await tester.tap(find.byTooltip('Dia anterior'));
+    await tester.pumpAndSettle();
+    expect(enabled(), isTrue);
+
+    await tester.tap(find.text('Hoje'));
+    await tester.pumpAndSettle();
+    expect(enabled(), isFalse);
+    expect(find.text('Bolo'), findsOneWidget);
+  });
 }

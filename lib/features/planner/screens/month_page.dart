@@ -9,8 +9,8 @@ import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
-import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/metric_stat.dart';
+import 'package:receyta/widgets/period_stepper.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/slide_pager.dart';
@@ -128,26 +128,14 @@ class MonthPage extends ConsumerWidget {
             ],
           ),
         ),
-        if (!isCurrent) ...[
-          PillButton(
-            label: 'Hoje',
-            variant: PillButtonVariant.ghost,
-            dense: true,
-            onPressed: () => ref.read(visibleMonthProvider.notifier).state =
-                firstOfMonth(today()),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-        ],
-        CircleIconButton(
-          icon: Icons.chevron_left,
-          tooltip: 'Mês anterior',
-          onTap: () => _shiftMonth(ref, -1),
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        CircleIconButton(
-          icon: Icons.chevron_right,
-          tooltip: 'Próximo mês',
-          onTap: () => _shiftMonth(ref, 1),
+        PeriodStepper(
+          atToday: isCurrent,
+          previousTooltip: 'Mês anterior',
+          nextTooltip: 'Próximo mês',
+          onPrevious: () => _shiftMonth(ref, -1),
+          onNext: () => _shiftMonth(ref, 1),
+          onToday: () => ref.read(visibleMonthProvider.notifier).state =
+              firstOfMonth(today()),
         ),
       ],
     );
