@@ -8,6 +8,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/repositories/meal_plan_repository.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
+import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/add_meal_sheet.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart';
@@ -257,6 +258,7 @@ class _DayPageState extends ConsumerState<DayPage> {
               onMenu: () => _openMenu(entry),
             ),
           ),
+        _SuggestionsSection(day: day, dayEntries: entries),
       ],
     );
   }
@@ -368,6 +370,162 @@ class _DayPageState extends ConsumerState<DayPage> {
         message: message,
         variant: AppSnackBarVariant.error,
       );
+}
+
+/// "Sugestões" do dia (F5, RF-04.4): até três receitas que dividem
+/// ingredientes com o que você já vai comprar na semana, cada uma com o motivo
+/// escrito. Tocar abre a receita; o "+" agenda no almoço (ou na primeira
+/// refeição vazia) com "Desfazer". Some quando não há o que sugerir — semana
+/// sem nada pendente, ou nenhuma receita em comum.
+class _SuggestionsSection extends ConsumerWidget {
+  const _SuggestionsSection({required this.day, required this.dayEntries});
+
+  final DateTime day;
+  final List<MealPlanEntry> dayEntries;
+
+  Future<void> _schedule(
+    BuildContext context,
+    WidgetRef ref,
+    PlannerSuggestion s,
+  ) async {
+    final repo = ref.read(mealPlanRepositoryProvider);
+    final meal = defaultMealFor(dayEntries);
+    HapticFeedback.selectionClick();
+    final result = await repo.add(s.recipe.id, day, meal);
+    result.when(
+      ok: (id) => showAppSnackBar(
+        message: '${s.recipe.name} agendado em ${meal.label}',
+        actionLabel: 'Desfazer',
+        onAction: () => repo.remove(id),
+      ),
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suggestions = ref.watch(daySuggestionsProvider(day)).valueOrNull ??
+        const <PlannerSuggestion>[];
+    if (suggestions.isEmpty) return const SizedBox.shrink();
+    final colors = context.colors;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'SUGESTÕES',
+            style: context.texts.labelMedium
+                ?.copyWith(color: colors.violet, letterSpacing: 1.2),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Com o que você já vai comprar nesta semana',
+            style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          for (final s in suggestions)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: _SuggestionCard(
+                suggestion: s,
+                onOpen: () => context.push(
+                  '/recipe/${s.recipe.id}',
+                  extra: s.recipe,
+                ),
+                onAdd: () => _schedule(context, ref, s),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SuggestionCard extends StatelessWidget {
+  const _SuggestionCard({
+    required this.suggestion,
+    required this.onOpen,
+    required this.onAdd,
+  });
+
+  final PlannerSuggestion suggestion;
+  final VoidCallback onOpen;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final recipe = suggestion.recipe;
+    final tile = resolveTileAppearance(
+      colors,
+      color: recipe.tileColor,
+      motif: recipe.tileMotif,
+      seedId: recipe.id,
+    );
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: Material(
+        color: colors.paperSoft,
+        child: InkWell(
+          onTap: onOpen,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 64,
+                height: 64,
+                child: ColoredBox(
+                  color: tile.background,
+                  child: TilePattern(
+                    motif: tile.motif,
+                    background: tile.background,
+                    patternColor: tile.patternColor,
+                    patternColorAlt: tile.patternColorAlt,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        recipe.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        suggestion.reason,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.texts.bodySmall
+                            ?.copyWith(color: colors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              CircleIconButton(
+                icon: Icons.add,
+                tooltip: 'Agendar ${recipe.name}',
+                onTap: onAdd,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Uma refeição do dia: cabeçalho com "+", as receitas agendadas (ou uma

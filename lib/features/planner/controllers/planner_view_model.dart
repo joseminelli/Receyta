@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/day.dart';
 import 'package:receyta/data/repositories/meal_plan_repository.dart';
+import 'package:receyta/data/repositories/planner_suggestion_service.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
+import 'package:receyta/domain/models/planner_suggestion.dart';
 
 /// Primeiro dia do mês mostrado no calendário (RF-04.1). Começa no mês de
 /// hoje; navegar de mês é só trocar este valor.
@@ -37,6 +39,38 @@ final dayEntriesProvider =
     StreamProvider.family<List<MealPlanEntry>, DateTime>((ref, day) {
   return ref.watch(mealPlanRepositoryProvider).watchRange(day, addDays(day, 1));
 });
+
+/// O plano ao redor de [day] (14 dias pra cada lado), ao vivo — a base das
+/// sugestões: de onde saem o alvo da semana e o "agendada recentemente".
+final planWindowProvider = StreamProvider.autoDispose
+    .family<List<MealPlanEntry>, DateTime>((ref, day) {
+  return ref
+      .watch(mealPlanRepositoryProvider)
+      .watchRange(addDays(day, -14), addDays(day, 15));
+});
+
+/// Sugestões pro [day] (F5, §8.3): receitas que dividem ingredientes com o que
+/// você já vai comprar na semana. Recalcula quando o plano ao redor muda (você
+/// agendou, tirou, marcou feita) e toda vez que a tela abre (`autoDispose`).
+final daySuggestionsProvider = FutureProvider.autoDispose
+    .family<List<PlannerSuggestion>, DateTime>((ref, day) async {
+  final window = await ref.watch(planWindowProvider(day).future);
+  return ref.read(plannerSuggestionServiceProvider).suggestionsFor(day, window);
+});
+
+/// Em qual refeição cai uma sugestão tocada no "+": a primeira vazia entre
+/// almoço, jantar, café e lanche; sem nenhuma vazia, almoço.
+MealType defaultMealFor(List<MealPlanEntry> dayEntries) {
+  const order = [
+    MealType.lunch,
+    MealType.dinner,
+    MealType.breakfast,
+    MealType.snack,
+  ];
+  final taken = {for (final e in dayEntries) e.mealType};
+  return order.firstWhere((m) => !taken.contains(m),
+      orElse: () => MealType.lunch);
+}
 
 /// Até cinco refeições ainda por fazer nos 14 dias a partir de [from], em
 /// ordem de dia e de refeição — o "Próximas refeições" do calendário. Família

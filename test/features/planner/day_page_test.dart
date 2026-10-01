@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
+import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/day_page.dart';
@@ -29,8 +30,15 @@ MealPlanEntry _entry(
       done: done,
     );
 
-Widget _host(List<MealPlanEntry> entries, {DateTime? day}) => ProviderScope(
+Widget _host(
+  List<MealPlanEntry> entries, {
+  DateTime? day,
+  List<PlannerSuggestion> suggestions = const [],
+}) =>
+    ProviderScope(
       overrides: [
+        // Sem isto a tela cairia no banco de verdade.
+        daySuggestionsProvider.overrideWith((ref, d) async => suggestions),
         dayEntriesProvider.overrideWith(
           (ref, d) => Stream.value(isSameDay(d, today()) ? entries : const []),
         ),
@@ -111,7 +119,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('arrastar o dia com o dedo passa pro dia seguinte', (tester) async {
+  testWidgets('arrastar o dia com o dedo passa pro dia seguinte',
+      (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
     await tester.pumpAndSettle();
@@ -131,9 +140,11 @@ void main() {
     await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
     await tester.pumpAndSettle();
 
-    bool enabled() => tester
-        .widget<InkWell>(find.byKey(const ValueKey('stepper-today')))
-        .onTap != null;
+    bool enabled() =>
+        tester
+            .widget<InkWell>(find.byKey(const ValueKey('stepper-today')))
+            .onTap !=
+        null;
     expect(enabled(), isFalse);
 
     await tester.tap(find.byTooltip('Dia anterior'));
@@ -169,5 +180,46 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Bolo'), findsOneWidget);
+  });
+
+  testWidgets('mostra as sugestões do dia com o motivo escrito',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host(
+      [_entry('Frango com gengibre', MealType.dinner)],
+      suggestions: [
+        PlannerSuggestion(
+          recipe: Recipe(
+            id: 'stroganoff',
+            name: 'Strogonoff',
+            createdAt: DateTime.utc(2026),
+            updatedAt: DateTime.utc(2026),
+          ),
+          score: 0.5,
+          sharedIngredientNames: const ['Frango', 'Gengibre'],
+        ),
+      ],
+    ));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('SUGESTÕES'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('SUGESTÕES'), findsOneWidget);
+    expect(find.text('Strogonoff'), findsOneWidget);
+    expect(
+      find.text('usa frango e gengibre, que você já vai comprar'),
+      findsOneWidget,
+    );
+    expect(find.byTooltip('Agendar Strogonoff'), findsOneWidget);
+  });
+
+  testWidgets('sem sugestões o bloco não aparece', (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
+    await tester.pumpAndSettle();
+    expect(find.text('SUGESTÕES'), findsNothing);
   });
 }

@@ -767,9 +767,8 @@ Esforço em dias de trabalho focado.
     agregador; agora soma entre si.
   - **Fora do bloco E**: F3 (lista a partir da semana) e o "levar pendentes pra
     outra lista" seguem em aberto.
-- **Bloco F (F1–F4)** — F1–F3 entregues em 2026-10-01; **F4** (similaridade por
-  IDF, Dart puro) entregue logo depois; **F5** (a sugestão na tela, com o
-  motivo) ainda não.
+- **Bloco F (F1–F5)** — ✅ completo (2026-10-01): F1–F3 (planejar e lista da
+  semana), F4 (similaridade por IDF) e F5 (a sugestão na tela, com o motivo).
   - **F1**: aba "Semana" em **duas etapas**. (1) Calendário do mês: três números
     grandes do mês (refeições, receitas diferentes, feitas), a grade em mosaico —
     cada dia é dividido em até 3 faixas, uma por refeição, no azulejo da
@@ -799,8 +798,16 @@ Esforço em dias de trabalho focado.
     ×0,4 se agendada nos últimos 14 dias, desempate por id, e cada sugestão
     traz os ingredientes em comum do mais raro pro mais comum (o "motivo" do
     F5). Sem banco e sem UI; 14 testes.
-- **Próximo passo real**: **F5** (montar o `catalog` e o `target` a partir do
-  plano da semana, mostrar a sugestão com o motivo).
+  - **F5**: bloco "Sugestões" no fim da tela do dia (até 3). Alvo = ingredientes
+    das refeições **ainda por fazer da semana** do dia; ficam de fora as
+    receitas já na semana e as da lixeira; as agendadas ±14 dias levam a
+    penalidade do F4. Cada cartão mostra azulejo, nome e o motivo ("usa frango
+    e gengibre, que você já vai comprar"); tocar abre a receita, o "+" agenda
+    na primeira refeição vazia (almoço, jantar, café, lanche) com "Desfazer".
+    Some quando não há o que sugerir. `PlannerSuggestionService`,
+    `RecipeDao.activeIngredientSets`, `daySuggestionsProvider`.
+  - **Ainda não**: sugestão no calendário do mês, e `servingsOverride` /
+    G12 ("tenho X, Y, Z", reaproveita `suggestRecipes`).
 
 ---
 

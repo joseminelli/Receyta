@@ -98,6 +98,26 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     return (select(recipes)..where((r) => r.id.isIn(ids))).get();
   }
 
+  /// Pra cada receita ativa, o conjunto de ingredientes do catálogo que ela
+  /// usa (linhas ainda sem vínculo ficam de fora) — a entrada do motor de
+  /// similaridade (F4). Receita sem nenhum ingrediente resolvido não aparece.
+  Future<Map<String, Set<String>>> activeIngredientSets() async {
+    final rows = await customSelect(
+      'SELECT ri.recipe_id AS rid, ri.ingredient_id AS iid '
+      'FROM recipe_ingredients ri '
+      'JOIN recipes r ON r.id = ri.recipe_id '
+      'WHERE r.deleted_at IS NULL AND ri.ingredient_id IS NOT NULL',
+      readsFrom: {recipeIngredients, recipes},
+    ).get();
+    final out = <String, Set<String>>{};
+    for (final row in rows) {
+      out
+          .putIfAbsent(row.read<String>('rid'), () => <String>{})
+          .add(row.read<String>('iid'));
+    }
+    return out;
+  }
+
   Future<List<RecipeIngredientRow>> ingredientsOf(String recipeId) {
     return (select(recipeIngredients)
           ..where((i) => i.recipeId.equals(recipeId))
