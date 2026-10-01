@@ -325,6 +325,38 @@ void main() {
     expect(await shoppingRepo.itemsOf(list.id), hasLength(1));
   });
 
+  test('uncheckAll desmarca só os marcados da lista e recheck desfaz',
+      () async {
+    final recipe = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['1 ovo', '300g de farinha de trigo', '2 tomates'],
+    ));
+    final list =
+        unwrapList(await shoppingRepo.generateFromRecipes([recipe.id]));
+    final other =
+        unwrapList(await shoppingRepo.generateFromRecipes([recipe.id]));
+    final items = await shoppingRepo.itemsOf(list.id);
+    final otherItems = await shoppingRepo.itemsOf(other.id);
+    await shoppingRepo.setChecked(items[0].id, true);
+    await shoppingRepo.setChecked(items[1].id, true);
+    await shoppingRepo.setChecked(otherItems[0].id, true);
+
+    final ids = (await shoppingRepo.uncheckAll(list.id) as Ok<List<String>>)
+        .value;
+    expect(ids.toSet(), {items[0].id, items[1].id});
+    expect((await shoppingRepo.itemsOf(list.id)).any((i) => i.checked), isFalse);
+    expect((await shoppingRepo.itemsOf(other.id)).first.checked, isTrue);
+
+    expect(await shoppingRepo.recheck(ids), isA<Ok<void>>());
+    final after = await shoppingRepo.itemsOf(list.id);
+    expect(after.where((i) => i.checked).map((i) => i.id).toSet(), ids.toSet());
+
+    expect((await shoppingRepo.uncheckAll(other.id) as Ok<List<String>>).value,
+        hasLength(1));
+    expect((await shoppingRepo.uncheckAll(other.id) as Ok<List<String>>).value,
+        isEmpty);
+  });
+
   test('avulso vazio é recusado', () async {
     final recipe = unwrapRecipe(await recipeRepo.saveDetail(
       name: 'Bolo',

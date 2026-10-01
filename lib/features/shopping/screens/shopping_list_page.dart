@@ -12,6 +12,7 @@ import 'package:receyta/domain/engine/shopping_text.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
+import 'package:receyta/features/shopping/screens/shopping_actions.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -34,6 +35,14 @@ class ShoppingListPage extends ConsumerWidget {
   const ShoppingListPage({super.key, required this.listId});
 
   final String listId;
+
+  /// O botão "Desmarcar todos" só aparece com algo marcado.
+  bool _hasChecked(WidgetRef ref, String id) =>
+      ref
+          .watch(shoppingListItemsProvider(id))
+          .valueOrNull
+          ?.any((i) => i.checked) ??
+      false;
 
   Future<void> _share(WidgetRef ref) async {
     final list = ref.read(shoppingListProvider(listId)).valueOrNull;
@@ -101,6 +110,14 @@ class ShoppingListPage extends ConsumerWidget {
                   ?.copyWith(color: colors.onSaturated),
             ),
           ),
+          if (list != null && _hasChecked(ref, list.id)) ...[
+            const SizedBox(width: AppSpacing.xs),
+            CircleIconButton(
+              icon: Icons.remove_done,
+              tooltip: 'Desmarcar todos',
+              onTap: () => uncheckAllShoppingItems(ref, list.id),
+            ),
+          ],
           if (list != null) ...[
             const SizedBox(width: AppSpacing.xs),
             CircleIconButton(

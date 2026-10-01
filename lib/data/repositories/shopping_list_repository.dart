@@ -189,6 +189,28 @@ class ShoppingListRepository {
     }
   }
 
+  /// Desmarca todos os itens da lista (pra reaproveitar a lista na próxima
+  /// compra). Devolve os ids que estavam marcados, pra [recheck] desfazer.
+  Future<Result<List<String>>> uncheckAll(String listId) async {
+    try {
+      return Ok(await _dao.uncheckAll(listId));
+    } catch (e) {
+      debugPrint('ShoppingListRepository.uncheckAll: $e');
+      return Err(DatabaseFailure('Falha ao desmarcar os itens', cause: e));
+    }
+  }
+
+  /// Remarca os itens de [itemIds] — o "desfazer" do [uncheckAll].
+  Future<Result<void>> recheck(List<String> itemIds) async {
+    try {
+      await _dao.setCheckedMany(itemIds, true);
+      return const Ok(null);
+    } catch (e) {
+      debugPrint('ShoppingListRepository.recheck: $e');
+      return Err(DatabaseFailure('Falha ao desfazer', cause: e));
+    }
+  }
+
   Future<Result<void>> setChecked(String itemId, bool checked) async {
     try {
       await _dao.setChecked(itemId, checked);

@@ -7,6 +7,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
+import 'package:receyta/features/shopping/screens/shopping_actions.dart';
 import 'package:receyta/features/shopping/screens/shopping_recipe_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -234,7 +235,7 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
           child: _ListCard(
             summary: summary,
             onOpen: () => context.push('/shopping/${list.id}'),
-            onMenu: () => _openListMenu(list),
+            onMenu: () => _openListMenu(summary),
           ),
         ),
       ),
@@ -307,7 +308,8 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     );
   }
 
-  Future<void> _openListMenu(ShoppingList list) {
+  Future<void> _openListMenu(ShoppingListSummary summary) {
+    final list = summary.list;
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -321,6 +323,20 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
               onTap: () {
                 Navigator.of(sheet).pop();
                 _rename(list);
+              },
+            ),
+            ListTile(
+              enabled: summary.checked > 0,
+              leading: const Icon(Icons.remove_done),
+              title: const Text('Desmarcar todos'),
+              subtitle: Text(
+                summary.checked == 0
+                    ? 'Nenhum item marcado'
+                    : 'Deixa a lista pronta pra próxima compra',
+              ),
+              onTap: () {
+                Navigator.of(sheet).pop();
+                uncheckAllShoppingItems(ref, list.id);
               },
             ),
             ListTile(
