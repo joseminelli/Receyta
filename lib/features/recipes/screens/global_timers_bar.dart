@@ -88,22 +88,32 @@ class _Bar extends StatelessWidget {
           bottom: false,
           child: SizedBox(
             height: 62,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.screen,
-                vertical: AppSpacing.xs,
-              ),
-              // O primeiro item são as chaves de aviso (vibrar / som); depois,
-              // um por timer.
-              itemCount: timers.length + 1,
-              separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.xs),
-              itemBuilder: (context, i) => i == 0
-                  ? const TimerAlertToggles()
-                  : _TimerPill(
-                      timer: timers[i - 1],
-                      onOpen: () => onOpenRecipe(timers[i - 1].recipeId),
-                    ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final titleWidth = pillTitleWidth(
+                  barWidth: constraints.maxWidth,
+                  timerCount: timers.length,
+                );
+                return ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screen,
+                    vertical: AppSpacing.xs,
+                  ),
+                  // O primeiro item são as chaves de aviso (vibrar / som);
+                  // depois, um por timer.
+                  itemCount: timers.length + 1,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(width: AppSpacing.xs),
+                  itemBuilder: (context, i) => i == 0
+                      ? const TimerAlertToggles()
+                      : _TimerPill(
+                          timer: timers[i - 1],
+                          titleWidth: titleWidth,
+                          onOpen: () => onOpenRecipe(timers[i - 1].recipeId),
+                        ),
+                );
+              },
             ),
           ),
         ),
@@ -112,10 +122,46 @@ class _Bar extends StatelessWidget {
   }
 }
 
+/// Largura das duas chaves de mute juntas (2 botões de 44).
+const _togglesWidth = 88.0;
+
+/// O que a pílula gasta além do nome: margem esquerda interna, os dois botões
+/// de 44 e a folga do fim.
+const _pillChrome = AppSpacing.md + 88 + AppSpacing.xs / 2;
+
+/// Quanto do nome da receita cabe na pílula de um timer da faixa global.
+///
+/// Com um timer só, ele ganha o que sobra da largura da barra depois das
+/// margens, das chaves de mute e dos botões — a pílula termina com a mesma
+/// margem que as chaves têm no começo. Com vários a faixa rola de lado, então
+/// cada nome fica mais curto pra caberem mais na tela. Nunca abaixo de
+/// [_minTitle] (ilegível) nem acima do teto (nome longo demais não ajuda).
+@visibleForTesting
+double pillTitleWidth({required double barWidth, required int timerCount}) {
+  final room = barWidth -
+      2 * AppSpacing.screen -
+      _togglesWidth -
+      AppSpacing.xs -
+      _pillChrome;
+  final cap = timerCount <= 1 ? _singleTitleCap : _multiTitleCap;
+  return room.clamp(_minTitle, cap).toDouble();
+}
+
+const _minTitle = 72.0;
+const _singleTitleCap = 240.0;
+const _multiTitleCap = 140.0;
+
 class _TimerPill extends ConsumerWidget {
-  const _TimerPill({required this.timer, required this.onOpen});
+  const _TimerPill({
+    required this.timer,
+    required this.titleWidth,
+    required this.onOpen,
+  });
 
   final CookingTimer timer;
+
+  /// Largura máxima do nome (ver [pillTitleWidth]).
+  final double titleWidth;
   final VoidCallback onOpen;
 
   @override
@@ -130,7 +176,6 @@ class _TimerPill extends ConsumerWidget {
     ].join(' · ');
 
     return Container(
-      constraints: const BoxConstraints(maxWidth: 280),
       padding: const EdgeInsets.only(left: AppSpacing.md),
       decoration: BoxDecoration(
         color: done ? colors.lime : colors.inkSoft,
@@ -139,7 +184,10 @@ class _TimerPill extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Flexible(
+          // O nome visível é curto (reticências no resto): assim a pílula cabe
+          // ao lado das chaves de mute e sobra a mesma margem dos dois lados.
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: titleWidth),
             child: Semantics(
               button: true,
               label: 'Abrir modo cozinha: $title',

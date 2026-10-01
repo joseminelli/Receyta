@@ -235,4 +235,61 @@ void main() {
     expect(colorOf(Icons.volume_off), AppColors.light.danger);
     await _close(tester);
   });
+
+  group('largura do nome na pílula (responsiva)', () {
+    test('um timer: ganha o que sobra, entre o mínimo e o teto', () {
+      double w(double bar) => pillTitleWidth(barWidth: bar, timerCount: 1);
+      expect(w(320), 80); // celular pequeno: sobra pouco
+      expect(w(360), 120);
+      expect(w(390), 150);
+      expect(w(700), 240); // tablet: teto
+      expect(w(200), 72); // absurdo: mínimo legível
+    });
+
+    test('vários timers: nome mais curto, a faixa rola', () {
+      double w(double bar) => pillTitleWidth(barWidth: bar, timerCount: 3);
+      expect(w(360), 120);
+      expect(w(390), 140); // teto menor
+      expect(w(700), 140);
+    });
+
+    test('cresce junto com a tela, nunca diminui ao alargar', () {
+      var last = 0.0;
+      for (var bar = 280.0; bar <= 800; bar += 20) {
+        final w = pillTitleWidth(barWidth: bar, timerCount: 1);
+        expect(w, greaterThanOrEqualTo(last));
+        last = w;
+      }
+    });
+  });
+
+  for (final width in [320.0, 360.0, 390.0, 430.0]) {
+    testWidgets(
+        'com um timer a pílula termina antes da margem direita '
+        '(tela de ${width.toInt()} px)', (tester) async {
+      tester.view.physicalSize = Size(width * 3, 1800);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_host());
+      _timers(tester).start(
+        recipeId: 'r1',
+        recipeName: 'Frango ao curry com legumes e arroz',
+        label: 'Cozimento',
+        duration: const Duration(minutes: 25),
+      );
+      await tester.pumpAndSettle();
+
+      final pill = find.ancestor(
+        of: find.byIcon(Icons.pause),
+        matching: find.byType(Container),
+      );
+      final right = tester.getRect(pill.first).right;
+      expect(
+        right,
+        lessThanOrEqualTo(width - AppSpacing.screen + 0.5),
+        reason: 'a pílula passou da margem direita em ${width.toInt()} px',
+      );
+      await _close(tester);
+    });
+  }
 }

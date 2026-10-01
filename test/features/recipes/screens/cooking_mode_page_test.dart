@@ -197,13 +197,14 @@ void main() {
       await close(tester);
     });
 
-    testWidgets('as chaves de vibrar e som ficam dentro do cartão do timer',
+    testWidgets(
+        'as chaves de vibrar e som ficam no cartão, à esquerda do relógio',
         (tester) async {
       await _open(tester, _detail(steps: baking));
       await tester.tap(find.text('20 min'));
       await tester.pump();
 
-      // Dentro do mesmo cartão (linha) do relógio, à direita dele.
+      // Dentro do mesmo cartão (linha) do relógio, à esquerda dele.
       final row = find.ancestor(
         of: find.text('20:00').last,
         matching: find.byType(Container),
@@ -214,7 +215,7 @@ void main() {
       );
       final time = tester.getTopLeft(find.text('20:00').last).dx;
       final vibrate = tester.getTopLeft(find.byIcon(Icons.vibration)).dx;
-      expect(vibrate, greaterThan(time));
+      expect(vibrate, lessThan(time));
       expect(find.byIcon(Icons.volume_off), findsOneWidget); // som: padrão off
       await close(tester);
     });
