@@ -23,10 +23,12 @@ class SlidePager extends StatefulWidget {
   final ValueChanged<int> onChanged;
 
   @override
-  State<SlidePager> createState() => _SlidePagerState();
+  State<SlidePager> createState() => SlidePagerState();
 }
 
-class _SlidePagerState extends State<SlidePager>
+/// Estado público pra que outra área (ex.: o cabeçalho da tela do dia) possa
+/// puxar o mesmo arrasto via `GlobalKey<SlidePagerState>` — `handleDrag*`.
+class SlidePagerState extends State<SlidePager>
     with SingleTickerProviderStateMixin {
   static const _settleDuration = Duration(milliseconds: 240);
   static const _commitFraction = 0.3;
@@ -56,12 +58,12 @@ class _SlidePagerState extends State<SlidePager>
     super.dispose();
   }
 
-  void _onUpdate(DragUpdateDetails d) {
+  void handleDragUpdate(DragUpdateDetails d) {
     if (_settling || _width == 0) return;
     setState(() => _dragX = (_dragX + d.delta.dx).clamp(-_width, _width));
   }
 
-  void _onEnd(DragEndDetails d) {
+  void handleDragEnd(DragEndDetails d) {
     if (_settling || _dragX == 0) return;
     final velocity = d.primaryVelocity ?? 0;
     final forward = _dragX < 0;
@@ -69,6 +71,10 @@ class _SlidePagerState extends State<SlidePager>
     final fast = velocity.abs() > _commitVelocity && (velocity < 0) == forward;
     final commit = far || fast;
     _settleTo(commit ? (forward ? -_width : _width) : 0, commit, forward);
+  }
+
+  void handleDragCancel() {
+    if (!_settling && _dragX != 0) _settleTo(0, false, true);
   }
 
   void _settleTo(double target, bool commit, bool forward) {
@@ -135,11 +141,9 @@ class _SlidePagerState extends State<SlidePager>
 
         return GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onHorizontalDragUpdate: _onUpdate,
-          onHorizontalDragEnd: _onEnd,
-          onHorizontalDragCancel: () {
-            if (!_settling && _dragX != 0) _settleTo(0, false, true);
-          },
+          onHorizontalDragUpdate: handleDragUpdate,
+          onHorizontalDragEnd: handleDragEnd,
+          onHorizontalDragCancel: handleDragCancel,
           child: ClipRect(
             child: Stack(
               children: [

@@ -145,4 +145,29 @@ void main() {
     expect(enabled(), isFalse);
     expect(find.text('Bolo'), findsOneWidget);
   });
+
+  testWidgets('arrastar pelo cabeçalho roxo também passa de dia',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
+    await tester.pumpAndSettle();
+
+    await tester.drag(
+      find.textContaining(weekdayLong(today()).toUpperCase()),
+      const Offset(-300, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining(weekdayLong(addDays(today(), 1)).toUpperCase()),
+      findsOneWidget,
+    );
+    expect(find.text('Bolo'), findsNothing);
+
+    await tester.drag(
+      find.textContaining(weekdayLong(addDays(today(), 1)).toUpperCase()),
+      const Offset(300, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Bolo'), findsOneWidget);
+  });
 }

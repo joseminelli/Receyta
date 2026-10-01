@@ -41,6 +41,9 @@ class DayPage extends ConsumerStatefulWidget {
 class _DayPageState extends ConsumerState<DayPage> {
   late DateTime _day = dayOf(widget.initialDay);
 
+  /// O cabeçalho também arrasta o dia: repassa o gesto pro pager do corpo.
+  final _pagerKey = GlobalKey<SlidePagerState>();
+
   /// Refeições já deslizadas pra fora: somem na hora (o `Dismissible` exige
   /// sair da árvore) enquanto o banco apaga e o stream não reemitiu.
   final _removed = <String>{};
@@ -69,6 +72,7 @@ class _DayPageState extends ConsumerState<DayPage> {
             _buildHeader(context, count),
             Expanded(
               child: SlidePager(
+                key: _pagerKey,
                 index: dayIndex(_day),
                 onChanged: (i) => setState(() => _day = dayFromIndex(i)),
                 builder: (i) => _buildDayBody(dayFromIndex(i)),
@@ -114,86 +118,94 @@ class _DayPageState extends ConsumerState<DayPage> {
         ? 'Nada planejado ainda'
         : '$count ${count == 1 ? 'refeição' : 'refeições'}';
 
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(AppRadii.lg),
-      ),
-      child: Container(
-        color: tile.background,
-        child: Stack(
-          children: [
-            Positioned(
-              top: -40,
-              right: -30,
-              child: SizedBox(
-                width: 240,
-                height: 240,
-                child: TilePattern(
-                  motif: tile.motif,
-                  background: tile.background,
-                  patternColor: tile.patternColor,
-                  patternColorAlt: tile.patternColorAlt,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: (d) =>
+          _pagerKey.currentState?.handleDragUpdate(d),
+      onHorizontalDragEnd: (d) => _pagerKey.currentState?.handleDragEnd(d),
+      onHorizontalDragCancel: () => _pagerKey.currentState?.handleDragCancel(),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(AppRadii.lg),
+        ),
+        child: Container(
+          color: tile.background,
+          child: Stack(
+            children: [
+              Positioned(
+                top: -40,
+                right: -30,
+                child: SizedBox(
+                  width: 240,
+                  height: 240,
+                  child: TilePattern(
+                    motif: tile.motif,
+                    background: tile.background,
+                    patternColor: tile.patternColor,
+                    patternColorAlt: tile.patternColorAlt,
+                  ),
                 ),
               ),
-            ),
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screen,
-                  AppSpacing.xs,
-                  AppSpacing.screen,
-                  AppSpacing.lg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        CircleIconButton(
-                          icon: Icons.arrow_back,
-                          tooltip: 'Voltar',
-                          background: context.colors.paper,
-                          foreground: context.colors.ink,
-                          onTap: () => context.pop(),
-                        ),
-                        const Spacer(),
-                        PeriodStepper(
-                          atToday: isToday,
-                          previousTooltip: 'Dia anterior',
-                          nextTooltip: 'Próximo dia',
-                          onPrevious: () => _shiftDay(-1),
-                          onNext: () => _shiftDay(1),
-                          onToday: () => setState(() => _day = today()),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      eyebrow,
-                      style: context.texts.labelSmall?.copyWith(
-                        color: onColor,
-                        letterSpacing: 1.2,
+              SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screen,
+                    AppSpacing.xs,
+                    AppSpacing.screen,
+                    AppSpacing.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleIconButton(
+                            icon: Icons.arrow_back,
+                            tooltip: 'Voltar',
+                            background: context.colors.paper,
+                            foreground: context.colors.ink,
+                            onTap: () => context.pop(),
+                          ),
+                          const Spacer(),
+                          PeriodStepper(
+                            atToday: isToday,
+                            previousTooltip: 'Dia anterior',
+                            nextTooltip: 'Próximo dia',
+                            onPrevious: () => _shiftDay(-1),
+                            onNext: () => _shiftDay(1),
+                            onToday: () => setState(() => _day = today()),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      '${_day.day} de ${monthLong(_day).toLowerCase()}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.display(40).copyWith(color: onColor),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      summary,
-                      style: context.texts.bodyMedium
-                          ?.copyWith(color: onColor.withValues(alpha: 0.85)),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        eyebrow,
+                        style: context.texts.labelSmall?.copyWith(
+                          color: onColor,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        '${_day.day} de ${monthLong(_day).toLowerCase()}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            AppTextStyles.display(40).copyWith(color: onColor),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        summary,
+                        style: context.texts.bodyMedium
+                            ?.copyWith(color: onColor.withValues(alpha: 0.85)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
