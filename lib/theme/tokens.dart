@@ -84,6 +84,32 @@ class AppColors extends ThemeExtension<AppColors> {
     limePattern: Color(0xFFC2E33F),
   );
 
+  /// Variante de alto contraste (RF-08.3): papel branco, texto quase preto e
+  /// acentos mais fundos. Todo par texto/fundo usado no app passa de 4,5:1
+  /// (AA) — `high_contrast_test.dart` confere.
+  static const AppColors highContrast = AppColors(
+    ink: Color(0xFF000000),
+    inkSoft: Color(0xFF1A1A14),
+    paper: Color(0xFFFFFFFF),
+    paperSoft: Color(0xFFEDEAE0),
+    lime: Color(0xFFD6F45A),
+    coral: Color(0xFFB82E0E),
+    coralLight: Color(0xFFD9411F),
+    violetDeep: Color(0xFF3A2DA0),
+    violet: Color(0xFF4B3CC4),
+    textMuted: Color(0xFF4A473B),
+    textBody: Color(0xFF1F1E16),
+    danger: Color(0xFF9E0F2E),
+    onSaturated: Color(0xFFFFFFFF),
+    coralMuted: Color(0xFFFFE3DC),
+    violetMuted: Color(0xFFE2DFFD),
+    coralPattern: Color(0xFFC93C1B),
+    violetPattern: Color(0xFF5A4BD2),
+    inkPattern: Color(0xFF1A1A14),
+    inkPatternAlt: Color(0xFF24241B),
+    limePattern: Color(0xFFC2E33F),
+  );
+
   static const AppColors dark = AppColors(
     ink: Color(0xFFF5F2EA),
     inkSoft: Color(0xFFE9E5D8),

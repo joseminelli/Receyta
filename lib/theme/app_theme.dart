@@ -28,6 +28,10 @@ abstract class SystemBars {
 abstract class AppTheme {
   static ThemeData light() => _build(AppColors.light, Brightness.light);
 
+  /// Alto contraste (RF-08.3), ligado em Configurações.
+  static ThemeData highContrast() =>
+      _build(AppColors.highContrast, Brightness.light);
+
   /// Modo escuro é decisão pendente no plano (§9.2) — a paleta não inverte
   /// trivialmente e a tela de Compras já nasce escura. Isto é um rascunho.
   static ThemeData dark() => _build(AppColors.dark, Brightness.dark);
