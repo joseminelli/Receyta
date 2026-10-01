@@ -1,15 +1,70 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 
-/// Inicialização que a splash espera antes de liberar a home (§9.7): abre o
-/// Drift, roda as migrações e confere o seed, e faz a faxina da lixeira de 30
-/// dias (RF-01.6). A splash segura a última frame da animação até isto
-/// resolver, sem estourar o orçamento de `SplashTimings`.
+/// Quanto esperar depois da abertura pra rodar a manutenção em segundo plano
+/// (deixa a home aparecer e o primeiro gesto passar antes de mexer no
+/// banco). `null` = não agenda — os testes usam isso e chamam
+/// [runAppMaintenance] direto.
+final maintenanceDelayProvider = Provider<Duration?>(
+  (ref) => const Duration(milliseconds: 1500),
+);
+
+/// Inicialização que a splash espera antes de liberar a home (§9.7): só o
+/// que a home precisa pra desenhar — abrir o Drift, rodar as migrações e
+/// conferir o seed. A faxina da lixeira e o reprocessamento de ingredientes
+/// antigos saem do caminho da abertura e rodam depois ([runAppMaintenance]):
+/// o usuário não precisa esperar por eles, e o custo deles cresce com o
+/// volume de dados.
+///
+/// Cada passo marca um trecho na linha do tempo (DevTools → Performance →
+/// Timeline: `bootstrap.*`) e, em debug, loga a duração — é como se mede a
+/// abertura de verdade (em `--profile`, não em debug).
 final appBootstrapProvider = FutureProvider<void>((ref) async {
-  await ref.watch(databaseProvider).ensureReady();
-  final recipes = ref.read(recipeRepositoryProvider);
-  await recipes.purgeExpired();
-  await recipes.reprocessLegacyIngredients();
+  await _timed(
+    'bootstrap.ensureReady',
+    () => ref.watch(databaseProvider).ensureReady(),
+  );
+
+  final delay = ref.read(maintenanceDelayProvider);
+  if (delay != null) {
+    final recipes = ref.read(recipeRepositoryProvider);
+    unawaited(
+      Future<void>.delayed(delay).then((_) => runAppMaintenance(recipes)),
+    );
+  }
 });
+
+/// Manutenção que não precisa bloquear a abertura: apaga da lixeira o que
+/// passou de 30 dias (RF-01.6) e resolve ingredientes de receitas antigas
+/// (C5). Nunca lança — falha aqui não pode derrubar o app, só vira log.
+Future<void> runAppMaintenance(RecipeRepository recipes) async {
+  try {
+    await _timed('bootstrap.purgeExpired', recipes.purgeExpired);
+    await _timed(
+      'bootstrap.reprocessLegacyIngredients',
+      recipes.reprocessLegacyIngredients,
+    );
+  } catch (e) {
+    debugPrint('runAppMaintenance: $e');
+  }
+}
+
+/// Mede [body] numa tarefa assíncrona da Timeline e, em debug, loga a
+/// duração.
+Future<T> _timed<T>(String name, Future<T> Function() body) async {
+  final task = developer.TimelineTask()..start(name);
+  final watch = Stopwatch()..start();
+  try {
+    return await body();
+  } finally {
+    watch.stop();
+    task.finish();
+    if (kDebugMode) debugPrint('[$name] ${watch.elapsedMilliseconds} ms');
+  }
+}
