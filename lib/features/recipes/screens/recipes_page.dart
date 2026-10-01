@@ -758,13 +758,13 @@ class _NoMatch extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
+class _EmptyState extends ConsumerWidget {
   const _EmptyState({required this.onCreate});
 
   final VoidCallback onCreate;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -794,6 +794,40 @@ class _EmptyState extends StatelessWidget {
             label: 'Nova receita',
             icon: Icons.add,
             onPressed: onCreate,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'ou traga uma que você já tem',
+            style: context.texts.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: AppSpacing.xs,
+            children: [
+              PillButton(
+                label: 'De um link',
+                icon: Icons.link,
+                variant: PillButtonVariant.ghost,
+                dense: true,
+                onPressed: () => importRecipeFromUrlFlow(context, ref),
+              ),
+              PillButton(
+                label: 'De uma foto',
+                icon: Icons.photo_camera_outlined,
+                variant: PillButtonVariant.ghost,
+                dense: true,
+                onPressed: () => importRecipeFromPhotoFlow(context, ref),
+              ),
+              PillButton(
+                label: 'De um arquivo',
+                icon: Icons.upload_file_outlined,
+                variant: PillButtonVariant.ghost,
+                dense: true,
+                onPressed: () => importReceytaFileFlow(context, ref),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.md),
           const _HomeFooter(),

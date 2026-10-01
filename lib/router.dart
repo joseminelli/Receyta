@@ -7,6 +7,8 @@ import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/folders/screens/all_folders_page.dart';
 import 'package:receyta/features/folders/screens/folder_page.dart';
+import 'package:receyta/features/onboarding/controllers/onboarding_seen.dart';
+import 'package:receyta/features/onboarding/screens/welcome_page.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/features/planner/screens/day_page.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
@@ -31,6 +33,11 @@ final router = GoRouter(
       path: '/splash',
       name: 'splash',
       builder: (context, state) => const _SplashRoute(),
+    ),
+    GoRoute(
+      path: '/welcome',
+      name: 'welcome',
+      builder: (context, state) => const WelcomePage(),
     ),
     GoRoute(
       path: '/',
@@ -157,7 +164,10 @@ class _SplashRoute extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Splash(
       ready: ref.watch(appBootstrapProvider.future),
-      onComplete: () => context.go('/'),
+      onComplete: () async {
+        final seen = await loadOnboardingSeen();
+        if (context.mounted) context.go(seen ? '/' : '/welcome');
+      },
     );
   }
 }
