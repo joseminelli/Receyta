@@ -244,7 +244,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Compartilhar a semana como imagem'));
+    await tester.tap(find.bySemanticsLabel('Mais ações'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Compartilhar a semana'));
     await tester.pumpAndSettle();
     expect(find.text('Compartilhar a semana'), findsOneWidget);
 
@@ -261,6 +263,9 @@ void main() {
     await tester.pumpWidget(_host(const []));
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Compartilhar a semana como imagem'), findsNothing);
+    await tester.tap(find.bySemanticsLabel('Mais ações'));
+    await tester.pumpAndSettle();
+    expect(find.text('Compartilhar a semana'), findsNothing);
+    expect(find.text('Sugerir a semana'), findsOneWidget);
   });
 }

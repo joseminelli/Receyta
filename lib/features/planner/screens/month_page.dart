@@ -8,8 +8,8 @@ import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/data/services/day_export_service.dart';
 import 'package:receyta/messenger.dart';
+import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
-import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/suggest_week_sheet.dart';
@@ -138,20 +138,8 @@ class MonthPage extends ConsumerWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircleIconButton(
-            icon: Icons.auto_awesome,
-            tooltip: 'Sugerir a semana',
-            onTap: () => showSuggestWeekSheet(context),
-          ),
+          _buildMenu(context, ref, month, entries),
           const SizedBox(width: AppSpacing.xs),
-          if (entries.isNotEmpty) ...[
-            CircleIconButton(
-              icon: Icons.ios_share,
-              tooltip: 'Compartilhar a semana como imagem',
-              onTap: () => _shareWeek(context, ref, month, entries),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-          ],
           PeriodStepper(
             atToday: isCurrent,
             previousTooltip: 'Mês anterior',
@@ -201,6 +189,32 @@ class MonthPage extends ConsumerWidget {
           const _UpcomingSection(),
         ],
       ),
+    );
+  }
+
+  /// Ações da semana atrás de um único botão, pra não apertar o título.
+  Widget _buildMenu(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime month,
+    List<MealPlanEntry> entries,
+  ) {
+    return ActionMenuButton(
+      items: [
+        ActionMenuItem(
+          icon: Icons.auto_awesome,
+          label: 'Sugerir a semana',
+          hint: 'Preenche os dias vazios',
+          onTap: () => showSuggestWeekSheet(context),
+        ),
+        if (entries.isNotEmpty)
+          ActionMenuItem(
+            icon: Icons.ios_share,
+            label: 'Compartilhar a semana',
+            hint: 'Como imagem',
+            onTap: () => _shareWeek(context, ref, month, entries),
+          ),
+      ],
     );
   }
 
