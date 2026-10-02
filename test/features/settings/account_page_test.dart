@@ -27,6 +27,8 @@ Widget _host({
           path: '/', builder: (_, __) => const Scaffold(body: AccountPage())),
       GoRoute(
           path: '/settings', builder: (_, __) => const Text('ROTA AJUSTES')),
+      GoRoute(
+          path: '/history', builder: (_, __) => const Text('ROTA HISTORICO')),
     ],
   );
   return ProviderScope(
@@ -50,7 +52,7 @@ Widget _host({
 }
 
 void _usePhoneSize(WidgetTester tester) {
-  tester.view.physicalSize = const Size(1170, 4200);
+  tester.view.physicalSize = const Size(1170, 6600);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -115,12 +117,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('12'), findsOneWidget);
-    expect(find.text('Receitas'), findsOneWidget);
-    expect(find.text('3'), findsWidgets);
-    expect(find.text('Refeições planejadas'), findsOneWidget);
-    expect(find.text('Mais cozinhada'), findsOneWidget);
-    expect(find.text('Frango ao curry'), findsOneWidget);
-    expect(find.text('3 vezes'), findsOneWidget);
+    expect(find.text('RECEITAS'), findsOneWidget);
+    expect(find.text('PASTAS'), findsOneWidget);
+    expect(find.text('LISTAS'), findsOneWidget);
+    expect(find.text('REFEIÇÕES'), findsOneWidget);
+    expect(
+      find.text('Mais cozinhada · Frango ao curry · 3 vezes'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('sem refeição feita, esconde "Mais cozinhada"', (tester) async {
@@ -140,7 +144,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Mais cozinhada'), findsNothing);
+    expect(find.textContaining('Mais cozinhada'), findsNothing);
   });
 
   testWidgets('editar o perfil salva apelido e cor', (tester) async {
@@ -162,16 +166,42 @@ void main() {
     expect(loaded.profileColor, TileColor.violet);
   });
 
-  testWidgets('o cartão de sincronização leva às configurações',
-      (tester) async {
+  testWidgets('o aviso de sincronização leva às configurações', (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
     expect(find.text('Sincronização em breve'), findsOneWidget);
-    await tester.tap(find.text('Ver backup'));
+    await tester.tap(find.text('Fazer backup nas configurações'));
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA AJUSTES'), findsOneWidget);
+  });
+
+  testWidgets('a engrenagem do topo abre as configurações', (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Configurações'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ROTA AJUSTES'), findsOneWidget);
+  });
+
+  testWidgets('os atalhos do livro estão só aqui e abrem suas telas',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    for (final t in ['Histórico', 'Tags', 'Ingredientes', 'Lixeira']) {
+      expect(find.text(t), findsOneWidget);
+    }
+
+    await tester.tap(find.text('Histórico'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ROTA HISTORICO'), findsOneWidget);
   });
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
@@ -67,9 +69,18 @@ class TrashPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trashed = ref.watch(trashedRecipesProvider);
 
-    return Scaffold(
-      backgroundColor: context.colors.paper,
-      appBar: _buildAppBar(context, ref, trashed),
+    final count = trashed.valueOrNull?.length;
+    return HeaderScaffold(
+      title: 'Lixeira',
+      subtitle: count == null || count == 0
+          ? null
+          : '$count ${count == 1 ? 'receita' : 'receitas'} · 30 dias',
+      color: TileColor.ink,
+      trailing: (trashed.valueOrNull?.isNotEmpty ?? false)
+          ? _EmptyTrashButton(
+              onPressed: () => _emptyAll(context, ref, trashed.value!),
+            )
+          : null,
       body: trashed.when(
         loading: () => const Center(child: BrandLoader()),
         error: (_, __) => _buildError(context),
@@ -77,25 +88,6 @@ class TrashPage extends ConsumerWidget {
             ? _buildEmpty(context)
             : _buildList(context, ref, items),
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue<List<Recipe>> trashed,
-  ) {
-    return AppBar(
-      title: const Text('Lixeira'),
-      actions: [
-        if (trashed.valueOrNull?.isNotEmpty ?? false)
-          Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.sm),
-            child: _EmptyTrashButton(
-              onPressed: () => _emptyAll(context, ref, trashed.value!),
-            ),
-          ),
-      ],
     );
   }
 
@@ -169,9 +161,8 @@ class TrashPage extends ConsumerWidget {
   }
 }
 
-/// Ação "Esvaziar" da AppBar — pílula tingida de `danger` (mesmo tratamento
-/// da pílula de contagem das tags) em vez do `TextButton` sem nenhum peso
-/// visual pra uma ação destrutiva de topo de tela.
+/// Ação "Esvaziar" do cabeçalho — pílula `paper` com o texto em `danger`, pra
+/// uma ação destrutiva de topo de tela ter peso visual sem tingir o fundo.
 class _EmptyTrashButton extends StatelessWidget {
   const _EmptyTrashButton({required this.onPressed});
 
@@ -181,7 +172,7 @@ class _EmptyTrashButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Material(
-      color: colors.danger.withValues(alpha: 0.12),
+      color: colors.paper,
       borderRadius: BorderRadius.circular(AppRadii.pill),
       child: InkWell(
         onTap: onPressed,

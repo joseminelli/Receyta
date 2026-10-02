@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/ingredient_repository.dart';
 import 'package:receyta/domain/engine/fuzzy_match.dart';
 import 'package:receyta/domain/models/ingredient.dart';
@@ -74,9 +76,13 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
   Widget build(BuildContext context) {
     final items = ref.watch(ingredientsWithCountsProvider);
 
-    return Scaffold(
-      backgroundColor: context.colors.paper,
-      appBar: AppBar(title: const Text('Ingredientes')),
+    final count = items.valueOrNull?.length;
+    return HeaderScaffold(
+      title: 'Ingredientes',
+      subtitle: count == null
+          ? null
+          : '$count ${count == 1 ? 'ingrediente' : 'ingredientes'}',
+      color: TileColor.lime,
       body: items.when(
         loading: () => const Center(child: BrandLoader()),
         error: (_, __) => _buildError(context),

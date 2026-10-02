@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -26,9 +28,12 @@ class AllFoldersPage extends ConsumerWidget {
       await ref.read(rootFoldersProvider.future);
     }
 
-    return Scaffold(
-      backgroundColor: context.colors.paper,
-      appBar: AppBar(title: const Text('Pastas')),
+    final count = folders.valueOrNull?.length;
+    return HeaderScaffold(
+      title: 'Pastas',
+      subtitle:
+          count == null ? null : '$count ${count == 1 ? 'pasta' : 'pastas'}',
+      color: TileColor.violet,
       body: PullToRefreshControl(
         onRefresh: refresh,
         child: CustomScrollView(

@@ -127,6 +127,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.dragUntilVisible(
+      find.text('Com nota'),
+      find.byType(ListView).first,
+      const Offset(-200, 0),
+    );
     await tester.tap(find.text('Com nota'));
     await tester.pumpAndSettle();
     expect(find.text('Bolo'), findsOneWidget);

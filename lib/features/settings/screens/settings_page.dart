@@ -319,30 +319,6 @@ class SettingsPage extends ConsumerWidget {
                         onTap: () => _backup(context, ref),
                       ),
                       _NavRow(
-                        icon: Icons.history,
-                        title: 'Histórico',
-                        subtitle: 'Tudo o que você já cozinhou',
-                        onTap: () => context.push('/history'),
-                      ),
-                      _NavRow(
-                        icon: Icons.sell_outlined,
-                        title: 'Tags',
-                        subtitle: 'Renomear, apagar, ver o uso',
-                        onTap: () => context.push('/tags'),
-                      ),
-                      _NavRow(
-                        icon: Icons.egg_alt_outlined,
-                        title: 'Ingredientes',
-                        subtitle: 'Mesclar duplicados e apagar sem uso',
-                        onTap: () => context.push('/ingredients'),
-                      ),
-                      _NavRow(
-                        icon: Icons.delete_outline,
-                        title: 'Lixeira',
-                        subtitle: 'Receitas apagadas, por tempo limitado',
-                        onTap: () => context.push('/trash'),
-                      ),
-                      _NavRow(
                         icon: Icons.school_outlined,
                         title: 'Ver a introdução de novo',
                         subtitle: 'Revê as boas-vindas e o tour do app',

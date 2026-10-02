@@ -10,137 +10,205 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
-import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// 4ª aba da `PillNavBar` (§9.2). Sem login ainda: o perfil é local (apelido e
-/// cor do avatar, só neste aparelho), seguido de "seu livro em números" e do
-/// aviso de que a sincronização vem depois. Quando o login chegar, ele só
-/// preenche o mesmo bloco de perfil.
+/// cor, só neste aparelho). Um bloco grande no topo, com a cor e a textura
+/// escolhidas, leva o nome e os números do seu livro; abaixo, os atalhos de
+/// manutenção (histórico, tags, ingredientes, lixeira) em lista aberta, sem
+/// cartões. Quando o login chegar, ele só preenche o mesmo bloco.
 class AccountPage extends ConsumerWidget {
   const AccountPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemBars.onLight,
-      child: SafeArea(
-        bottom: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            AppSpacing.screen,
-            AppSpacing.screen,
-            120,
-          ),
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: AppSpacing.md),
-            const _ProfileCard(),
-            const SizedBox(height: AppSpacing.lg),
-            const _StatsSection(),
-            const SizedBox(height: AppSpacing.xs),
-            const _HistoryLink(),
-            const SizedBox(height: AppSpacing.lg),
-            const _SyncCard(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Row(
-      children: [
-        Text('Conta', style: context.texts.displaySmall),
-        const Spacer(),
-        CircleIconButton(
-          icon: Icons.settings_outlined,
-          tooltip: 'Configurações',
-          onTap: () => context.push('/settings'),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProfileCard extends ConsumerWidget {
-  const _ProfileCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final settings = ref.watch(appSettingsProvider);
     final tile = resolveTileAppearance(colors, color: settings.profileColor);
+    final lightHero = tile.background.computeLuminance() > 0.6;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: lightHero ? SystemBars.onLight : SystemBars.onDark,
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 120),
+        children: const [
+          _Hero(),
+          SizedBox(height: AppSpacing.lg),
+          _Shortcuts(),
+          SizedBox(height: AppSpacing.lg),
+          _SyncNote(),
+        ],
+      ),
+    );
+  }
+}
+
+class _Hero extends ConsumerWidget {
+  const _Hero();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final settings = ref.watch(appSettingsProvider);
+    final tile = resolveTileAppearance(colors, color: settings.profileColor);
+    final stats = ref.watch(libraryStatsProvider).valueOrNull;
     final name = settings.nickname;
     final initial = name.isEmpty ? null : name.characters.first.toUpperCase();
+    final onColor = tile.onColor;
 
-    return Semantics(
-      button: true,
-      label: 'Editar perfil',
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
+    String number(int? v) => v == null ? '–' : '$v';
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppRadii.lg + 10),
+      ),
+      child: Container(
+        width: double.infinity,
+        color: tile.background,
         child: Stack(
           children: [
-            Positioned.fill(
-              child: TilePattern(
-                motif: tile.motif,
-                background: tile.background,
-                patternColor: tile.patternColor,
-                patternColorAlt: tile.patternColorAlt,
-                tile: 56,
+            Positioned(
+              top: -50,
+              right: -40,
+              child: SizedBox(
+                width: 300,
+                height: 300,
+                child: TilePattern(
+                  motif: tile.motif,
+                  background: tile.background,
+                  patternColor: tile.patternColor,
+                  patternColorAlt: tile.patternColorAlt,
+                  tile: 64,
+                ),
               ),
             ),
-            Material(
-              type: MaterialType.transparency,
-              child: InkWell(
-                onTap: () => showProfileEditSheet(context),
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 76,
-                        height: 76,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: colors.paperSoft,
-                          shape: BoxShape.circle,
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.screen,
+                  AppSpacing.screen,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'CONTA',
+                          style: context.texts.bodyMedium
+                              ?.copyWith(color: onColor),
                         ),
-                        child: initial == null
-                            ? Icon(Icons.person_outline,
-                                size: 36, color: colors.ink)
-                            : Text(
-                                initial,
-                                style: AppTextStyles.display(40)
-                                    .copyWith(color: colors.ink),
-                              ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const Spacer(),
+                        CircleIconButton(
+                          icon: Icons.settings_outlined,
+                          tooltip: 'Configurações',
+                          onTap: () => context.push('/settings'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Semantics(
+                      button: true,
+                      label: 'Editar perfil',
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppRadii.lg),
+                        onTap: () => showProfileEditSheet(context),
+                        child: Row(
                           children: [
-                            Text(
-                              name.isEmpty ? 'Seu nome aqui' : name,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTextStyles.display(30)
-                                  .copyWith(color: tile.onColor),
+                            Container(
+                              width: 92,
+                              height: 92,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: colors.paper,
+                                shape: BoxShape.circle,
+                              ),
+                              child: initial == null
+                                  ? Icon(Icons.person_outline,
+                                      size: 42, color: colors.ink)
+                                  : Text(
+                                      initial,
+                                      style: AppTextStyles.display(52)
+                                          .copyWith(color: colors.ink),
+                                    ),
                             ),
-                            const SizedBox(height: AppSpacing.xs / 2),
-                            Text(
-                              'Toque pra editar',
-                              style: context.texts.bodyMedium
-                                  ?.copyWith(color: tile.onColor),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name.isEmpty ? 'Seu nome aqui' : name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.display(44)
+                                        .copyWith(color: onColor),
+                                  ),
+                                  const SizedBox(height: AppSpacing.xs / 2),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          'Toque pra editar',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: context.texts.bodyMedium
+                                              ?.copyWith(color: onColor),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Icon(Icons.edit_outlined,
+                                          size: 16, color: onColor),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(Icons.edit_outlined, color: tile.onColor),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Row(
+                      children: [
+                        _Stat(
+                          value: number(stats?.recipes),
+                          label: 'Receitas',
+                          color: onColor,
+                        ),
+                        _StatDivider(color: onColor),
+                        _Stat(
+                          value: number(stats?.folders),
+                          label: 'Pastas',
+                          color: onColor,
+                        ),
+                        _StatDivider(color: onColor),
+                        _Stat(
+                          value: number(stats?.lists),
+                          label: 'Listas',
+                          color: onColor,
+                        ),
+                        _StatDivider(color: onColor),
+                        _Stat(
+                          value: number(stats?.plannedMeals),
+                          label: 'Refeições',
+                          color: onColor,
+                        ),
+                      ],
+                    ),
+                    if (stats?.topRecipe != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _TopRecipePill(
+                        name: stats!.topRecipe!,
+                        times: stats.topRecipeCount,
+                      ),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -151,89 +219,32 @@ class _ProfileCard extends ConsumerWidget {
   }
 }
 
-class _StatsSection extends ConsumerWidget {
-  const _StatsSection();
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label, required this.color});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    final stats = ref.watch(libraryStatsProvider);
-    final data = stats.valueOrNull;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(
-            left: AppSpacing.xs,
-            bottom: AppSpacing.xs,
-          ),
-          child: Text(
-            'SEU LIVRO EM NÚMEROS',
-            style: context.texts.labelSmall?.copyWith(color: colors.textMuted),
-          ),
-        ),
-        Row(
-          children: [
-            Expanded(
-              child: _StatTile(value: data?.recipes, label: 'Receitas'),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: _StatTile(value: data?.folders, label: 'Pastas'),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        Row(
-          children: [
-            Expanded(
-              child: _StatTile(value: data?.lists, label: 'Listas de compras'),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: _StatTile(
-                value: data?.plannedMeals,
-                label: 'Refeições planejadas',
-              ),
-            ),
-          ],
-        ),
-        if (data != null && data.topRecipe != null) ...[
-          const SizedBox(height: AppSpacing.xs),
-          _TopRecipeCard(name: data.topRecipe!, times: data.topRecipeCount),
-        ],
-      ],
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({required this.value, required this.label});
-
-  final int? value;
+  final String value;
   final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.paperSoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
+    return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            value == null ? '–' : '$value',
-            style: AppTextStyles.display(44).copyWith(color: colors.ink),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: AppTextStyles.display(54).copyWith(color: color),
+            ),
           ),
-          const SizedBox(height: AppSpacing.xs / 2),
           Text(
-            label,
-            style: context.texts.bodyMedium?.copyWith(color: colors.textMuted),
+            label.toUpperCase(),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.texts.labelSmall?.copyWith(color: color),
           ),
         ],
       ),
@@ -241,8 +252,24 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _TopRecipeCard extends StatelessWidget {
-  const _TopRecipeCard({required this.name, required this.times});
+class _StatDivider extends StatelessWidget {
+  const _StatDivider({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1.5,
+      height: 52,
+      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      color: color.withValues(alpha: 0.35),
+    );
+  }
+}
+
+class _TopRecipePill extends StatelessWidget {
+  const _TopRecipePill({required this.name, required this.times});
 
   final String name;
   final int times;
@@ -251,34 +278,30 @@ class _TopRecipeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: colors.paperSoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
+        color: colors.paper,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.local_fire_department_outlined, color: colors.coral),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mais cozinhada',
-                  style: context.texts.bodyMedium
-                      ?.copyWith(color: colors.textMuted),
-                ),
-                Text(name, style: AppTextStyles.display(22)),
-              ],
-            ),
-          ),
-          Text(
-            times == 1 ? '1 vez' : '$times vezes',
-            style: context.texts.bodyMedium?.copyWith(
-              color: colors.ink,
-              fontWeight: FontWeight.w700,
+          Icon(Icons.local_fire_department_rounded,
+              size: 20, color: colors.coral),
+          const SizedBox(width: AppSpacing.xs),
+          Flexible(
+            child: Text(
+              'Mais cozinhada · $name · '
+              '${times == 1 ? '1 vez' : '$times vezes'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.texts.bodyMedium?.copyWith(
+                color: colors.ink,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -287,76 +310,130 @@ class _TopRecipeCard extends StatelessWidget {
   }
 }
 
-class _HistoryLink extends StatelessWidget {
-  const _HistoryLink();
+/// Atalhos de manutenção do livro numa lista aberta: títulos grandes na
+/// fonte de display, separados por um fio, sem cartões.
+class _Shortcuts extends StatelessWidget {
+  const _Shortcuts();
+
+  static const _rows = [
+    (Icons.history, 'Histórico', 'Tudo o que você já cozinhou', '/history'),
+    (Icons.sell_outlined, 'Tags', 'Organize e renomeie', '/tags'),
+    (
+      Icons.egg_alt_outlined,
+      'Ingredientes',
+      'Mescle duplicados, apague os sem uso',
+      '/ingredients'
+    ),
+    (
+      Icons.delete_outline,
+      'Lixeira',
+      'Receitas apagadas, por tempo limitado',
+      '/trash'
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.paperSoft,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: () => context.push('/history'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Icon(Icons.history, color: colors.ink),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  'Histórico do que você cozinhou',
-                  style: context.texts.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'SEU LIVRO',
+            style: context.texts.labelSmall?.copyWith(color: colors.textMuted),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          for (var i = 0; i < _rows.length; i++) ...[
+            if (i > 0)
+              Divider(height: 1, thickness: 1.5, color: colors.paperSoft),
+            InkWell(
+              onTap: () => context.push(_rows[i].$4),
+              child: SizedBox(
+                height: 84,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colors.ink,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(_rows[i].$1, size: 22, color: colors.lime),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _rows[i].$2,
+                            style: AppTextStyles.display(25),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _rows[i].$3,
+                            style: context.texts.bodyMedium
+                                ?.copyWith(color: colors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
+                  ],
                 ),
               ),
-              Icon(Icons.chevron_right, color: colors.textMuted),
-            ],
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _SyncCard extends StatelessWidget {
-  const _SyncCard();
+/// Aviso de que o login e a sincronização ainda vêm, em texto simples.
+class _SyncNote extends StatelessWidget {
+  const _SyncNote();
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: colors.ink,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.cloud_sync_outlined, size: 32, color: colors.lime),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Sincronização em breve',
-            style:
-                AppTextStyles.display(26).copyWith(color: colors.onSaturated),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Login e sincronização entre aparelhos chegam mais pra frente. '
-            'Por enquanto, seus dados ficam só neste aparelho — guarde uma '
-            'cópia pelo backup nas Configurações.',
-            style: context.texts.bodyMedium?.copyWith(
-              color: colors.onSaturated.withValues(alpha: 0.8),
+          Icon(Icons.cloud_sync_outlined, color: colors.textMuted),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sincronização em breve',
+                  style: context.texts.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Login e sincronização entre aparelhos chegam mais pra '
+                  'frente. Por enquanto, seus dados ficam só neste aparelho.',
+                  style: context.texts.bodyMedium
+                      ?.copyWith(color: colors.textMuted),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/settings'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    alignment: Alignment.centerLeft,
+                  ),
+                  child: const Text('Fazer backup nas configurações'),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          PillButton(
-            label: 'Ver backup',
-            icon: Icons.backup_outlined,
-            onPressed: () => context.push('/settings'),
           ),
         ],
       ),

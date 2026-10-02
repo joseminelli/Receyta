@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
@@ -44,9 +46,11 @@ class TagsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tags = ref.watch(tagsWithCountsProvider);
 
-    return Scaffold(
-      backgroundColor: context.colors.paper,
-      appBar: AppBar(title: const Text('Tags')),
+    final count = tags.valueOrNull?.length;
+    return HeaderScaffold(
+      title: 'Tags',
+      subtitle: count == null ? null : '$count ${count == 1 ? 'tag' : 'tags'}',
+      color: TileColor.coral,
       body: tags.when(
         loading: () => const Center(child: BrandLoader()),
         error: (_, __) => _buildError(context),

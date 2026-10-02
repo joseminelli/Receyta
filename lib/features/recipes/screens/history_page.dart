@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/cook_log_repository.dart';
 import 'package:receyta/domain/engine/cook_log_filter.dart';
 import 'package:receyta/domain/engine/cook_log_format.dart';
@@ -14,9 +15,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/brand_loader.dart';
-import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
-import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Tudo o que você cozinhou (G7), do mais recente ao mais antigo, agrupado por
 /// mês, com busca, filtros e remoção (com "Desfazer"). Cada linha abre a
@@ -59,41 +58,34 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
     final logs = ref.watch(allCookLogsProvider);
     final all = logs.valueOrNull ?? const <CookLog>[];
 
-    return Scaffold(
-      backgroundColor: colors.paper,
-      body: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemBars.onDark,
-        child: Column(
-          children: [
-            _Header(
-                total: all.length,
-                recipes: {for (final l in all) l.recipeId}.length),
-            Expanded(
-              child: logs.when(
-                loading: () => const Center(child: BrandLoader()),
-                error: (_, __) => _message(
-                  context,
-                  icon: Icons.priority_high_rounded,
-                  background: colors.danger,
-                  foreground: colors.onSaturated,
-                  title: 'Não deu para carregar o histórico',
-                ),
-                data: (items) => items.isEmpty
-                    ? _message(
-                        context,
-                        icon: Icons.restaurant_outlined,
-                        background: colors.ink,
-                        foreground: colors.lime,
-                        title: 'Nada cozinhado ainda',
-                        body: 'Toque em "Cozinhei!" no modo cozinha, ou '
-                            'registre pelo cartão "Cozinhei" de qualquer '
-                            'receita.',
-                      )
-                    : _buildBody(context, items),
-              ),
-            ),
-          ],
+    final recipeCount = {for (final l in all) l.recipeId}.length;
+    return HeaderScaffold(
+      title: 'Histórico',
+      subtitle: all.isEmpty
+          ? null
+          : '${all.length} ${all.length == 1 ? 'vez' : 'vezes'} · '
+              '$recipeCount ${recipeCount == 1 ? 'receita' : 'receitas'}',
+      color: TileColor.violet,
+      body: logs.when(
+        loading: () => const Center(child: BrandLoader()),
+        error: (_, __) => _message(
+          context,
+          icon: Icons.priority_high_rounded,
+          background: colors.danger,
+          foreground: colors.onSaturated,
+          title: 'Não deu para carregar o histórico',
         ),
+        data: (items) => items.isEmpty
+            ? _message(
+                context,
+                icon: Icons.restaurant_outlined,
+                background: colors.ink,
+                foreground: colors.lime,
+                title: 'Nada cozinhado ainda',
+                body: 'Toque em "Cozinhei!" no modo cozinha, ou registre pelo '
+                    'cartão "Cozinhei" de qualquer receita.',
+              )
+            : _buildBody(context, items),
       ),
     );
   }
@@ -240,82 +232,6 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                 ),
         ),
       ],
-    );
-  }
-}
-
-/// Cabeçalho roxo (a cor da agenda), com a textura de meias-luas, no mesmo
-/// desenho do das configurações.
-class _Header extends StatelessWidget {
-  const _Header({required this.total, required this.recipes});
-
-  final int total;
-  final int recipes;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(AppRadii.lg),
-      ),
-      child: Container(
-        width: double.infinity,
-        color: colors.violet,
-        child: Stack(
-          children: [
-            Positioned(
-              top: -40,
-              right: -30,
-              child: SizedBox(
-                width: 240,
-                height: 240,
-                child: TilePattern(
-                  motif: TileMotif.meiaLua,
-                  background: colors.violet,
-                  patternColor: colors.violetPattern,
-                ),
-              ),
-            ),
-            SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.screen,
-                  AppSpacing.xs,
-                  AppSpacing.screen,
-                  AppSpacing.lg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    CircleIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      tooltip: 'Voltar',
-                      onTap: () => context.pop(),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      total == 0
-                          ? 'HISTÓRICO'
-                          : '$total ${total == 1 ? 'VEZ' : 'VEZES'} · '
-                              '$recipes ${recipes == 1 ? 'RECEITA' : 'RECEITAS'}',
-                      style: context.texts.labelSmall
-                          ?.copyWith(color: colors.violetMuted),
-                    ),
-                    const SizedBox(height: AppSpacing.xs / 2),
-                    Text(
-                      'O que você cozinhou',
-                      style: AppTextStyles.display(38)
-                          .copyWith(color: colors.onSaturated),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
