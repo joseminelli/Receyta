@@ -21,6 +21,27 @@ const _weekdays = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
 
 DateTime _dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+const _monthNames = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+];
+
+/// "Outubro 2026" — o título de cada mês no histórico.
+String formatMonthYear(DateTime date) {
+  final d = date.toLocal();
+  return '${_monthNames[d.month - 1]} ${d.year}';
+}
+
 /// "ter, 28 set" — com o ano quando não é o de [now].
 String formatCookedDate(DateTime date, DateTime now) {
   final d = date.toLocal();

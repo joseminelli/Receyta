@@ -38,4 +38,9 @@ void main() {
     expect(cookedTimesLabel(1), 'Cozinhada 1 vez');
     expect(cookedTimesLabel(4), 'Cozinhada 4 vezes');
   });
+
+  test('formatMonthYear', () {
+    expect(formatMonthYear(DateTime(2026, 10, 1)), 'Outubro 2026');
+    expect(formatMonthYear(DateTime(2025, 3, 31)), 'Março 2025');
+  });
 }

@@ -12,6 +12,7 @@ import 'package:receyta/features/onboarding/screens/welcome_page.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/features/planner/screens/day_page.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
+import 'package:receyta/features/recipes/screens/history_page.dart';
 import 'package:receyta/features/recipes/screens/ingredients_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_form_page.dart';
@@ -124,6 +125,11 @@ final router = GoRouter(
       builder: (context, state) => DayPage(
         initialDay: dayFromParam(state.pathParameters['date']),
       ),
+    ),
+    GoRoute(
+      path: '/history',
+      name: 'history',
+      builder: (context, state) => const HistoryPage(),
     ),
     GoRoute(
       path: '/trash',

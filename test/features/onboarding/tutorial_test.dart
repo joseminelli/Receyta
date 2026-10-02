@@ -28,8 +28,7 @@ void main() {
   });
 
   Future<int> recipeCount() async =>
-      (await container.read(recipeRepositoryProvider).watchAll().first)
-          .length;
+      (await container.read(recipeRepositoryProvider).watchAll().first).length;
 
   test('sem tour pendente, não faz nada', () async {
     await container.read(tutorialControllerProvider).startIfNeeded();

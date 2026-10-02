@@ -44,7 +44,8 @@ void main() {
   group('alto contraste passa em AA (4,5:1) nos pares usados no app', () {
     for (final entry in pairs.entries) {
       test(entry.key, () {
-        expect(_ratio(entry.value.$1, entry.value.$2), greaterThanOrEqualTo(4.5));
+        expect(
+            _ratio(entry.value.$1, entry.value.$2), greaterThanOrEqualTo(4.5));
       });
     }
   });

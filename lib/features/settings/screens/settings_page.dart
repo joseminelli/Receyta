@@ -319,6 +319,12 @@ class SettingsPage extends ConsumerWidget {
                         onTap: () => _backup(context, ref),
                       ),
                       _NavRow(
+                        icon: Icons.history,
+                        title: 'Histórico',
+                        subtitle: 'Tudo o que você já cozinhou',
+                        onTap: () => context.push('/history'),
+                      ),
+                      _NavRow(
                         icon: Icons.sell_outlined,
                         title: 'Tags',
                         subtitle: 'Renomear, apagar, ver o uso',

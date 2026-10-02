@@ -40,6 +40,8 @@ class AccountPage extends ConsumerWidget {
             const _ProfileCard(),
             const SizedBox(height: AppSpacing.lg),
             const _StatsSection(),
+            const SizedBox(height: AppSpacing.xs),
+            const _HistoryLink(),
             const SizedBox(height: AppSpacing.lg),
             const _SyncCard(),
           ],
@@ -280,6 +282,40 @@ class _TopRecipeCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HistoryLink extends StatelessWidget {
+  const _HistoryLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.paperSoft,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: () => context.push('/history'),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Icon(Icons.history, color: colors.ink),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Histórico do que você cozinhou',
+                  style: context.texts.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: colors.textMuted),
+            ],
+          ),
+        ),
       ),
     );
   }
