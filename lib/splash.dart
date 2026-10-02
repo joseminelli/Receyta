@@ -186,11 +186,12 @@ class _SplashPainter extends CustomPainter {
     _paintFood(canvas, cx, plateY);
     _paintSparkles(canvas, cx, plateY);
     _paintSteam(canvas, cx, plateY);
+    _paintName(canvas, cx, plateY);
     _paintDome(canvas, cx, plateY, size);
 
     canvas.restore();
 
-    _paintWordmark(canvas, cx, plateY + 66);
+    _paintTagline(canvas, cx, plateY + 52);
   }
 
   void _paintShadow(Canvas canvas, double cx, double plateY, double a) {
@@ -232,6 +233,10 @@ class _SplashPainter extends CustomPainter {
     final pop = 1.0 +
         0.14 * math.sin(((outro - 0.12) / 0.32).clamp(0.0, 1.0) * math.pi);
 
+    final melt =
+        Curves.easeIn.transform(((outro - 0.04) / 0.3).clamp(0.0, 1.0));
+    if (melt >= 1) return;
+
     for (var i = 0; i < _slots.length; i++) {
       final s = _slots[i];
       final start = 0.10 + i * 0.075;
@@ -251,10 +256,10 @@ class _SplashPainter extends CustomPainter {
       final opacity = (p / 0.15).clamp(0.0, 1.0);
 
       canvas.save();
-      canvas.translate(cx + x, plateY + y);
+      canvas.translate(cx + x, plateY + y - 38 * melt);
       canvas.rotate(spin);
-      canvas.scale(sx * pop, sy * pop);
-      _paintFoodItem(canvas, s.food, s.size, opacity);
+      canvas.scale(sx * pop * (1 - melt), sy * pop * (1 - melt));
+      _paintFoodItem(canvas, s.food, s.size, opacity * (1 - melt));
       canvas.restore();
     }
   }
@@ -511,27 +516,40 @@ class _SplashPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _paintWordmark(Canvas canvas, double cx, double top) {
-    if (outro <= 0.5) return;
-    final t = Curves.easeOut.transform(((outro - 0.5) / 0.5).clamp(0.0, 1.0));
-    final slide = _lerp(14.0, 0.0, t);
+  /// "Receyta" nasce dentro da cúpula, no lugar dos ingredientes: eles se
+  /// desmancham e o nome sobe do prato, com um quique.
+  void _paintName(Canvas canvas, double cx, double plateY) {
+    final k = ((outro - 0.12) / 0.4).clamp(0.0, 1.0);
+    if (k <= 0) return;
+    final scale = _lerp(0.55, 1.0, Curves.easeOutBack.transform(k));
+    final a = Curves.easeOut.transform((k / 0.5).clamp(0.0, 1.0));
 
     final name = TextPainter(
       text: TextSpan(
         text: 'Receyta',
         style: AppTextStyles.display(54).copyWith(
-          color: _paper.withValues(alpha: t),
+          color: _paper.withValues(alpha: a),
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    name.paint(canvas, Offset(cx - name.width / 2, top + slide));
 
+    final baseline = Offset(cx, plateY - 6);
+    canvas.save();
+    canvas.translate(baseline.dx, baseline.dy);
+    canvas.scale(scale);
+    name.paint(canvas, Offset(-name.width / 2, -name.height));
+    canvas.restore();
+  }
+
+  void _paintTagline(Canvas canvas, double cx, double top) {
+    final tt = Curves.easeOut.transform(((outro - 0.4) / 0.4).clamp(0.0, 1.0));
+    if (tt <= 0) return;
     final tagline = TextPainter(
       text: TextSpan(
         text: 'Suas receitas, num lugar só',
         style: TextStyle(
-          color: _paper.withValues(alpha: 0.88 * t),
+          color: _paper.withValues(alpha: 0.88 * tt),
           fontSize: 15,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.4,
@@ -541,7 +559,7 @@ class _SplashPainter extends CustomPainter {
     )..layout();
     tagline.paint(
       canvas,
-      Offset(cx - tagline.width / 2, top + name.height + 6 + slide),
+      Offset(cx - tagline.width / 2, top + _lerp(10.0, 0.0, tt)),
     );
   }
 
