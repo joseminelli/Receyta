@@ -70,4 +70,32 @@ void main() {
       expect(formatIngredientLine(i), '1,5 xícaras de chá de Leite');
     });
   });
+
+  group('formatIngredientLine com fator (modo cozinha)', () {
+    test('multiplica e arredonda pro que se mede', () {
+      final i = buildIngredient(
+        rawText: '500g de farinha',
+        quantity: 500,
+        unitId: 'g',
+        ingredientName: 'Farinha',
+      );
+      expect(formatIngredientLine(i, factor: 1.5), '750 g de Farinha');
+      expect(formatIngredientLine(i, factor: 5 / 3), '835 g de Farinha');
+    });
+
+    test('plural acompanha a quantidade escalada', () {
+      final i = buildIngredient(
+        rawText: '1 xícara de chá de leite',
+        quantity: 1,
+        unitId: 'xicara_cha',
+        ingredientName: 'Leite',
+      );
+      expect(formatIngredientLine(i, factor: 2), '2 xícaras de chá de Leite');
+    });
+
+    test('sem quantidade reconhecida, devolve o texto digitado', () {
+      final i = buildIngredient(rawText: 'sal a gosto');
+      expect(formatIngredientLine(i, factor: 3), 'sal a gosto');
+    });
+  });
 }

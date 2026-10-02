@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/result.dart';
+import 'package:receyta/domain/engine/serving_scale.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/ingredient_dao.dart';
 import 'package:receyta/data/database/daos/recipe_dao.dart';
@@ -37,10 +38,13 @@ class ShoppingListRepository {
   ///
   /// [counts] diz quantas vezes cada receita entra (receita feita duas vezes
   /// na semana pede o dobro dos ingredientes); ausente = uma vez cada.
+  /// [factors] (id → multiplicador) escala as quantidades da receita pro
+  /// número de porções que se vai fazer, sempre arredondando pra cima.
   Future<Result<ShoppingList>> generateFromRecipes(
     List<String> recipeIds, {
     String? name,
     Map<String, int>? counts,
+    Map<String, double>? factors,
   }) async {
     if (recipeIds.isEmpty) {
       return const Err(ValidationFailure('Escolha ao menos uma receita.'));
@@ -60,8 +64,8 @@ class ShoppingListRepository {
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
 
-      final aggregated =
-          aggregateIngredients(_repeatedLines(rows, namesById, counts));
+      final aggregated = aggregateIngredients(
+          _repeatedLines(rows, namesById, counts, factors));
 
       final at = _clock().toUtc();
       final trimmed = name?.trim() ?? '';
@@ -86,8 +90,9 @@ class ShoppingListRepository {
   /// o usuário perceber); sem sobrar nenhuma com ingrediente, recusa.
   Future<Result<void>> addRecipesToList(
     String listId,
-    Map<String, int> counts,
-  ) async {
+    Map<String, int> counts, {
+    Map<String, double>? factors,
+  }) async {
     final plural = counts.length > 1;
     try {
       final items = await _dao.itemsOf(listId);
@@ -121,7 +126,7 @@ class ShoppingListRepository {
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
       final aggregated =
-          aggregateIngredients(_repeatedLines(rows, namesById, fresh));
+          aggregateIngredients(_repeatedLines(rows, namesById, fresh, factors));
 
       await _dao.addAggregated(listId, aggregated);
       return const Ok(null);
@@ -137,12 +142,22 @@ class ShoppingListRepository {
     List<RecipeIngredientRow> rows,
     Map<String, String> namesById,
     Map<String, int>? counts,
+    Map<String, double>? factors,
   ) {
     return [
       for (final r in rows)
         for (var n = 0; n < (counts?[r.recipeId] ?? 1); n++)
-          _lineToDomain(r, namesById),
+          _scaled(_lineToDomain(r, namesById), factors?[r.recipeId]),
     ];
+  }
+
+  /// Linha com a quantidade escalada e arredondada pra cima (1,5 ovo → 2).
+  RecipeIngredient _scaled(RecipeIngredient line, double? factor) {
+    final q = line.quantity;
+    if (factor == null || factor == 1 || q == null) return line;
+    return line.copyWith(
+      quantity: roundUpForShopping(q * factor, unitId: line.unitId),
+    );
   }
 
   Stream<List<ShoppingList>> watchAll() =>

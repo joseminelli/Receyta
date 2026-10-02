@@ -66,7 +66,7 @@ void main() {
     expect(find.byType(RecipesPage), findsOneWidget);
     // RegExp, não igualdade: no slot ativo o label do Semantics funde com o
     // Text visível ("Receitas Receitas").
-    for (final label in ['Receitas', 'Semana', 'Compras', 'Conta']) {
+    for (final label in ['Receitas', 'Agenda', 'Compras', 'Conta']) {
       expect(find.bySemanticsLabel(RegExp(label)), findsWidgets);
     }
     expect(find.text('Em breve'), findsNothing);
@@ -78,7 +78,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('Semana'));
+    await tester.tap(find.bySemanticsLabel('Agenda'));
     await tester.pumpAndSettle();
     expect(find.text('Nada planejado pros próximos dias.'), findsOneWidget);
 
@@ -106,6 +106,7 @@ void main() {
   testWidgets('aba Conta mostra o perfil local e o botão de config',
       (tester) async {
     _usePhoneSize(tester);
+    tester.view.physicalSize = const Size(1170, 4200);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 

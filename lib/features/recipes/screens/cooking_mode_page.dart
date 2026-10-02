@@ -4,12 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/domain/engine/ingredient_format.dart';
+import 'package:receyta/domain/engine/serving_scale.dart';
 import 'package:receyta/domain/engine/step_duration.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
+import 'package:receyta/features/recipes/controllers/serving_scale.dart';
+import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/features/recipes/screens/cook_log_sheet.dart';
 import 'package:receyta/features/recipes/screens/global_timers_bar.dart'
     show TimerAlertToggles;
@@ -17,6 +21,7 @@ import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/sweep_strike_text.dart';
 
 /// Modo cozinha mínimo (RF-01.11 / G1 parcial): superfície escura reaproveitada
@@ -190,6 +195,23 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             _IngredientsCard(
               ingredients: detail.ingredients,
               openListenable: _ingredientsOpen,
+              factor: servingFactor(
+                base: detail.recipe.servings,
+                chosen: ref.watch(selectedServingsProvider(widget.recipeId)),
+              ),
+              baseServings: detail.recipe.servings,
+              servings: detail.recipe.servings == null
+                  ? null
+                  : ref.watch(selectedServingsProvider(widget.recipeId)),
+              onServings: (value) => ref
+                  .read(selectedServingsProvider(widget.recipeId).notifier)
+                  .state = clampServings(value, base: detail.recipe.servings),
+              onAddToShopping: () => addRecipeToShoppingListFlow(
+                context,
+                ref,
+                widget.recipeId,
+                servings: ref.read(selectedServingsProvider(widget.recipeId)),
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
             _SectionLabel('Preparo'),
@@ -330,10 +352,77 @@ class _IngredientsCard extends StatelessWidget {
   const _IngredientsCard({
     required this.ingredients,
     required this.openListenable,
+    this.factor = 1,
+    this.baseServings,
+    this.servings,
+    required this.onServings,
+    required this.onAddToShopping,
   });
 
   final List<RecipeIngredient> ingredients;
   final ValueNotifier<bool> openListenable;
+
+  /// Escala de porções escolhida aqui (1 = como a receita foi escrita).
+  final double factor;
+
+  /// Rendimento da receita (nulo = não dá pra escalar) e porções escolhidas
+  /// (nulo = as da receita).
+  final int? baseServings;
+  final int? servings;
+  final ValueChanged<int> onServings;
+  final VoidCallback onAddToShopping;
+
+  /// "Porções  − 4 +" e o atalho de compras, no tom escuro do modo cozinha.
+  Widget _servingsBar(BuildContext context) {
+    final colors = context.colors;
+    final current = servings ?? baseServings;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          if (current != null) ...[
+            Text(
+              'PORÇÕES',
+              style: context.texts.labelSmall?.copyWith(color: colors.lime),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            CircleIconButton(
+              icon: Icons.remove,
+              tooltip: 'Menos uma porção',
+              background: colors.ink,
+              onTap:
+                  current > kMinServings ? () => onServings(current - 1) : null,
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              child: Text(
+                '$current',
+                style: context.texts.titleLarge
+                    ?.copyWith(color: colors.onSaturated),
+              ),
+            ),
+            CircleIconButton(
+              icon: Icons.add,
+              tooltip: 'Mais uma porção',
+              background: colors.ink,
+              onTap:
+                  current < kMaxServings ? () => onServings(current + 1) : null,
+            ),
+          ],
+          const Spacer(),
+          TextButton.icon(
+            onPressed: onAddToShopping,
+            icon:
+                Icon(Icons.shopping_bag_outlined, size: 18, color: colors.lime),
+            label: Text(
+              'Compras',
+              style: context.texts.labelLarge?.copyWith(color: colors.lime),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// Linhas + subtítulos de grupo (§RF-01.4), no tom escuro do modo cozinha.
   List<Widget> _rows(BuildContext context) {
@@ -355,7 +444,7 @@ class _IngredientsCard extends StatelessWidget {
       out.add(Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.xs),
         child: Text(
-          i.rawText,
+          factor == 1 ? i.rawText : formatIngredientLine(i, factor: factor),
           style: context.texts.bodyLarge?.copyWith(
             color: colors.onSaturated,
             height: 1.35,
@@ -425,8 +514,10 @@ class _IngredientsCard extends StatelessWidget {
                         style: context.texts.bodyMedium
                             ?.copyWith(color: colors.textBody),
                       )
-                    else
+                    else ...[
+                      _servingsBar(context),
                       ..._rows(context),
+                    ],
                   ],
                 ),
               ),

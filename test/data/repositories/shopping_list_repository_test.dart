@@ -102,6 +102,41 @@ void main() {
     expect(items, hasLength(6));
   });
 
+  test('factors escala as quantidades e arredonda pra cima', () async {
+    final r = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Pão',
+      ingredientLines: [
+        '500g de farinha de trigo',
+        '3 ovos',
+        '0,5kg de tomate'
+      ],
+    ));
+
+    final list = unwrapList(
+      await shoppingRepo.generateFromRecipes([r.id], factors: {r.id: 1.5}),
+    );
+    final items = await shoppingRepo.itemsOf(list.id);
+
+    final farinha = items.singleWhere((i) => i.displayName.contains('Farinha'));
+    expect(farinha.quantity, 750);
+    final ovos = items.singleWhere((i) => i.displayName.contains('Ovo'));
+    expect(ovos.quantity, 5); // 4,5 → 5
+    final tomate = items.singleWhere((i) => i.displayName.contains('Tomate'));
+    expect(tomate.quantity, 1); // 0,75 kg → 1 kg (sobe de meio em meio)
+  });
+
+  test('sem factors, as quantidades ficam como a receita', () async {
+    final r = unwrapRecipe(await recipeRepo.saveDetail(
+      name: 'Pão',
+      ingredientLines: ['3 ovos'],
+    ));
+
+    final list = unwrapList(await shoppingRepo.generateFromRecipes([r.id]));
+    final items = await shoppingRepo.itemsOf(list.id);
+
+    expect(items.single.quantity, 3);
+  });
+
   test(
       '"meia xícara" e "2 e meia xícara" por extenso somam certo '
       '(achado pelo usuário gerando lista de verdade)', () async {

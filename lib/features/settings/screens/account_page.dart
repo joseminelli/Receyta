@@ -350,8 +350,8 @@ class _Shortcuts extends StatelessWidget {
               Divider(height: 1, thickness: 1.5, color: colors.paperSoft),
             InkWell(
               onTap: () => context.push(_rows[i].$4),
-              child: SizedBox(
-                height: 84,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 84),
                 child: Row(
                   children: [
                     Container(

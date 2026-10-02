@@ -54,6 +54,6 @@ void main() {
     expect(find.text('58%'), findsOneWidget);
     expect(find.text('EM ANDAMENTO'), findsOneWidget);
     expect(find.text('CONCLUÍDAS'), findsOneWidget);
-    expect(find.textContaining('3 listas · 2 em andamento'), findsOneWidget);
+    expect(find.textContaining('3 LISTAS · 2 EM ANDAMENTO'), findsOneWidget);
   });
 }

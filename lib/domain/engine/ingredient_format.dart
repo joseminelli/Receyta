@@ -5,6 +5,7 @@ library;
 
 import 'package:receyta/data/database/seed_data.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
+import 'package:receyta/domain/engine/serving_scale.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 
 /// Unidade por extenso (singular/plural) a partir do código salvo — nunca
@@ -19,10 +20,12 @@ String? unitDisplayLabel(String? unitCode, double quantity) {
 
 /// Linha de ingrediente pronta pra texto corrido: "1,5 xícara de chá de
 /// Farinha de trigo, peneirada". Sem quantidade reconhecida, cai pro
-/// `rawText` cru — nunca esconde o que o usuário digitou.
-String formatIngredientLine(RecipeIngredient ingredient) {
-  final qty = ingredient.quantity;
-  if (qty == null) return ingredient.rawText;
+/// `rawText` cru — nunca esconde o que o usuário digitou. [factor] escala a
+/// quantidade (porções do modo cozinha) e arredonda pro que se mede na cozinha.
+String formatIngredientLine(RecipeIngredient ingredient, {double factor = 1}) {
+  final base = ingredient.quantity;
+  if (base == null) return ingredient.rawText;
+  final qty = factor == 1 ? base : niceQuantity(base * factor);
 
   final parsed = parseIngredientLine(ingredient.rawText);
   final unit = unitDisplayLabel(ingredient.unitId, qty);

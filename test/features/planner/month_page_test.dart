@@ -75,7 +75,8 @@ void main() {
     expect(find.text('${today().year}'), findsOneWidget);
     expect(find.text('SEG'), findsOneWidget);
     expect(find.text('DOM'), findsOneWidget);
-    expect(find.byType(TilePattern), findsNothing);
+    // Só a textura do cabeçalho: nenhum dia tem refeição.
+    expect(find.byType(TilePattern), findsOneWidget);
     expect(find.text('Nada planejado pros próximos dias.'), findsOneWidget);
     expect(find.text('Planejar hoje'), findsOneWidget);
     expect(_todayEnabled(tester), isFalse);
@@ -96,7 +97,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 3 faixas no dia cheio + 1 no outro dia.
-    expect(find.byType(TilePattern), findsNWidgets(4));
+    // 4 faixas de refeição + a textura do cabeçalho.
+    expect(find.byType(TilePattern), findsNWidgets(5));
     expect(find.text('+1'), findsOneWidget);
   });
 
