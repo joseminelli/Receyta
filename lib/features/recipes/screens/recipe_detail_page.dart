@@ -14,6 +14,7 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/screens/folder_actions.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/screens/cook_log_sheet.dart';
 import 'package:receyta/features/recipes/screens/recipe_status_cards.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/messenger.dart';
@@ -312,6 +313,8 @@ class _Detail extends StatelessWidget {
             _Metrics(recipe: recipe),
             const SizedBox(height: AppSpacing.md),
             RecipeStatusCards(recipeId: recipe.id),
+            const SizedBox(height: AppSpacing.xs),
+            CookedCard(recipeId: recipe.id),
             if ((recipe.about ?? '').isNotEmpty) ...[
               const SizedBox(height: AppSpacing.lg),
               Text(recipe.about!, style: context.texts.bodyLarge),

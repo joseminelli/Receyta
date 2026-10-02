@@ -100,7 +100,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
       PillNavItem(
         icon: Icons.calendar_today_rounded,
-        label: 'Semana',
+        label: 'Agenda',
         color: colors.violet,
         motif: TileMotif.meiaLua,
       ),

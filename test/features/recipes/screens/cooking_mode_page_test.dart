@@ -176,9 +176,9 @@ void main() {
       await tester.tap(find.text('COZIMENTO'));
       await tester.pump();
 
-      expect(find.text('Timer em andamento'), findsOneWidget);
       expect(find.text('Cozimento'), findsOneWidget); // rótulo na faixa
-      expect(find.text('25:00'), findsOneWidget);
+      // O relógio aparece no cartão e na faixa.
+      expect(find.text('25:00'), findsNWidgets(2));
       expect(find.byTooltip('Pausar'), findsOneWidget);
       await close(tester);
     });

@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receyta/data/repositories/cook_log_repository.dart';
 import 'package:receyta/data/repositories/meal_plan_repository.dart';
+import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
@@ -18,15 +20,14 @@ typedef LibraryStats = ({
   int topRecipeCount,
 });
 
-/// A receita mais cozinhada é a que mais aparece em refeições marcadas como
-/// feitas; no empate, a que apareceu primeiro. Sem nenhuma feita, não há.
-({String? name, int count}) topCooked(List<MealPlanEntry> entries) {
+/// A receita mais cozinhada é a que mais aparece no histórico "cozinhei"
+/// (G7); no empate, a que apareceu primeiro. Sem nenhum registro, não há.
+({String? name, int count}) topCooked(List<CookLog> logs) {
   final counts = <String, int>{};
   final names = <String, String>{};
-  for (final e in entries) {
-    if (!e.done) continue;
-    counts[e.recipe.id] = (counts[e.recipe.id] ?? 0) + 1;
-    names.putIfAbsent(e.recipe.id, () => e.recipe.name);
+  for (final l in logs) {
+    counts[l.recipeId] = (counts[l.recipeId] ?? 0) + 1;
+    names.putIfAbsent(l.recipeId, () => l.recipeName);
   }
   String? bestId;
   var best = 0;
@@ -45,7 +46,11 @@ final _allMealsProvider = StreamProvider.autoDispose<List<MealPlanEntry>>(
       .watchRange(DateTime(2000), DateTime(2100)),
 );
 
-/// Junta as quatro fontes; só fica pronto quando todas respondem.
+final _allCookLogsProvider = StreamProvider.autoDispose<List<CookLog>>(
+  (ref) => ref.watch(cookLogRepositoryProvider).watchAll(),
+);
+
+/// Junta as fontes; só fica pronto quando todas respondem.
 final libraryStatsProvider = Provider.autoDispose<AsyncValue<LibraryStats>>((
   ref,
 ) {
@@ -53,8 +58,9 @@ final libraryStatsProvider = Provider.autoDispose<AsyncValue<LibraryStats>>((
   final folders = ref.watch(allFoldersProvider);
   final lists = ref.watch(shoppingListsProvider);
   final meals = ref.watch(_allMealsProvider);
+  final cooked = ref.watch(_allCookLogsProvider);
 
-  final error = [recipes, folders, lists, meals]
+  final error = [recipes, folders, lists, meals, cooked]
       .map((a) => a.error)
       .whereType<Object>()
       .firstOrNull;
@@ -62,12 +68,13 @@ final libraryStatsProvider = Provider.autoDispose<AsyncValue<LibraryStats>>((
   if (!recipes.hasValue ||
       !folders.hasValue ||
       !lists.hasValue ||
-      !meals.hasValue) {
+      !meals.hasValue ||
+      !cooked.hasValue) {
     return const AsyncLoading();
   }
 
   final entries = meals.value!;
-  final top = topCooked(entries);
+  final top = topCooked(cooked.value!);
   return AsyncData((
     recipes: recipes.value!.length,
     folders: folders.value!.length,

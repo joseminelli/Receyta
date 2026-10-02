@@ -192,6 +192,23 @@ class MealPlanEntries extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// "Cozinhei" (G7): uma linha por vez que a pessoa fez a receita. Apagar a
+/// receita de vez leva o histórico junto. `mealPlanEntryId` liga o registro à
+/// refeição planejada que o gerou (marcar como feita), pra desmarcar desfazer.
+@DataClassName('CookLogRow')
+class CookLogs extends Table {
+  TextColumn get id => text()();
+  TextColumn get recipeId =>
+      text().references(Recipes, #id, onDelete: KeyAction.cascade)();
+  DateTimeColumn get cookedAt => dateTime()();
+  TextColumn get note => text().nullable()();
+  TextColumn get mealPlanEntryId => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DataClassName('ShoppingListRow')
 class ShoppingLists extends Table {
   TextColumn get id => text()();

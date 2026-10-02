@@ -8,7 +8,7 @@ part 'meal_plan_dao.g.dart';
 
 /// Acesso bruto ao planejamento semanal (§RF-04): receitas agendadas por dia
 /// e refeição. Receita na lixeira some do plano (volta se for restaurada).
-@DriftAccessor(tables: [MealPlanEntries, Recipes])
+@DriftAccessor(tables: [MealPlanEntries, Recipes, CookLogs])
 class MealPlanDao extends DatabaseAccessor<AppDatabase>
     with _$MealPlanDaoMixin {
   MealPlanDao(super.db, {Uuid uuid = const Uuid()}) : _uuid = uuid;
@@ -139,9 +139,56 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// A refeição de [recipeId] ainda por fazer em [day] (a mais antiga, se a
+  /// receita está agendada mais de uma vez no dia). Nula se não há.
+  Future<String?> firstPendingOn(String recipeId, DateTime day) async {
+    final row = await (select(mealPlanEntries)
+          ..where(
+            (e) =>
+                e.recipeId.equals(recipeId) &
+                e.done.equals(false) &
+                e.date.equals(day),
+          )
+          ..orderBy([(e) => OrderingTerm.asc(e.createdAt)])
+          ..limit(1))
+        .getSingleOrNull();
+    return row?.id;
+  }
+
+  /// Marca a refeição como feita ou desfaz. Feita, ela entra no histórico
+  /// "cozinhei" (G7) — uma vez só por refeição; desfeita, o registro sai.
   Future<int> setDone(String id, bool done, DateTime at) {
-    return (update(mealPlanEntries)..where((e) => e.id.equals(id))).write(
-      MealPlanEntriesCompanion(done: Value(done), updatedAt: Value(at)),
-    );
+    return transaction(() async {
+      final written =
+          await (update(mealPlanEntries)..where((e) => e.id.equals(id))).write(
+        MealPlanEntriesCompanion(done: Value(done), updatedAt: Value(at)),
+      );
+      if (written == 0) return 0;
+
+      if (!done) {
+        await (delete(cookLogs)..where((l) => l.mealPlanEntryId.equals(id)))
+            .go();
+        return written;
+      }
+
+      final logged = await (select(cookLogs)
+            ..where((l) => l.mealPlanEntryId.equals(id))
+            ..limit(1))
+          .getSingleOrNull();
+      if (logged == null) {
+        final entry = await (select(mealPlanEntries)
+              ..where((e) => e.id.equals(id)))
+            .getSingle();
+        await into(cookLogs).insert(
+          CookLogsCompanion.insert(
+            id: _uuid.v4(),
+            recipeId: entry.recipeId,
+            cookedAt: at,
+            mealPlanEntryId: Value(id),
+          ),
+        );
+      }
+      return written;
+    });
   }
 }

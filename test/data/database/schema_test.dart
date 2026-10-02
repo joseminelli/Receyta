@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v4 versionado', () async {
-    final connection = await verifier.startAt(4);
+  test('schema do código bate com o snapshot v5 versionado', () async {
+    final connection = await verifier.startAt(5);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 4);
+    await verifier.migrateAndValidate(db, 5);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -161,5 +161,38 @@ void main() {
       folder.read<String>('last_opened_at'),
       folder.read<String>('updated_at'),
     );
+  });
+
+  test('migração v4→v5: dados preservados, cook_logs nasce vazia e funcional',
+      () async {
+    final schema = await verifier.schemaAt(4);
+
+    final oldDb = AppDatabase.forTesting(schema.newConnection());
+    await oldDb.customStatement(
+      "INSERT INTO recipes (id, name, created_at, updated_at, is_favorite) "
+      "VALUES ('r1', 'Bolo', '2026-01-01T00:00:00.000Z', "
+      "'2026-01-01T00:00:00.000Z', 0)",
+    );
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 5);
+    addTearDown(db.close);
+
+    final recipe =
+        await db.customSelect('SELECT name FROM recipes').getSingle();
+    expect(recipe.read<String>('name'), 'Bolo');
+    final count = await db
+        .customSelect('SELECT COUNT(*) AS n FROM cook_logs')
+        .getSingle();
+    expect(count.read<int>('n'), 0);
+
+    await db.cookLogDao.add(
+      recipeId: 'r1',
+      cookedAt: DateTime.utc(2026, 10, 1, 12),
+      note: 'ficou ótimo',
+    );
+    final logs = await db.customSelect('SELECT note FROM cook_logs').get();
+    expect(logs.single.read<String?>('note'), 'ficou ótimo');
   });
 }

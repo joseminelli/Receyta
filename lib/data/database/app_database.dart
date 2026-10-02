@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import 'connection.dart';
+import 'daos/cook_log_dao.dart';
 import 'daos/folder_dao.dart';
 import 'daos/ingredient_dao.dart';
 import 'daos/meal_plan_dao.dart';
@@ -21,6 +22,8 @@ const List<String> _indexStatements = [
       'ON recipe_ingredients (ingredient_id)',
   'CREATE INDEX IF NOT EXISTS idx_meal_plan_entries_date '
       'ON meal_plan_entries (date)',
+  'CREATE INDEX IF NOT EXISTS idx_cook_logs_recipe_id '
+      'ON cook_logs (recipe_id, cooked_at)',
   'CREATE INDEX IF NOT EXISTS idx_ingredient_aliases_normalized_alias '
       'ON ingredient_aliases (normalized_alias)',
   // Filtro por tag e contagem de uso das tags procuram por `tag_id` (a chave
@@ -64,6 +67,7 @@ END''',
     Tags,
     RecipeTags,
     MealPlanEntries,
+    CookLogs,
     ShoppingLists,
     ShoppingListItems,
     ShoppingItemSources,
@@ -76,6 +80,7 @@ END''',
     IngredientDao,
     ShoppingListDao,
     MealPlanDao,
+    CookLogDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -85,7 +90,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -101,6 +106,7 @@ class AppDatabase extends _$AppDatabase {
   /// pra dado existente não sumir da prateleira. O backfill não roda aqui no
   /// `onUpgrade`/`beforeOpen` porque a conexão ainda não enxerga com certeza
   /// dado já commitado por outra conexão até a abertura terminar de vez.
+  /// v5: tabela `cook_logs` (histórico "cozinhei", G7).
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -134,6 +140,13 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.addColumn(recipes, recipes.lastOpenedAt);
             await m.addColumn(folders, folders.lastOpenedAt);
+          }
+          if (from < 5) {
+            await m.createTable(cookLogs);
+            await customStatement(
+              'CREATE INDEX IF NOT EXISTS idx_cook_logs_recipe_id '
+              'ON cook_logs (recipe_id, cooked_at)',
+            );
           }
         },
         beforeOpen: (details) async {
@@ -242,6 +255,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(shoppingItemSources).go();
       await delete(shoppingListItems).go();
       await delete(shoppingLists).go();
+      await delete(cookLogs).go();
       await delete(mealPlanEntries).go();
       await delete(recipeTags).go();
       await delete(recipeSteps).go();

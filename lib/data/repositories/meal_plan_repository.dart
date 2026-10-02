@@ -117,6 +117,23 @@ class MealPlanRepository {
     }
   }
 
+  /// A pessoa cozinhou [recipeId] agora: se a receita está agendada pra hoje e
+  /// ainda não foi feita, marca essa refeição como feita (o que também grava no
+  /// histórico "cozinhei") e devolve o id dela. Sem agendamento pendente hoje,
+  /// devolve `null` e não faz nada — quem chama registra à parte.
+  Future<Result<String?>> markCookedToday(String recipeId) async {
+    try {
+      final id = await _dao.firstPendingOn(recipeId, dayOf(_clock()));
+      if (id == null) return const Ok(null);
+      await _dao.setDone(id, true, _clock().toUtc());
+      return Ok(id);
+    } catch (e) {
+      debugPrint('MealPlanRepository.markCookedToday: $e');
+      return Err(
+          DatabaseFailure('Falha ao marcar a refeição de hoje', cause: e));
+    }
+  }
+
   Future<Result<void>> setDone(String id, bool done) async {
     try {
       await _dao.setDone(id, done, _clock().toUtc());

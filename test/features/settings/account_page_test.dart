@@ -3,25 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receyta/core/tile_style.dart';
-import 'package:receyta/domain/models/meal_plan_entry.dart';
-import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-MealPlanEntry _entry(String id, String recipeId, String name,
-    {bool done = false}) {
-  final t = DateTime.utc(2026);
-  return MealPlanEntry(
-    id: id,
-    recipe: Recipe(id: recipeId, name: name, createdAt: t, updatedAt: t),
-    date: t,
-    mealType: MealType.lunch,
-    done: done,
-  );
-}
+CookLog _log(String id, String recipeId, String name) => CookLog(
+      id: id,
+      recipeId: recipeId,
+      recipeName: name,
+      cookedAt: DateTime.utc(2026, 10, 1),
+    );
 
 Widget _host({
   AppSettings initial = const AppSettings(),
@@ -66,21 +60,28 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   group('topCooked', () {
-    test('conta só refeições feitas e pega a receita com mais delas', () {
+    test('pega a receita com mais registros no histórico', () {
       final top = topCooked([
-        _entry('1', 'a', 'Bolo', done: true),
-        _entry('2', 'b', 'Sopa', done: true),
-        _entry('3', 'b', 'Sopa', done: true),
-        _entry('4', 'a', 'Bolo'),
-        _entry('5', 'a', 'Bolo'),
+        _log('1', 'a', 'Bolo'),
+        _log('2', 'b', 'Sopa'),
+        _log('3', 'b', 'Sopa'),
       ]);
 
       expect(top.name, 'Sopa');
       expect(top.count, 2);
     });
 
-    test('sem nenhuma feita, não há receita mais cozinhada', () {
-      final top = topCooked([_entry('1', 'a', 'Bolo')]);
+    test('no empate, fica a que apareceu primeiro', () {
+      final top = topCooked([
+        _log('1', 'a', 'Bolo'),
+        _log('2', 'b', 'Sopa'),
+      ]);
+
+      expect(top.name, 'Bolo');
+    });
+
+    test('sem histórico, não há receita mais cozinhada', () {
+      final top = topCooked(const []);
 
       expect(top.name, isNull);
       expect(top.count, 0);

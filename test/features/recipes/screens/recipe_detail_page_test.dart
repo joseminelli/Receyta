@@ -9,7 +9,9 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/tag.dart';
+import 'package:receyta/features/recipes/controllers/cook_log_view_model.dart';
 import 'package:receyta/features/recipes/controllers/recipe_status_view_model.dart';
+import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/features/recipes/screens/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -80,6 +82,9 @@ Widget _host({
   return ProviderScope(
     overrides: [
       recipeDetailProvider.overrideWith((ref, id) => Stream.value(detail)),
+      cookLogsProvider.overrideWith(
+        (ref, id) => Stream.value(const <CookLog>[]),
+      ),
       // Os cartões de status leem o banco; sem isto cairiam no de verdade.
       recipeShoppingListsProvider.overrideWith(
         (ref, id) => Stream.value(shoppingLists),
@@ -126,7 +131,7 @@ void main() {
 
     // Ingredientes e passos agora são slivers lazy (RF perf): numa tela de
     // teste pequena, "Preparo" só existe na árvore depois de rolar até lá.
-    await tester.scrollUntilVisible(find.text('Preparo'), 300);
+    await tester.scrollUntilVisible(find.text('Tempere o frango'), 300);
     expect(find.text('Preparo'), findsOneWidget);
     expect(find.text('Tempere o frango'), findsOneWidget);
 

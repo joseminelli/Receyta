@@ -443,7 +443,7 @@ class _PillNavBarPageState extends State<_PillNavBarPage> {
               motif: TileMotif.arco),
           PillNavItem(
               icon: Icons.calendar_month,
-              label: 'Semana',
+              label: 'Agenda',
               color: context.colors.violet,
               motif: TileMotif.meiaLua),
           PillNavItem(

@@ -4202,6 +4202,360 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
   }
 }
 
+class $CookLogsTable extends CookLogs
+    with TableInfo<$CookLogsTable, CookLogRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CookLogsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _recipeIdMeta =
+      const VerificationMeta('recipeId');
+  @override
+  late final GeneratedColumn<String> recipeId = GeneratedColumn<String>(
+      'recipe_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES recipes (id) ON DELETE CASCADE'));
+  static const VerificationMeta _cookedAtMeta =
+      const VerificationMeta('cookedAt');
+  @override
+  late final GeneratedColumn<DateTime> cookedAt = GeneratedColumn<DateTime>(
+      'cooked_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _mealPlanEntryIdMeta =
+      const VerificationMeta('mealPlanEntryId');
+  @override
+  late final GeneratedColumn<String> mealPlanEntryId = GeneratedColumn<String>(
+      'meal_plan_entry_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime,
+      requiredDuringInsert: false,
+      defaultValue: currentDateAndTime);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, recipeId, cookedAt, note, mealPlanEntryId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cook_logs';
+  @override
+  VerificationContext validateIntegrity(Insertable<CookLogRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('recipe_id')) {
+      context.handle(_recipeIdMeta,
+          recipeId.isAcceptableOrUnknown(data['recipe_id']!, _recipeIdMeta));
+    } else if (isInserting) {
+      context.missing(_recipeIdMeta);
+    }
+    if (data.containsKey('cooked_at')) {
+      context.handle(_cookedAtMeta,
+          cookedAt.isAcceptableOrUnknown(data['cooked_at']!, _cookedAtMeta));
+    } else if (isInserting) {
+      context.missing(_cookedAtMeta);
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('meal_plan_entry_id')) {
+      context.handle(
+          _mealPlanEntryIdMeta,
+          mealPlanEntryId.isAcceptableOrUnknown(
+              data['meal_plan_entry_id']!, _mealPlanEntryIdMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CookLogRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CookLogRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      recipeId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}recipe_id'])!,
+      cookedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}cooked_at'])!,
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      mealPlanEntryId: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}meal_plan_entry_id']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $CookLogsTable createAlias(String alias) {
+    return $CookLogsTable(attachedDatabase, alias);
+  }
+}
+
+class CookLogRow extends DataClass implements Insertable<CookLogRow> {
+  final String id;
+  final String recipeId;
+  final DateTime cookedAt;
+  final String? note;
+  final String? mealPlanEntryId;
+  final DateTime createdAt;
+  const CookLogRow(
+      {required this.id,
+      required this.recipeId,
+      required this.cookedAt,
+      this.note,
+      this.mealPlanEntryId,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['recipe_id'] = Variable<String>(recipeId);
+    map['cooked_at'] = Variable<DateTime>(cookedAt);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    if (!nullToAbsent || mealPlanEntryId != null) {
+      map['meal_plan_entry_id'] = Variable<String>(mealPlanEntryId);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CookLogsCompanion toCompanion(bool nullToAbsent) {
+    return CookLogsCompanion(
+      id: Value(id),
+      recipeId: Value(recipeId),
+      cookedAt: Value(cookedAt),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      mealPlanEntryId: mealPlanEntryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mealPlanEntryId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CookLogRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CookLogRow(
+      id: serializer.fromJson<String>(json['id']),
+      recipeId: serializer.fromJson<String>(json['recipeId']),
+      cookedAt: serializer.fromJson<DateTime>(json['cookedAt']),
+      note: serializer.fromJson<String?>(json['note']),
+      mealPlanEntryId: serializer.fromJson<String?>(json['mealPlanEntryId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'recipeId': serializer.toJson<String>(recipeId),
+      'cookedAt': serializer.toJson<DateTime>(cookedAt),
+      'note': serializer.toJson<String?>(note),
+      'mealPlanEntryId': serializer.toJson<String?>(mealPlanEntryId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CookLogRow copyWith(
+          {String? id,
+          String? recipeId,
+          DateTime? cookedAt,
+          Value<String?> note = const Value.absent(),
+          Value<String?> mealPlanEntryId = const Value.absent(),
+          DateTime? createdAt}) =>
+      CookLogRow(
+        id: id ?? this.id,
+        recipeId: recipeId ?? this.recipeId,
+        cookedAt: cookedAt ?? this.cookedAt,
+        note: note.present ? note.value : this.note,
+        mealPlanEntryId: mealPlanEntryId.present
+            ? mealPlanEntryId.value
+            : this.mealPlanEntryId,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  CookLogRow copyWithCompanion(CookLogsCompanion data) {
+    return CookLogRow(
+      id: data.id.present ? data.id.value : this.id,
+      recipeId: data.recipeId.present ? data.recipeId.value : this.recipeId,
+      cookedAt: data.cookedAt.present ? data.cookedAt.value : this.cookedAt,
+      note: data.note.present ? data.note.value : this.note,
+      mealPlanEntryId: data.mealPlanEntryId.present
+          ? data.mealPlanEntryId.value
+          : this.mealPlanEntryId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CookLogRow(')
+          ..write('id: $id, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('cookedAt: $cookedAt, ')
+          ..write('note: $note, ')
+          ..write('mealPlanEntryId: $mealPlanEntryId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, recipeId, cookedAt, note, mealPlanEntryId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CookLogRow &&
+          other.id == this.id &&
+          other.recipeId == this.recipeId &&
+          other.cookedAt == this.cookedAt &&
+          other.note == this.note &&
+          other.mealPlanEntryId == this.mealPlanEntryId &&
+          other.createdAt == this.createdAt);
+}
+
+class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
+  final Value<String> id;
+  final Value<String> recipeId;
+  final Value<DateTime> cookedAt;
+  final Value<String?> note;
+  final Value<String?> mealPlanEntryId;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const CookLogsCompanion({
+    this.id = const Value.absent(),
+    this.recipeId = const Value.absent(),
+    this.cookedAt = const Value.absent(),
+    this.note = const Value.absent(),
+    this.mealPlanEntryId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CookLogsCompanion.insert({
+    required String id,
+    required String recipeId,
+    required DateTime cookedAt,
+    this.note = const Value.absent(),
+    this.mealPlanEntryId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        recipeId = Value(recipeId),
+        cookedAt = Value(cookedAt);
+  static Insertable<CookLogRow> custom({
+    Expression<String>? id,
+    Expression<String>? recipeId,
+    Expression<DateTime>? cookedAt,
+    Expression<String>? note,
+    Expression<String>? mealPlanEntryId,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (recipeId != null) 'recipe_id': recipeId,
+      if (cookedAt != null) 'cooked_at': cookedAt,
+      if (note != null) 'note': note,
+      if (mealPlanEntryId != null) 'meal_plan_entry_id': mealPlanEntryId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CookLogsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? recipeId,
+      Value<DateTime>? cookedAt,
+      Value<String?>? note,
+      Value<String?>? mealPlanEntryId,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return CookLogsCompanion(
+      id: id ?? this.id,
+      recipeId: recipeId ?? this.recipeId,
+      cookedAt: cookedAt ?? this.cookedAt,
+      note: note ?? this.note,
+      mealPlanEntryId: mealPlanEntryId ?? this.mealPlanEntryId,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (recipeId.present) {
+      map['recipe_id'] = Variable<String>(recipeId.value);
+    }
+    if (cookedAt.present) {
+      map['cooked_at'] = Variable<DateTime>(cookedAt.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (mealPlanEntryId.present) {
+      map['meal_plan_entry_id'] = Variable<String>(mealPlanEntryId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CookLogsCompanion(')
+          ..write('id: $id, ')
+          ..write('recipeId: $recipeId, ')
+          ..write('cookedAt: $cookedAt, ')
+          ..write('note: $note, ')
+          ..write('mealPlanEntryId: $mealPlanEntryId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ShoppingListsTable extends ShoppingLists
     with TableInfo<$ShoppingListsTable, ShoppingListRow> {
   @override
@@ -5522,6 +5876,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RecipeTagsTable recipeTags = $RecipeTagsTable(this);
   late final $MealPlanEntriesTable mealPlanEntries =
       $MealPlanEntriesTable(this);
+  late final $CookLogsTable cookLogs = $CookLogsTable(this);
   late final $ShoppingListsTable shoppingLists = $ShoppingListsTable(this);
   late final $ShoppingListItemsTable shoppingListItems =
       $ShoppingListItemsTable(this);
@@ -5536,6 +5891,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final ShoppingListDao shoppingListDao =
       ShoppingListDao(this as AppDatabase);
   late final MealPlanDao mealPlanDao = MealPlanDao(this as AppDatabase);
+  late final CookLogDao cookLogDao = CookLogDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5552,6 +5908,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         tags,
         recipeTags,
         mealPlanEntries,
+        cookLogs,
         shoppingLists,
         shoppingListItems,
         shoppingItemSources,
@@ -5621,6 +5978,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
                 limitUpdateKind: UpdateKind.delete),
             result: [
               TableUpdate('meal_plan_entries', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('recipes',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('cook_logs', kind: UpdateKind.delete),
             ],
           ),
           WritePropagation(
@@ -6180,6 +6544,19 @@ class $$RecipesTableFilterComposer
             builder: (joinBuilder, parentComposers) =>
                 $$MealPlanEntriesTableFilterComposer(ComposerState($state.db,
                     $state.db.mealPlanEntries, joinBuilder, parentComposers)));
+    return f(composer);
+  }
+
+  ComposableFilter cookLogsRefs(
+      ComposableFilter Function($$CookLogsTableFilterComposer f) f) {
+    final $$CookLogsTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $state.db.cookLogs,
+        getReferencedColumn: (t) => t.recipeId,
+        builder: (joinBuilder, parentComposers) =>
+            $$CookLogsTableFilterComposer(ComposerState(
+                $state.db, $state.db.cookLogs, joinBuilder, parentComposers)));
     return f(composer);
   }
 
@@ -7698,6 +8075,162 @@ class $$MealPlanEntriesTableOrderingComposer
   }
 }
 
+typedef $$CookLogsTableCreateCompanionBuilder = CookLogsCompanion Function({
+  required String id,
+  required String recipeId,
+  required DateTime cookedAt,
+  Value<String?> note,
+  Value<String?> mealPlanEntryId,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+typedef $$CookLogsTableUpdateCompanionBuilder = CookLogsCompanion Function({
+  Value<String> id,
+  Value<String> recipeId,
+  Value<DateTime> cookedAt,
+  Value<String?> note,
+  Value<String?> mealPlanEntryId,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$CookLogsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $CookLogsTable,
+    CookLogRow,
+    $$CookLogsTableFilterComposer,
+    $$CookLogsTableOrderingComposer,
+    $$CookLogsTableCreateCompanionBuilder,
+    $$CookLogsTableUpdateCompanionBuilder> {
+  $$CookLogsTableTableManager(_$AppDatabase db, $CookLogsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$CookLogsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$CookLogsTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> recipeId = const Value.absent(),
+            Value<DateTime> cookedAt = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<String?> mealPlanEntryId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CookLogsCompanion(
+            id: id,
+            recipeId: recipeId,
+            cookedAt: cookedAt,
+            note: note,
+            mealPlanEntryId: mealPlanEntryId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String recipeId,
+            required DateTime cookedAt,
+            Value<String?> note = const Value.absent(),
+            Value<String?> mealPlanEntryId = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              CookLogsCompanion.insert(
+            id: id,
+            recipeId: recipeId,
+            cookedAt: cookedAt,
+            note: note,
+            mealPlanEntryId: mealPlanEntryId,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+        ));
+}
+
+class $$CookLogsTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $CookLogsTable> {
+  $$CookLogsTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get cookedAt => $state.composableBuilder(
+      column: $state.table.cookedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get note => $state.composableBuilder(
+      column: $state.table.note,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mealPlanEntryId => $state.composableBuilder(
+      column: $state.table.mealPlanEntryId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  $$RecipesTableFilterComposer get recipeId {
+    final $$RecipesTableFilterComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.recipeId,
+        referencedTable: $state.db.recipes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) => $$RecipesTableFilterComposer(
+            ComposerState(
+                $state.db, $state.db.recipes, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
+class $$CookLogsTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $CookLogsTable> {
+  $$CookLogsTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get cookedAt => $state.composableBuilder(
+      column: $state.table.cookedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get note => $state.composableBuilder(
+      column: $state.table.note,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mealPlanEntryId => $state.composableBuilder(
+      column: $state.table.mealPlanEntryId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  $$RecipesTableOrderingComposer get recipeId {
+    final $$RecipesTableOrderingComposer composer = $state.composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.recipeId,
+        referencedTable: $state.db.recipes,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder, parentComposers) =>
+            $$RecipesTableOrderingComposer(ComposerState(
+                $state.db, $state.db.recipes, joinBuilder, parentComposers)));
+    return composer;
+  }
+}
+
 typedef $$ShoppingListsTableCreateCompanionBuilder = ShoppingListsCompanion
     Function({
   required String id,
@@ -8380,6 +8913,8 @@ class $AppDatabaseManager {
       $$RecipeTagsTableTableManager(_db, _db.recipeTags);
   $$MealPlanEntriesTableTableManager get mealPlanEntries =>
       $$MealPlanEntriesTableTableManager(_db, _db.mealPlanEntries);
+  $$CookLogsTableTableManager get cookLogs =>
+      $$CookLogsTableTableManager(_db, _db.cookLogs);
   $$ShoppingListsTableTableManager get shoppingLists =>
       $$ShoppingListsTableTableManager(_db, _db.shoppingLists);
   $$ShoppingListItemsTableTableManager get shoppingListItems =>

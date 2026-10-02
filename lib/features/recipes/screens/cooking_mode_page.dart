@@ -10,6 +10,7 @@ import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
+import 'package:receyta/features/recipes/screens/cook_log_sheet.dart';
 import 'package:receyta/features/recipes/screens/global_timers_bar.dart'
     show TimerAlertToggles;
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
@@ -215,8 +216,43 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       ),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, i) => _stepItem(detail.steps, i, detail.recipe),
-          childCount: detail.steps.length,
+          (context, i) => i == detail.steps.length
+              ? _finishButton(context)
+              : _stepItem(detail.steps, i, detail.recipe),
+          childCount: detail.steps.length + 1,
+        ),
+      ),
+    );
+  }
+
+  /// Fim da receita: um toque registra que você cozinhou (G7).
+  Widget _finishButton(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Material(
+        color: colors.lime,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          onTap: () => logCookedNow(ref, widget.recipeId),
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.restaurant_rounded, color: colors.ink),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  'Cozinhei!',
+                  style: context.texts.bodyLarge?.copyWith(
+                    color: colors.ink,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
