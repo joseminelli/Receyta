@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/data/services/app_info.dart';
+import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/quiet_hours.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/reminder_settings.dart';
+import 'package:receyta/features/settings/screens/auto_backup_sheet.dart';
 import 'package:receyta/features/settings/screens/feedback_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -177,6 +179,13 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  static String _copiesSubtitle(AutoBackupState a) {
+    if (a.count == 0) return 'Nenhuma cópia ainda';
+    final n = '${a.count} guardada${a.count == 1 ? '' : 's'}';
+    final last = a.lastAt;
+    return last == null ? n : '$n · última: ${formatBackupDate(last)}';
+  }
+
   static String _backupSubtitle(DateTime? at) {
     if (at == null) return 'Você ainda não fez backup';
     final l = at.toLocal();
@@ -189,6 +198,8 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final settings = ref.watch(appSettingsProvider);
+    final auto =
+        ref.watch(autoBackupProvider).valueOrNull ?? const AutoBackupState();
     final alerts = ref.watch(cookingAlertSettingsProvider);
     final settingsNotifier = ref.read(appSettingsProvider.notifier);
     final alertsNotifier = ref.read(cookingAlertSettingsProvider.notifier);
@@ -317,6 +328,22 @@ class SettingsPage extends ConsumerWidget {
                         subtitle: _backupSubtitle(settings.lastBackupAt),
                         warn: settings.lastBackupAt == null,
                         onTap: () => _backup(context, ref),
+                      ),
+                      _SwitchRow(
+                        icon: Icons.history_toggle_off,
+                        title: 'Backup automático',
+                        subtitle: auto.enabled
+                            ? 'Uma cópia por dia, guardada no aparelho'
+                            : 'Desligado',
+                        value: auto.enabled,
+                        onChanged:
+                            ref.read(autoBackupProvider.notifier).setEnabled,
+                      ),
+                      _NavRow(
+                        icon: Icons.settings_backup_restore,
+                        title: 'Cópias automáticas',
+                        subtitle: _copiesSubtitle(auto),
+                        onTap: () => showAutoBackupSheet(context),
                       ),
                       _NavRow(
                         icon: Icons.school_outlined,
