@@ -143,7 +143,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(folders, folders.lastOpenedAt);
           }
           if (from < 6) {
-            await m.addColumn(ingredients, ingredients.inPantry);
+            final cols = await customSelect('PRAGMA table_info(ingredients)')
+                .map((r) => r.read<String>('name'))
+                .get();
+            if (!cols.contains('in_pantry')) {
+              await m.addColumn(ingredients, ingredients.inPantry);
+            }
           }
           if (from < 5) {
             await m.createTable(cookLogs);
