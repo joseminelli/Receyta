@@ -252,3 +252,191 @@ void _drawFooter(Canvas canvas, AppColors colors, double y) {
   );
   tagline.paint(canvas, Offset((_width - tagline.width) / 2, y + 92));
 }
+
+/// Um dia da semana no cartão da semana: a data e as refeições dele (vazio =
+/// "Nada planejado").
+class WeekCardDay {
+  const WeekCardDay({required this.day, required this.meals});
+
+  final DateTime day;
+  final List<DayCardMeal> meals;
+}
+
+const _weekHeaderHeight = 400.0;
+const _stripHeight = 96.0;
+const _stripGap = 14.0;
+const _dayMinHeight = 124.0;
+const _dayGap = 26.0;
+
+double _weekDayHeight(WeekCardDay d) => d.meals.isEmpty
+    ? _dayMinHeight
+    : d.meals.length * (_stripHeight + _stripGap) - _stripGap;
+
+/// Altura final da imagem da semana pra esses [days].
+double weekCardHeight(List<WeekCardDay> days) {
+  var h = _weekHeaderHeight + _margin;
+  for (final d in days) {
+    h += _weekDayHeight(d) + _dayGap;
+  }
+  return h + _footerHeight - 40;
+}
+
+/// Desenha o cartão da semana pra compartilhar: cabeçalho roxo com o intervalo
+/// de datas, uma linha por dia (data grande à esquerda, uma faixa fina por
+/// refeição no azulejo da receita) e a assinatura do Receyta.
+Future<Uint8List?> renderWeekCardPng({
+  required DateTime monday,
+  required List<WeekCardDay> days,
+}) async {
+  const colors = AppColors.light;
+  final height = weekCardHeight(days);
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+
+  canvas.drawRect(
+    Rect.fromLTWH(0, 0, _width.toDouble(), height),
+    Paint()..color = colors.paper,
+  );
+
+  final total = days.fold<int>(0, (n, d) => n + d.meals.length);
+  _drawWeekHeader(canvas, colors, monday, total);
+
+  var y = _weekHeaderHeight + _margin;
+  for (final d in days) {
+    _drawWeekDay(canvas, colors, d, y);
+    y += _weekDayHeight(d) + _dayGap;
+  }
+
+  _drawFooter(canvas, colors, y - 6);
+
+  final image = await recorder.endRecording().toImage(_width, height.ceil());
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return data?.buffer.asUint8List();
+}
+
+void _drawWeekHeader(Canvas canvas, AppColors colors, DateTime monday, int n) {
+  final tile = resolveTileAppearance(
+    colors,
+    color: TileColor.violet,
+    motif: TileMotif.meiaLua,
+  );
+  final rect = Rect.fromLTWH(0, 0, _width.toDouble(), _weekHeaderHeight);
+  canvas.save();
+  canvas.clipRRect(
+    RRect.fromRectAndCorners(
+      rect,
+      bottomLeft: const Radius.circular(72),
+      bottomRight: const Radius.circular(72),
+    ),
+    doAntiAlias: true,
+  );
+  canvas.drawRect(rect, _tilePaint(tile));
+  canvas.restore();
+
+  _text(
+    'SEMANA',
+    TextStyle(
+      color: tile.onColor,
+      fontSize: 36,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 6,
+    ),
+  ).paint(canvas, const Offset(_margin, 100));
+
+  _text(
+    weekRangeLabel(monday),
+    AppTextStyles.display(124).copyWith(color: tile.onColor),
+    maxWidth: _width - _margin * 2,
+  ).paint(canvas, const Offset(_margin, 160));
+
+  _text(
+    n == 0 ? 'Nada planejado' : (n == 1 ? '1 refeição' : '$n refeições'),
+    TextStyle(
+      color: tile.onColor.withValues(alpha: 0.9),
+      fontSize: 42,
+      fontWeight: FontWeight.w500,
+    ),
+  ).paint(canvas, const Offset(_margin, 310));
+}
+
+void _drawWeekDay(Canvas canvas, AppColors colors, WeekCardDay d, double y) {
+  const dateWidth = 190.0;
+  final weekday = weekdayLong(d.day).substring(0, 3).toUpperCase();
+  _text(
+    weekday,
+    TextStyle(
+      color: colors.textMuted,
+      fontSize: 30,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 4,
+    ),
+  ).paint(canvas, Offset(_margin, y + 2));
+  _text(
+    '${d.day.day}',
+    AppTextStyles.display(88).copyWith(color: colors.ink),
+  ).paint(canvas, Offset(_margin, y + 38));
+
+  const left = _margin + dateWidth;
+  const stripWidth = _width - _margin - left;
+
+  if (d.meals.isEmpty) {
+    final empty = _text(
+      'Nada planejado',
+      TextStyle(
+        color: colors.textMuted,
+        fontSize: 34,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+    empty.paint(canvas, Offset(left, y + (_dayMinHeight - empty.height) / 2));
+    return;
+  }
+
+  var top = y;
+  for (final meal in d.meals) {
+    final tile = resolveTileAppearance(
+      colors,
+      color: meal.tileColor,
+      motif: meal.tileMotif,
+      seedId: meal.recipeId,
+    );
+    final strip = RRect.fromRectAndRadius(
+      Rect.fromLTWH(left, top, stripWidth, _stripHeight),
+      const Radius.circular(34),
+    );
+    canvas.save();
+    canvas.clipRRect(strip, doAntiAlias: true);
+    canvas.drawRect(strip.outerRect, _tilePaint(tile, size: 72));
+    canvas.restore();
+
+    final label = _text(
+      meal.mealLabel.toUpperCase(),
+      TextStyle(
+        color: tile.onColor,
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 3,
+      ),
+      maxWidth: 220,
+    );
+    label.paint(
+      canvas,
+      Offset(
+        left + stripWidth - 28 - label.width,
+        top + (_stripHeight - label.height) / 2,
+      ),
+    );
+
+    final name = _text(
+      meal.recipeName,
+      AppTextStyles.display(42).copyWith(color: tile.onColor, height: 1.0),
+      maxWidth: stripWidth - 56 - label.width - 24,
+    );
+    name.paint(
+      canvas,
+      Offset(left + 28, top + (_stripHeight - name.height) / 2),
+    );
+    top += _stripHeight + _stripGap;
+  }
+}

@@ -26,4 +26,22 @@ void main() {
 
     expect(result, isA<Err<void>>());
   });
+
+  test('nome do arquivo e legenda da semana', () {
+    expect(
+      DayExportService.weekFileName(DateTime(2026, 9, 28)),
+      'receyta-semana-2026-09-28.png',
+    );
+    expect(
+      DayExportService.weekCaption(DateTime(2026, 9, 28)),
+      startsWith('Minha semana no Receyta — '),
+    );
+  });
+
+  test('semana sem refeições não compartilha nada', () async {
+    final result =
+        await DayExportService().shareWeek(DateTime(2026, 9, 28), []);
+
+    expect(result, isA<Err<void>>());
+  });
 }

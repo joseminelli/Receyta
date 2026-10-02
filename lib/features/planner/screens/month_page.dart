@@ -6,6 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/core/day.dart';
+import 'package:receyta/data/services/day_export_service.dart';
+import 'package:receyta/messenger.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
+import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
@@ -51,6 +55,66 @@ class MonthPage extends ConsumerWidget {
     notifier.state = addMonths(notifier.state, months);
   }
 
+  /// Escolhe uma das semanas do mês e compartilha como imagem.
+  Future<void> _shareWeek(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime month,
+    List<MealPlanEntry> entries,
+  ) async {
+    int countOf(DateTime monday) => entries
+        .where((e) =>
+            !e.date.isBefore(monday) && e.date.isBefore(addDays(monday, 7)))
+        .length;
+
+    final monday = await showModalBottomSheet<DateTime>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                0,
+                AppSpacing.screen,
+                AppSpacing.xs,
+              ),
+              child: Text(
+                'Compartilhar a semana',
+                style: Theme.of(sheet).textTheme.titleLarge,
+              ),
+            ),
+            for (final m in monthWeeks(month))
+              ListTile(
+                enabled: countOf(m) > 0,
+                leading: const Icon(Icons.ios_share),
+                title: Text(weekRangeLabel(m)),
+                subtitle: Text(
+                  countOf(m) == 0
+                      ? 'Nada planejado'
+                      : '${countOf(m)} ${countOf(m) == 1 ? 'refeição' : 'refeições'}',
+                ),
+                onTap: () => Navigator.of(sheet).pop(m),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (monday == null) return;
+    final result =
+        await ref.read(dayExportServiceProvider).shareWeek(monday, entries);
+    result.when(
+      ok: (_) {},
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
@@ -70,14 +134,27 @@ class MonthPage extends ConsumerWidget {
       subtitle: '${month.year}',
       color: TileColor.violet,
       showBack: false,
-      trailing: PeriodStepper(
-        atToday: isCurrent,
-        previousTooltip: 'Mês anterior',
-        nextTooltip: 'Próximo mês',
-        onPrevious: () => _shiftMonth(ref, -1),
-        onNext: () => _shiftMonth(ref, 1),
-        onToday: () => ref.read(visibleMonthProvider.notifier).state =
-            firstOfMonth(today()),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (entries.isNotEmpty) ...[
+            CircleIconButton(
+              icon: Icons.ios_share,
+              tooltip: 'Compartilhar a semana como imagem',
+              onTap: () => _shareWeek(context, ref, month, entries),
+            ),
+            const SizedBox(width: AppSpacing.xs),
+          ],
+          PeriodStepper(
+            atToday: isCurrent,
+            previousTooltip: 'Mês anterior',
+            nextTooltip: 'Próximo mês',
+            onPrevious: () => _shiftMonth(ref, -1),
+            onNext: () => _shiftMonth(ref, 1),
+            onToday: () => ref.read(visibleMonthProvider.notifier).state =
+                firstOfMonth(today()),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(

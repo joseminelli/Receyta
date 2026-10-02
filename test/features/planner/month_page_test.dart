@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receyta/core/day.dart';
+import 'package:receyta/core/result.dart';
+import 'package:receyta/data/services/day_export_service.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
@@ -23,10 +25,24 @@ MealPlanEntry _entry(String name, DateTime day, MealType meal) => MealPlanEntry(
       mealType: meal,
     );
 
+class _FakeExport extends DayExportService {
+  final weeks = <({DateTime monday, int meals})>[];
+
+  @override
+  Future<Result<void>> shareWeek(
+    DateTime monday,
+    List<MealPlanEntry> entries,
+  ) async {
+    weeks.add((monday: monday, meals: entries.length));
+    return const Ok(null);
+  }
+}
+
 Widget _host(
   List<MealPlanEntry> entries, {
   List<String>? visited,
   List<MealPlanEntry> upcoming = const [],
+  DayExportService? export,
 }) {
   final router = GoRouter(
     routes: [
@@ -42,6 +58,7 @@ Widget _host(
   );
   return ProviderScope(
     overrides: [
+      if (export != null) dayExportServiceProvider.overrideWithValue(export),
       monthEntriesProvider.overrideWith((ref, month) => Stream.value(entries)),
       upcomingEntriesProvider
           .overrideWith((ref, from) => Stream.value(upcoming)),
@@ -214,5 +231,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(monthLong(today())), findsOneWidget);
     expect(_todayEnabled(tester), isFalse);
+  });
+
+  testWidgets('compartilhar a semana: escolhe a semana e manda pro serviço',
+      (tester) async {
+    _usePhoneSize(tester);
+    final export = _FakeExport();
+    final monday = mondayOf(today());
+    await tester.pumpWidget(
+      _host([_entry('Bolo', addDays(monday, 2), MealType.lunch)],
+          export: export),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Compartilhar a semana como imagem'));
+    await tester.pumpAndSettle();
+    expect(find.text('Compartilhar a semana'), findsOneWidget);
+
+    await tester.tap(find.text('1 refeição'));
+    await tester.pumpAndSettle();
+
+    expect(export.weeks, hasLength(1));
+    expect(isSameDay(export.weeks.single.monday, monday), isTrue);
+  });
+
+  testWidgets('sem refeições no mês, não há botão de compartilhar a semana',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host(const []));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Compartilhar a semana como imagem'), findsNothing);
   });
 }

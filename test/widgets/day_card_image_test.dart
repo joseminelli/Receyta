@@ -60,4 +60,44 @@ void main() {
     expect(png, isNotNull);
     expect(_u32(png!, 20), dayCardHeight(1).ceil());
   });
+
+  group('cartão da semana', () {
+    WeekCardDay d(int day, List<DayCardMeal> meals) =>
+        WeekCardDay(day: DateTime(2026, 9, day), meals: meals);
+
+    const bolo = DayCardMeal(
+      recipeId: 'a',
+      recipeName: 'Bolo de cenoura',
+      mealLabel: 'Lanche',
+    );
+
+    test('altura soma cada dia: vazio é mais baixo que com refeições', () {
+      final vazio = weekCardHeight([d(28, const [])]);
+      final cheio = weekCardHeight([
+        d(28, const [bolo, bolo, bolo])
+      ]);
+
+      expect(cheio, greaterThan(vazio));
+    });
+
+    testWidgets('gera um PNG na altura calculada', (tester) async {
+      final days = [
+        d(28, const [bolo]),
+        d(29, const []),
+        d(30, const [bolo, bolo]),
+        d(31, const []),
+        d(1, const []),
+        d(2, const [bolo]),
+        d(3, const []),
+      ];
+      final png = await tester.runAsync(
+        () => renderWeekCardPng(monday: DateTime(2026, 9, 28), days: days),
+      );
+
+      expect(png, isNotNull);
+      expect(png!.sublist(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
+      expect(_u32(png, 16), 1080);
+      expect(_u32(png, 20), weekCardHeight(days).ceil());
+    });
+  });
 }
