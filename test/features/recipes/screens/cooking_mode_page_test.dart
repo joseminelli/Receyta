@@ -26,10 +26,17 @@ RecipeDetail _detail({List<RecipeStep> steps = _steps, int? cook}) =>
         createdAt: DateTime.utc(2026),
         updatedAt: DateTime.utc(2026),
         cookMinutes: cook,
+        servings: 4,
       ),
       ingredients: const [
         RecipeIngredient(
-            id: 'i1', recipeId: 'r1', rawText: '500g de frango', position: 0),
+          id: 'i1',
+          recipeId: 'r1',
+          rawText: '500g de frango',
+          position: 0,
+          quantity: 500,
+          unitId: 'g',
+        ),
         RecipeIngredient(
             id: 'i2',
             recipeId: 'r1',
@@ -105,6 +112,26 @@ void main() {
     expect(find.text('Junte o leite de coco'), findsOneWidget);
     // Ingredientes abertos por padrão.
     expect(find.text('500g de frango'), findsOneWidget);
+  });
+
+  testWidgets('porções: "+" refaz as quantidades e "-" volta ao texto original',
+      (tester) async {
+    await _open(tester, _detail());
+
+    await tester.tap(find.byTooltip('Mais uma porção'));
+    await tester.pumpAndSettle();
+    expect(find.text('625 g de frango'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Menos uma porção'));
+    await tester.pumpAndSettle();
+    expect(find.text('500g de frango'), findsOneWidget);
+  });
+
+  testWidgets('o atalho "Compras" fica ao lado das porções', (tester) async {
+    await _open(tester, _detail());
+
+    expect(find.text('Compras'), findsOneWidget);
+    expect(find.text('PORÇÕES'), findsOneWidget);
   });
 
   testWidgets('recolher os ingredientes some com a lista', (tester) async {
