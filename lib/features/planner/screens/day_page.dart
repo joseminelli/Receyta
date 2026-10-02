@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/repositories/meal_plan_repository.dart';
+import 'package:receyta/data/services/day_export_service.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/planner_suggestion.dart';
@@ -52,6 +53,22 @@ class _DayPageState extends ConsumerState<DayPage> {
   MealPlanRepository get _repo => ref.read(mealPlanRepositoryProvider);
 
   void _shiftDay(int days) => setState(() => _day = addDays(_day, days));
+
+  /// Gera a imagem do dia e já abre o menu de compartilhar.
+  Future<void> _shareDay() async {
+    final entries = ref.read(dayEntriesProvider(_day)).valueOrNull ??
+        const <MealPlanEntry>[];
+    if (entries.isEmpty) return;
+    final result =
+        await ref.read(dayExportServiceProvider).shareDay(_day, entries);
+    result.when(
+      ok: (_) {},
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -169,6 +186,16 @@ class _DayPageState extends ConsumerState<DayPage> {
                             onTap: () => context.pop(),
                           ),
                           const Spacer(),
+                          if (count > 0) ...[
+                            CircleIconButton(
+                              icon: Icons.ios_share,
+                              tooltip: 'Compartilhar o dia como imagem',
+                              background: context.colors.paper,
+                              foreground: context.colors.ink,
+                              onTap: _shareDay,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                          ],
                           PeriodStepper(
                             atToday: isToday,
                             previousTooltip: 'Dia anterior',

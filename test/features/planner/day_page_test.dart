@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/core/day.dart';
+import 'package:receyta/core/result.dart';
+import 'package:receyta/data/services/day_export_service.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/domain/models/recipe.dart';
@@ -30,13 +32,28 @@ MealPlanEntry _entry(
       done: done,
     );
 
+class _FakeExport extends DayExportService {
+  final shared = <({DateTime day, int meals})>[];
+
+  @override
+  Future<Result<void>> shareDay(
+    DateTime day,
+    List<MealPlanEntry> entries,
+  ) async {
+    shared.add((day: day, meals: entries.length));
+    return const Ok(null);
+  }
+}
+
 Widget _host(
   List<MealPlanEntry> entries, {
   DateTime? day,
   List<PlannerSuggestion> suggestions = const [],
+  DayExportService? export,
 }) =>
     ProviderScope(
       overrides: [
+        if (export != null) dayExportServiceProvider.overrideWithValue(export),
         // Sem isto a tela cairia no banco de verdade.
         daySuggestionsProvider.overrideWith((ref, d) async => suggestions),
         dayEntriesProvider.overrideWith(
@@ -221,5 +238,34 @@ void main() {
     await tester.pumpWidget(_host([_entry('Bolo', MealType.lunch)]));
     await tester.pumpAndSettle();
     expect(find.text('SUGESTÕES'), findsNothing);
+  });
+
+  testWidgets('o botão de compartilhar manda o dia com as refeições',
+      (tester) async {
+    _usePhoneSize(tester);
+    final export = _FakeExport();
+    await tester.pumpWidget(
+      _host([
+        _entry('Bolo', MealType.breakfast),
+        _entry('Sopa', MealType.dinner),
+      ], export: export),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Compartilhar o dia como imagem'));
+    await tester.pumpAndSettle();
+
+    expect(export.shared, hasLength(1));
+    expect(export.shared.single.meals, 2);
+    expect(isSameDay(export.shared.single.day, today()), isTrue);
+  });
+
+  testWidgets('sem refeições no dia, não há botão de compartilhar',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host(const []));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Compartilhar o dia como imagem'), findsNothing);
   });
 }
