@@ -17,6 +17,7 @@ import 'package:receyta/features/shopping/screens/shopping_actions.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
@@ -69,20 +70,19 @@ class ShoppingListPage extends ConsumerWidget {
       backgroundColor: colors.ink,
       trailing: list == null
           ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_hasChecked(ref, list.id)) ...[
-                  CircleIconButton(
+          : ActionMenuButton(
+              items: [
+                if (_hasChecked(ref, list.id))
+                  ActionMenuItem(
                     icon: Icons.remove_done,
-                    tooltip: 'Desmarcar todos',
+                    label: 'Desmarcar todos',
+                    hint: 'Volta todos os itens pra pendente',
                     onTap: () => uncheckAllShoppingItems(ref, list.id),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
-                ],
-                CircleIconButton(
+                ActionMenuItem(
                   icon: Icons.ios_share,
-                  tooltip: 'Compartilhar como texto',
+                  label: 'Compartilhar',
+                  hint: 'Como texto',
                   onTap: () => _share(ref),
                 ),
               ],
