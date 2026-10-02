@@ -12,6 +12,7 @@ import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
+import 'package:receyta/features/planner/screens/suggest_week_sheet.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -137,6 +138,12 @@ class MonthPage extends ConsumerWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          CircleIconButton(
+            icon: Icons.auto_awesome,
+            tooltip: 'Sugerir a semana',
+            onTap: () => showSuggestWeekSheet(context),
+          ),
+          const SizedBox(width: AppSpacing.xs),
           if (entries.isNotEmpty) ...[
             CircleIconButton(
               icon: Icons.ios_share,

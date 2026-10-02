@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:receyta/data/services/home_widget_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
@@ -51,6 +52,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       (_) {
         ref.read(tutorialControllerProvider).startIfNeeded();
         ref.read(reminderSettingsProvider.notifier).syncOnStart();
+        ref.read(homeWidgetSyncProvider).start();
       },
     );
     _mediaSub = ReceiveSharingIntent.instance

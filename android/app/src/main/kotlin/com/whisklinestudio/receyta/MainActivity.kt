@@ -1,6 +1,9 @@
 package com.whisklinestudio.receyta
 
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+import org.json.JSONObject
 
 class MainActivity: FlutterActivity() {
     // `FlutterActivity` por padrão usa `intent.dataString` como rota inicial
@@ -12,4 +15,20 @@ class MainActivity: FlutterActivity() {
     // é lido à parte pelo `receive_sharing_intent` (canal próprio, não a
     // rota inicial).
     override fun getInitialRoute(): String = "/"
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "receyta/home_widget")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "update") {
+                    val map = call.arguments as? Map<*, *>
+                    if (map != null) {
+                        TodayWidgetProvider.save(applicationContext, JSONObject(map).toString())
+                    }
+                    result.success(null)
+                } else {
+                    result.notImplemented()
+                }
+            }
+    }
 }
