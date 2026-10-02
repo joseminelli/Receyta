@@ -20,10 +20,10 @@ lista pronta — tudo local, tudo rápido, tudo em português.
 
 <table>
   <tr>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/MainPage.png" alt="Home"></td>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/P%C3%A1ginaReceita.png" alt="Detalhe da receita"></td>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/PassosReceita.png" alt="Passos de preparo"></td>
-    <td width="25%"><img src="https://raw.githubusercontent.com/joseminelli/Receyta/main/images/preview/modoCozinha.png" alt="Modo cozinha"></td>
+    <td width="25%"><img src="https://i.imgur.com/6n68rXL.png" alt="Home"></td>
+    <td width="25%"><img src="https://i.imgur.com/MhsDxHj.png" alt="Detalhe da receita"></td>
+    <td width="25%"><img src="https://i.imgur.com/s9LhK7S.png" alt="Passos de preparo"></td>
+    <td width="25%"><img src="https://i.imgur.com/VmlVifw.png" alt="Modo cozinha"></td>
   </tr>
   <tr>
     <td align="center"><b>Home</b><br><sub>cabeçalho de azulejo, filtro de tags, faixa de pastas, destaque em "Recentes"</sub></td>
