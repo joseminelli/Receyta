@@ -57,6 +57,16 @@ class IngredientRepository {
     }
   }
 
+  /// "Sempre tenho" (G11): liga ou desliga a despensa de um ingrediente.
+  Future<Result<void>> setInPantry(String id, bool value) async {
+    try {
+      await _dao.setInPantry(id, value);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao atualizar a despensa', cause: e));
+    }
+  }
+
   /// Apaga um ingrediente (C6). Só funciona se ele não estiver em nenhuma
   /// receita — o banco recusa a exclusão nesse caso e devolve `Err`; a UI só
   /// mostra o botão de apagar quando já sabe que o uso é 0.
@@ -87,6 +97,7 @@ class IngredientRepository {
         normalizedKey: r.normalizedKey,
         categoryId: r.categoryId,
         usageCount: r.usageCount,
+        inPantry: r.inPantry,
       );
 }
 

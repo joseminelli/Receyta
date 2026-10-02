@@ -319,6 +319,12 @@ class _Shortcuts extends StatelessWidget {
     (Icons.history, 'Histórico', 'Tudo o que você já cozinhou', '/history'),
     (Icons.sell_outlined, 'Tags', 'Organize e renomeie', '/tags'),
     (
+      Icons.kitchen_outlined,
+      'Despensa',
+      'O que você sempre tem fica fora das compras',
+      '/ingredients?despensa=1'
+    ),
+    (
       Icons.egg_alt_outlined,
       'Ingredientes',
       'Mescle duplicados, apague os sem uso',

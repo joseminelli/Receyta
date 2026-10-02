@@ -1608,9 +1608,19 @@ class $IngredientsTable extends Ingredients
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _inPantryMeta =
+      const VerificationMeta('inPantry');
+  @override
+  late final GeneratedColumn<bool> inPantry = GeneratedColumn<bool>(
+      'in_pantry', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("in_pantry" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns =>
-      [id, displayName, normalizedKey, categoryId, usageCount];
+      [id, displayName, normalizedKey, categoryId, usageCount, inPantry];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1654,6 +1664,10 @@ class $IngredientsTable extends Ingredients
           usageCount.isAcceptableOrUnknown(
               data['usage_count']!, _usageCountMeta));
     }
+    if (data.containsKey('in_pantry')) {
+      context.handle(_inPantryMeta,
+          inPantry.isAcceptableOrUnknown(data['in_pantry']!, _inPantryMeta));
+    }
     return context;
   }
 
@@ -1673,6 +1687,8 @@ class $IngredientsTable extends Ingredients
           .read(DriftSqlType.string, data['${effectivePrefix}category_id']),
       usageCount: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}usage_count'])!,
+      inPantry: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}in_pantry'])!,
     );
   }
 
@@ -1688,12 +1704,17 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
   final String normalizedKey;
   final String? categoryId;
   final int usageCount;
+
+  /// "Sempre tenho" (G11): ingrediente da despensa, que não entra nas listas
+  /// de compras geradas.
+  final bool inPantry;
   const IngredientRow(
       {required this.id,
       required this.displayName,
       required this.normalizedKey,
       this.categoryId,
-      required this.usageCount});
+      required this.usageCount,
+      required this.inPantry});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1704,6 +1725,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       map['category_id'] = Variable<String>(categoryId);
     }
     map['usage_count'] = Variable<int>(usageCount);
+    map['in_pantry'] = Variable<bool>(inPantry);
     return map;
   }
 
@@ -1716,6 +1738,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           ? const Value.absent()
           : Value(categoryId),
       usageCount: Value(usageCount),
+      inPantry: Value(inPantry),
     );
   }
 
@@ -1728,6 +1751,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       normalizedKey: serializer.fromJson<String>(json['normalizedKey']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       usageCount: serializer.fromJson<int>(json['usageCount']),
+      inPantry: serializer.fromJson<bool>(json['inPantry']),
     );
   }
   @override
@@ -1739,6 +1763,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       'normalizedKey': serializer.toJson<String>(normalizedKey),
       'categoryId': serializer.toJson<String?>(categoryId),
       'usageCount': serializer.toJson<int>(usageCount),
+      'inPantry': serializer.toJson<bool>(inPantry),
     };
   }
 
@@ -1747,13 +1772,15 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           String? displayName,
           String? normalizedKey,
           Value<String?> categoryId = const Value.absent(),
-          int? usageCount}) =>
+          int? usageCount,
+          bool? inPantry}) =>
       IngredientRow(
         id: id ?? this.id,
         displayName: displayName ?? this.displayName,
         normalizedKey: normalizedKey ?? this.normalizedKey,
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
         usageCount: usageCount ?? this.usageCount,
+        inPantry: inPantry ?? this.inPantry,
       );
   IngredientRow copyWithCompanion(IngredientsCompanion data) {
     return IngredientRow(
@@ -1767,6 +1794,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           data.categoryId.present ? data.categoryId.value : this.categoryId,
       usageCount:
           data.usageCount.present ? data.usageCount.value : this.usageCount,
+      inPantry: data.inPantry.present ? data.inPantry.value : this.inPantry,
     );
   }
 
@@ -1777,14 +1805,15 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           ..write('displayName: $displayName, ')
           ..write('normalizedKey: $normalizedKey, ')
           ..write('categoryId: $categoryId, ')
-          ..write('usageCount: $usageCount')
+          ..write('usageCount: $usageCount, ')
+          ..write('inPantry: $inPantry')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, displayName, normalizedKey, categoryId, usageCount);
+  int get hashCode => Object.hash(
+      id, displayName, normalizedKey, categoryId, usageCount, inPantry);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1793,7 +1822,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           other.displayName == this.displayName &&
           other.normalizedKey == this.normalizedKey &&
           other.categoryId == this.categoryId &&
-          other.usageCount == this.usageCount);
+          other.usageCount == this.usageCount &&
+          other.inPantry == this.inPantry);
 }
 
 class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
@@ -1802,6 +1832,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
   final Value<String> normalizedKey;
   final Value<String?> categoryId;
   final Value<int> usageCount;
+  final Value<bool> inPantry;
   final Value<int> rowid;
   const IngredientsCompanion({
     this.id = const Value.absent(),
@@ -1809,6 +1840,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     this.normalizedKey = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.usageCount = const Value.absent(),
+    this.inPantry = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   IngredientsCompanion.insert({
@@ -1817,6 +1849,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     required String normalizedKey,
     this.categoryId = const Value.absent(),
     this.usageCount = const Value.absent(),
+    this.inPantry = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         displayName = Value(displayName),
@@ -1827,6 +1860,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     Expression<String>? normalizedKey,
     Expression<String>? categoryId,
     Expression<int>? usageCount,
+    Expression<bool>? inPantry,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1835,6 +1869,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       if (normalizedKey != null) 'normalized_key': normalizedKey,
       if (categoryId != null) 'category_id': categoryId,
       if (usageCount != null) 'usage_count': usageCount,
+      if (inPantry != null) 'in_pantry': inPantry,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1845,6 +1880,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       Value<String>? normalizedKey,
       Value<String?>? categoryId,
       Value<int>? usageCount,
+      Value<bool>? inPantry,
       Value<int>? rowid}) {
     return IngredientsCompanion(
       id: id ?? this.id,
@@ -1852,6 +1888,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       normalizedKey: normalizedKey ?? this.normalizedKey,
       categoryId: categoryId ?? this.categoryId,
       usageCount: usageCount ?? this.usageCount,
+      inPantry: inPantry ?? this.inPantry,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1874,6 +1911,9 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     if (usageCount.present) {
       map['usage_count'] = Variable<int>(usageCount.value);
     }
+    if (inPantry.present) {
+      map['in_pantry'] = Variable<bool>(inPantry.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1888,6 +1928,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
           ..write('normalizedKey: $normalizedKey, ')
           ..write('categoryId: $categoryId, ')
           ..write('usageCount: $usageCount, ')
+          ..write('inPantry: $inPantry, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6788,6 +6829,7 @@ typedef $$IngredientsTableCreateCompanionBuilder = IngredientsCompanion
   required String normalizedKey,
   Value<String?> categoryId,
   Value<int> usageCount,
+  Value<bool> inPantry,
   Value<int> rowid,
 });
 typedef $$IngredientsTableUpdateCompanionBuilder = IngredientsCompanion
@@ -6797,6 +6839,7 @@ typedef $$IngredientsTableUpdateCompanionBuilder = IngredientsCompanion
   Value<String> normalizedKey,
   Value<String?> categoryId,
   Value<int> usageCount,
+  Value<bool> inPantry,
   Value<int> rowid,
 });
 
@@ -6822,6 +6865,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             Value<String> normalizedKey = const Value.absent(),
             Value<String?> categoryId = const Value.absent(),
             Value<int> usageCount = const Value.absent(),
+            Value<bool> inPantry = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IngredientsCompanion(
@@ -6830,6 +6874,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             normalizedKey: normalizedKey,
             categoryId: categoryId,
             usageCount: usageCount,
+            inPantry: inPantry,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6838,6 +6883,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             required String normalizedKey,
             Value<String?> categoryId = const Value.absent(),
             Value<int> usageCount = const Value.absent(),
+            Value<bool> inPantry = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IngredientsCompanion.insert(
@@ -6846,6 +6892,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             normalizedKey: normalizedKey,
             categoryId: categoryId,
             usageCount: usageCount,
+            inPantry: inPantry,
             rowid: rowid,
           ),
         ));
@@ -6871,6 +6918,11 @@ class $$IngredientsTableFilterComposer
 
   ColumnFilters<int> get usageCount => $state.composableBuilder(
       column: $state.table.usageCount,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get inPantry => $state.composableBuilder(
+      column: $state.table.inPantry,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -6958,6 +7010,11 @@ class $$IngredientsTableOrderingComposer
 
   ColumnOrderings<int> get usageCount => $state.composableBuilder(
       column: $state.table.usageCount,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get inPantry => $state.composableBuilder(
+      column: $state.table.inPantry,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

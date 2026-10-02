@@ -12,6 +12,9 @@ class Ingredient with _$Ingredient {
     required String normalizedKey,
     String? categoryId,
     @Default(0) int usageCount,
+
+    /// "Sempre tenho" (G11): fica fora das listas de compras geradas.
+    @Default(false) bool inPantry,
   }) = _Ingredient;
 }
 

@@ -144,7 +144,9 @@ final router = GoRouter(
     GoRoute(
       path: '/ingredients',
       name: 'ingredients',
-      builder: (context, state) => const IngredientsPage(),
+      builder: (context, state) => IngredientsPage(
+        pantryOnly: state.uri.queryParameters['despensa'] == '1',
+      ),
     ),
     GoRoute(
       path: '/search',

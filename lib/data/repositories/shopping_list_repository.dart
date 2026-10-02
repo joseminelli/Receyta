@@ -63,9 +63,17 @@ class ShoppingListRepository {
       }.toList();
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
+      final needed = _outsidePantry(rows, catalogRows);
+      if (needed.isEmpty) {
+        return const Err(
+          ValidationFailure(
+            'Tudo o que as receitas pedem já está na sua despensa.',
+          ),
+        );
+      }
 
       final aggregated = aggregateIngredients(
-          _repeatedLines(rows, namesById, counts, factors));
+          _repeatedLines(needed, namesById, counts, factors));
 
       final at = _clock().toUtc();
       final trimmed = name?.trim() ?? '';
@@ -125,8 +133,16 @@ class ShoppingListRepository {
       }.toList();
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
-      final aggregated =
-          aggregateIngredients(_repeatedLines(rows, namesById, fresh, factors));
+      final needed = _outsidePantry(rows, catalogRows);
+      if (needed.isEmpty) {
+        return Err(ValidationFailure(
+          plural
+              ? 'Tudo o que essas receitas pedem já está na sua despensa.'
+              : 'Tudo o que essa receita pede já está na sua despensa.',
+        ));
+      }
+      final aggregated = aggregateIngredients(
+          _repeatedLines(needed, namesById, fresh, factors));
 
       await _dao.addAggregated(listId, aggregated);
       return const Ok(null);
@@ -134,6 +150,22 @@ class ShoppingListRepository {
       debugPrint('ShoppingListRepository.addRecipesToList: $e');
       return Err(DatabaseFailure('Falha ao adicionar à lista', cause: e));
     }
+  }
+
+  /// Tira as linhas de ingredientes marcados "sempre tenho" (G11): ficam fora
+  /// de toda lista gerada. Linha sem ingrediente do catálogo sempre fica.
+  List<RecipeIngredientRow> _outsidePantry(
+    List<RecipeIngredientRow> rows,
+    List<IngredientRow> catalog,
+  ) {
+    final pantry = {
+      for (final c in catalog)
+        if (c.inPantry) c.id,
+    };
+    return [
+      for (final r in rows)
+        if (!pantry.contains(r.ingredientId)) r,
+    ];
   }
 
   /// Linhas de ingrediente, cada uma repetida [counts] vezes pra receita

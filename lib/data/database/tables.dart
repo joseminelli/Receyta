@@ -84,6 +84,10 @@ class Ingredients extends Table {
       .references(Categories, #id, onDelete: KeyAction.setNull)();
   IntColumn get usageCount => integer().withDefault(const Constant(0))();
 
+  /// "Sempre tenho" (G11): ingrediente da despensa, que não entra nas listas
+  /// de compras geradas.
+  BoolColumn get inPantry => boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

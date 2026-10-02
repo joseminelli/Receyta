@@ -102,6 +102,106 @@ void main() {
     expect(items, hasLength(6));
   });
 
+  group('despensa (G11)', () {
+    Future<void> pantry(String name, bool on) async {
+      final row = await db.ingredientDao.getOrCreate(name);
+      await db.ingredientDao.setInPantry(row.id, on);
+    }
+
+    test('ingredientes "sempre tenho" não entram na lista gerada', () async {
+      final r = unwrapRecipe(await recipeRepo.saveDetail(
+        name: 'Pão',
+        ingredientLines: [
+          '500g de farinha de trigo',
+          '1 colher de sopa de sal'
+        ],
+      ));
+      await pantry('sal', true);
+
+      final list = unwrapList(await shoppingRepo.generateFromRecipes([r.id]));
+      final items = await shoppingRepo.itemsOf(list.id);
+
+      expect(items, hasLength(1));
+      expect(items.single.displayName, contains('Farinha'));
+    });
+
+    test('tirar da despensa faz o item voltar nas próximas listas', () async {
+      final r = unwrapRecipe(await recipeRepo.saveDetail(
+        name: 'Pão',
+        ingredientLines: [
+          '500g de farinha de trigo',
+          '1 colher de sopa de sal'
+        ],
+      ));
+      await pantry('sal', true);
+      await pantry('sal', false);
+
+      final list = unwrapList(await shoppingRepo.generateFromRecipes([r.id]));
+      final items = await shoppingRepo.itemsOf(list.id);
+
+      expect(items, hasLength(2));
+    });
+
+    test('tudo na despensa: recusa em vez de criar lista vazia', () async {
+      final r = unwrapRecipe(await recipeRepo.saveDetail(
+        name: 'Tempero',
+        ingredientLines: ['1 colher de sopa de sal'],
+      ));
+      await pantry('sal', true);
+
+      final result = await shoppingRepo.generateFromRecipes([r.id]);
+
+      expect(result, isA<Err<ShoppingList>>());
+      expect(
+          (result as Err<ShoppingList>).failure.message, contains('despensa'));
+    });
+
+    test('adicionar a uma lista existente também respeita a despensa',
+        () async {
+      final base = unwrapRecipe(await recipeRepo.saveDetail(
+        name: 'Base',
+        ingredientLines: ['2 ovos'],
+      ));
+      final pao = unwrapRecipe(await recipeRepo.saveDetail(
+        name: 'Pão',
+        ingredientLines: [
+          '500g de farinha de trigo',
+          '1 colher de sopa de sal'
+        ],
+      ));
+      await pantry('sal', true);
+      final list =
+          unwrapList(await shoppingRepo.generateFromRecipes([base.id]));
+
+      await shoppingRepo.addRecipesToList(list.id, {pao.id: 1});
+
+      final items = await shoppingRepo.itemsOf(list.id);
+      expect(items.map((i) => i.displayName).any((n) => n.contains('Sal')),
+          isFalse);
+      expect(items.any((i) => i.displayName.contains('Farinha')), isTrue);
+    });
+
+    test('add a uma lista com tudo na despensa devolve erro claro', () async {
+      final base = unwrapRecipe(await recipeRepo.saveDetail(
+        name: 'Base',
+        ingredientLines: ['2 ovos'],
+      ));
+      final tempero = unwrapRecipe(await recipeRepo.saveDetail(
+        name: 'Tempero',
+        ingredientLines: ['1 colher de sopa de sal'],
+      ));
+      await pantry('sal', true);
+      final list =
+          unwrapList(await shoppingRepo.generateFromRecipes([base.id]));
+
+      final result =
+          await shoppingRepo.addRecipesToList(list.id, {tempero.id: 1});
+
+      expect(result, isA<Err<void>>());
+      expect((result as Err<void>).failure.message, contains('despensa'));
+    });
+  });
+
   test('factors escala as quantidades e arredonda pra cima', () async {
     final r = unwrapRecipe(await recipeRepo.saveDetail(
       name: 'Pão',

@@ -36,6 +36,7 @@ void main() {
             displayName: 'batata baroa',
             normalizedKey: normalize('batata baroa'),
             usageCount: 0,
+            inPantry: false,
           ),
         );
 
@@ -182,5 +183,43 @@ void main() {
 
     final all = await db.select(db.ingredients).get();
     expect(all.length, 1);
+  });
+
+  group('despensa (G11)', () {
+    test('setInPantry liga e desliga', () async {
+      final sal = await db.ingredientDao.getOrCreate('sal');
+      expect(sal.inPantry, isFalse);
+
+      await db.ingredientDao.setInPantry(sal.id, true);
+      var all = await db.ingredientDao.watchAll().first;
+      expect(all.single.inPantry, isTrue);
+
+      await db.ingredientDao.setInPantry(sal.id, false);
+      all = await db.ingredientDao.watchAll().first;
+      expect(all.single.inPantry, isFalse);
+    });
+
+    test('mesclar leva a marca da despensa pro destino', () async {
+      final origem = await db.ingredientDao.getOrCreate('sal marinho');
+      final destino = await db.ingredientDao.getOrCreate('sal');
+      await db.ingredientDao.setInPantry(origem.id, true);
+
+      await db.ingredientDao.merge(origem.id, destino.id);
+
+      final all = await db.ingredientDao.watchAll().first;
+      expect(all.single.id, destino.id);
+      expect(all.single.inPantry, isTrue);
+    });
+
+    test('mesclar não tira a marca de quem já estava na despensa', () async {
+      final origem = await db.ingredientDao.getOrCreate('sal marinho');
+      final destino = await db.ingredientDao.getOrCreate('sal');
+      await db.ingredientDao.setInPantry(destino.id, true);
+
+      await db.ingredientDao.merge(origem.id, destino.id);
+
+      final all = await db.ingredientDao.watchAll().first;
+      expect(all.single.inPantry, isTrue);
+    });
   });
 }

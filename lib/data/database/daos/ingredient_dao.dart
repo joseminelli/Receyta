@@ -57,6 +57,7 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
         displayName: canonicalTitleCase(displayName),
         normalizedKey: key,
         usageCount: 0,
+        inPantry: false,
       );
       await into(ingredients).insert(row);
       return row;
@@ -118,6 +119,12 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
   /// como aliases do destino (nunca perde a capacidade de achar por esse
   /// nome de novo) e apaga a linha de origem. `RecipeIngredients.ingredientId`
   /// é `onDelete: restrict` — por isso reapontar tem que vir antes do apagar.
+  /// Marca ou desmarca "sempre tenho" (G11).
+  Future<int> setInPantry(String id, bool value) {
+    return (update(ingredients)..where((i) => i.id.equals(id)))
+        .write(IngredientsCompanion(inPantry: Value(value)));
+  }
+
   Future<void> merge(String sourceId, String targetId) {
     if (sourceId == targetId) return Future.value();
     return transaction(() async {
@@ -153,6 +160,11 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
             ),
           );
         }
+      }
+
+      if (source.inPantry) {
+        await (update(ingredients)..where((i) => i.id.equals(targetId)))
+            .write(const IngredientsCompanion(inPantry: Value(true)));
       }
 
       await (delete(ingredients)..where((i) => i.id.equals(sourceId))).go();

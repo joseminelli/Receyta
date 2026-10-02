@@ -22,6 +22,9 @@ mixin _$Ingredient {
   String? get categoryId => throw _privateConstructorUsedError;
   int get usageCount => throw _privateConstructorUsedError;
 
+  /// "Sempre tenho" (G11): fica fora das listas de compras geradas.
+  bool get inPantry => throw _privateConstructorUsedError;
+
   /// Create a copy of Ingredient
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -40,7 +43,8 @@ abstract class $IngredientCopyWith<$Res> {
       String displayName,
       String normalizedKey,
       String? categoryId,
-      int usageCount});
+      int usageCount,
+      bool inPantry});
 }
 
 /// @nodoc
@@ -63,6 +67,7 @@ class _$IngredientCopyWithImpl<$Res, $Val extends Ingredient>
     Object? normalizedKey = null,
     Object? categoryId = freezed,
     Object? usageCount = null,
+    Object? inPantry = null,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -85,6 +90,10 @@ class _$IngredientCopyWithImpl<$Res, $Val extends Ingredient>
           ? _value.usageCount
           : usageCount // ignore: cast_nullable_to_non_nullable
               as int,
+      inPantry: null == inPantry
+          ? _value.inPantry
+          : inPantry // ignore: cast_nullable_to_non_nullable
+              as bool,
     ) as $Val);
   }
 }
@@ -102,7 +111,8 @@ abstract class _$$IngredientImplCopyWith<$Res>
       String displayName,
       String normalizedKey,
       String? categoryId,
-      int usageCount});
+      int usageCount,
+      bool inPantry});
 }
 
 /// @nodoc
@@ -123,6 +133,7 @@ class __$$IngredientImplCopyWithImpl<$Res>
     Object? normalizedKey = null,
     Object? categoryId = freezed,
     Object? usageCount = null,
+    Object? inPantry = null,
   }) {
     return _then(_$IngredientImpl(
       id: null == id
@@ -145,6 +156,10 @@ class __$$IngredientImplCopyWithImpl<$Res>
           ? _value.usageCount
           : usageCount // ignore: cast_nullable_to_non_nullable
               as int,
+      inPantry: null == inPantry
+          ? _value.inPantry
+          : inPantry // ignore: cast_nullable_to_non_nullable
+              as bool,
     ));
   }
 }
@@ -157,7 +172,8 @@ class _$IngredientImpl implements _Ingredient {
       required this.displayName,
       required this.normalizedKey,
       this.categoryId,
-      this.usageCount = 0});
+      this.usageCount = 0,
+      this.inPantry = false});
 
   @override
   final String id;
@@ -171,9 +187,14 @@ class _$IngredientImpl implements _Ingredient {
   @JsonKey()
   final int usageCount;
 
+  /// "Sempre tenho" (G11): fica fora das listas de compras geradas.
+  @override
+  @JsonKey()
+  final bool inPantry;
+
   @override
   String toString() {
-    return 'Ingredient(id: $id, displayName: $displayName, normalizedKey: $normalizedKey, categoryId: $categoryId, usageCount: $usageCount)';
+    return 'Ingredient(id: $id, displayName: $displayName, normalizedKey: $normalizedKey, categoryId: $categoryId, usageCount: $usageCount, inPantry: $inPantry)';
   }
 
   @override
@@ -189,12 +210,14 @@ class _$IngredientImpl implements _Ingredient {
             (identical(other.categoryId, categoryId) ||
                 other.categoryId == categoryId) &&
             (identical(other.usageCount, usageCount) ||
-                other.usageCount == usageCount));
+                other.usageCount == usageCount) &&
+            (identical(other.inPantry, inPantry) ||
+                other.inPantry == inPantry));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType, id, displayName, normalizedKey, categoryId, usageCount);
+  int get hashCode => Object.hash(runtimeType, id, displayName, normalizedKey,
+      categoryId, usageCount, inPantry);
 
   /// Create a copy of Ingredient
   /// with the given fields replaced by the non-null parameter values.
@@ -211,7 +234,8 @@ abstract class _Ingredient implements Ingredient {
       required final String displayName,
       required final String normalizedKey,
       final String? categoryId,
-      final int usageCount}) = _$IngredientImpl;
+      final int usageCount,
+      final bool inPantry}) = _$IngredientImpl;
 
   @override
   String get id;
@@ -223,6 +247,10 @@ abstract class _Ingredient implements Ingredient {
   String? get categoryId;
   @override
   int get usageCount;
+
+  /// "Sempre tenho" (G11): fica fora das listas de compras geradas.
+  @override
+  bool get inPantry;
 
   /// Create a copy of Ingredient
   /// with the given fields replaced by the non-null parameter values.

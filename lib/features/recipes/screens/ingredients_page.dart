@@ -7,7 +7,10 @@ import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/ingredient_repository.dart';
 import 'package:receyta/domain/engine/fuzzy_match.dart';
 import 'package:receyta/domain/models/ingredient.dart';
+import 'package:receyta/features/planner/screens/meal_slot_picker.dart'
+    show ChoicePill;
 import 'package:receyta/features/recipes/screens/ingredient_picker.dart';
+import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -21,7 +24,10 @@ import 'package:receyta/widgets/state_badge.dart';
 /// mesclar ou apagar. Mesclar nunca é automático — sempre passa por
 /// confirmação (§8.2: "nunca funde sozinho; sempre pergunta").
 class IngredientsPage extends ConsumerStatefulWidget {
-  const IngredientsPage({super.key});
+  const IngredientsPage({super.key, this.pantryOnly = false});
+
+  /// Abre já filtrando só o que está na despensa.
+  final bool pantryOnly;
 
   @override
   ConsumerState<IngredientsPage> createState() => _IngredientsPageState();
@@ -29,6 +35,7 @@ class IngredientsPage extends ConsumerStatefulWidget {
 
 class _IngredientsPageState extends ConsumerState<IngredientsPage> {
   final _query = TextEditingController();
+  late bool _pantryOnly = widget.pantryOnly;
 
   @override
   void dispose() {
@@ -56,6 +63,18 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
     if (target == null) return;
     if (!context.mounted) return;
     await _merge(source, target);
+  }
+
+  /// "Sempre tenho" (G11): liga/desliga a despensa e avisa o que isso muda.
+  Future<void> _togglePantry(Ingredient ingredient) async {
+    final on = !ingredient.inPantry;
+    await ref.read(ingredientRepositoryProvider).setInPantry(ingredient.id, on);
+    showAppSnackBar(
+      message: on
+          ? '"${ingredient.displayName}" é "sempre tenho": fica fora das '
+              'listas de compras geradas'
+          : '"${ingredient.displayName}" voltou pras listas de compras',
+    );
   }
 
   Future<void> _delete(Ingredient ingredient) async {
@@ -148,16 +167,41 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
   ) {
     final duplicateOf = _detectDuplicates([for (final r in rows) r.ingredient]);
     final query = _query.text.trim().toLowerCase();
-    final filtered = query.isEmpty
-        ? rows
-        : [
-            for (final r in rows)
-              if (r.ingredient.displayName.toLowerCase().contains(query)) r,
-          ];
+    final pantryCount = rows.where((r) => r.ingredient.inPantry).length;
+    final filtered = [
+      for (final r in rows)
+        if ((!_pantryOnly || r.ingredient.inPantry) &&
+            (query.isEmpty ||
+                r.ingredient.displayName.toLowerCase().contains(query)))
+          r,
+    ];
 
     return Column(
       children: [
         _buildSearchField(context),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            0,
+            AppSpacing.screen,
+            AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              ChoicePill(
+                label: 'Todos',
+                selected: !_pantryOnly,
+                onTap: () => setState(() => _pantryOnly = false),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              ChoicePill(
+                label: 'Na despensa ($pantryCount)',
+                selected: _pantryOnly,
+                onTap: () => setState(() => _pantryOnly = true),
+              ),
+            ],
+          ),
+        ),
         Expanded(
             child: _buildResultsList(context, filtered, duplicateOf, query)),
       ],
@@ -200,10 +244,18 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
   ) {
     if (filtered.isEmpty) {
       return Center(
-        child: Text(
-          'Nada encontrado pra "$query".',
-          style: context.texts.bodyMedium
-              ?.copyWith(color: context.colors.textMuted),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Text(
+            _pantryOnly && query.isEmpty
+                ? 'Nada na despensa ainda. Toque em "Sempre tenho" num '
+                    'ingrediente (sal, azeite…) e ele fica fora das listas '
+                    'de compras.'
+                : 'Nada encontrado pra "$query".',
+            textAlign: TextAlign.center,
+            style: context.texts.bodyMedium
+                ?.copyWith(color: context.colors.textMuted),
+          ),
         ),
       );
     }
@@ -225,6 +277,7 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
           duplicateOf: dup,
           onMergeDuplicate: dup == null ? null : () => _merge(ingredient, dup),
           onPickMerge: () => _pickAndMerge(ingredient),
+          onTogglePantry: () => _togglePantry(ingredient),
           onDelete: count == 0 ? () => _delete(ingredient) : null,
         );
       },
@@ -256,6 +309,7 @@ class _IngredientRow extends StatelessWidget {
     required this.duplicateOf,
     required this.onMergeDuplicate,
     required this.onPickMerge,
+    required this.onTogglePantry,
     required this.onDelete,
   });
 
@@ -264,6 +318,7 @@ class _IngredientRow extends StatelessWidget {
   final Ingredient? duplicateOf;
   final VoidCallback? onMergeDuplicate;
   final VoidCallback onPickMerge;
+  final VoidCallback onTogglePantry;
 
   /// Nulo quando o ingrediente está em uso — `RecipeIngredients.ingredientId`
   /// é `onDelete: restrict`, então apagar falharia; some o botão em vez de
@@ -309,6 +364,8 @@ class _IngredientRow extends StatelessWidget {
                           : '$count receita${count == 1 ? '' : 's'}',
                       color: colors.violet,
                     ),
+                    if (ingredient.inPantry)
+                      _Pill(label: 'Sempre tenho', color: colors.ink),
                     if (duplicateOf != null)
                       InkWell(
                         onTap: onMergeDuplicate,
@@ -333,7 +390,17 @@ class _IngredientRow extends StatelessWidget {
               tooltip: 'Apagar',
             ),
           ],
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: AppSpacing.xs),
+          CircleIconButton(
+            icon: ingredient.inPantry ? Icons.kitchen : Icons.kitchen_outlined,
+            background: ingredient.inPantry ? colors.ink : colors.paper,
+            foreground: ingredient.inPantry ? colors.lime : colors.ink,
+            onTap: onTogglePantry,
+            tooltip: ingredient.inPantry
+                ? 'Tirar da despensa'
+                : 'Sempre tenho (despensa)',
+          ),
+          const SizedBox(width: AppSpacing.xs),
           CircleIconButton(
             icon: Icons.call_merge,
             background: colors.violet,

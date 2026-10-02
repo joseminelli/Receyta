@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v5 versionado', () async {
-    final connection = await verifier.startAt(5);
+  test('schema do código bate com o snapshot v6 versionado', () async {
+    final connection = await verifier.startAt(6);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 5);
+    await verifier.migrateAndValidate(db, 6);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -194,5 +194,32 @@ void main() {
     );
     final logs = await db.customSelect('SELECT note FROM cook_logs').get();
     expect(logs.single.read<String?>('note'), 'ficou ótimo');
+  });
+
+  test('migração v5→v6: ingredientes preservados, fora da despensa por padrão',
+      () async {
+    final schema = await verifier.schemaAt(5);
+
+    final oldDb = AppDatabase.forTesting(schema.newConnection());
+    await oldDb.customStatement(
+      "INSERT INTO ingredients (id, display_name, normalized_key, usage_count) "
+      "VALUES ('i1', 'Sal', 'sal', 0)",
+    );
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 6);
+    addTearDown(db.close);
+
+    final row = await db
+        .customSelect('SELECT display_name, in_pantry FROM ingredients')
+        .getSingle();
+    expect(row.read<String>('display_name'), 'Sal');
+    expect(row.read<bool>('in_pantry'), isFalse);
+
+    await db.ingredientDao.setInPantry('i1', true);
+    final after =
+        await db.customSelect('SELECT in_pantry FROM ingredients').getSingle();
+    expect(after.read<bool>('in_pantry'), isTrue);
   });
 }

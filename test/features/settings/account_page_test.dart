@@ -195,7 +195,13 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    for (final t in ['Histórico', 'Tags', 'Ingredientes', 'Lixeira']) {
+    for (final t in [
+      'Histórico',
+      'Tags',
+      'Despensa',
+      'Ingredientes',
+      'Lixeira'
+    ]) {
       expect(find.text(t), findsOneWidget);
     }
 
