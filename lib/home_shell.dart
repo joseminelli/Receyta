@@ -10,6 +10,7 @@ import 'package:receyta/features/onboarding/screens/tutorial_overlay.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
 import 'package:receyta/features/planner/screens/month_page.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
+import 'package:receyta/features/settings/controllers/reminder_settings.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_lists_page.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -47,7 +48,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // travar a home.
     _checkInitialShare();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) => ref.read(tutorialControllerProvider).startIfNeeded(),
+      (_) {
+        ref.read(tutorialControllerProvider).startIfNeeded();
+        ref.read(reminderSettingsProvider.notifier).syncOnStart();
+      },
     );
     _mediaSub = ReceiveSharingIntent.instance
         .getMediaStream()

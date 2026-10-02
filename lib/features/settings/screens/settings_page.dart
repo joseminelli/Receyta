@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/data/services/app_info.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
+import 'package:receyta/domain/engine/quiet_hours.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
+import 'package:receyta/features/settings/controllers/reminder_settings.dart';
 import 'package:receyta/features/settings/screens/feedback_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -80,6 +82,101 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  static const _weekdays = [
+    'Segunda',
+    'Terça',
+    'Quarta',
+    'Quinta',
+    'Sexta',
+    'Sábado',
+    'Domingo',
+  ];
+
+  static String _weekdayName(int weekday) => _weekdays[(weekday - 1) % 7];
+
+  static String _planWeekSubtitle(ReminderSettings r) {
+    if (!r.planWeek) return 'Um aviso por semana pra escolher as refeições';
+    final when = r.planWeekEffective;
+    final base = '${_weekdayName(r.planWeekWeekday)} às '
+        '${formatMinutes(r.planWeekMinutes)}';
+    if (when.weekday == r.planWeekWeekday &&
+        when.minutes == r.planWeekMinutes) {
+      return base;
+    }
+    return 'Chega ${_weekdayName(when.weekday).toLowerCase()} às '
+        '${formatMinutes(when.minutes)}, fora do horário silencioso';
+  }
+
+  Future<void> _pickPlanWeekWhen(
+    BuildContext context,
+    ReminderSettings current,
+    ReminderSettingsNotifier notifier,
+  ) async {
+    final weekday = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var d = 1; d <= 7; d++)
+              ListTile(
+                title: Text(_weekdayName(d)),
+                trailing: d == current.planWeekWeekday
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () => Navigator.of(sheet).pop(d),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (weekday == null || !context.mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: current.planWeekMinutes ~/ 60,
+        minute: current.planWeekMinutes % 60,
+      ),
+      helpText: 'Que horas avisar?',
+    );
+    await notifier.setPlanWeekWhen(
+      weekday: weekday,
+      minutes: time == null ? null : time.hour * 60 + time.minute,
+    );
+  }
+
+  Future<void> _pickQuietRange(
+    BuildContext context,
+    ReminderSettings current,
+    ReminderSettingsNotifier notifier,
+  ) async {
+    final start = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: current.quiet.startMinutes ~/ 60,
+        minute: current.quiet.startMinutes % 60,
+      ),
+      helpText: 'Começa o silêncio às',
+    );
+    if (start == null || !context.mounted) return;
+    final end = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: current.quiet.endMinutes ~/ 60,
+        minute: current.quiet.endMinutes % 60,
+      ),
+      helpText: 'Termina às',
+    );
+    if (end == null) return;
+    await notifier.setQuiet(
+      current.quiet.copyWith(
+        startMinutes: start.hour * 60 + start.minute,
+        endMinutes: end.hour * 60 + end.minute,
+      ),
+    );
+  }
+
   static String _backupSubtitle(DateTime? at) {
     if (at == null) return 'Você ainda não fez backup';
     final l = at.toLocal();
@@ -96,6 +193,8 @@ class SettingsPage extends ConsumerWidget {
     final settingsNotifier = ref.read(appSettingsProvider.notifier);
     final alertsNotifier = ref.read(cookingAlertSettingsProvider.notifier);
     final version = ref.watch(appVersionProvider).valueOrNull ?? '';
+    final reminders = ref.watch(reminderSettingsProvider);
+    final remindersNotifier = ref.read(reminderSettingsProvider.notifier);
 
     return Scaffold(
       backgroundColor: colors.paper,
@@ -148,6 +247,65 @@ class SettingsPage extends ConsumerWidget {
                         value: alerts.sound,
                         onChanged: alertsNotifier.setSound,
                       ),
+                    ],
+                  ),
+                  _Section(
+                    title: 'Lembretes',
+                    children: [
+                      _SwitchRow(
+                        icon: Icons.event_available_outlined,
+                        title: 'Planejar a semana',
+                        subtitle: _planWeekSubtitle(reminders),
+                        value: reminders.planWeek,
+                        onChanged: (on) async {
+                          final ok = await remindersNotifier.setPlanWeek(on);
+                          if (!ok && context.mounted) {
+                            showAppSnackBar(
+                              message: 'Sem permissão de notificação. Ative '
+                                  'nas configurações do aparelho.',
+                              variant: AppSnackBarVariant.error,
+                            );
+                          }
+                        },
+                      ),
+                      if (reminders.planWeek)
+                        _NavRow(
+                          icon: Icons.schedule,
+                          title: 'Dia e hora',
+                          subtitle:
+                              '${_weekdayName(reminders.planWeekWeekday)} às '
+                              '${formatMinutes(reminders.planWeekMinutes)}',
+                          onTap: () => _pickPlanWeekWhen(
+                            context,
+                            reminders,
+                            remindersNotifier,
+                          ),
+                        ),
+                      _SwitchRow(
+                        icon: Icons.bedtime_outlined,
+                        title: 'Horário silencioso',
+                        subtitle: reminders.quiet.enabled
+                            ? 'Sem lembretes das '
+                                '${formatMinutes(reminders.quiet.startMinutes)} '
+                                'às ${formatMinutes(reminders.quiet.endMinutes)}'
+                            : 'Os lembretes chegam a qualquer hora',
+                        value: reminders.quiet.enabled,
+                        onChanged: (on) => remindersNotifier
+                            .setQuiet(reminders.quiet.copyWith(enabled: on)),
+                      ),
+                      if (reminders.quiet.enabled)
+                        _NavRow(
+                          icon: Icons.nights_stay_outlined,
+                          title: 'Começo e fim',
+                          subtitle:
+                              '${formatMinutes(reminders.quiet.startMinutes)} às '
+                              '${formatMinutes(reminders.quiet.endMinutes)}',
+                          onTap: () => _pickQuietRange(
+                            context,
+                            reminders,
+                            remindersNotifier,
+                          ),
+                        ),
                     ],
                   ),
                   _Section(
