@@ -92,7 +92,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('O que você cozinhou'), findsOneWidget);
+    expect(find.text('Histórico'), findsOneWidget);
     expect(find.text('3 VEZES · 2 RECEITAS'), findsOneWidget);
     expect(find.text('Março ${lastYear.year}'), findsOneWidget);
     expect(find.text('ficou ótimo'), findsOneWidget);

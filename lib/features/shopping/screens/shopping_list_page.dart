@@ -4,9 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/engine/shopping_text.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
@@ -62,76 +63,36 @@ class ShoppingListPage extends ConsumerWidget {
     final listAsync = ref.watch(shoppingListProvider(listId));
     final list = listAsync.valueOrNull;
 
-    // Fundo escuro: hora e bateria claras (`onDark`), explícito pra não
-    // herdar o estilo da tela anterior.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemBars.onDark,
-      child: Scaffold(
-        backgroundColor: colors.ink,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(context, ref, list),
-              Expanded(
-                child: listAsync.when(
-                  loading: () => const Center(child: BrandLoader()),
-                  error: (_, __) =>
-                      _buildMessage(context, 'Não deu para carregar.'),
-                  data: (list) => list == null
-                      ? _buildMessage(context, 'Esta lista não existe mais.')
-                      : _buildList(context, ref, list),
+    return HeaderScaffold(
+      title: list?.name ?? 'Compras',
+      color: TileColor.lime,
+      backgroundColor: colors.ink,
+      trailing: list == null
+          ? null
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_hasChecked(ref, list.id)) ...[
+                  CircleIconButton(
+                    icon: Icons.remove_done,
+                    tooltip: 'Desmarcar todos',
+                    onTap: () => uncheckAllShoppingItems(ref, list.id),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                ],
+                CircleIconButton(
+                  icon: Icons.ios_share,
+                  tooltip: 'Compartilhar como texto',
+                  onTap: () => _share(ref),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar(BuildContext context, WidgetRef ref, ShoppingList? list) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.xs,
-        AppSpacing.screen,
-        AppSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          CircleIconButton(
-            icon: Icons.arrow_back,
-            tooltip: 'Voltar',
-            onTap: () => context.pop(),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              list?.name ?? 'Compras',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: context.texts.displaySmall
-                  ?.copyWith(color: colors.onSaturated),
+              ],
             ),
-          ),
-          if (list != null && _hasChecked(ref, list.id)) ...[
-            const SizedBox(width: AppSpacing.xs),
-            CircleIconButton(
-              icon: Icons.remove_done,
-              tooltip: 'Desmarcar todos',
-              onTap: () => uncheckAllShoppingItems(ref, list.id),
-            ),
-          ],
-          if (list != null) ...[
-            const SizedBox(width: AppSpacing.xs),
-            CircleIconButton(
-              icon: Icons.ios_share,
-              tooltip: 'Compartilhar como texto',
-              onTap: () => _share(ref),
-            ),
-          ],
-        ],
+      body: listAsync.when(
+        loading: () => const Center(child: BrandLoader()),
+        error: (_, __) => _buildMessage(context, 'Não deu para carregar.'),
+        data: (list) => list == null
+            ? _buildMessage(context, 'Esta lista não existe mais.')
+            : _buildList(context, ref, list),
       ),
     );
   }
@@ -396,6 +357,7 @@ class _ProgressHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: AppSpacing.xl),
           Text(
             allDone
                 ? 'Tudo comprado'

@@ -23,6 +23,8 @@ class HeaderScaffold extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.motif,
+    this.showBack = true,
+    this.backgroundColor,
   });
 
   final String title;
@@ -38,6 +40,12 @@ class HeaderScaffold extends StatelessWidget {
 
   final Widget body;
 
+  /// Falso nas abas da barra de baixo, que não têm pra onde voltar.
+  final bool showBack;
+
+  /// Fundo atrás do corpo; padrão `paper`. Compras é escura.
+  final Color? backgroundColor;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -45,7 +53,7 @@ class HeaderScaffold extends StatelessWidget {
     final lightBackground = tile.background.computeLuminance() > 0.6;
 
     return Scaffold(
-      backgroundColor: colors.paper,
+      backgroundColor: backgroundColor ?? colors.paper,
       body: AnnotatedRegion<SystemUiOverlayStyle>(
         value: lightBackground ? SystemBars.onLight : SystemBars.onDark,
         child: Column(
@@ -84,15 +92,17 @@ class HeaderScaffold extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            CircleIconButton(
-                              icon: Icons.arrow_back_rounded,
-                              tooltip: 'Voltar',
-                              background: color == TileColor.ink
-                                  ? colors.inkSoft
-                                  : colors.ink,
-                              onTap: () => context.pop(),
-                            ),
-                            const SizedBox(width: AppSpacing.sm),
+                            if (showBack) ...[
+                              CircleIconButton(
+                                icon: Icons.arrow_back_rounded,
+                                tooltip: 'Voltar',
+                                background: color == TileColor.ink
+                                    ? colors.inkSoft
+                                    : colors.ink,
+                                onTap: () => context.pop(),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                            ],
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,

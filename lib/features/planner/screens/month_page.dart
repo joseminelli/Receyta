@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
@@ -62,86 +64,59 @@ class MonthPage extends ConsumerWidget {
     };
     final entries = entriesByMonth[month]!;
 
-    // Fundo claro: hora e bateria escuras (`onLight`).
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemBars.onLight,
-      child: Scaffold(
-        backgroundColor: colors.paper,
-        body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.xs,
-              AppSpacing.screen,
-              _navBarClearance,
-            ),
-            children: [
-              _buildHeader(context, ref, month),
-              const SizedBox(height: AppSpacing.md),
-              _MonthStats(month: month, entries: entries),
-              const SizedBox(height: AppSpacing.md),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: colors.textMuted.withValues(alpha: 0.25),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _buildWeekdayLabels(context),
-              const SizedBox(height: 4),
-              SlidePager(
-                index: monthIndex(month),
-                onChanged: (i) {
-                  HapticFeedback.selectionClick();
-                  ref.read(visibleMonthProvider.notifier).state =
-                      monthFromIndex(i);
-                },
-                builder: (i) {
-                  final m = monthFromIndex(i);
-                  return _buildGrid(
-                    context,
-                    ref,
-                    m,
-                    entriesByMonth[m] ?? const <MealPlanEntry>[],
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              const _UpcomingSection(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, WidgetRef ref, DateTime month) {
-    final colors = context.colors;
     final isCurrent = isSameDay(month, firstOfMonth(today()));
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(monthLong(month), style: context.texts.displaySmall),
-              Text(
-                '${month.year}',
-                style:
-                    context.texts.bodyMedium?.copyWith(color: colors.textMuted),
-              ),
-            ],
+    return HeaderScaffold(
+      title: monthLong(month),
+      subtitle: '${month.year}',
+      color: TileColor.violet,
+      showBack: false,
+      trailing: PeriodStepper(
+        atToday: isCurrent,
+        previousTooltip: 'Mês anterior',
+        nextTooltip: 'Próximo mês',
+        onPrevious: () => _shiftMonth(ref, -1),
+        onNext: () => _shiftMonth(ref, 1),
+        onToday: () => ref.read(visibleMonthProvider.notifier).state =
+            firstOfMonth(today()),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.md,
+          AppSpacing.screen,
+          _navBarClearance,
+        ),
+        children: [
+          _MonthStats(month: month, entries: entries),
+          const SizedBox(height: AppSpacing.md),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: colors.textMuted.withValues(alpha: 0.25),
           ),
-        ),
-        PeriodStepper(
-          atToday: isCurrent,
-          previousTooltip: 'Mês anterior',
-          nextTooltip: 'Próximo mês',
-          onPrevious: () => _shiftMonth(ref, -1),
-          onNext: () => _shiftMonth(ref, 1),
-          onToday: () => ref.read(visibleMonthProvider.notifier).state =
-              firstOfMonth(today()),
-        ),
-      ],
+          const SizedBox(height: AppSpacing.md),
+          _buildWeekdayLabels(context),
+          const SizedBox(height: 4),
+          SlidePager(
+            index: monthIndex(month),
+            onChanged: (i) {
+              HapticFeedback.selectionClick();
+              ref.read(visibleMonthProvider.notifier).state = monthFromIndex(i);
+            },
+            builder: (i) {
+              final m = monthFromIndex(i);
+              return _buildGrid(
+                context,
+                ref,
+                m,
+                entriesByMonth[m] ?? const <MealPlanEntry>[],
+              );
+            },
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const _UpcomingSection(),
+        ],
+      ),
     );
   }
 

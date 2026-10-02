@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
@@ -51,69 +53,26 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
         if (!_removed.contains(s.list.id)) s,
     ];
 
-    // Fundo escuro: hora e bateria claras (`onDark`), explícito pra não
-    // herdar o estilo da tela anterior.
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemBars.onDark,
-      child: Scaffold(
-        backgroundColor: colors.ink,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildTopBar(context, lists),
-              Expanded(
-                child: listsAsync.when(
-                  loading: () => const Center(child: BrandLoader()),
-                  error: (_, __) =>
-                      _buildMessage(context, 'Não deu para carregar.'),
-                  data: (_) =>
-                      lists.isEmpty ? _buildEmpty(context) : _buildLists(lists),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar(BuildContext context, List<ShoppingListSummary> lists) {
-    final colors = context.colors;
-    final active = lists.where((s) => !_isComplete(s)).length;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.xs,
-        AppSpacing.screen,
-        AppSpacing.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Compras',
-                  style: context.texts.displaySmall
-                      ?.copyWith(color: colors.onSaturated),
-                ),
-                if (lists.isNotEmpty)
-                  Text(
-                    _summaryLine(lists.length, active),
-                    style: context.texts.bodyMedium?.copyWith(
-                      color: colors.onSaturated.withValues(alpha: 0.6),
-                    ),
-                  ),
-              ],
+    return HeaderScaffold(
+      title: 'Compras',
+      subtitle: lists.isEmpty
+          ? null
+          : _summaryLine(
+              lists.length,
+              lists.where((s) => !_isComplete(s)).length,
             ),
-          ),
-          CircleIconButton(
-            icon: Icons.add,
-            tooltip: 'Nova lista',
-            onTap: () => _openCreateSheet(context),
-          ),
-        ],
+      color: TileColor.lime,
+      showBack: false,
+      backgroundColor: colors.ink,
+      trailing: CircleIconButton(
+        icon: Icons.add,
+        tooltip: 'Nova lista',
+        onTap: () => _openCreateSheet(context),
+      ),
+      body: listsAsync.when(
+        loading: () => const Center(child: BrandLoader()),
+        error: (_, __) => _buildMessage(context, 'Não deu para carregar.'),
+        data: (_) => lists.isEmpty ? _buildEmpty(context) : _buildLists(lists),
       ),
     );
   }
