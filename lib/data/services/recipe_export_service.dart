@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -15,6 +16,7 @@ import 'package:receyta/domain/engine/recipe_export.dart';
 import 'package:receyta/domain/engine/recipe_pdf.dart';
 import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/widgets/recipe_pdf_banner.dart';
 
 /// Exporta receitas como arquivo `.receyta` e abre o share sheet do sistema
 /// (§7, bloco D) — o caminho mais curto pra "você manda uma receita pelo
@@ -66,7 +68,16 @@ class RecipeExportService {
     final detail = (detailResult as Ok<RecipeDetail>).value;
 
     try {
-      final bytes = await buildRecipePdf(detail);
+      Uint8List? banner;
+      try {
+        banner = await renderRecipePdfBanner(
+          recipe: detail.recipe,
+          tags: [for (final tag in detail.tags) tag.name],
+        );
+      } catch (_) {
+        banner = null;
+      }
+      final bytes = await buildRecipePdf(detail, banner: banner);
       await Printing.sharePdf(
         bytes: bytes,
         filename: _pdfFileName(detail.recipe.name),
