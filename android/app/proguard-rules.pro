@@ -18,3 +18,10 @@
 # Cartão nativo do timer e widget: classes ligadas por nome/manifest.
 -keep class com.whisklinestudio.timer_card.** { *; }
 -keep class com.whisklinestudio.receyta.TodayWidgetProvider { *; }
+
+# R8 full mode (AGP 8): sem isto o TypeToken do Gson perde o tipo genérico e
+# salvar/ler notificações agendadas falha em release ("Missing type parameter").
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
+-keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+-keep class com.google.gson.stream.** { *; }
+-keep class androidx.core.app.NotificationCompat** { *; }
