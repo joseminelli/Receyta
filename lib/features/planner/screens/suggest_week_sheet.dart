@@ -125,46 +125,57 @@ class _SuggestWeekSheetState extends ConsumerState<_SuggestWeekSheet> {
                     ?.copyWith(color: colors.textMuted),
               ),
               const SizedBox(height: AppSpacing.md),
-              Wrap(spacing: AppSpacing.xs, runSpacing: AppSpacing.xs, children: [
-                for (final (i, label) in const ['Esta semana', 'Próxima'].indexed)
-                  ChoicePill(
-                    label: label,
-                    selected: _weekOffset == i,
-                    onTap: () => setState(() {
-                      _weekOffset = i;
-                      _picks = null;
-                    }),
-                  ),
-              ]),
+              Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    for (final (i, label)
+                        in const ['Esta semana', 'Próxima'].indexed)
+                      ChoicePill(
+                        label: label,
+                        selected: _weekOffset == i,
+                        onTap: () => setState(() {
+                          _weekOffset = i;
+                          _picks = null;
+                        }),
+                      ),
+                  ]),
               const SizedBox(height: AppSpacing.sm),
-              Wrap(spacing: AppSpacing.xs, runSpacing: AppSpacing.xs, children: [
-                for (final m in MealType.values)
-                  ChoicePill(
-                    label: m.label,
-                    selected: _meals.contains(m),
-                    onTap: () {
-                      if (_meals.length == 1 && _meals.contains(m)) return;
-                      _toggle(_meals, m);
-                    },
-                  ),
-              ]),
+              Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    for (final m in MealType.values)
+                      ChoicePill(
+                        label: m.label,
+                        selected: _meals.contains(m),
+                        onTap: () {
+                          if (_meals.length == 1 && _meals.contains(m)) return;
+                          _toggle(_meals, m);
+                        },
+                      ),
+                  ]),
               const SizedBox(height: AppSpacing.sm),
-              Wrap(spacing: AppSpacing.xs, runSpacing: AppSpacing.xs, children: [
-                ChoicePill(
-                  label: 'Até 30 min',
-                  selected: _quick,
-                  onTap: () => setState(() {
-                    _quick = !_quick;
-                    _picks = null;
-                  }),
-                ),
-                for (final t in tags)
-                  ChoicePill(
-                    label: t,
-                    selected: _tags.contains(stripAccents(t.toLowerCase())),
-                    onTap: () => _toggle(_tags, stripAccents(t.toLowerCase())),
-                  ),
-              ]),
+              Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    ChoicePill(
+                      label: 'Até 30 min',
+                      selected: _quick,
+                      onTap: () => setState(() {
+                        _quick = !_quick;
+                        _picks = null;
+                      }),
+                    ),
+                    for (final t in tags)
+                      ChoicePill(
+                        label: t,
+                        selected: _tags.contains(stripAccents(t.toLowerCase())),
+                        onTap: () =>
+                            _toggle(_tags, stripAccents(t.toLowerCase())),
+                      ),
+                  ]),
               const SizedBox(height: AppSpacing.md),
               if (_picks == null)
                 FilledButton.icon(

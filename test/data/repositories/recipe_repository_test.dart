@@ -128,7 +128,8 @@ void main() {
     await repo.setImage(a.id, 'a_1.jpg');
     await repo.setImage(b.id, 'b_1.jpg');
 
-    expect(unwrapDetail(await repo.getDetail(a.id)).recipe.imagePath, 'a_1.jpg');
+    expect(
+        unwrapDetail(await repo.getDetail(a.id)).recipe.imagePath, 'a_1.jpg');
     expect(await repo.referencedImagePaths(), {'a_1.jpg', 'b_1.jpg'});
 
     await repo.setImage(a.id, null);

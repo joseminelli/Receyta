@@ -234,4 +234,77 @@ void main() {
       expect(siteTagFromUrl('não é url'), isNull);
     });
   });
+
+  group('foto da página', () {
+    String page(String imageJson, {String head = ''}) => '''
+<html><head>$head
+<script type="application/ld+json">
+{"@type": "Recipe", "name": "Sopa", "recipeIngredient": ["Água"]$imageJson}
+</script>
+</head></html>
+''';
+
+    test('image como texto', () {
+      final r = extractRecipeFromHtml(
+        page(', "image": "https://x.com/a.jpg"'),
+      );
+      expect(r!.imageUrl, 'https://x.com/a.jpg');
+    });
+
+    test('image como ImageObject', () {
+      final r = extractRecipeFromHtml(
+        page(
+            ', "image": {"@type": "ImageObject", "url": "https://x.com/b.jpg"}'),
+      );
+      expect(r!.imageUrl, 'https://x.com/b.jpg');
+    });
+
+    test('image como lista: fica com a primeira', () {
+      final r = extractRecipeFromHtml(
+        page(', "image": ["https://x.com/1.jpg", "https://x.com/2.jpg"]'),
+      );
+      expect(r!.imageUrl, 'https://x.com/1.jpg');
+    });
+
+    test('endereço relativo é resolvido contra a página', () {
+      final r = extractRecipeFromHtml(
+        page(', "image": "/fotos/c.jpg"'),
+        sourceUrl: 'https://site.com/receitas/sopa',
+      );
+      expect(r!.imageUrl, 'https://site.com/fotos/c.jpg');
+    });
+
+    test('sem image no JSON-LD, usa o og:image', () {
+      final r = extractRecipeFromHtml(
+        page('',
+            head: '<meta property="og:image" content="https://x.com/og.jpg">'),
+      );
+      expect(r!.imageUrl, 'https://x.com/og.jpg');
+    });
+
+    test('data: e file: nunca viram download', () {
+      expect(
+        extractRecipeFromHtml(page(', "image": "data:image/png;base64,AAAA"'))!
+            .imageUrl,
+        isNull,
+      );
+      expect(
+        extractRecipeFromHtml(page(', "image": "file:///etc/passwd"'))!
+            .imageUrl,
+        isNull,
+      );
+    });
+
+    test('sem foto nenhuma, imageUrl é nulo', () {
+      expect(extractRecipeFromHtml(page(''))!.imageUrl, isNull);
+    });
+
+    test('copyWith guarda o nome do arquivo e mantém o resto', () {
+      final r = extractRecipeFromHtml(page(', "image": "https://x.com/a.jpg"'))!
+          .copyWith(imagePath: 'nova_1.jpg');
+      expect(r.imagePath, 'nova_1.jpg');
+      expect(r.name, 'Sopa');
+      expect(r.imageUrl, 'https://x.com/a.jpg');
+    });
+  });
 }

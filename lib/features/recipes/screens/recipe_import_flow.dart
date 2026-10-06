@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/services/recipe_import_service.dart';
+import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/app_dialog.dart';
@@ -49,11 +51,33 @@ Future<void> importRecipeFromUrlFlow(
   final result = await ref.read(recipeImportServiceProvider).importFromUrl(url);
   if (!context.mounted) return;
 
+  final recipe = result.valueOrNull;
+  final draft = recipe == null ? null : await _withPhoto(ref, recipe);
+  if (!context.mounted) return;
+
   result.when(
-    ok: (recipe) => context.push('/recipe/new', extra: recipe),
+    ok: (_) => context.push('/recipe/new', extra: draft),
     err: (f) => showAppSnackBar(
       message: f.message,
       variant: AppSnackBarVariant.error,
     ),
   );
+}
+
+/// Baixa e guarda a foto da página, se houver. Qualquer falha devolve a
+/// receita sem foto — o import não depende dela.
+Future<ImportedRecipe> _withPhoto(WidgetRef ref, ImportedRecipe recipe) async {
+  final url = recipe.imageUrl;
+  if (url == null) return recipe;
+  try {
+    final bytes =
+        await ref.read(recipeImportServiceProvider).downloadImage(url);
+    if (bytes == null) return recipe;
+    final name = await ref
+        .read(recipeImageServiceProvider)
+        .storeBytes(bytes, recipeId: 'nova');
+    return recipe.copyWith(imagePath: name);
+  } catch (_) {
+    return recipe;
+  }
 }

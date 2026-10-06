@@ -54,6 +54,7 @@ class ParsedRecipeImport {
     this.servings,
     this.sourceUrl,
     this.notes,
+    this.imageBase64,
     this.tags = const [],
     this.ingredients = const [],
     this.steps = const [],
@@ -72,6 +73,9 @@ class ParsedRecipeImport {
   final int? servings;
   final String? sourceUrl;
   final String? notes;
+
+  /// Foto JPEG em base64, quando o arquivo traz uma.
+  final String? imageBase64;
   final List<String> tags;
   final List<ParsedIngredientImport> ingredients;
   final List<ParsedStepImport> steps;
@@ -206,6 +210,7 @@ ParsedRecipeImport? _parseRecipe(Object? raw) {
     servings: (raw['servings'] as num?)?.toInt(),
     sourceUrl: raw['sourceUrl'] as String?,
     notes: raw['notes'] as String?,
+    imageBase64: raw['image'] as String?,
     tags: tags,
     ingredients: ingredients,
     steps: steps,

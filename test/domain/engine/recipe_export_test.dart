@@ -224,4 +224,19 @@ void main() {
 
     expect(json.containsKey('folders'), isFalse);
   });
+
+  test('foto entra no JSON da receita só quando informada', () {
+    final detail = buildDetail();
+    final id = detail.recipe.id;
+
+    final withPhoto = buildRecipeExportJson(
+      detail,
+      ingredientNames: const {},
+      imagesBase64: {id: 'QUJD'},
+    );
+    final without = buildRecipeExportJson(detail, ingredientNames: const {});
+
+    expect((withPhoto['recipes'] as List).single['image'], 'QUJD');
+    expect((without['recipes'] as List).single.containsKey('image'), isFalse);
+  });
 }

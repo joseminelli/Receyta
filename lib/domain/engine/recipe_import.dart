@@ -23,6 +23,8 @@ class ImportedRecipe {
     this.ingredientLines = const [],
     this.stepLines = const [],
     this.sourceUrl,
+    this.imageUrl,
+    this.imagePath,
   });
 
   final String name;
@@ -33,6 +35,27 @@ class ImportedRecipe {
   final List<String> ingredientLines;
   final List<String> stepLines;
   final String? sourceUrl;
+
+  /// Foto da página (`image` do JSON-LD, ou `og:image`), já absoluta. Quem
+  /// baixa é a camada de dados.
+  final String? imageUrl;
+
+  /// Nome do arquivo da foto já baixada e guardada (preenchido depois do
+  /// download, antes de abrir o formulário).
+  final String? imagePath;
+
+  ImportedRecipe copyWith({String? imagePath}) => ImportedRecipe(
+        name: name,
+        about: about,
+        prepMinutes: prepMinutes,
+        cookMinutes: cookMinutes,
+        servings: servings,
+        ingredientLines: ingredientLines,
+        stepLines: stepLines,
+        sourceUrl: sourceUrl,
+        imageUrl: imageUrl,
+        imagePath: imagePath ?? this.imagePath,
+      );
 }
 
 /// Procura um bloco `<script type="application/ld+json">` com
@@ -53,7 +76,12 @@ ImportedRecipe? extractRecipeFromHtml(String html, {String? sourceUrl}) {
       continue;
     }
     final node = _findRecipeNode(json);
-    if (node != null) return _parseRecipeNode(node, sourceUrl);
+    if (node != null) {
+      final ogImage = document
+          .querySelector('meta[property="og:image"]')
+          ?.attributes['content'];
+      return _parseRecipeNode(node, sourceUrl, ogImage);
+    }
   }
   return null;
 }
@@ -85,7 +113,11 @@ bool _isRecipeType(Object? type) {
   return false;
 }
 
-ImportedRecipe _parseRecipeNode(Map<String, dynamic> node, String? sourceUrl) {
+ImportedRecipe _parseRecipeNode(
+  Map<String, dynamic> node,
+  String? sourceUrl,
+  String? ogImage,
+) {
   final name = _decodeHtmlEntities((node['name'] ?? '').toString().trim());
   final rawAbout = (node['description'] as Object?)?.toString().trim();
   final about = rawAbout == null ? null : _decodeHtmlEntities(rawAbout);
@@ -100,7 +132,42 @@ ImportedRecipe _parseRecipeNode(Map<String, dynamic> node, String? sourceUrl) {
         _stringList(node['recipeIngredient'] ?? node['ingredients']),
     stepLines: _extractSteps(node['recipeInstructions']),
     sourceUrl: sourceUrl,
+    imageUrl:
+        _absoluteHttpUrl(_firstImageUrl(node['image']) ?? ogImage, sourceUrl),
   );
+}
+
+/// `image` pode ser texto, `ImageObject` (`url`/`contentUrl`) ou lista de
+/// qualquer um dos dois — fica com o primeiro que tiver endereço.
+String? _firstImageUrl(Object? value) {
+  if (value is String) return value.trim().isEmpty ? null : value.trim();
+  if (value is Map) {
+    final url = value['url'] ?? value['contentUrl'];
+    return url == null ? null : _firstImageUrl(url);
+  }
+  if (value is List) {
+    for (final v in value) {
+      final found = _firstImageUrl(v);
+      if (found != null) return found;
+    }
+  }
+  return null;
+}
+
+/// Resolve [raw] contra a página de origem e só aceita http/https — `data:`,
+/// `file:` e afins nunca viram download.
+String? _absoluteHttpUrl(String? raw, String? base) {
+  if (raw == null || raw.trim().isEmpty) return null;
+  var uri = Uri.tryParse(raw.trim());
+  if (uri == null) return null;
+  if (!uri.hasScheme) {
+    final baseUri = base == null ? null : Uri.tryParse(base);
+    if (baseUri == null || !baseUri.hasScheme) return null;
+    uri = baseUri.resolveUri(uri);
+  }
+  if (uri.scheme != 'http' && uri.scheme != 'https') return null;
+  if (uri.host.isEmpty) return null;
+  return uri.toString();
 }
 
 /// Alguns sites (ex.: tudogostoso.com.br) escapam as entidades HTML do

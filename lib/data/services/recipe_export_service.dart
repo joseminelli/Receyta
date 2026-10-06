@@ -12,6 +12,7 @@ import 'package:receyta/data/database/daos/ingredient_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/domain/engine/recipe_export.dart';
 import 'package:receyta/domain/engine/recipe_pdf.dart';
 import 'package:receyta/domain/engine/text_normalize.dart';
@@ -27,12 +28,33 @@ class RecipeExportService {
   RecipeExportService(
     this._recipeRepository,
     this._folderRepository,
-    this._ingredientDao,
-  );
+    this._ingredientDao, {
+    RecipeImageService? images,
+  }) : _images = images;
 
   final RecipeRepository _recipeRepository;
   final FolderRepository _folderRepository;
   final IngredientDao _ingredientDao;
+  final RecipeImageService? _images;
+
+  /// Foto de cada receita em base64 (id → JPEG). Foto ilegível ou ausente
+  /// no disco é só pulada — nunca derruba o export.
+  Future<Map<String, String>> _imagesFor(List<RecipeDetail> details) async {
+    final images = _images;
+    if (images == null) return const {};
+    final out = <String, String>{};
+    for (final d in details) {
+      final name = d.recipe.imagePath;
+      if (name == null) continue;
+      try {
+        final file = await images.fileFor(name);
+        if (await file.exists()) {
+          out[d.recipe.id] = base64Encode(await file.readAsBytes());
+        }
+      } catch (_) {}
+    }
+    return out;
+  }
 
   /// Monta o payload de export de uma receita (D1, §7) resolvendo os nomes
   /// de ingrediente contra o catálogo — separado de [shareRecipe] pra ficar
@@ -43,7 +65,11 @@ class RecipeExportService {
     final detail = (detailResult as Ok<RecipeDetail>).value;
 
     final names = await _namesFor([detail]);
-    return Ok(buildRecipeExportJson(detail, ingredientNames: names));
+    return Ok(buildRecipeExportJson(
+      detail,
+      ingredientNames: names,
+      imagesBase64: await _imagesFor([detail]),
+    ));
   }
 
   Future<Result<void>> shareRecipe(String recipeId) async {
@@ -108,6 +134,7 @@ class RecipeExportService {
       folders: folders,
       recipes: details,
       ingredientNames: names,
+      imagesBase64: await _imagesFor(details),
     ));
   }
 
@@ -179,5 +206,6 @@ final recipeExportServiceProvider = Provider<RecipeExportService>((ref) {
     ref.watch(recipeRepositoryProvider),
     ref.watch(folderRepositoryProvider),
     db.ingredientDao,
+    images: ref.watch(recipeImageServiceProvider),
   );
 });

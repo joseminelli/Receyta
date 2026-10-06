@@ -135,6 +135,31 @@ class RecipeImageService {
     }
   }
 
+  /// Guarda [bytes] como foto da receita. Com [compress] (padrão) passa pela
+  /// mesma compressão de [store] — pro que vem da internet; sem ele grava
+  /// como está — pro que já foi comprimido (restauração de backup).
+  Future<String> storeBytes(
+    Uint8List bytes, {
+    required String recipeId,
+    bool compress = true,
+  }) async {
+    if (!compress) {
+      final name = '${recipeId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await (await fileFor(name)).writeAsBytes(bytes, flush: true);
+      return name;
+    }
+    final temp = File(p.join(
+      (await directory()).path,
+      '.tmp_${DateTime.now().microsecondsSinceEpoch}',
+    ));
+    try {
+      await temp.writeAsBytes(bytes, flush: true);
+      return await store(temp, recipeId: recipeId);
+    } finally {
+      await _deleteQuietly(temp);
+    }
+  }
+
   Future<void> delete(String? name) async {
     if (name == null) return;
     await _deleteQuietly(await fileFor(name));

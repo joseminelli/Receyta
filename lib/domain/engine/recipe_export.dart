@@ -17,15 +17,21 @@ const kRecipeExportSchemaVersion = 1;
 /// sem pastas nem planejamento (export completo com pastas é o [buildFullExportJson], D2).
 /// [ingredientNames] resolve `ingredientId` → nome legível (§8.2, catálogo);
 /// entra pronto porque este arquivo não toca em banco.
+///
+/// [imagesBase64] mapeia id da receita → foto JPEG em base64. A foto vai
+/// dentro do arquivo pra ele ser autossuficiente: quem recebe não tem acesso
+/// ao Storage privado de quem enviou.
 Map<String, dynamic> buildRecipeExportJson(
   RecipeDetail detail, {
   required Map<String, String> ingredientNames,
+  Map<String, String> imagesBase64 = const {},
   DateTime Function() clock = DateTime.now,
 }) {
   return _envelope(
     kind: 'recipes',
     recipes: [detail],
     ingredientNames: ingredientNames,
+    imagesBase64: imagesBase64,
     clock: clock,
   );
 }
@@ -38,6 +44,7 @@ Map<String, dynamic> buildFullExportJson({
   required List<Folder> folders,
   required List<RecipeDetail> recipes,
   required Map<String, String> ingredientNames,
+  Map<String, String> imagesBase64 = const {},
   DateTime Function() clock = DateTime.now,
 }) {
   return _envelope(
@@ -45,6 +52,7 @@ Map<String, dynamic> buildFullExportJson({
     folders: folders,
     recipes: recipes,
     ingredientNames: ingredientNames,
+    imagesBase64: imagesBase64,
     clock: clock,
   );
 }
@@ -54,6 +62,7 @@ Map<String, dynamic> _envelope({
   required List<RecipeDetail> recipes,
   required Map<String, String> ingredientNames,
   required DateTime Function() clock,
+  Map<String, String> imagesBase64 = const {},
   List<Folder>? folders,
 }) {
   return {
@@ -62,7 +71,10 @@ Map<String, dynamic> _envelope({
     'app': 'receyta',
     'kind': kind,
     if (folders != null) 'folders': [for (final f in folders) _folderToJson(f)],
-    'recipes': [for (final r in recipes) _recipeToJson(r, ingredientNames)],
+    'recipes': [
+      for (final r in recipes)
+        _recipeToJson(r, ingredientNames, imagesBase64[r.recipe.id]),
+    ],
   };
 }
 
@@ -76,6 +88,7 @@ Map<String, dynamic> _folderToJson(Folder f) => {
 Map<String, dynamic> _recipeToJson(
   RecipeDetail detail,
   Map<String, String> ingredientNames,
+  String? imageBase64,
 ) {
   final r = detail.recipe;
   return {
@@ -88,6 +101,7 @@ Map<String, dynamic> _recipeToJson(
     'servings': r.servings,
     'sourceUrl': r.sourceUrl,
     'notes': r.notes,
+    if (imageBase64 != null) 'image': imageBase64,
     'tags': [for (final t in detail.tags) t.name],
     'ingredients': [
       for (final i in detail.ingredients) _ingredientToJson(i, ingredientNames)

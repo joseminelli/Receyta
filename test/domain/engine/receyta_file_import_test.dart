@@ -228,4 +228,28 @@ void main() {
     expect(parsed!.folders, hasLength(1));
     expect(parsed.folders.single.sourceId, 'f1');
   });
+
+  test('round trip: a foto exportada volta no arquivo lido', () {
+    final json = buildRecipeExportJson(
+      buildDetail(),
+      ingredientNames: const {'ing1': 'peito de frango'},
+      imagesBase64: const {'r1': 'QUJD'},
+      clock: () => createdAt,
+    );
+
+    final recipe = parseReceytaFile(jsonEncode(json))!.recipes.single;
+
+    expect(recipe.imageBase64, 'QUJD');
+  });
+
+  test('arquivo antigo, sem foto, continua válido', () {
+    final json = buildRecipeExportJson(
+      buildDetail(),
+      ingredientNames: const {'ing1': 'peito de frango'},
+      clock: () => createdAt,
+    );
+
+    expect(
+        parseReceytaFile(jsonEncode(json))!.recipes.single.imageBase64, isNull);
+  });
 }

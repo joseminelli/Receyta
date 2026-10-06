@@ -1,3 +1,4 @@
+import 'package:receyta/data/services/recipe_image_service.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -349,6 +350,107 @@ void main() {
           await service.parseFileAtPath('${tempDir.path}/nao-existe.receyta');
 
       expect(result, isA<Err<ParsedReceytaFile>>());
+    });
+  });
+
+  group('foto no backup', () {
+    late Directory root;
+    late RecipeImageService images;
+    late ReceytaImportService withImages;
+
+    setUp(() async {
+      root = await Directory.systemTemp.createTemp('receyta_backup_photo');
+      images = RecipeImageService(
+        baseDir: () async => Directory('${root.path}/imgs'),
+        compress: (src, dst, {required maxSide, required quality}) =>
+            File(src).copy(dst),
+      );
+      withImages = ReceytaImportService(
+        db.recipeDao,
+        db.folderDao,
+        db.ingredientDao,
+        db.tagDao,
+        images: images,
+      );
+    });
+
+    tearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+
+    ParsedRecipeImport recipe({String? image, String? id}) =>
+        ParsedRecipeImport(
+          sourceId: id,
+          name: 'Bolo',
+          imageBase64: image,
+        );
+
+    test('restaura a foto do arquivo na pasta do app', () async {
+      final photo = base64Encode([1, 2, 3, 4]);
+      await withImages.importParsedFile(
+        parsedFullFile(recipes: [recipe(image: photo)]),
+      );
+
+      final row = (await db.recipeDao.watchActive().first).single;
+      expect(row.imagePath, isNotNull);
+      final file = await images.fileFor(row.imagePath!);
+      expect(await file.readAsBytes(), [1, 2, 3, 4]);
+    });
+
+    test(
+        'arquivo sem foto, ou com foto corrompida, importa a receita assim mesmo',
+        () async {
+      await withImages.importParsedFile(parsedFullFile(recipes: [
+        recipe(),
+        recipe(image: '@@@não é base64@@@'),
+      ]));
+
+      final rows = await db.recipeDao.watchActive().first;
+      expect(rows, hasLength(2));
+      expect(rows.every((r) => r.imagePath == null), isTrue);
+    });
+
+    test('substituir sem foto no arquivo mantém a foto que já existia',
+        () async {
+      await withImages.importParsedFile(parsedFullFile(
+        recipes: [
+          recipe(id: 'r1', image: base64Encode([9, 9]))
+        ],
+      ));
+      final before = (await db.recipeDao.findById('r1'))!.imagePath;
+
+      await withImages.importParsedFile(
+        parsedFullFile(recipes: [recipe(id: 'r1')]),
+        resolution: ConflictResolution.replace,
+      );
+
+      expect((await db.recipeDao.findById('r1'))!.imagePath, before);
+    });
+
+    test('substituir com foto nova troca a foto e mantém o registro de envio',
+        () async {
+      await withImages.importParsedFile(parsedFullFile(
+        recipes: [
+          recipe(id: 'r1', image: base64Encode([9, 9]))
+        ],
+      ));
+      await db.recipeDao.setImageSynced(
+        'r1',
+        (await db.recipeDao.findById('r1'))!.imagePath,
+      );
+      final old = (await db.recipeDao.findById('r1'))!.imagePath;
+      await Future<void>.delayed(const Duration(milliseconds: 3));
+
+      await withImages.importParsedFile(
+        parsedFullFile(recipes: [
+          recipe(id: 'r1', image: base64Encode([7, 7]))
+        ]),
+        resolution: ConflictResolution.replace,
+      );
+
+      final row = (await db.recipeDao.findById('r1'))!;
+      expect(row.imagePath, isNot(old));
+      expect(row.imageSyncedPath, old);
     });
   });
 }

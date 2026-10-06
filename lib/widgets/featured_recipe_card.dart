@@ -75,8 +75,7 @@ class FeaturedRecipeCard extends StatelessWidget {
                       bottom: AppSpacing.sm,
                       child: Text(
                         recipe.name,
-                        style: AppTextStyles.display(42)
-                            .copyWith(
+                        style: AppTextStyles.display(42).copyWith(
                           color: RecipeCover.onColor(context, recipe, tile),
                         ),
                         maxLines: 2,

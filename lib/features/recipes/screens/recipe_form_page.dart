@@ -201,7 +201,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
 
   /// Foto escolhida no formulário. Só vai pro banco no "Salvar"; um arquivo
   /// novo que ficar sem receita é apagado na manutenção do próximo boot.
-  late String? _photo = _recipe?.imagePath;
+  late String? _photo = _recipe?.imagePath ?? _draft?.imagePath;
 
   bool get _isEditing => _recipe != null;
 

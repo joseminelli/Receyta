@@ -100,7 +100,8 @@ List<PlanPick> planWeek({
 }) {
   final today = dayOf(now);
   final taken = {
-    for (final e in existing) '${dayOf(e.date).toIso8601String()}|${e.mealType.name}',
+    for (final e in existing)
+      '${dayOf(e.date).toIso8601String()}|${e.mealType.name}',
   };
   final inWeek = {
     for (final e in existing)
@@ -115,7 +116,8 @@ List<PlanPick> planWeek({
           (options.anyOfTags.isEmpty ||
               c.tags.any(options.anyOfTags.contains)) &&
           (options.maxMinutes == null ||
-              (c.totalMinutes != null && c.totalMinutes! <= options.maxMinutes!)))
+              (c.totalMinutes != null &&
+                  c.totalMinutes! <= options.maxMinutes!)))
         c,
   ];
 

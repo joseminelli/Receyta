@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -12,6 +13,7 @@ import 'package:receyta/data/database/daos/ingredient_dao.dart';
 import 'package:receyta/data/database/daos/recipe_dao.dart';
 import 'package:receyta/data/database/daos/tag_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
+import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/domain/engine/receyta_file_import.dart';
 
 /// Quantas pastas/receitas entraram — o que a UI mostra depois de importar.
@@ -45,15 +47,18 @@ class ReceytaImportService {
     this._folderDao,
     this._ingredientDao,
     this._tagDao, {
+    RecipeImageService? images,
     Uuid uuid = const Uuid(),
     DateTime Function() clock = DateTime.now,
-  })  : _uuid = uuid,
+  })  : _images = images,
+        _uuid = uuid,
         _clock = clock;
 
   final RecipeDao _recipeDao;
   final FolderDao _folderDao;
   final IngredientDao _ingredientDao;
   final TagDao _tagDao;
+  final RecipeImageService? _images;
   final Uuid _uuid;
   final DateTime Function() _clock;
 
@@ -212,6 +217,15 @@ class ReceytaImportService {
 
     final now = _clock().toUtc();
 
+    // Substituir mantém o que já existia quando o arquivo não traz foto
+    // (backup antigo, ou receita sem foto) e preserva o registro de envio
+    // pra o sync apagar a foto velha da nuvem se ela for trocada.
+    final existing = (hasConflict && resolution == ConflictResolution.replace)
+        ? await _recipeDao.findById(sourceId)
+        : null;
+    final imagePath = await _restoreImage(recipe.imageBase64, recipeId) ??
+        existing?.imagePath;
+
     final ingredients = <RecipeIngredientRow>[];
     for (final i in recipe.ingredients) {
       final ingredientRow = await _ingredientDao.getOrCreate(i.name);
@@ -258,7 +272,8 @@ class ReceytaImportService {
         prepMinutes: recipe.prepMinutes,
         cookMinutes: recipe.cookMinutes,
         servings: recipe.servings,
-        imagePath: null,
+        imagePath: imagePath,
+        imageSyncedPath: existing?.imageSyncedPath,
         sourceUrl: recipe.sourceUrl,
         notes: recipe.notes,
         tileColor: null,
@@ -275,6 +290,22 @@ class ReceytaImportService {
     );
     return true;
   }
+
+  /// Grava a foto do arquivo na pasta do app e devolve o nome. `null` se o
+  /// arquivo não traz foto ou ela está corrompida — nunca derruba o import.
+  Future<String?> _restoreImage(String? base64, String recipeId) async {
+    final images = _images;
+    if (images == null || base64 == null || base64.isEmpty) return null;
+    try {
+      return await images.storeBytes(
+        base64Decode(base64),
+        recipeId: recipeId,
+        compress: false,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 final receytaImportServiceProvider = Provider<ReceytaImportService>((ref) {
@@ -284,5 +315,6 @@ final receytaImportServiceProvider = Provider<ReceytaImportService>((ref) {
     db.folderDao,
     db.ingredientDao,
     db.tagDao,
+    images: ref.watch(recipeImageServiceProvider),
   );
 });

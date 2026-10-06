@@ -600,7 +600,8 @@ class _Hero extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  if (minutes != null) _buildMinutesBadge(context, minutes, tile),
+                  if (minutes != null)
+                    _buildMinutesBadge(context, minutes, tile),
                   _buildTopContent(context, ref, colors, tile),
                 ],
               ),
@@ -621,8 +622,8 @@ class _Hero extends ConsumerWidget {
       child: HeroNumber(
         value: '$minutes',
         unit: 'min',
-        color: RecipeCover.onColor(context, recipe, tile)
-            .withValues(alpha: 0.5),
+        color:
+            RecipeCover.onColor(context, recipe, tile).withValues(alpha: 0.5),
         corner: Alignment.bottomRight,
         size: 100,
       ),
