@@ -184,8 +184,7 @@ void main() {
     expect(find.text('ROTA WELCOME'), findsOneWidget);
   });
 
-  testWidgets('sem conta, não há cartão da conta nem "Sair"',
-      (tester) async {
+  testWidgets('sem conta, não há cartão da conta nem "Sair"', (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();

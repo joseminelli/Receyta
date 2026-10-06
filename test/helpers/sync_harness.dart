@@ -67,6 +67,9 @@ class ServerRemote implements SyncRemote {
     ]..sort((a, b) => a.updatedAt!.compareTo(b.updatedAt!));
     return out;
   }
+
+  @override
+  Stream<void> changes() => const Stream.empty();
 }
 
 /// Um aparelho: banco próprio, relógio próprio e as preferências próprias (o

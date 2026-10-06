@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -114,7 +115,9 @@ class SupabaseSharedRemote implements SharedRemote {
               if (!controller.isClosed) controller.add(change);
             },
           )
-          .subscribe();
+          .subscribe((status, error) {
+        debugPrint('Realtime $table: $status ${error ?? ''}');
+      });
     }
 
     controller = StreamController<SharedChange>(

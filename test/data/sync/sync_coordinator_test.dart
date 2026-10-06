@@ -361,4 +361,12 @@ void main() {
       expect(state().phase, SyncPhase.idle);
     });
   });
+
+  test('aviso em tempo real da conta dispara uma rodada logo', () async {
+    await startLoggedIn();
+    final before = remote.pullCalls;
+
+    remote.events.add(null);
+    await until(() => remote.pullCalls > before, reason: 'rodada pelo aviso');
+  });
 }

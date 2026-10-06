@@ -10,6 +10,7 @@ import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/services/auth_service.dart';
 import 'package:receyta/data/sync/shared_remote.dart';
 import 'package:receyta/data/sync/sync_engine.dart';
+import 'package:receyta/data/sync/sync_remote.dart';
 import 'package:receyta/data/sync/sync_error.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/space/controllers/shared_sync_providers.dart';
@@ -91,6 +92,7 @@ class SyncCoordinator extends Notifier<SyncState> {
   Timer? _periodic;
   StreamSubscription<Object?>? _changes;
   StreamSubscription<SharedChange>? _realtime;
+  StreamSubscription<void>? _accountRealtime;
   String? _realtimeSpace;
   bool _started = false;
   bool _running = false;
@@ -160,6 +162,7 @@ class SyncCoordinator extends Notifier<SyncState> {
     state = state.copyWith(enabled: true);
     unawaited(_loadLastSync());
     _watchChanges();
+    _watchAccount();
     _watchSpace(ref.read(currentSpaceIdProvider));
     final period = ref.read(syncPeriodProvider);
     if (period != null) {
@@ -197,6 +200,17 @@ class SyncCoordinator extends Notifier<SyncState> {
       if (!state.enabled) return;
       if (await _hasPendingChanges()) requestSync();
     });
+  }
+
+  /// Escuta a conta em tempo real: outro aparelho da mesma pessoa gravou, vale
+  /// uma rodada logo.
+  void _watchAccount() {
+    _accountRealtime?.cancel();
+    _accountRealtime = ref.read(syncRemoteProvider).changes().listen(
+          (_) => requestSync(after: const Duration(seconds: 1)),
+          onError: (Object e) =>
+              debugPrint('SyncCoordinator.accountRealtime: $e'),
+        );
   }
 
   /// Escuta a casa em tempo real: mudança nos itens vira uma rodada logo; gente
@@ -320,6 +334,8 @@ class SyncCoordinator extends Notifier<SyncState> {
     _periodic?.cancel();
     _changes?.cancel();
     _realtime?.cancel();
+    _accountRealtime?.cancel();
+    _accountRealtime = null;
     _debounce = _retry = _periodic = null;
     _changes = null;
     _realtime = null;

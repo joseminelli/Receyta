@@ -179,7 +179,7 @@ begin
   if v_space is null then
     raise exception 'not_owner';
   end if;
-  delete from space_invites where space_id = v_space and expires_at < now();
+  delete from space_invites where expires_at < now();
   if (select count(*) from space_invites where space_id = v_space) >= 5 then
     raise exception 'too_many_invites';
   end if;
@@ -212,6 +212,7 @@ begin
   if exists (select 1 from space_members where user_id = auth.uid()) then
     raise exception 'already_in_space';
   end if;
+  delete from space_invites where expires_at < now();
   select space_id into v_space
     from space_invites
     where code = upper(trim(p_code)) and expires_at > now();
@@ -338,5 +339,41 @@ begin
       and tablename = 'space_members'
   ) then
     alter publication supabase_realtime add table public.space_members;
+  end if;
+end $$;
+
+-- ------------------------------------------------------- limpeza de convites
+-- Convite vencido já não vale (as funções ignoram), mas a linha ficaria lá.
+-- As funções acima apagam os vencidos sempre que alguém gera ou usa um convite;
+-- este agendamento (pg_cron, de hora em hora) cobre o caso de ninguém mexer.
+-- Se o pg_cron não estiver disponível no projeto, só avisa e segue — não é
+-- obrigatório.
+
+do $$
+begin
+  create extension if not exists pg_cron;
+  perform cron.unschedule(jobid)
+    from cron.job where jobname = 'receyta_limpa_convites';
+  perform cron.schedule(
+    'receyta_limpa_convites',
+    '17 * * * *',
+    $cron$delete from public.space_invites where expires_at < now()$cron$
+  );
+exception when others then
+  raise notice 'pg_cron indisponível, limpeza só pelas funções: %', sqlerrm;
+end $$;
+
+-- ------------------------------------------------- Realtime da própria conta
+-- Os aparelhos da MESMA pessoa também se avisam na hora: liga `sync_docs` ao
+-- Realtime (a policy do `sync.sql` já limita cada um às próprias linhas).
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public'
+      and tablename = 'sync_docs'
+  ) then
+    alter publication supabase_realtime add table public.sync_docs;
   end if;
 end $$;

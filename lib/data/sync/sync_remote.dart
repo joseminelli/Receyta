@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -39,6 +42,10 @@ abstract class SyncRemote {
   /// Todos os itens com `updated_at` a partir de [since] (todos, se nulo), em
   /// ordem de `updated_at`.
   Future<List<SyncDoc>> pullSince(DateTime? since);
+
+  /// Avisos em tempo real de que a conta mudou (outro aparelho gravou). Cancelar
+  /// a escuta fecha o canal.
+  Stream<void> changes();
 }
 
 class SupabaseSyncRemote implements SyncRemote {
@@ -104,6 +111,41 @@ class SupabaseSyncRemote implements SyncRemote {
       if (rows.length < _pageSize) return out;
     }
   }
+
+  @override
+  Stream<void> changes() {
+    final uid = userId;
+    if (uid == null) return const Stream.empty();
+    late final StreamController<void> controller;
+    sb.RealtimeChannel? channel;
+    controller = StreamController<void>(
+      onListen: () {
+        channel = _client
+            .channel('sync-$uid')
+            .onPostgresChanges(
+              event: sb.PostgresChangeEvent.all,
+              schema: 'public',
+              table: _table,
+              filter: sb.PostgresChangeFilter(
+                type: sb.PostgresChangeFilterType.eq,
+                column: 'user_id',
+                value: uid,
+              ),
+              callback: (_) {
+                if (!controller.isClosed) controller.add(null);
+              },
+            )
+            .subscribe((status, error) {
+          debugPrint('Realtime sync_docs: $status ${error ?? ''}');
+        });
+      },
+      onCancel: () async {
+        final c = channel;
+        if (c != null) await _client.removeChannel(c);
+      },
+    );
+    return controller.stream;
+  }
 }
 
 /// Usado quando o Supabase não inicializou.
@@ -118,6 +160,9 @@ class NoSyncRemote implements SyncRemote {
 
   @override
   Future<List<SyncDoc>> pullSince(DateTime? since) async => const [];
+
+  @override
+  Stream<void> changes() => const Stream.empty();
 }
 
 final syncRemoteProvider = Provider<SyncRemote>((ref) {

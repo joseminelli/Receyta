@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:receyta/data/sync/sync_remote.dart';
 
 /// Servidor de sync em memória, sem a regra de "o mais novo vence" — pra
@@ -9,6 +11,9 @@ class FakeSyncRemote implements SyncRemote {
   String? userId;
 
   final docs = <String, SyncDoc>{};
+
+  /// Avisos em tempo real: `events.add(null)` simula outro aparelho gravando.
+  final events = StreamController<void>.broadcast();
   int pullCalls = 0;
   int pushCalls = 0;
   bool failPull = false;
@@ -44,4 +49,7 @@ class FakeSyncRemote implements SyncRemote {
         if (since == null || !d.updatedAt!.isBefore(since)) d,
     ];
   }
+
+  @override
+  Stream<void> changes() => events.stream;
 }
