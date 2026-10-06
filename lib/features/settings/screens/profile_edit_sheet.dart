@@ -43,6 +43,12 @@ class _ProfileEditSheetState extends ConsumerState<_ProfileEditSheet> {
     super.dispose();
   }
 
+  Widget _dot(TileColor c) => _ColorDot(
+        color: c,
+        selected: c == _color,
+        onTap: () => setState(() => _color = c),
+      );
+
   Future<void> _save() async {
     await ref
         .read(appSettingsProvider.notifier)
@@ -79,17 +85,21 @@ class _ProfileEditSheetState extends ConsumerState<_ProfileEditSheet> {
           const SizedBox(height: AppSpacing.sm),
           Text('Cor do avatar', style: context.texts.labelLarge),
           const SizedBox(height: AppSpacing.xs),
-          Row(
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
-              for (final c in TileColor.values)
-                Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: _ColorDot(
-                    color: c,
-                    selected: c == _color,
-                    onTap: () => setState(() => _color = c),
-                  ),
-                ),
+              for (final c in kBaseTileColors) _dot(c),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text('Mais cores', style: context.texts.labelLarge),
+          const SizedBox(height: AppSpacing.xs),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              for (final c in kExtraTileColors) _dot(c),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),

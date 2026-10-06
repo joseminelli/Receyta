@@ -31,6 +31,22 @@ class TileStylePicker extends StatelessWidget {
   /// Id da receita, pra prévia do "Auto" bater com o card real.
   final String? seedId;
 
+  Widget _colorSwatch(AppColors colors, TileColor c) {
+    return Semantics(
+      button: true,
+      selected: color == c,
+      label: 'Cor ${c.label}',
+      excludeSemantics: true,
+      child: _Swatch(
+        selected: color == c,
+        onTap: () => onChanged(c, motif),
+        child: ColoredBox(
+          color: resolveTileAppearance(colors, color: c).background,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -70,14 +86,17 @@ class TileStylePicker extends StatelessWidget {
               onTap: () => onChanged(null, motif),
               child: const _Auto(),
             ),
-            for (final c in TileColor.values)
-              _Swatch(
-                selected: color == c,
-                onTap: () => onChanged(c, motif),
-                child: ColoredBox(
-                  color: resolveTileAppearance(colors, color: c).background,
-                ),
-              ),
+            for (final c in kBaseTileColors) _colorSwatch(colors, c),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _Caption('Mais cores'),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final c in kExtraTileColors) _colorSwatch(colors, c),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),

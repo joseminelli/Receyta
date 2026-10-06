@@ -20,10 +20,59 @@ enum TileMotif {
   ponto,
 }
 
-/// As quatro cores de bloco da §9.2. Emparelham com um [TileMotif] por padrão
-/// (coral/arco, violet/meiaLua, ink/diagonal, lime/ponto), mas o usuário pode
-/// combinar como quiser.
-enum TileColor { coral, violet, ink, lime }
+/// As cores de bloco. As quatro primeiras são as da §9.2 (a identidade do app)
+/// e emparelham com um [TileMotif] por padrão (coral/arco, violet/meiaLua,
+/// ink/diagonal, lime/ponto); as outras seis são **opcionais**, só pra
+/// personalizar — nunca são escolhidas sozinhas. O usuário combina como
+/// quiser. Guardadas pelo `.name`: não renomear nem reordenar os valores.
+enum TileColor {
+  coral,
+  violet,
+  ink,
+  lime,
+  mar,
+  framboesa,
+  mostarda,
+  cobalto,
+  floresta,
+  terra,
+}
+
+/// As quatro cores do app (§9.2).
+const kBaseTileColors = [
+  TileColor.coral,
+  TileColor.violet,
+  TileColor.ink,
+  TileColor.lime,
+];
+
+/// As cores opcionais, na ordem em que aparecem nos seletores.
+const kExtraTileColors = [
+  TileColor.mar,
+  TileColor.framboesa,
+  TileColor.mostarda,
+  TileColor.cobalto,
+  TileColor.floresta,
+  TileColor.terra,
+];
+
+extension TileColorInfo on TileColor {
+  bool get isExtra => kExtraTileColors.contains(this);
+
+  /// Nome pra leitor de tela e legenda.
+  String get label => switch (this) {
+        TileColor.coral => 'Coral',
+        TileColor.violet => 'Violeta',
+        TileColor.ink => 'Preto',
+        TileColor.lime => 'Lima',
+        TileColor.mar => 'Mar',
+        TileColor.framboesa => 'Framboesa',
+        TileColor.mostarda => 'Mostarda',
+        TileColor.cobalto => 'Cobalto',
+        TileColor.floresta => 'Floresta',
+        TileColor.terra => 'Terra',
+      };
+}
 
 /// Parse tolerante — string do banco (`.name`) de volta pro enum, nulo se vazio
 /// ou desconhecido (linha antiga, valor removido).
