@@ -250,11 +250,26 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     );
   }
 
+  /// Receitas cuja foto não bate com a última enviada ao Storage: foto nova
+  /// ou trocada (enviar) e foto trocada ou removida (apagar a antiga lá).
+  Future<List<RecipeRow>> pendingImageSync() {
+    return (select(recipes)
+          ..where((r) => const CustomExpression<bool>(
+              'image_path IS NOT image_synced_path')))
+        .get();
+  }
+
+  /// Marca qual foto está na nuvem. Não mexe em `updated_at`: é bookkeeping,
+  /// não edição da receita.
+  Future<int> setImageSynced(String id, String? name) {
+    return (update(recipes)..where((r) => r.id.equals(id)))
+        .write(RecipesCompanion(imageSyncedPath: Value(name)));
+  }
+
   /// Nomes de foto ainda em uso (inclui a lixeira — a receita pode voltar).
   Future<Set<String>> referencedImagePaths() async {
-    final rows = await (select(recipes)
-          ..where((r) => r.imagePath.isNotNull()))
-        .get();
+    final rows =
+        await (select(recipes)..where((r) => r.imagePath.isNotNull())).get();
     return {for (final r in rows) r.imagePath!};
   }
 

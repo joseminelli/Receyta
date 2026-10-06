@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 
 /// Quanto esperar depois da abertura pra rodar a manutenção em segundo plano
 /// (deixa a home aparecer e o primeiro gesto passar antes de mexer no
@@ -36,9 +37,11 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   if (delay != null) {
     final recipes = ref.read(recipeRepositoryProvider);
     final images = ref.read(recipeImageServiceProvider);
+    final imageSync = ref.read(recipeImageSyncProvider);
     unawaited(
-      Future<void>.delayed(delay)
-          .then((_) => runAppMaintenance(recipes, images: images)),
+      Future<void>.delayed(delay).then(
+        (_) => runAppMaintenance(recipes, images: images, imageSync: imageSync),
+      ),
     );
   }
 });
@@ -46,19 +49,23 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
 /// Manutenção que não precisa bloquear a abertura: apaga da lixeira o que
 /// passou de 30 dias (RF-01.6) e resolve ingredientes de receitas antigas
 /// (C5). Nunca lança — falha aqui não pode derrubar o app, só vira log.
-/// Com [images], apaga também as fotos que nenhuma receita usa mais (receita
+/// Com [imageSync], manda pra nuvem as fotos pendentes (só se logado). Com
+/// [images], apaga também as fotos que nenhuma receita usa mais (receita
 /// apagada de vez, foto trocada).
 Future<void> runAppMaintenance(
   RecipeRepository recipes, {
   RecipeImageService? images,
+  RecipeImageSync? imageSync,
 }) async {
   try {
     await _timed('bootstrap.purgeExpired', recipes.purgeExpired);
+    if (imageSync != null) {
+      await _timed('bootstrap.imageSync', imageSync.syncPending);
+    }
     if (images != null) {
       await _timed(
         'bootstrap.deleteOrphanImages',
-        () async =>
-            images.deleteOrphans(await recipes.referencedImagePaths()),
+        () async => images.deleteOrphans(await recipes.referencedImagePaths()),
       );
     }
     await _timed(

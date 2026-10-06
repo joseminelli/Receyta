@@ -17,6 +17,7 @@ import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/features/recipes/screens/recipe_photo_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -398,7 +399,10 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
     final images = ref.read(recipeImageServiceProvider);
     final saved =
         await ref.read(recipeRepositoryProvider).setImage(recipeId, _photo);
-    if (saved.isOk) await images.delete(original);
+    if (saved.isOk) {
+      await images.delete(original);
+      unawaited(ref.read(recipeImageSyncProvider).syncPending());
+    }
   }
 
   void _reorder(List<_Line> list, int oldIndex, int newIndex) {

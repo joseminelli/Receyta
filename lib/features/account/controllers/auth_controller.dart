@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/auth_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) {
   try {
@@ -31,6 +34,9 @@ class AuthController extends AutoDisposeAsyncNotifier<void> {
     state = const AsyncLoading();
     final result = await ref.read(authServiceProvider).signInWithGoogle();
     state = const AsyncData(null);
+    if (result.valueOrNull != null) {
+      unawaited(ref.read(recipeImageSyncProvider).syncPending());
+    }
     return result.when(ok: (_) => null, err: (f) => f);
   }
 

@@ -2,13 +2,21 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
 
-import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
+import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
+
+/// O arquivo local da foto [name]; se faltar (outro aparelho, dados limpos) e
+/// houver login, baixa da nuvem. Reavalia quando a conta muda.
+final recipePhotoFileProvider =
+    FutureProvider.autoDispose.family<File?, String>((ref, name) {
+  ref.watch(authUserProvider);
+  return ref.watch(recipeImageSyncProvider).ensureLocal(name);
+});
 
 /// Capa da receita: a foto, se ela tem uma, senão o azulejo (§9.4). É o filho
 /// do `Hero` de [recipeTileHeroTag] nos cards e no detalhe, então o voo
@@ -48,15 +56,15 @@ class RecipeCover extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final name = recipe.imagePath;
     if (name == null) return _tile();
-    final dir = ref.watch(recipeImagesDirProvider).valueOrNull;
-    if (dir == null) return _tile();
+    final file = ref.watch(recipePhotoFileProvider(name)).valueOrNull;
+    if (file == null) return _tile();
 
     return Stack(
       fit: StackFit.expand,
       children: [
         _tile(),
         Image.file(
-          File(p.join(dir.path, name)),
+          file,
           fit: BoxFit.cover,
           cacheWidth: cacheWidth,
           gaplessPlayback: true,

@@ -90,7 +90,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -108,6 +108,7 @@ class AppDatabase extends _$AppDatabase {
   /// dado já commitado por outra conexão até a abertura terminar de vez.
   /// v5: tabela `cook_logs` (histórico "cozinhei", G7).
   /// v6: `ingredients.in_pantry` (despensa, G11).
+  /// v7: `recipes.image_synced_path` (foto já enviada ao Storage, H0).
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -149,6 +150,9 @@ class AppDatabase extends _$AppDatabase {
             if (!cols.contains('in_pantry')) {
               await m.addColumn(ingredients, ingredients.inPantry);
             }
+          }
+          if (from < 7) {
+            await m.addColumn(recipes, recipes.imageSyncedPath);
           }
           if (from < 5) {
             await m.createTable(cookLogs);

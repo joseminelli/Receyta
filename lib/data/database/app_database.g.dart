@@ -576,6 +576,12 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
   late final GeneratedColumn<String> imagePath = GeneratedColumn<String>(
       'image_path', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _imageSyncedPathMeta =
+      const VerificationMeta('imageSyncedPath');
+  @override
+  late final GeneratedColumn<String> imageSyncedPath = GeneratedColumn<String>(
+      'image_synced_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _sourceUrlMeta =
       const VerificationMeta('sourceUrl');
   @override
@@ -647,6 +653,7 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         cookMinutes,
         servings,
         imagePath,
+        imageSyncedPath,
         sourceUrl,
         notes,
         tileColor,
@@ -705,6 +712,12 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
     if (data.containsKey('image_path')) {
       context.handle(_imagePathMeta,
           imagePath.isAcceptableOrUnknown(data['image_path']!, _imagePathMeta));
+    }
+    if (data.containsKey('image_synced_path')) {
+      context.handle(
+          _imageSyncedPathMeta,
+          imageSyncedPath.isAcceptableOrUnknown(
+              data['image_synced_path']!, _imageSyncedPathMeta));
     }
     if (data.containsKey('source_url')) {
       context.handle(_sourceUrlMeta,
@@ -771,6 +784,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
           .read(DriftSqlType.int, data['${effectivePrefix}servings']),
       imagePath: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}image_path']),
+      imageSyncedPath: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}image_synced_path']),
       sourceUrl: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}source_url']),
       notes: attachedDatabase.typeMapping
@@ -807,6 +822,11 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
   final int? cookMinutes;
   final int? servings;
   final String? imagePath;
+
+  /// Nome da foto que já foi enviada pro Storage. Diferente de `imagePath` =
+  /// há o que enviar (foto nova/trocada) ou o que apagar na nuvem (trocada
+  /// ou removida). Nulo = nada enviado.
+  final String? imageSyncedPath;
   final String? sourceUrl;
   final String? notes;
 
@@ -831,6 +851,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       this.cookMinutes,
       this.servings,
       this.imagePath,
+      this.imageSyncedPath,
       this.sourceUrl,
       this.notes,
       this.tileColor,
@@ -862,6 +883,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     }
     if (!nullToAbsent || imagePath != null) {
       map['image_path'] = Variable<String>(imagePath);
+    }
+    if (!nullToAbsent || imageSyncedPath != null) {
+      map['image_synced_path'] = Variable<String>(imageSyncedPath);
     }
     if (!nullToAbsent || sourceUrl != null) {
       map['source_url'] = Variable<String>(sourceUrl);
@@ -908,6 +932,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       imagePath: imagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(imagePath),
+      imageSyncedPath: imageSyncedPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(imageSyncedPath),
       sourceUrl: sourceUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(sourceUrl),
@@ -943,6 +970,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       cookMinutes: serializer.fromJson<int?>(json['cookMinutes']),
       servings: serializer.fromJson<int?>(json['servings']),
       imagePath: serializer.fromJson<String?>(json['imagePath']),
+      imageSyncedPath: serializer.fromJson<String?>(json['imageSyncedPath']),
       sourceUrl: serializer.fromJson<String?>(json['sourceUrl']),
       notes: serializer.fromJson<String?>(json['notes']),
       tileColor: serializer.fromJson<String?>(json['tileColor']),
@@ -966,6 +994,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       'cookMinutes': serializer.toJson<int?>(cookMinutes),
       'servings': serializer.toJson<int?>(servings),
       'imagePath': serializer.toJson<String?>(imagePath),
+      'imageSyncedPath': serializer.toJson<String?>(imageSyncedPath),
       'sourceUrl': serializer.toJson<String?>(sourceUrl),
       'notes': serializer.toJson<String?>(notes),
       'tileColor': serializer.toJson<String?>(tileColor),
@@ -987,6 +1016,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           Value<int?> cookMinutes = const Value.absent(),
           Value<int?> servings = const Value.absent(),
           Value<String?> imagePath = const Value.absent(),
+          Value<String?> imageSyncedPath = const Value.absent(),
           Value<String?> sourceUrl = const Value.absent(),
           Value<String?> notes = const Value.absent(),
           Value<String?> tileColor = const Value.absent(),
@@ -1005,6 +1035,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
         cookMinutes: cookMinutes.present ? cookMinutes.value : this.cookMinutes,
         servings: servings.present ? servings.value : this.servings,
         imagePath: imagePath.present ? imagePath.value : this.imagePath,
+        imageSyncedPath: imageSyncedPath.present
+            ? imageSyncedPath.value
+            : this.imageSyncedPath,
         sourceUrl: sourceUrl.present ? sourceUrl.value : this.sourceUrl,
         notes: notes.present ? notes.value : this.notes,
         tileColor: tileColor.present ? tileColor.value : this.tileColor,
@@ -1028,6 +1061,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           data.cookMinutes.present ? data.cookMinutes.value : this.cookMinutes,
       servings: data.servings.present ? data.servings.value : this.servings,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
+      imageSyncedPath: data.imageSyncedPath.present
+          ? data.imageSyncedPath.value
+          : this.imageSyncedPath,
       sourceUrl: data.sourceUrl.present ? data.sourceUrl.value : this.sourceUrl,
       notes: data.notes.present ? data.notes.value : this.notes,
       tileColor: data.tileColor.present ? data.tileColor.value : this.tileColor,
@@ -1054,6 +1090,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           ..write('cookMinutes: $cookMinutes, ')
           ..write('servings: $servings, ')
           ..write('imagePath: $imagePath, ')
+          ..write('imageSyncedPath: $imageSyncedPath, ')
           ..write('sourceUrl: $sourceUrl, ')
           ..write('notes: $notes, ')
           ..write('tileColor: $tileColor, ')
@@ -1077,6 +1114,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       cookMinutes,
       servings,
       imagePath,
+      imageSyncedPath,
       sourceUrl,
       notes,
       tileColor,
@@ -1098,6 +1136,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           other.cookMinutes == this.cookMinutes &&
           other.servings == this.servings &&
           other.imagePath == this.imagePath &&
+          other.imageSyncedPath == this.imageSyncedPath &&
           other.sourceUrl == this.sourceUrl &&
           other.notes == this.notes &&
           other.tileColor == this.tileColor &&
@@ -1118,6 +1157,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
   final Value<int?> cookMinutes;
   final Value<int?> servings;
   final Value<String?> imagePath;
+  final Value<String?> imageSyncedPath;
   final Value<String?> sourceUrl;
   final Value<String?> notes;
   final Value<String?> tileColor;
@@ -1137,6 +1177,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.cookMinutes = const Value.absent(),
     this.servings = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.imageSyncedPath = const Value.absent(),
     this.sourceUrl = const Value.absent(),
     this.notes = const Value.absent(),
     this.tileColor = const Value.absent(),
@@ -1157,6 +1198,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.cookMinutes = const Value.absent(),
     this.servings = const Value.absent(),
     this.imagePath = const Value.absent(),
+    this.imageSyncedPath = const Value.absent(),
     this.sourceUrl = const Value.absent(),
     this.notes = const Value.absent(),
     this.tileColor = const Value.absent(),
@@ -1178,6 +1220,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Expression<int>? cookMinutes,
     Expression<int>? servings,
     Expression<String>? imagePath,
+    Expression<String>? imageSyncedPath,
     Expression<String>? sourceUrl,
     Expression<String>? notes,
     Expression<String>? tileColor,
@@ -1198,6 +1241,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       if (cookMinutes != null) 'cook_minutes': cookMinutes,
       if (servings != null) 'servings': servings,
       if (imagePath != null) 'image_path': imagePath,
+      if (imageSyncedPath != null) 'image_synced_path': imageSyncedPath,
       if (sourceUrl != null) 'source_url': sourceUrl,
       if (notes != null) 'notes': notes,
       if (tileColor != null) 'tile_color': tileColor,
@@ -1220,6 +1264,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       Value<int?>? cookMinutes,
       Value<int?>? servings,
       Value<String?>? imagePath,
+      Value<String?>? imageSyncedPath,
       Value<String?>? sourceUrl,
       Value<String?>? notes,
       Value<String?>? tileColor,
@@ -1239,6 +1284,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       cookMinutes: cookMinutes ?? this.cookMinutes,
       servings: servings ?? this.servings,
       imagePath: imagePath ?? this.imagePath,
+      imageSyncedPath: imageSyncedPath ?? this.imageSyncedPath,
       sourceUrl: sourceUrl ?? this.sourceUrl,
       notes: notes ?? this.notes,
       tileColor: tileColor ?? this.tileColor,
@@ -1278,6 +1324,9 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     }
     if (imagePath.present) {
       map['image_path'] = Variable<String>(imagePath.value);
+    }
+    if (imageSyncedPath.present) {
+      map['image_synced_path'] = Variable<String>(imageSyncedPath.value);
     }
     if (sourceUrl.present) {
       map['source_url'] = Variable<String>(sourceUrl.value);
@@ -1323,6 +1372,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
           ..write('cookMinutes: $cookMinutes, ')
           ..write('servings: $servings, ')
           ..write('imagePath: $imagePath, ')
+          ..write('imageSyncedPath: $imageSyncedPath, ')
           ..write('sourceUrl: $sourceUrl, ')
           ..write('notes: $notes, ')
           ..write('tileColor: $tileColor, ')
@@ -6305,6 +6355,7 @@ typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
   Value<int?> cookMinutes,
   Value<int?> servings,
   Value<String?> imagePath,
+  Value<String?> imageSyncedPath,
   Value<String?> sourceUrl,
   Value<String?> notes,
   Value<String?> tileColor,
@@ -6325,6 +6376,7 @@ typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
   Value<int?> cookMinutes,
   Value<int?> servings,
   Value<String?> imagePath,
+  Value<String?> imageSyncedPath,
   Value<String?> sourceUrl,
   Value<String?> notes,
   Value<String?> tileColor,
@@ -6362,6 +6414,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<int?> cookMinutes = const Value.absent(),
             Value<int?> servings = const Value.absent(),
             Value<String?> imagePath = const Value.absent(),
+            Value<String?> imageSyncedPath = const Value.absent(),
             Value<String?> sourceUrl = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<String?> tileColor = const Value.absent(),
@@ -6382,6 +6435,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             cookMinutes: cookMinutes,
             servings: servings,
             imagePath: imagePath,
+            imageSyncedPath: imageSyncedPath,
             sourceUrl: sourceUrl,
             notes: notes,
             tileColor: tileColor,
@@ -6402,6 +6456,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<int?> cookMinutes = const Value.absent(),
             Value<int?> servings = const Value.absent(),
             Value<String?> imagePath = const Value.absent(),
+            Value<String?> imageSyncedPath = const Value.absent(),
             Value<String?> sourceUrl = const Value.absent(),
             Value<String?> notes = const Value.absent(),
             Value<String?> tileColor = const Value.absent(),
@@ -6422,6 +6477,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             cookMinutes: cookMinutes,
             servings: servings,
             imagePath: imagePath,
+            imageSyncedPath: imageSyncedPath,
             sourceUrl: sourceUrl,
             notes: notes,
             tileColor: tileColor,
@@ -6471,6 +6527,11 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<String> get imagePath => $state.composableBuilder(
       column: $state.table.imagePath,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get imageSyncedPath => $state.composableBuilder(
+      column: $state.table.imageSyncedPath,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -6654,6 +6715,11 @@ class $$RecipesTableOrderingComposer
 
   ColumnOrderings<String> get imagePath => $state.composableBuilder(
       column: $state.table.imagePath,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get imageSyncedPath => $state.composableBuilder(
+      column: $state.table.imageSyncedPath,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

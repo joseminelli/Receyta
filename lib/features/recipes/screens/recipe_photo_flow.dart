@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -63,8 +66,10 @@ Future<void> changeRecipePhoto(
       .read(recipeRepositoryProvider)
       .setImage(recipe.id, change.imagePath);
   saved.when(
-    ok: (_) =>
-        ref.read(recipeImageServiceProvider).delete(recipe.imagePath),
+    ok: (_) {
+      ref.read(recipeImageServiceProvider).delete(recipe.imagePath);
+      unawaited(ref.read(recipeImageSyncProvider).syncPending());
+    },
     err: (f) {
       ref.read(recipeImageServiceProvider).delete(change.imagePath);
       showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error);

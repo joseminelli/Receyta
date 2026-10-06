@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v6 versionado', () async {
-    final connection = await verifier.startAt(6);
+  test('schema do código bate com o snapshot v7 versionado', () async {
+    final connection = await verifier.startAt(7);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -54,7 +54,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
     addTearDown(db.close);
 
     final kept = await db.customSelect(
@@ -96,7 +96,7 @@ void main() {
     await at2.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
     addTearDown(db.close);
 
     final recipe = await db
@@ -137,7 +137,7 @@ void main() {
     await at3.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
     addTearDown(db.close);
     // O backfill de `last_opened_at` roda em `ensureReady()` (não na
     // migração em si — ver o comentário em `app_database.dart`), então o
@@ -176,7 +176,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
     addTearDown(db.close);
 
     final recipe =
@@ -208,7 +208,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 6);
+    await verifier.migrateAndValidate(db, 7);
     addTearDown(db.close);
 
     final row = await db
@@ -221,5 +221,29 @@ void main() {
     final after =
         await db.customSelect('SELECT in_pantry FROM ingredients').getSingle();
     expect(after.read<bool>('in_pantry'), isTrue);
+  });
+
+  test('migração v6→v7: receitas preservadas, sem foto enviada por padrão',
+      () async {
+    final schema = await verifier.schemaAt(6);
+
+    final oldDb = AppDatabase.forTesting(schema.newConnection());
+    await oldDb.customStatement(
+      "INSERT INTO recipes (id, name, created_at, updated_at, is_favorite, "
+      "image_path) VALUES ('r1', 'Bolo', '2026-01-01T00:00:00.000Z', "
+      "'2026-01-01T00:00:00.000Z', 0, 'r1_1.jpg')",
+    );
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 7);
+    addTearDown(db.close);
+
+    final row = await db
+        .customSelect('SELECT name, image_path, image_synced_path FROM recipes')
+        .getSingle();
+    expect(row.read<String>('name'), 'Bolo');
+    expect(row.read<String?>('image_path'), 'r1_1.jpg');
+    expect(row.read<String?>('image_synced_path'), isNull);
   });
 }

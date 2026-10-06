@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/auth_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 
 import '../../helpers/fake_auth_service.dart';
@@ -10,7 +11,10 @@ const _ana = AppUser(id: 'u1', email: 'ana@x.com', name: 'Ana Souza');
 
 ProviderContainer _container(FakeAuthService service) {
   final c = ProviderContainer(
-    overrides: [authServiceProvider.overrideWithValue(service)],
+    overrides: [
+      authServiceProvider.overrideWithValue(service),
+      imageRemoteProvider.overrideWithValue(const NoImageRemote()),
+    ],
   );
   addTearDown(c.dispose);
   return c;

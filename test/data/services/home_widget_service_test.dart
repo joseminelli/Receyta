@@ -41,7 +41,8 @@ void main() {
       lists: const [],
     );
     final meals = p['meals']! as List;
-    expect(meals.map((m) => (m as Map)['name']), ['Ontem', 'Almoço A', 'Jantar A']);
+    expect(meals.map((m) => (m as Map)['name']),
+        ['Ontem', 'Almoço A', 'Jantar A']);
     expect((meals[1] as Map)['date'], '2026-09-29');
     expect((meals[1] as Map)['done'], isTrue);
   });

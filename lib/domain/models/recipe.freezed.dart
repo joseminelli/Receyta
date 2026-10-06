@@ -26,6 +26,11 @@ mixin _$Recipe {
   int? get cookMinutes => throw _privateConstructorUsedError;
   int? get servings => throw _privateConstructorUsedError;
   String? get imagePath => throw _privateConstructorUsedError;
+
+  /// Foto já enviada ao Storage (ver `Recipes.imageSyncedPath`). Só o
+  /// serviço de envio mexe nisso; precisa viajar no modelo pra o salvar da
+  /// receita não zerar o campo.
+  String? get imageSyncedPath => throw _privateConstructorUsedError;
   String? get sourceUrl => throw _privateConstructorUsedError;
   String? get notes => throw _privateConstructorUsedError;
 
@@ -63,6 +68,7 @@ abstract class $RecipeCopyWith<$Res> {
       int? cookMinutes,
       int? servings,
       String? imagePath,
+      String? imageSyncedPath,
       String? sourceUrl,
       String? notes,
       TileColor? tileColor,
@@ -97,6 +103,7 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
     Object? cookMinutes = freezed,
     Object? servings = freezed,
     Object? imagePath = freezed,
+    Object? imageSyncedPath = freezed,
     Object? sourceUrl = freezed,
     Object? notes = freezed,
     Object? tileColor = freezed,
@@ -145,6 +152,10 @@ class _$RecipeCopyWithImpl<$Res, $Val extends Recipe>
       imagePath: freezed == imagePath
           ? _value.imagePath
           : imagePath // ignore: cast_nullable_to_non_nullable
+              as String?,
+      imageSyncedPath: freezed == imageSyncedPath
+          ? _value.imageSyncedPath
+          : imageSyncedPath // ignore: cast_nullable_to_non_nullable
               as String?,
       sourceUrl: freezed == sourceUrl
           ? _value.sourceUrl
@@ -196,6 +207,7 @@ abstract class _$$RecipeImplCopyWith<$Res> implements $RecipeCopyWith<$Res> {
       int? cookMinutes,
       int? servings,
       String? imagePath,
+      String? imageSyncedPath,
       String? sourceUrl,
       String? notes,
       TileColor? tileColor,
@@ -228,6 +240,7 @@ class __$$RecipeImplCopyWithImpl<$Res>
     Object? cookMinutes = freezed,
     Object? servings = freezed,
     Object? imagePath = freezed,
+    Object? imageSyncedPath = freezed,
     Object? sourceUrl = freezed,
     Object? notes = freezed,
     Object? tileColor = freezed,
@@ -277,6 +290,10 @@ class __$$RecipeImplCopyWithImpl<$Res>
           ? _value.imagePath
           : imagePath // ignore: cast_nullable_to_non_nullable
               as String?,
+      imageSyncedPath: freezed == imageSyncedPath
+          ? _value.imageSyncedPath
+          : imageSyncedPath // ignore: cast_nullable_to_non_nullable
+              as String?,
       sourceUrl: freezed == sourceUrl
           ? _value.sourceUrl
           : sourceUrl // ignore: cast_nullable_to_non_nullable
@@ -323,6 +340,7 @@ class _$RecipeImpl implements _Recipe {
       this.cookMinutes,
       this.servings,
       this.imagePath,
+      this.imageSyncedPath,
       this.sourceUrl,
       this.notes,
       this.tileColor,
@@ -351,6 +369,12 @@ class _$RecipeImpl implements _Recipe {
   final int? servings;
   @override
   final String? imagePath;
+
+  /// Foto já enviada ao Storage (ver `Recipes.imageSyncedPath`). Só o
+  /// serviço de envio mexe nisso; precisa viajar no modelo pra o salvar da
+  /// receita não zerar o campo.
+  @override
+  final String? imageSyncedPath;
   @override
   final String? sourceUrl;
   @override
@@ -376,7 +400,7 @@ class _$RecipeImpl implements _Recipe {
 
   @override
   String toString() {
-    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, sourceUrl: $sourceUrl, notes: $notes, tileColor: $tileColor, tileMotif: $tileMotif, isFavorite: $isFavorite, deletedAt: $deletedAt, lastOpenedAt: $lastOpenedAt)';
+    return 'Recipe(id: $id, name: $name, createdAt: $createdAt, updatedAt: $updatedAt, folderId: $folderId, about: $about, prepMinutes: $prepMinutes, cookMinutes: $cookMinutes, servings: $servings, imagePath: $imagePath, imageSyncedPath: $imageSyncedPath, sourceUrl: $sourceUrl, notes: $notes, tileColor: $tileColor, tileMotif: $tileMotif, isFavorite: $isFavorite, deletedAt: $deletedAt, lastOpenedAt: $lastOpenedAt)';
   }
 
   @override
@@ -401,6 +425,8 @@ class _$RecipeImpl implements _Recipe {
                 other.servings == servings) &&
             (identical(other.imagePath, imagePath) ||
                 other.imagePath == imagePath) &&
+            (identical(other.imageSyncedPath, imageSyncedPath) ||
+                other.imageSyncedPath == imageSyncedPath) &&
             (identical(other.sourceUrl, sourceUrl) ||
                 other.sourceUrl == sourceUrl) &&
             (identical(other.notes, notes) || other.notes == notes) &&
@@ -429,6 +455,7 @@ class _$RecipeImpl implements _Recipe {
       cookMinutes,
       servings,
       imagePath,
+      imageSyncedPath,
       sourceUrl,
       notes,
       tileColor,
@@ -458,6 +485,7 @@ abstract class _Recipe implements Recipe {
       final int? cookMinutes,
       final int? servings,
       final String? imagePath,
+      final String? imageSyncedPath,
       final String? sourceUrl,
       final String? notes,
       final TileColor? tileColor,
@@ -486,6 +514,12 @@ abstract class _Recipe implements Recipe {
   int? get servings;
   @override
   String? get imagePath;
+
+  /// Foto já enviada ao Storage (ver `Recipes.imageSyncedPath`). Só o
+  /// serviço de envio mexe nisso; precisa viajar no modelo pra o salvar da
+  /// receita não zerar o campo.
+  @override
+  String? get imageSyncedPath;
   @override
   String? get sourceUrl;
   @override

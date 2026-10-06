@@ -12,7 +12,9 @@ void main() {
 
   AutoBackupService service() => AutoBackupService(
         buildPayload: () async => Ok({
-          'recipes': [for (var i = 0; i < recipes; i++) {'name': 'r$i'}],
+          'recipes': [
+            for (var i = 0; i < recipes; i++) {'name': 'r$i'}
+          ],
         }),
         directory: () async => dir,
         clock: () => now,

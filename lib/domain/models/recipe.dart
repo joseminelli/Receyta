@@ -21,6 +21,11 @@ class Recipe with _$Recipe {
     int? cookMinutes,
     int? servings,
     String? imagePath,
+
+    /// Foto já enviada ao Storage (ver `Recipes.imageSyncedPath`). Só o
+    /// serviço de envio mexe nisso; precisa viajar no modelo pra o salvar da
+    /// receita não zerar o campo.
+    String? imageSyncedPath,
     String? sourceUrl,
     String? notes,
 

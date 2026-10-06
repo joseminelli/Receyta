@@ -18,10 +18,12 @@ class WeekPlannerService {
           ..where((r) => r.deletedAt.isNull()))
         .get();
 
-    final tagRows = await _db.customSelect(
-      'SELECT rt.recipe_id AS rid, t.name AS name FROM recipe_tags rt '
-      'JOIN tags t ON t.id = rt.tag_id',
-    ).get();
+    final tagRows = await _db
+        .customSelect(
+          'SELECT rt.recipe_id AS rid, t.name AS name FROM recipe_tags rt '
+          'JOIN tags t ON t.id = rt.tag_id',
+        )
+        .get();
     final tags = <String, Set<String>>{};
     for (final r in tagRows) {
       tags
@@ -29,10 +31,12 @@ class WeekPlannerService {
           .add(stripAccents(r.read<String>('name').toLowerCase()));
     }
 
-    final cookRows = await _db.customSelect(
-      'SELECT recipe_id AS rid, MAX(cooked_at) AS last, COUNT(*) AS n '
-      'FROM cook_logs GROUP BY recipe_id',
-    ).get();
+    final cookRows = await _db
+        .customSelect(
+          'SELECT recipe_id AS rid, MAX(cooked_at) AS last, COUNT(*) AS n '
+          'FROM cook_logs GROUP BY recipe_id',
+        )
+        .get();
     final cooked = <String, ({DateTime last, int n})>{};
     for (final r in cookRows) {
       final last = DateTime.tryParse(r.read<String>('last'));
@@ -41,10 +45,12 @@ class WeekPlannerService {
       }
     }
 
-    final planRows = await _db.customSelect(
-      'SELECT recipe_id AS rid, MAX(date) AS last FROM meal_plan_entries '
-      'GROUP BY recipe_id',
-    ).get();
+    final planRows = await _db
+        .customSelect(
+          'SELECT recipe_id AS rid, MAX(date) AS last FROM meal_plan_entries '
+          'GROUP BY recipe_id',
+        )
+        .get();
     final scheduled = <String, DateTime>{};
     for (final r in planRows) {
       final d = DateTime.tryParse(r.read<String>('last'));

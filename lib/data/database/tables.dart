@@ -42,6 +42,11 @@ class Recipes extends Table {
   IntColumn get cookMinutes => integer().nullable()();
   IntColumn get servings => integer().nullable()();
   TextColumn get imagePath => text().nullable()();
+
+  /// Nome da foto que já foi enviada pro Storage. Diferente de `imagePath` =
+  /// há o que enviar (foto nova/trocada) ou o que apagar na nuvem (trocada
+  /// ou removida). Nulo = nada enviado.
+  TextColumn get imageSyncedPath => text().nullable()();
   TextColumn get sourceUrl => text().nullable()();
   TextColumn get notes => text().nullable()();
 

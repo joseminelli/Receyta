@@ -42,8 +42,8 @@ void main() {
     expect(await hasIndex('idx_recipe_tags_tag_id'), isTrue);
   });
 
-  test('schema v4', () {
-    expect(db.schemaVersion, 4);
+  test('schema v7', () {
+    expect(db.schemaVersion, 7);
   });
 
   test('onCreate cria todas as tabelas do schema + o índice FTS', () async {
