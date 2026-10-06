@@ -68,6 +68,7 @@ END''',
     RecipeTags,
     MealPlanEntries,
     CookLogs,
+    SyncTombstones,
     ShoppingLists,
     ShoppingListItems,
     ShoppingItemSources,
@@ -90,7 +91,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -109,6 +110,10 @@ class AppDatabase extends _$AppDatabase {
   /// v5: tabela `cook_logs` (histórico "cozinhei", G7).
   /// v6: `ingredients.in_pantry` (despensa, G11).
   /// v7: `recipes.image_synced_path` (foto já enviada ao Storage, H0).
+  /// v8: `recipes.synced_at` / `folders.synced_at` e a tabela
+  /// `sync_tombstones` (sync de receitas e pastas com a conta, H3). Tudo que já
+  /// existe entra com `synced_at` nulo = pendente, então a 1ª sincronização
+  /// sobe a biblioteca inteira.
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -153,6 +158,11 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 7) {
             await m.addColumn(recipes, recipes.imageSyncedPath);
+          }
+          if (from < 8) {
+            await m.addColumn(recipes, recipes.syncedAt);
+            await m.addColumn(folders, folders.syncedAt);
+            await m.createTable(syncTombstones);
           }
           if (from < 5) {
             await m.createTable(cookLogs);
@@ -269,6 +279,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(shoppingListItems).go();
       await delete(shoppingLists).go();
       await delete(cookLogs).go();
+      await delete(syncTombstones).go();
       await delete(mealPlanEntries).go();
       await delete(recipeTags).go();
       await delete(recipeSteps).go();

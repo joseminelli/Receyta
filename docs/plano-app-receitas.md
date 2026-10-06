@@ -1051,7 +1051,17 @@ Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princí
 | H1 | Link efêmero (ex-D7): function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
 | H2 | Deep link (ex-D8): App Links/Universal Links resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
 
-#### H3 — Sync de receitas e pastas (proposta, 2026-10-06)
+#### H3 — Sync de receitas e pastas (em andamento)
+
+**Decisões (2026-10-06):** escopo inicial receitas + pastas (o resto no H4); conflito = a edição mais recente vence, por item. Seguimos com as duas por orientação do usuário ("podemos seguir").
+
+**Andamento:**
+- ✅ **Etapa 1 — SQL** (`docs/supabase/sync.sql`): tabela `sync_docs` (uma linha por item, `data` jsonb, `deleted`, `edited_at` do aparelho, `updated_at` do servidor = cursor), RLS por `auth.uid()` e um trigger que descarta atualização com `edited_at` mais antigo que o gravado. **O usuário precisa rodar no painel.**
+- ✅ **Etapa 2 — banco local, schema v8:** `recipes.synced_at`, `folders.synced_at` (pendente = nulo ou `updated_at` maior) e a tabela `sync_tombstones` (aviso de exclusão definitiva, só pra item que já subiu; `hardDelete`, `purgeExpired` e `deleteFolder` gravam). `dirtyForSync`/`markSynced` nos dois DAOs. Abrir a receita e marcar foto enviada NÃO contam como edição.
+- ✅ **Etapa 3a — formato** (`domain/engine/sync_codec.dart`, Dart puro): receita completa (azulejo, favorita, lixeira, pasta, datas, foto pelo nome, ingredientes por nome) e pasta; tolerante a lixo e ignora corpo de versão mais nova.
+- ⏳ **Etapa 3b — motor** (puxar, aplicar com "mais recente vence", enviar em lote, avisos de exclusão, foto antes do envio), **etapa 4 — gatilhos + indicador na tela Conta**, **etapa 5 — ajustes finais** (limpar dados, primeiro login).
+
+#### H3 — desenho original (proposta)
 
 **Decisões já tomadas:** usar a conta Google (já configurada) como identidade; começar por receitas e pastas.
 **Decisões pendentes do usuário:** (1) confirmar o escopo inicial — receitas + pastas agora, o resto no H4; (2) aceitar **conflito por "a edição mais recente vence", por receita** (sem mesclar campo a campo).

@@ -74,6 +74,12 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
   late final GeneratedColumn<DateTime> lastOpenedAt = GeneratedColumn<DateTime>(
       'last_opened_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -85,7 +91,8 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
         createdAt,
         updatedAt,
         deletedAt,
-        lastOpenedAt
+        lastOpenedAt,
+        syncedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -142,6 +149,10 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
           lastOpenedAt.isAcceptableOrUnknown(
               data['last_opened_at']!, _lastOpenedAtMeta));
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
     return context;
   }
 
@@ -171,6 +182,8 @@ class $FoldersTable extends Folders with TableInfo<$FoldersTable, FolderRow> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       lastOpenedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_opened_at']),
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
     );
   }
 
@@ -199,6 +212,10 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
   /// `addColumn` de migração não backfilla por linha sozinho (v3→v4 faz isso
   /// com um `UPDATE`, ver `app_database.dart`).
   final DateTime? lastOpenedAt;
+
+  /// O `updated_at` que a pasta tinha quando foi sincronizada com a conta (H3).
+  /// Nulo ou menor que `updated_at` = mudou desde então e precisa subir.
+  final DateTime? syncedAt;
   const FolderRow(
       {required this.id,
       this.parentId,
@@ -209,7 +226,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       required this.createdAt,
       required this.updatedAt,
       this.deletedAt,
-      this.lastOpenedAt});
+      this.lastOpenedAt,
+      this.syncedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -232,6 +250,9 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
     }
     if (!nullToAbsent || lastOpenedAt != null) {
       map['last_opened_at'] = Variable<DateTime>(lastOpenedAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
     }
     return map;
   }
@@ -258,6 +279,9 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       lastOpenedAt: lastOpenedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastOpenedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -275,6 +299,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       lastOpenedAt: serializer.fromJson<DateTime?>(json['lastOpenedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -291,6 +316,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'lastOpenedAt': serializer.toJson<DateTime?>(lastOpenedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -304,7 +330,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<DateTime?> deletedAt = const Value.absent(),
-          Value<DateTime?> lastOpenedAt = const Value.absent()}) =>
+          Value<DateTime?> lastOpenedAt = const Value.absent(),
+          Value<DateTime?> syncedAt = const Value.absent()}) =>
       FolderRow(
         id: id ?? this.id,
         parentId: parentId.present ? parentId.value : this.parentId,
@@ -317,6 +344,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         lastOpenedAt:
             lastOpenedAt.present ? lastOpenedAt.value : this.lastOpenedAt,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
       );
   FolderRow copyWithCompanion(FoldersCompanion data) {
     return FolderRow(
@@ -332,6 +360,7 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
       lastOpenedAt: data.lastOpenedAt.present
           ? data.lastOpenedAt.value
           : this.lastOpenedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -347,14 +376,15 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('lastOpenedAt: $lastOpenedAt')
+          ..write('lastOpenedAt: $lastOpenedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, parentId, name, tileColor, tileMotif,
-      position, createdAt, updatedAt, deletedAt, lastOpenedAt);
+      position, createdAt, updatedAt, deletedAt, lastOpenedAt, syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -368,7 +398,8 @@ class FolderRow extends DataClass implements Insertable<FolderRow> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
-          other.lastOpenedAt == this.lastOpenedAt);
+          other.lastOpenedAt == this.lastOpenedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class FoldersCompanion extends UpdateCompanion<FolderRow> {
@@ -382,6 +413,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
   final Value<DateTime?> lastOpenedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const FoldersCompanion({
     this.id = const Value.absent(),
@@ -394,6 +426,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.lastOpenedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   FoldersCompanion.insert({
@@ -407,6 +440,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.lastOpenedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name);
@@ -421,6 +455,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
     Expression<DateTime>? lastOpenedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -434,6 +469,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (lastOpenedAt != null) 'last_opened_at': lastOpenedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -449,6 +485,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
       Value<DateTime?>? lastOpenedAt,
+      Value<DateTime?>? syncedAt,
       Value<int>? rowid}) {
     return FoldersCompanion(
       id: id ?? this.id,
@@ -461,6 +498,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -498,6 +536,9 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
     if (lastOpenedAt.present) {
       map['last_opened_at'] = Variable<DateTime>(lastOpenedAt.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -517,6 +558,7 @@ class FoldersCompanion extends UpdateCompanion<FolderRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('lastOpenedAt: $lastOpenedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -643,6 +685,12 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
   late final GeneratedColumn<DateTime> lastOpenedAt = GeneratedColumn<DateTime>(
       'last_opened_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -662,7 +710,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
         createdAt,
         updatedAt,
         deletedAt,
-        lastOpenedAt
+        lastOpenedAt,
+        syncedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -759,6 +808,10 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
           lastOpenedAt.isAcceptableOrUnknown(
               data['last_opened_at']!, _lastOpenedAtMeta));
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
     return context;
   }
 
@@ -804,6 +857,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, RecipeRow> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at']),
       lastOpenedAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_opened_at']),
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
     );
   }
 
@@ -842,6 +897,12 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
   /// Último acesso — criação ou abertura (§ "recentes" da home). Ver o
   /// comentário equivalente em `Folders`.
   final DateTime? lastOpenedAt;
+
+  /// O `updated_at` que a receita tinha quando foi sincronizada com a conta
+  /// (H3). Nulo ou menor que `updated_at` = mudou desde então e precisa subir.
+  /// Abrir a receita (`last_opened_at`) e marcar a foto como enviada não mexem
+  /// em `updated_at`, então não contam como mudança.
+  final DateTime? syncedAt;
   const RecipeRow(
       {required this.id,
       this.folderId,
@@ -860,7 +921,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       required this.createdAt,
       required this.updatedAt,
       this.deletedAt,
-      this.lastOpenedAt});
+      this.lastOpenedAt,
+      this.syncedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -907,6 +969,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
     }
     if (!nullToAbsent || lastOpenedAt != null) {
       map['last_opened_at'] = Variable<DateTime>(lastOpenedAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
     }
     return map;
   }
@@ -955,6 +1020,9 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       lastOpenedAt: lastOpenedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(lastOpenedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -980,6 +1048,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
       lastOpenedAt: serializer.fromJson<DateTime?>(json['lastOpenedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -1004,6 +1073,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'deletedAt': serializer.toJson<DateTime?>(deletedAt),
       'lastOpenedAt': serializer.toJson<DateTime?>(lastOpenedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -1025,7 +1095,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<DateTime?> deletedAt = const Value.absent(),
-          Value<DateTime?> lastOpenedAt = const Value.absent()}) =>
+          Value<DateTime?> lastOpenedAt = const Value.absent(),
+          Value<DateTime?> syncedAt = const Value.absent()}) =>
       RecipeRow(
         id: id ?? this.id,
         folderId: folderId.present ? folderId.value : this.folderId,
@@ -1048,6 +1119,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
         deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
         lastOpenedAt:
             lastOpenedAt.present ? lastOpenedAt.value : this.lastOpenedAt,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
       );
   RecipeRow copyWithCompanion(RecipesCompanion data) {
     return RecipeRow(
@@ -1076,6 +1148,7 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       lastOpenedAt: data.lastOpenedAt.present
           ? data.lastOpenedAt.value
           : this.lastOpenedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -1099,7 +1172,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
-          ..write('lastOpenedAt: $lastOpenedAt')
+          ..write('lastOpenedAt: $lastOpenedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
@@ -1123,7 +1197,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
       createdAt,
       updatedAt,
       deletedAt,
-      lastOpenedAt);
+      lastOpenedAt,
+      syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1145,7 +1220,8 @@ class RecipeRow extends DataClass implements Insertable<RecipeRow> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.deletedAt == this.deletedAt &&
-          other.lastOpenedAt == this.lastOpenedAt);
+          other.lastOpenedAt == this.lastOpenedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class RecipesCompanion extends UpdateCompanion<RecipeRow> {
@@ -1167,6 +1243,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
   final Value<DateTime> updatedAt;
   final Value<DateTime?> deletedAt;
   final Value<DateTime?> lastOpenedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const RecipesCompanion({
     this.id = const Value.absent(),
@@ -1187,6 +1264,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.lastOpenedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RecipesCompanion.insert({
@@ -1208,6 +1286,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     this.updatedAt = const Value.absent(),
     this.deletedAt = const Value.absent(),
     this.lastOpenedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name);
@@ -1230,6 +1309,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? deletedAt,
     Expression<DateTime>? lastOpenedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1251,6 +1331,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (deletedAt != null) 'deleted_at': deletedAt,
       if (lastOpenedAt != null) 'last_opened_at': lastOpenedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1274,6 +1355,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       Value<DateTime>? updatedAt,
       Value<DateTime?>? deletedAt,
       Value<DateTime?>? lastOpenedAt,
+      Value<DateTime?>? syncedAt,
       Value<int>? rowid}) {
     return RecipesCompanion(
       id: id ?? this.id,
@@ -1294,6 +1376,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1355,6 +1438,9 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
     if (lastOpenedAt.present) {
       map['last_opened_at'] = Variable<DateTime>(lastOpenedAt.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1382,6 +1468,7 @@ class RecipesCompanion extends UpdateCompanion<RecipeRow> {
           ..write('updatedAt: $updatedAt, ')
           ..write('deletedAt: $deletedAt, ')
           ..write('lastOpenedAt: $lastOpenedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4647,6 +4734,236 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
   }
 }
 
+class $SyncTombstonesTable extends SyncTombstones
+    with TableInfo<$SyncTombstonesTable, SyncTombstoneRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncTombstonesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+      'kind', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _deletedAtMeta =
+      const VerificationMeta('deletedAt');
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+      'deleted_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns => [kind, id, deletedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_tombstones';
+  @override
+  VerificationContext validateIntegrity(Insertable<SyncTombstoneRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('kind')) {
+      context.handle(
+          _kindMeta, kind.isAcceptableOrUnknown(data['kind']!, _kindMeta));
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(_deletedAtMeta,
+          deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta));
+    } else if (isInserting) {
+      context.missing(_deletedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {kind, id};
+  @override
+  SyncTombstoneRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncTombstoneRow(
+      kind: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}kind'])!,
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      deletedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at'])!,
+    );
+  }
+
+  @override
+  $SyncTombstonesTable createAlias(String alias) {
+    return $SyncTombstonesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncTombstoneRow extends DataClass
+    implements Insertable<SyncTombstoneRow> {
+  /// `recipe` ou `folder`.
+  final String kind;
+  final String id;
+  final DateTime deletedAt;
+  const SyncTombstoneRow(
+      {required this.kind, required this.id, required this.deletedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['kind'] = Variable<String>(kind);
+    map['id'] = Variable<String>(id);
+    map['deleted_at'] = Variable<DateTime>(deletedAt);
+    return map;
+  }
+
+  SyncTombstonesCompanion toCompanion(bool nullToAbsent) {
+    return SyncTombstonesCompanion(
+      kind: Value(kind),
+      id: Value(id),
+      deletedAt: Value(deletedAt),
+    );
+  }
+
+  factory SyncTombstoneRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncTombstoneRow(
+      kind: serializer.fromJson<String>(json['kind']),
+      id: serializer.fromJson<String>(json['id']),
+      deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'kind': serializer.toJson<String>(kind),
+      'id': serializer.toJson<String>(id),
+      'deletedAt': serializer.toJson<DateTime>(deletedAt),
+    };
+  }
+
+  SyncTombstoneRow copyWith({String? kind, String? id, DateTime? deletedAt}) =>
+      SyncTombstoneRow(
+        kind: kind ?? this.kind,
+        id: id ?? this.id,
+        deletedAt: deletedAt ?? this.deletedAt,
+      );
+  SyncTombstoneRow copyWithCompanion(SyncTombstonesCompanion data) {
+    return SyncTombstoneRow(
+      kind: data.kind.present ? data.kind.value : this.kind,
+      id: data.id.present ? data.id.value : this.id,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncTombstoneRow(')
+          ..write('kind: $kind, ')
+          ..write('id: $id, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(kind, id, deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncTombstoneRow &&
+          other.kind == this.kind &&
+          other.id == this.id &&
+          other.deletedAt == this.deletedAt);
+}
+
+class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstoneRow> {
+  final Value<String> kind;
+  final Value<String> id;
+  final Value<DateTime> deletedAt;
+  final Value<int> rowid;
+  const SyncTombstonesCompanion({
+    this.kind = const Value.absent(),
+    this.id = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncTombstonesCompanion.insert({
+    required String kind,
+    required String id,
+    required DateTime deletedAt,
+    this.rowid = const Value.absent(),
+  })  : kind = Value(kind),
+        id = Value(id),
+        deletedAt = Value(deletedAt);
+  static Insertable<SyncTombstoneRow> custom({
+    Expression<String>? kind,
+    Expression<String>? id,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (kind != null) 'kind': kind,
+      if (id != null) 'id': id,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncTombstonesCompanion copyWith(
+      {Value<String>? kind,
+      Value<String>? id,
+      Value<DateTime>? deletedAt,
+      Value<int>? rowid}) {
+    return SyncTombstonesCompanion(
+      kind: kind ?? this.kind,
+      id: id ?? this.id,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncTombstonesCompanion(')
+          ..write('kind: $kind, ')
+          ..write('id: $id, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ShoppingListsTable extends ShoppingLists
     with TableInfo<$ShoppingListsTable, ShoppingListRow> {
   @override
@@ -5968,6 +6285,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MealPlanEntriesTable mealPlanEntries =
       $MealPlanEntriesTable(this);
   late final $CookLogsTable cookLogs = $CookLogsTable(this);
+  late final $SyncTombstonesTable syncTombstones = $SyncTombstonesTable(this);
   late final $ShoppingListsTable shoppingLists = $ShoppingListsTable(this);
   late final $ShoppingListItemsTable shoppingListItems =
       $ShoppingListItemsTable(this);
@@ -6000,6 +6318,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         recipeTags,
         mealPlanEntries,
         cookLogs,
+        syncTombstones,
         shoppingLists,
         shoppingListItems,
         shoppingItemSources,
@@ -6138,6 +6457,7 @@ typedef $$FoldersTableCreateCompanionBuilder = FoldersCompanion Function({
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
   Value<DateTime?> lastOpenedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
@@ -6151,6 +6471,7 @@ typedef $$FoldersTableUpdateCompanionBuilder = FoldersCompanion Function({
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
   Value<DateTime?> lastOpenedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 
@@ -6181,6 +6502,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<DateTime?> lastOpenedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion(
@@ -6194,6 +6516,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             lastOpenedAt: lastOpenedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6207,6 +6530,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<DateTime?> lastOpenedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               FoldersCompanion.insert(
@@ -6220,6 +6544,7 @@ class $$FoldersTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             lastOpenedAt: lastOpenedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
         ));
@@ -6275,6 +6600,11 @@ class $$FoldersTableFilterComposer
 
   ColumnFilters<DateTime> get lastOpenedAt => $state.composableBuilder(
       column: $state.table.lastOpenedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -6344,6 +6674,11 @@ class $$FoldersTableOrderingComposer
       column: $state.table.lastOpenedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
 typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
@@ -6365,6 +6700,7 @@ typedef $$RecipesTableCreateCompanionBuilder = RecipesCompanion Function({
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
   Value<DateTime?> lastOpenedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
@@ -6386,6 +6722,7 @@ typedef $$RecipesTableUpdateCompanionBuilder = RecipesCompanion Function({
   Value<DateTime> updatedAt,
   Value<DateTime?> deletedAt,
   Value<DateTime?> lastOpenedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 
@@ -6424,6 +6761,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<DateTime?> lastOpenedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RecipesCompanion(
@@ -6445,6 +6783,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             lastOpenedAt: lastOpenedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -6466,6 +6805,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> deletedAt = const Value.absent(),
             Value<DateTime?> lastOpenedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               RecipesCompanion.insert(
@@ -6487,6 +6827,7 @@ class $$RecipesTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             deletedAt: deletedAt,
             lastOpenedAt: lastOpenedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
         ));
@@ -6577,6 +6918,11 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<DateTime> get lastOpenedAt => $state.composableBuilder(
       column: $state.table.lastOpenedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -6765,6 +7111,11 @@ class $$RecipesTableOrderingComposer
 
   ColumnOrderings<DateTime> get lastOpenedAt => $state.composableBuilder(
       column: $state.table.lastOpenedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -8354,6 +8705,103 @@ class $$CookLogsTableOrderingComposer
   }
 }
 
+typedef $$SyncTombstonesTableCreateCompanionBuilder = SyncTombstonesCompanion
+    Function({
+  required String kind,
+  required String id,
+  required DateTime deletedAt,
+  Value<int> rowid,
+});
+typedef $$SyncTombstonesTableUpdateCompanionBuilder = SyncTombstonesCompanion
+    Function({
+  Value<String> kind,
+  Value<String> id,
+  Value<DateTime> deletedAt,
+  Value<int> rowid,
+});
+
+class $$SyncTombstonesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SyncTombstonesTable,
+    SyncTombstoneRow,
+    $$SyncTombstonesTableFilterComposer,
+    $$SyncTombstonesTableOrderingComposer,
+    $$SyncTombstonesTableCreateCompanionBuilder,
+    $$SyncTombstonesTableUpdateCompanionBuilder> {
+  $$SyncTombstonesTableTableManager(
+      _$AppDatabase db, $SyncTombstonesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$SyncTombstonesTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$SyncTombstonesTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> kind = const Value.absent(),
+            Value<String> id = const Value.absent(),
+            Value<DateTime> deletedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SyncTombstonesCompanion(
+            kind: kind,
+            id: id,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String kind,
+            required String id,
+            required DateTime deletedAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SyncTombstonesCompanion.insert(
+            kind: kind,
+            id: id,
+            deletedAt: deletedAt,
+            rowid: rowid,
+          ),
+        ));
+}
+
+class $$SyncTombstonesTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $SyncTombstonesTable> {
+  $$SyncTombstonesTableFilterComposer(super.$state);
+  ColumnFilters<String> get kind => $state.composableBuilder(
+      column: $state.table.kind,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get deletedAt => $state.composableBuilder(
+      column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$SyncTombstonesTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $SyncTombstonesTable> {
+  $$SyncTombstonesTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get kind => $state.composableBuilder(
+      column: $state.table.kind,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get deletedAt => $state.composableBuilder(
+      column: $state.table.deletedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+}
+
 typedef $$ShoppingListsTableCreateCompanionBuilder = ShoppingListsCompanion
     Function({
   required String id,
@@ -9038,6 +9486,8 @@ class $AppDatabaseManager {
       $$MealPlanEntriesTableTableManager(_db, _db.mealPlanEntries);
   $$CookLogsTableTableManager get cookLogs =>
       $$CookLogsTableTableManager(_db, _db.cookLogs);
+  $$SyncTombstonesTableTableManager get syncTombstones =>
+      $$SyncTombstonesTableTableManager(_db, _db.syncTombstones);
   $$ShoppingListsTableTableManager get shoppingLists =>
       $$ShoppingListsTableTableManager(_db, _db.shoppingLists);
   $$ShoppingListItemsTableTableManager get shoppingListItems =>

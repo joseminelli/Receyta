@@ -9,8 +9,14 @@ part 'recipe_dao.g.dart';
 /// suas listas em `recipe_ingredients` / `recipe_steps` / `recipe_tags`. Só
 /// linhas ativas — o soft delete do §RF-01.6 é escondido aqui, não no
 /// repositório. O catálogo de tags (getOrCreate por nome) fica na [TagDao].
-@DriftAccessor(
-    tables: [Recipes, RecipeIngredients, RecipeSteps, Tags, RecipeTags])
+@DriftAccessor(tables: [
+  Recipes,
+  RecipeIngredients,
+  RecipeSteps,
+  Tags,
+  RecipeTags,
+  SyncTombstones,
+])
 class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   RecipeDao(super.db);
 
@@ -374,8 +380,27 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   }
 
   /// Apaga de verdade — o cascade leva ingredientes, passos e vínculos de tag.
+  /// Se a receita já tinha sido sincronizada, deixa um aviso de exclusão pra
+  /// nuvem (H3).
   Future<int> hardDelete(String id) {
-    return (delete(recipes)..where((r) => r.id.equals(id))).go();
+    return transaction(() async {
+      final row = await findIncludingTrashed(id);
+      final count = await (delete(recipes)..where((r) => r.id.equals(id))).go();
+      if (row?.syncedAt != null) {
+        await _tombstone(id);
+      }
+      return count;
+    });
+  }
+
+  Future<void> _tombstone(String id) {
+    return into(syncTombstones).insertOnConflictUpdate(
+      SyncTombstonesCompanion.insert(
+        kind: 'recipe',
+        id: id,
+        deletedAt: DateTime.now().toUtc(),
+      ),
+    );
   }
 
   /// Linhas da lixeira que já passaram do prazo — lidas antes do
@@ -389,9 +414,33 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
 
   /// Esvazia da lixeira tudo que passou do prazo. Roda no boot.
   Future<int> purgeExpired(DateTime cutoff) {
-    return (delete(recipes)
+    return transaction(() async {
+      final expired = await expiredInTrash(cutoff);
+      final count = await (delete(recipes)
+            ..where((r) =>
+                r.deletedAt.isNotNull() &
+                r.deletedAt.isSmallerThanValue(cutoff)))
+          .go();
+      for (final r in expired) {
+        if (r.syncedAt != null) await _tombstone(r.id);
+      }
+      return count;
+    });
+  }
+
+  /// Receitas (inclusive as da lixeira) que mudaram desde a última
+  /// sincronização ou nunca subiram.
+  Future<List<RecipeRow>> dirtyForSync() {
+    return (select(recipes)
           ..where((r) =>
-              r.deletedAt.isNotNull() & r.deletedAt.isSmallerThanValue(cutoff)))
-        .go();
+              r.syncedAt.isNull() | r.updatedAt.isBiggerThan(r.syncedAt)))
+        .get();
+  }
+
+  /// Marca como sincronizada a versão [updatedAt]. Se a receita foi editada
+  /// no meio do caminho (`updated_at` maior), continua pendente.
+  Future<int> markSynced(String id, DateTime updatedAt) {
+    return (update(recipes)..where((r) => r.id.equals(id)))
+        .write(RecipesCompanion(syncedAt: Value(updatedAt)));
   }
 }

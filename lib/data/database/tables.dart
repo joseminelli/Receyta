@@ -27,6 +27,10 @@ class Folders extends Table {
   /// com um `UPDATE`, ver `app_database.dart`).
   DateTimeColumn get lastOpenedAt => dateTime().nullable()();
 
+  /// O `updated_at` que a pasta tinha quando foi sincronizada com a conta (H3).
+  /// Nulo ou menor que `updated_at` = mudou desde então e precisa subir.
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -64,8 +68,28 @@ class Recipes extends Table {
   /// comentário equivalente em `Folders`.
   DateTimeColumn get lastOpenedAt => dateTime().nullable()();
 
+  /// O `updated_at` que a receita tinha quando foi sincronizada com a conta
+  /// (H3). Nulo ou menor que `updated_at` = mudou desde então e precisa subir.
+  /// Abrir a receita (`last_opened_at`) e marcar a foto como enviada não mexem
+  /// em `updated_at`, então não contam como mudança.
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Receitas e pastas apagadas DE VEZ que a nuvem ainda precisa saber (H3).
+/// Linha só nasce se o item já tinha sido sincronizado; sai quando o aviso
+/// chega ao servidor.
+@DataClassName('SyncTombstoneRow')
+class SyncTombstones extends Table {
+  /// `recipe` ou `folder`.
+  TextColumn get kind => text()();
+  TextColumn get id => text()();
+  DateTimeColumn get deletedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {kind, id};
 }
 
 /// Corredores do mercado, na ordem de percurso. Seed em `seed_data.dart`.

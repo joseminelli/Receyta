@@ -10,7 +10,7 @@ part 'folder_dao.g.dart';
 /// apontam pra pasta por `folderId`. Excluir uma pasta sobe o conteúdo
 /// (subpastas e receitas) pro pai — nada é apagado junto. Só linhas ativas: o
 /// soft delete fica escondido aqui, como na [RecipeDao].
-@DriftAccessor(tables: [Folders, Recipes])
+@DriftAccessor(tables: [Folders, Recipes, SyncTombstones])
 class FolderDao extends DatabaseAccessor<AppDatabase> with _$FolderDaoMixin {
   FolderDao(super.db, {Uuid uuid = const Uuid()}) : _uuid = uuid;
 
@@ -180,6 +180,28 @@ class FolderDao extends DatabaseAccessor<AppDatabase> with _$FolderDaoMixin {
         RecipesCompanion(folderId: Value(parent), updatedAt: Value(at)),
       );
       await (delete(folders)..where((f) => f.id.equals(id))).go();
+      if (row?.syncedAt != null) {
+        await into(syncTombstones).insertOnConflictUpdate(
+          SyncTombstonesCompanion.insert(
+            kind: 'folder',
+            id: id,
+            deletedAt: DateTime.now().toUtc(),
+          ),
+        );
+      }
     });
+  }
+
+  /// Pastas que mudaram desde a última sincronização ou nunca subiram.
+  Future<List<FolderRow>> dirtyForSync() {
+    return (select(folders)
+          ..where((f) =>
+              f.syncedAt.isNull() | f.updatedAt.isBiggerThan(f.syncedAt)))
+        .get();
+  }
+
+  Future<int> markSynced(String id, DateTime updatedAt) {
+    return (update(folders)..where((f) => f.id.equals(id)))
+        .write(FoldersCompanion(syncedAt: Value(updatedAt)));
   }
 }
