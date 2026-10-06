@@ -28,8 +28,33 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell>
+    with SingleTickerProviderStateMixin {
   int _tab = 0;
+
+  /// Posição (fracionária) da faixa de páginas: vai de onde estava até a aba
+  /// nova. Trocar de aba durante o deslize (arrastar o dedo pela barra)
+  /// recomeça de onde a faixa está agora, então nunca dá salto.
+  late final AnimationController _slide = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
+  double _from = 0;
+  double _to = 0;
+
+  double get _position =>
+      _from + (_to - _from) * Curves.easeOutCubic.transform(_slide.value);
+
+  void _select(int i) {
+    if (i == _tab) return;
+    setState(() {
+      _from = _position;
+      _tab = i;
+      _to = i.toDouble();
+      _visited.add(i);
+    });
+    _slide.forward(from: 0);
+  }
 
   /// Abas já visitadas: só elas são montadas. O `IndexedStack` mantém vivo
   /// o que está montado (o estado de cada aba se preserva), mas montar as
@@ -89,7 +114,45 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   void dispose() {
     _mediaSub?.cancel();
+    _slide.dispose();
     super.dispose();
+  }
+
+  static const _pages = [
+    RecipesPage(),
+    MonthPage(),
+    ShoppingListsPage(),
+    AccountPage(),
+  ];
+
+  /// As abas lado a lado numa faixa que desliza na horizontal: avançar empurra
+  /// a atual pra esquerda e entra a nova pela direita (e vice-versa). Só as
+  /// já visitadas existem (ver `_visited`); a que está fora da tela fica
+  /// `Offstage` — mantém o estado, mas não ocupa layout nem pintura — e sem
+  /// tickers. `HeroMode` só na aba de destino: os `Hero` das outras não
+  /// podem voar (ver nota antiga do `IndexedStack`).
+  Widget _buildPages() {
+    return AnimatedBuilder(
+      animation: _slide,
+      builder: (context, _) {
+        final position = _position;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            for (final (i, page) in _pages.indexed)
+              if (_visited.contains(i))
+                Positioned.fill(
+                  key: ValueKey(i),
+                  child: _TabSlot(
+                    offset: i - position,
+                    heroes: i == _tab,
+                    child: page,
+                  ),
+                ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -130,24 +193,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       extendBody: true,
       body: Stack(
         children: [
-          IndexedStack(
-            index: _tab,
-            // `HeroMode`: o `IndexedStack` mantém as abas escondidas montadas,
-            // e os `Hero` delas continuavam valendo — abrir uma receita pela
-            // Semana fazia voar o card da aba Receitas, que nem estava na tela.
-            children: [
-              for (final (i, page) in const [
-                RecipesPage(),
-                MonthPage(),
-                ShoppingListsPage(),
-                AccountPage(),
-              ].indexed)
-                if (_visited.contains(i))
-                  HeroMode(enabled: i == _tab, child: page)
-                else
-                  const SizedBox.shrink(),
-            ],
-          ),
+          _buildPages(),
           Align(
             alignment: Alignment.bottomCenter,
             child: SafeArea(
@@ -156,10 +202,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 child: PillNavBar(
                   items: items,
                   currentIndex: _tab,
-                  onSelected: (i) => setState(() {
-                    _tab = i;
-                    _visited.add(i);
-                  }),
+                  onSelected: _select,
                 ),
               ),
             ),
@@ -177,6 +220,38 @@ class _HomeShellState extends ConsumerState<HomeShell> {
           if (ref.watch(tutorialStepProvider) != null)
             const Positioned.fill(child: TutorialOverlay()),
         ],
+      ),
+    );
+  }
+}
+
+/// Uma aba na faixa deslizante: deslocada [offset] larguras da posição
+/// central. Fora da tela (|offset| ≥ 1) some do layout e para os tickers, mas
+/// continua montada — o estado da aba (rolagem, busca, filtros) se preserva.
+class _TabSlot extends StatelessWidget {
+  const _TabSlot({
+    required this.offset,
+    required this.heroes,
+    required this.child,
+  });
+
+  final double offset;
+  final bool heroes;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = offset.abs() < 1;
+    return Offstage(
+      offstage: !visible,
+      child: TickerMode(
+        enabled: visible,
+        child: RepaintBoundary(
+          child: FractionalTranslation(
+            translation: Offset(offset, 0),
+            child: HeroMode(enabled: heroes, child: child),
+          ),
+        ),
       ),
     );
   }

@@ -10,7 +10,10 @@ import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
+import 'package:receyta/features/planner/screens/month_page.dart';
+import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/home_shell.dart';
+import 'package:receyta/widgets/pill_nav_bar.dart';
 import 'package:receyta/theme/app_theme.dart';
 
 Widget _host() => ProviderScope(
@@ -114,7 +117,49 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Seu nome aqui'), findsOneWidget);
-    expect(find.text('Sincronização em breve'), findsOneWidget);
+    expect(find.text('Entrar com Google'), findsOneWidget);
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
+  });
+
+  testWidgets('trocar de aba desliza na horizontal e termina centrada',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.bySemanticsLabel(RegExp('Agenda')).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 110));
+
+    final width = tester.view.physicalSize.width / tester.view.devicePixelRatio;
+    final mid = tester.getTopLeft(find.byType(MonthPage)).dx;
+    expect(mid, greaterThan(0));
+    expect(mid, lessThan(width));
+    expect(tester.getTopLeft(find.byType(RecipesPage)).dx, lessThan(0));
+
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(find.byType(MonthPage)).dx, 0);
+    expect(find.byType(RecipesPage), findsNothing);
+  });
+
+  testWidgets('arrastar o dedo pela barra troca a aba e a página acompanha',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    final bar = tester.getRect(find.byType(PillNavBar));
+    final y = bar.center.dy;
+    final gesture = await tester.startGesture(Offset(bar.left + 30, y));
+    for (var x = bar.left + 30; x < bar.right - 10; x += 10) {
+      await gesture.moveTo(Offset(x, y));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AccountPage), findsOneWidget);
+    expect(find.byType(RecipesPage), findsNothing);
   });
 }

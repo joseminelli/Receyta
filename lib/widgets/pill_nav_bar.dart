@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -30,6 +31,13 @@ class PillNavItem {
 /// pontos fixos — origem e destino — que o indicador interpola com
 /// `Rect.lerp`. Se o próprio item também animasse a largura, o alvo ficaria
 /// se mexendo durante o desliza e as duas animações brigariam.
+///
+/// Além do toque, dá pra **arrastar o dedo pela barra**: a aba é a da zona onde
+/// o dedo está (a largura da barra dividida em partes iguais, uma por aba) e
+/// soltar deixa na última escolhida. Zonas iguais, e não os retângulos reais,
+/// de propósito: a aba ativa é mais larga que as outras e muda de lugar a cada
+/// troca, o que faria a seleção tremer na divisa entre duas abas. Cada troca
+/// dá um toque de vibração leve.
 class PillNavBar extends StatefulWidget {
   const PillNavBar({
     super.key,
@@ -93,6 +101,18 @@ class _PillNavBarState extends State<PillNavBar>
     super.dispose();
   }
 
+  /// Aba da zona onde o dedo está; seleciona e vibra só se for outra.
+  void _scrubTo(Offset globalPosition) {
+    final box = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || box.size.width <= 0) return;
+    final dx = box.globalToLocal(globalPosition).dx;
+    final count = widget.items.length;
+    final index = (dx / box.size.width * count).floor().clamp(0, count - 1);
+    if (index == widget.currentIndex) return;
+    HapticFeedback.selectionClick();
+    widget.onSelected(index);
+  }
+
   Rect? _rectFor(int index) {
     final stackBox = _stackKey.currentContext?.findRenderObject() as RenderBox?;
     final slotBox =
@@ -142,40 +162,45 @@ class _PillNavBarState extends State<PillNavBar>
           color: colors.ink,
           borderRadius: BorderRadius.circular(AppRadii.pill),
           clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.xs / 2),
-            child: Stack(
-              key: _stackKey,
-              alignment: Alignment.centerLeft,
-              children: [
-                if (_indicatorRect != null)
-                  Positioned(
-                    left: _indicatorRect!.left,
-                    top: _indicatorRect!.top,
-                    width: _indicatorRect!.width,
-                    height: _indicatorRect!.height,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: widget.items[widget.currentIndex].color,
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragStart: (d) => _scrubTo(d.globalPosition),
+            onHorizontalDragUpdate: (d) => _scrubTo(d.globalPosition),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.xs / 2),
+              child: Stack(
+                key: _stackKey,
+                alignment: Alignment.centerLeft,
+                children: [
+                  if (_indicatorRect != null)
+                    Positioned(
+                      left: _indicatorRect!.left,
+                      top: _indicatorRect!.top,
+                      width: _indicatorRect!.width,
+                      height: _indicatorRect!.height,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: widget.items[widget.currentIndex].color,
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                        ),
                       ),
                     ),
-                  ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (var i = 0; i < widget.items.length; i++) ...[
-                      if (i > 0) const SizedBox(width: AppSpacing.xs / 2),
-                      _NavSlot(
-                        key: _slotKeys[i],
-                        item: widget.items[i],
-                        selected: i == widget.currentIndex,
-                        onTap: () => widget.onSelected(i),
-                      ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var i = 0; i < widget.items.length; i++) ...[
+                        if (i > 0) const SizedBox(width: AppSpacing.xs / 2),
+                        _NavSlot(
+                          key: _slotKeys[i],
+                          item: widget.items[i],
+                          selected: i == widget.currentIndex,
+                          onTap: () => widget.onSelected(i),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
