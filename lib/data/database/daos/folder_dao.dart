@@ -192,6 +192,47 @@ class FolderDao extends DatabaseAccessor<AppDatabase> with _$FolderDaoMixin {
     });
   }
 
+  /// Qualquer linha de pasta pelo id (sem o filtro de "só ativas").
+  Future<FolderRow?> findAny(String id) {
+    return (select(folders)..where((f) => f.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<Set<String>> allIds() async {
+    final rows = await select(folders).get();
+    return {for (final r in rows) r.id};
+  }
+
+  /// Grava a pasta exatamente como veio (sync aplicando a nuvem).
+  ///
+  /// Atualiza com o companion completo: `insertOnConflictUpdate` ignora os
+  /// nulos e uma pasta movida pra raiz (`parent_id` nulo) continuaria dentro
+  /// da antiga.
+  Future<void> upsertRaw(FolderRow row) async {
+    if (await findAny(row.id) == null) {
+      await into(folders).insert(row);
+    } else {
+      await (update(folders)..where((f) => f.id.equals(row.id)))
+          .write(row.toCompanion(false));
+    }
+  }
+
+  /// Apaga a pasta subindo o conteúdo pro pai, como [deleteFolder], mas SEM
+  /// mexer em `updated_at` do conteúdo e SEM aviso de exclusão: é o sync
+  /// aplicando uma exclusão que veio da nuvem (o outro aparelho já moveu e
+  /// avisou o conteúdo por conta própria).
+  Future<void> deleteRaw(String id) {
+    return transaction(() async {
+      final row = await findAny(id);
+      if (row == null) return;
+      final parent = row.parentId;
+      await (update(folders)..where((f) => f.parentId.equals(id)))
+          .write(FoldersCompanion(parentId: Value(parent)));
+      await (update(recipes)..where((r) => r.folderId.equals(id)))
+          .write(RecipesCompanion(folderId: Value(parent)));
+      await (delete(folders)..where((f) => f.id.equals(id))).go();
+    });
+  }
+
   /// Pastas que mudaram desde a última sincronização ou nunca subiram.
   Future<List<FolderRow>> dirtyForSync() {
     return (select(folders)

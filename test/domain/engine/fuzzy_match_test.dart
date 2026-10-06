@@ -6,10 +6,16 @@ void main() {
     expect(normalizedSimilarity('tomate', 'tomate'), 1);
   });
 
-  test('um erro de digitação fica acima de 0.85', () {
-    expect(normalizedSimilarity('tomate', 'tomat'), greaterThanOrEqualTo(0.85));
+  test('palavra idêntica fica acima de 0.85', () {
     expect(
         normalizedSimilarity('cebola', 'cebola'), greaterThanOrEqualTo(0.85));
+  });
+
+  test(
+      'uma letra de diferença numa palavra curta dá menos de 0.85, mas '
+      'isCloseMatch aceita (é a regra de 1 edição)', () {
+    expect(normalizedSimilarity('tomate', 'tomat'), lessThan(0.85));
+    expect(isCloseMatch('tomate', 'tomat'), isTrue);
   });
 
   test('palavras bem diferentes ficam abaixo de 0.85', () {

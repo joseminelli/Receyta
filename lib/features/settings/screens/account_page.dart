@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/data/sync/sync_coordinator.dart';
+import 'package:receyta/domain/engine/sync_status_text.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
@@ -39,6 +43,7 @@ class AccountPage extends ConsumerWidget {
         padding: const EdgeInsets.only(bottom: 120),
         children: const [
           _Hero(),
+          _SyncStatusTile(),
           SizedBox(height: AppSpacing.lg),
           _Shortcuts(),
         ],
@@ -616,6 +621,102 @@ class _LoginRevealState extends State<_LoginReveal>
         scale: _scale,
         alignment: Alignment.centerLeft,
         child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Estado do sync com a conta, logo abaixo do perfil: "Sincronizado · há 2
+/// min", "Sincronizando…" ou a falha, com o botão de sincronizar agora. Só
+/// aparece com conta conectada.
+class _SyncStatusTile extends ConsumerStatefulWidget {
+  const _SyncStatusTile();
+
+  @override
+  ConsumerState<_SyncStatusTile> createState() => _SyncStatusTileState();
+}
+
+class _SyncStatusTileState extends ConsumerState<_SyncStatusTile> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    // O "há N min" envelhece sozinho.
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = ref.watch(syncCoordinatorProvider);
+    if (!sync.enabled) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    final now = ref.watch(syncClockProvider)();
+    final syncing = sync.phase == SyncPhase.syncing;
+    final failed = sync.phase == SyncPhase.error;
+    final last = sync.lastSyncAt;
+
+    final text = syncing
+        ? 'Sincronizando…'
+        : failed
+            ? 'Sem conexão. Tentamos de novo sozinhos.'
+            : last == null
+                ? 'Aguardando a primeira sincronização'
+                : 'Sincronizado · ${formatSyncAgo(last, now)}';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.md,
+        AppSpacing.screen,
+        0,
+      ),
+      child: Semantics(
+        container: true,
+        label: text,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: syncing
+                  ? const CircularProgressIndicator(strokeWidth: 2.5)
+                  : Icon(
+                      failed
+                          ? Icons.cloud_off_outlined
+                          : Icons.cloud_done_outlined,
+                      size: 22,
+                      color: failed ? colors.danger : colors.textMuted,
+                    ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                text,
+                style: context.texts.bodyMedium?.copyWith(
+                  color: failed ? colors.danger : colors.textMuted,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: syncing
+                  ? null
+                  : () => ref
+                      .read(syncCoordinatorProvider.notifier)
+                      .requestSync(immediate: true),
+              child: const Text('Sincronizar'),
+            ),
+          ],
+        ),
       ),
     );
   }

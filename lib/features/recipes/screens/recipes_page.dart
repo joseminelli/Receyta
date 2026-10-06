@@ -129,13 +129,25 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
                     : _EmptyState(onCreate: openNew),
               )
             : _RecipeList(
-                recipes: filtering ? list : (recent?.valueOrNull ?? list),
+                recipes: filtering ? list : _shelf(recent?.valueOrNull, list),
                 showViewAll: !filtering,
               ),
       ),
     );
   }
 }
+
+/// A prateleira "Recentes": a lista capada por uso recente, quando ela já
+/// chegou E tem algo. Vazia ou ainda não carregada, cai na lista geral — as
+/// duas vêm de streams diferentes e uma pode emitir antes da outra (ao
+/// sincronizar, ao restaurar um backup), e uma prateleira vazia por cima de uma
+/// lista cheia derrubava a tela inteira.
+@visibleForTesting
+List<Recipe> shelfRecipes(List<Recipe>? recent, List<Recipe> all) =>
+    (recent != null && recent.isNotEmpty) ? recent : all;
+
+List<Recipe> _shelf(List<Recipe>? recent, List<Recipe> all) =>
+    shelfRecipes(recent, all);
 
 class _Scaffold extends StatelessWidget {
   const _Scaffold({
@@ -287,6 +299,9 @@ class _RecipeList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Defesa: sem receita não há destaque nem grade (quem chama já trata a
+    // lista vazia, mas uma emissão no meio da reconstrução não pode derrubar).
+    if (recipes.isEmpty) return const SliverToBoxAdapter(child: SizedBox());
     final featured = recipes.first;
     final rest = recipes.skip(1).toList();
 

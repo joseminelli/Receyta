@@ -444,4 +444,27 @@ void main() {
       );
     });
   });
+
+  test(
+      'editar e esvaziar os campos opcionais apaga de verdade (não volta o valor)',
+      () async {
+    final created = unwrap(await repo.saveDetail(
+      name: 'Bolo',
+      about: 'Da vovó',
+      prepMinutes: 10,
+      cookMinutes: 40,
+      servings: 8,
+      notes: 'nota',
+    ));
+    final base = unwrapDetail(await repo.getDetail(created.id)).recipe;
+
+    await repo.saveDetail(base: base, name: 'Bolo');
+
+    final after = unwrapDetail(await repo.getDetail(created.id)).recipe;
+    expect(after.about, isNull);
+    expect(after.prepMinutes, isNull);
+    expect(after.cookMinutes, isNull);
+    expect(after.servings, isNull);
+    expect(after.notes, isNull);
+  });
 }

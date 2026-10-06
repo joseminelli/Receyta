@@ -367,6 +367,10 @@ class RecipeRepository {
     } catch (_) {}
   }
 
+  /// O detalhe completo de uma linha, inclusive a que está na lixeira (que o
+  /// [getDetail] não enxerga). Usado pelo sync pra montar o que vai pra nuvem.
+  Future<RecipeDetail> detailOfRow(RecipeRow row) => _detail(row);
+
   Future<RecipeDetail> _detail(RecipeRow row) async {
     final ingredients = await _dao.ingredientsOf(row.id);
     final steps = await _dao.stepsOf(row.id);

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/services/auth_service.dart';
+import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
@@ -23,10 +24,26 @@ CookLog _log(String id, String recipeId, String name) => CookLog(
       cookedAt: DateTime.utc(2026, 10, 1),
     );
 
+class _FakeCoordinator extends SyncCoordinator {
+  _FakeCoordinator(this.initial);
+
+  final SyncState initial;
+  int syncNowCalls = 0;
+
+  @override
+  SyncState build() => initial;
+
+  @override
+  void requestSync({bool immediate = false}) {
+    if (immediate) syncNowCalls++;
+  }
+}
+
 Widget _host({
   AppSettings initial = const AppSettings(),
   AsyncValue<LibraryStats>? stats,
   FakeAuthService? auth,
+  _FakeCoordinator? sync,
 }) {
   final router = GoRouter(
     routes: [
@@ -42,6 +59,7 @@ Widget _host({
     overrides: [
       initialAppSettingsProvider.overrideWithValue(initial),
       authServiceProvider.overrideWithValue(auth ?? FakeAuthService()),
+      if (sync != null) syncCoordinatorProvider.overrideWith(() => sync),
       libraryStatsProvider.overrideWithValue(
         stats ??
             const AsyncData((
@@ -388,6 +406,110 @@ void main() {
 
       expect(revealScale(tester), 1);
       expect(find.text('Ana'), findsOneWidget);
+    });
+  });
+
+  group('estado da sincronização', () {
+    final now = DateTime.utc(2026, 3, 10, 12);
+
+    _FakeCoordinator coordinator(SyncState state) => _FakeCoordinator(state);
+
+    Widget host(_FakeCoordinator c) => ProviderScope(
+          overrides: [
+            initialAppSettingsProvider.overrideWithValue(const AppSettings()),
+            authServiceProvider.overrideWithValue(FakeAuthService()),
+            syncCoordinatorProvider.overrideWith(() => c),
+            syncClockProvider.overrideWithValue(() => now),
+            libraryStatsProvider.overrideWithValue(
+              const AsyncData((
+                recipes: 1,
+                folders: 0,
+                lists: 0,
+                plannedMeals: 0,
+                doneMeals: 0,
+                topRecipe: null,
+                topRecipeCount: 0,
+              )),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const Scaffold(body: AccountPage()),
+          ),
+        );
+
+    testWidgets('sem conta, não aparece nada de sincronização', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(coordinator(const SyncState())));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sincronizar'), findsNothing);
+      expect(find.textContaining('Sincronizado'), findsNothing);
+    });
+
+    testWidgets('sincronizado: mostra há quanto tempo', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(coordinator(SyncState(
+        enabled: true,
+        lastSyncAt: now.subtract(const Duration(minutes: 5)),
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sincronizado · há 5 min'), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_done_outlined), findsOneWidget);
+    });
+
+    testWidgets('ainda sem nenhuma rodada: avisa que está aguardando',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester
+          .pumpWidget(host(coordinator(const SyncState(enabled: true))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Aguardando a primeira sincronização'), findsOneWidget);
+    });
+
+    testWidgets('sincronizando: mostra o progresso e trava o botão',
+        (tester) async {
+      _usePhoneSize(tester);
+      final c =
+          coordinator(const SyncState(enabled: true, phase: SyncPhase.syncing));
+      await tester.pumpWidget(host(c));
+      await tester.pump();
+
+      expect(find.text('Sincronizando…'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      await tester.tap(find.text('Sincronizar'));
+      await tester.pump();
+      expect(c.syncNowCalls, 0);
+    });
+
+    testWidgets('falha: mostra o aviso, em vermelho, sem esconder o botão',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(coordinator(const SyncState(
+        enabled: true,
+        phase: SyncPhase.error,
+        failure: 'x',
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('Sem conexão. Tentamos de novo sozinhos.'), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+      expect(find.text('Sincronizar'), findsOneWidget);
+    });
+
+    testWidgets('tocar em Sincronizar pede uma rodada na hora', (tester) async {
+      _usePhoneSize(tester);
+      final c = coordinator(SyncState(enabled: true, lastSyncAt: now));
+      await tester.pumpWidget(host(c));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Sincronizar'));
+      await tester.pump();
+
+      expect(c.syncNowCalls, 1);
     });
   });
 }

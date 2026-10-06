@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/home_widget_service.dart';
+import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
@@ -29,7 +30,7 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _tab = 0;
 
   /// Posição (fracionária) da faixa de páginas: vai de onde estava até a aba
@@ -80,8 +81,10 @@ class _HomeShellState extends ConsumerState<HomeShell>
         ref.read(reminderSettingsProvider.notifier).syncOnStart();
         ref.read(homeWidgetSyncProvider).start();
         ref.read(autoBackupProvider.notifier).runIfDue();
+        ref.read(syncCoordinatorProvider.notifier).start();
       },
     );
+    WidgetsBinding.instance.addObserver(this);
     _mediaSub = ReceiveSharingIntent.instance
         .getMediaStream()
         .listen(_handleSharedMedia, onError: (_) {});
@@ -111,8 +114,17 @@ class _HomeShellState extends ConsumerState<HomeShell>
     importSharedReceytaFileFlow(ref, media.first.path);
   }
 
+  /// Voltar pro app é um bom momento pra buscar o que mudou em outro aparelho.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(syncCoordinatorProvider.notifier).onResumed();
+    }
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _mediaSub?.cancel();
     _slide.dispose();
     super.dispose();

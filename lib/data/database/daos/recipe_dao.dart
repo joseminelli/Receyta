@@ -189,11 +189,16 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   /// Grava a receita e substitui suas listas numa transação — a UI edita
   /// ingredientes, passos e tags por reposição total, não por diff. As linhas
   /// de `tags` já têm que existir (a [TagRepository] resolve os nomes antes).
+  ///
+  /// [keepImageSyncedPath] (padrão) preserva o registro de envio da foto que
+  /// está no banco. O sync, ao aplicar uma receita vinda da nuvem, passa
+  /// `false`: aí o valor que ele traz é que vale.
   Future<void> saveWithChildren({
     required RecipeRow recipe,
     required List<RecipeIngredientRow> ingredients,
     required List<RecipeStepRow> steps,
     List<String> tagIds = const [],
+    bool keepImageSyncedPath = true,
   }) {
     return transaction(() async {
       // O registro de envio da foto pertence ao sync, não a quem edita: o
@@ -202,9 +207,19 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
       final current = await (select(recipes)
             ..where((r) => r.id.equals(recipe.id)))
           .getSingleOrNull();
-      await into(recipes).insertOnConflictUpdate(
-        recipe.copyWith(imageSyncedPath: Value(current?.imageSyncedPath)),
-      );
+      final next = keepImageSyncedPath
+          ? recipe.copyWith(imageSyncedPath: Value(current?.imageSyncedPath))
+          : recipe;
+      if (current == null) {
+        await into(recipes).insert(next);
+      } else {
+        // `insertOnConflictUpdate` NÃO limpa uma coluna quando o valor novo é
+        // nulo (ele ignora os nulos): apagar o "Sobre", o tempo ou as notas
+        // numa edição faria o valor antigo voltar. Escrever o companion
+        // completo (`toCompanion(false)`) grava os nulos de verdade.
+        await (update(recipes)..where((r) => r.id.equals(recipe.id)))
+            .write(next.toCompanion(false));
+      }
       await (delete(recipeIngredients)
             ..where((i) => i.recipeId.equals(recipe.id)))
           .go();
@@ -426,6 +441,22 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
       }
       return count;
     });
+  }
+
+  /// Apaga a receita SEM deixar aviso de exclusão: é o sync aplicando uma
+  /// exclusão que veio da nuvem — avisar de volta só faria eco.
+  Future<int> deleteWithoutTombstone(String id) {
+    return (delete(recipes)..where((r) => r.id.equals(id))).go();
+  }
+
+  /// Avisos de exclusão que a nuvem ainda não recebeu.
+  Future<List<SyncTombstoneRow>> pendingTombstones() =>
+      select(syncTombstones).get();
+
+  Future<int> clearTombstone(String kind, String id) {
+    return (delete(syncTombstones)
+          ..where((t) => t.kind.equals(kind) & t.id.equals(id)))
+        .go();
   }
 
   /// Receitas (inclusive as da lixeira) que mudaram desde a última

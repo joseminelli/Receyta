@@ -21,6 +21,7 @@ Widget _host(
   List<Recipe> recipes, {
   List<Tag> tags = const [],
   bool hasFavorites = false,
+  List<Recipe>? recent,
 }) {
   final router = GoRouter(
     routes: [
@@ -38,7 +39,8 @@ Widget _host(
   return ProviderScope(
     overrides: [
       recipesStreamProvider.overrideWith((ref) => Stream.value(recipes)),
-      recentRecipesProvider.overrideWith((ref) => Stream.value(recipes)),
+      recentRecipesProvider
+          .overrideWith((ref) => Stream.value(recent ?? recipes)),
       allRecipesProvider.overrideWith((ref) => Stream.value(recipes)),
       inUseTagsProvider.overrideWith((ref) => Stream.value(tags)),
       trashedRecipesProvider
@@ -155,5 +157,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA DETALHE a'), findsOneWidget);
+  });
+
+  group('prateleira "Recentes" fora de sincronia com a lista geral', () {
+    testWidgets(
+        'lista cheia e recentes ainda vazios (sync gravando várias de uma vez): '
+        'mostra as receitas e não quebra', (tester) async {
+      await tester.pumpWidget(_host(
+        [_recipe('a', 'Sopa de abóbora'), _recipe('b', 'Risoto de limão')],
+        recent: const [],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(FeaturedRecipeCard), findsOneWidget);
+      expect(find.text('Sopa de abóbora'), findsOneWidget);
+      expect(find.text('Risoto de limão'), findsOneWidget);
+    });
+
+    testWidgets('com as duas listas em dia, vale a de recentes (ordem de uso)',
+        (tester) async {
+      await tester.pumpWidget(_host(
+        [_recipe('a', 'Sopa de abóbora'), _recipe('b', 'Risoto de limão')],
+        recent: [_recipe('b', 'Risoto de limão')],
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FeaturedRecipeCard), findsOneWidget);
+      expect(find.text('Risoto de limão'), findsOneWidget);
+      expect(find.text('Sopa de abóbora'), findsNothing);
+    });
+
+    test('shelfRecipes: recentes só quando existe e tem algo', () {
+      final all = [_recipe('a', 'A'), _recipe('b', 'B')];
+      final recent = [_recipe('b', 'B')];
+
+      expect(shelfRecipes(recent, all), recent);
+      expect(shelfRecipes(const [], all), all);
+      expect(shelfRecipes(null, all), all);
+    });
   });
 }
