@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/data/services/auth_service.dart';
 import 'package:receyta/domain/models/cook_log.dart';
+import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../helpers/fake_auth_service.dart';
 
 CookLog _log(String id, String recipeId, String name) => CookLog(
       id: id,
@@ -20,6 +25,7 @@ CookLog _log(String id, String recipeId, String name) => CookLog(
 Widget _host({
   AppSettings initial = const AppSettings(),
   AsyncValue<LibraryStats>? stats,
+  FakeAuthService? auth,
 }) {
   final router = GoRouter(
     routes: [
@@ -34,6 +40,7 @@ Widget _host({
   return ProviderScope(
     overrides: [
       initialAppSettingsProvider.overrideWithValue(initial),
+      authServiceProvider.overrideWithValue(auth ?? FakeAuthService()),
       libraryStatsProvider.overrideWithValue(
         stats ??
             const AsyncData((
@@ -166,16 +173,62 @@ void main() {
     expect(loaded.profileColor, TileColor.violet);
   });
 
-  testWidgets('o aviso de sincronização leva às configurações', (tester) async {
+  testWidgets('o cartão da conta leva às configurações', (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    expect(find.text('Sincronização em breve'), findsOneWidget);
+    expect(find.text('Entre com o Google'), findsOneWidget);
     await tester.tap(find.text('Fazer backup nas configurações'));
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA AJUSTES'), findsOneWidget);
+  });
+
+  testWidgets('tocar em Entrar com Google chama o login', (tester) async {
+    _usePhoneSize(tester);
+    final auth = FakeAuthService();
+    await tester.pumpWidget(_host(auth: auth));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Entrar com Google'));
+    await tester.pumpAndSettle();
+
+    expect(auth.signInCalls, 1);
+  });
+
+  testWidgets('logado: mostra o e-mail, usa o nome do Google e permite sair',
+      (tester) async {
+    _usePhoneSize(tester);
+    final auth = FakeAuthService(
+      user: const AppUser(id: 'u1', email: 'ana@x.com', name: 'Ana Souza'),
+    );
+    await tester.pumpWidget(_host(auth: auth));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Conta conectada'), findsOneWidget);
+    expect(find.text('ana@x.com'), findsOneWidget);
+    expect(find.text('Ana'), findsOneWidget);
+    expect(find.text('Entrar com Google'), findsNothing);
+
+    await tester.tap(find.text('Sair'));
+    await tester.pumpAndSettle();
+
+    expect(auth.signOutCalls, 1);
+    expect(find.text('Entre com o Google'), findsOneWidget);
+  });
+
+  testWidgets('falha ao entrar mostra a mensagem', (tester) async {
+    _usePhoneSize(tester);
+    final auth = FakeAuthService()
+      ..nextResult = const Err(NetworkFailure('Sem conexão com a internet.'));
+    await tester.pumpWidget(_host(auth: auth));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Entrar com Google'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sem conexão com a internet.'), findsOneWidget);
   });
 
   testWidgets('a engrenagem do topo abre as configurações', (tester) async {

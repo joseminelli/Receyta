@@ -3,21 +3,25 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
 import 'package:receyta/features/settings/screens/profile_edit_sheet.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
-/// 4ª aba da `PillNavBar` (§9.2). Sem login ainda: o perfil é local (apelido e
-/// cor, só neste aparelho). Um bloco grande no topo, com a cor e a textura
+/// 4ª aba da `PillNavBar` (§9.2). O login com Google é opcional: sem ele o
+/// perfil é local (apelido e cor, só neste aparelho); com ele, o nome e a foto
+/// do Google preenchem o bloco. Um bloco grande no topo, com a cor e a textura
 /// escolhidas, leva o nome e os números do seu livro; abaixo, os atalhos de
 /// manutenção (histórico, tags, ingredientes, lixeira) em lista aberta, sem
-/// cartões. Quando o login chegar, ele só preenche o mesmo bloco.
+/// cartões.
 class AccountPage extends ConsumerWidget {
   const AccountPage({super.key});
 
@@ -37,7 +41,7 @@ class AccountPage extends ConsumerWidget {
           SizedBox(height: AppSpacing.lg),
           _Shortcuts(),
           SizedBox(height: AppSpacing.lg),
-          _SyncNote(),
+          _AccountCard(),
         ],
       ),
     );
@@ -53,7 +57,10 @@ class _Hero extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final tile = resolveTileAppearance(colors, color: settings.profileColor);
     final stats = ref.watch(libraryStatsProvider).valueOrNull;
-    final name = settings.nickname;
+    final user = ref.watch(authUserProvider).valueOrNull;
+    final name = settings.nickname.isNotEmpty
+        ? settings.nickname
+        : (user?.name?.split(' ').first ?? '');
     final initial = name.isEmpty ? null : name.characters.first.toUpperCase();
     final onColor = tile.onColor;
 
@@ -127,14 +134,11 @@ class _Hero extends ConsumerWidget {
                                 color: colors.paper,
                                 shape: BoxShape.circle,
                               ),
-                              child: initial == null
-                                  ? Icon(Icons.person_outline,
-                                      size: 42, color: colors.ink)
-                                  : Text(
-                                      initial,
-                                      style: AppTextStyles.display(52)
-                                          .copyWith(color: colors.ink),
-                                    ),
+                              clipBehavior: Clip.antiAlias,
+                              child: _Avatar(
+                                url: user?.avatarUrl,
+                                initial: initial,
+                              ),
                             ),
                             const SizedBox(width: AppSpacing.md),
                             Expanded(
@@ -400,13 +404,45 @@ class _Shortcuts extends StatelessWidget {
   }
 }
 
-/// Aviso de que o login e a sincronização ainda vêm, em texto simples.
-class _SyncNote extends StatelessWidget {
-  const _SyncNote();
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.url, required this.initial});
+
+  final String? url;
+  final String? initial;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final fallback = initial == null
+        ? Icon(Icons.person_outline, size: 42, color: colors.ink)
+        : Text(
+            initial!,
+            style: AppTextStyles.display(52).copyWith(color: colors.ink),
+          );
+    if (url == null) return fallback;
+    return Image.network(
+      url!,
+      width: 92,
+      height: 92,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback,
+      loadingBuilder: (_, child, progress) =>
+          progress == null ? child : fallback,
+    );
+  }
+}
+
+/// Entrar com o Google (ou, já logado, quem é e o botão de sair). O login é
+/// opcional — quem não entra continua com tudo, só neste aparelho.
+class _AccountCard extends ConsumerWidget {
+  const _AccountCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final user = ref.watch(authUserProvider).valueOrNull;
+    final busy = ref.watch(authControllerProvider).isLoading;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
       child: Row(
@@ -419,17 +455,36 @@ class _SyncNote extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Sincronização em breve',
+                  user == null ? 'Entre com o Google' : 'Conta conectada',
                   style: context.texts.bodyLarge
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Login e sincronização entre aparelhos chegam mais pra '
-                  'frente. Por enquanto, seus dados ficam só neste aparelho.',
+                  user == null
+                      ? 'Opcional. Com a conta, suas fotos e receitas ficam '
+                          'guardadas na nuvem. Sem ela, tudo continua '
+                          'funcionando só neste aparelho.'
+                      : (user.email ?? 'Conectado com o Google'),
                   style: context.texts.bodyMedium
                       ?.copyWith(color: colors.textMuted),
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                if (user == null)
+                  PillButton(
+                    label: 'Entrar com Google',
+                    icon: Icons.login_rounded,
+                    loading: busy,
+                    onPressed: () => _signIn(context, ref),
+                  )
+                else
+                  PillButton(
+                    label: 'Sair',
+                    variant: PillButtonVariant.secondary,
+                    icon: Icons.logout_rounded,
+                    loading: busy,
+                    onPressed: () => _signOut(context, ref),
+                  ),
                 TextButton(
                   onPressed: () => context.push('/settings'),
                   style: TextButton.styleFrom(
@@ -444,5 +499,21 @@ class _SyncNote extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _signIn(BuildContext context, WidgetRef ref) async {
+    final failure = await ref.read(authControllerProvider.notifier).signIn();
+    if (failure == null || !context.mounted) return;
+    AppSnackBar.show(
+      context,
+      message: failure.message,
+      variant: AppSnackBarVariant.error,
+    );
+  }
+
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    await ref.read(authControllerProvider.notifier).signOut();
+    if (!context.mounted) return;
+    AppSnackBar.show(context, message: 'Você saiu da conta.');
   }
 }

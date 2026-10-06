@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:receyta/core/supabase_config.dart';
 import 'package:receyta/features/recipes/screens/global_timers_bar.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/router.dart';
@@ -8,6 +10,14 @@ import 'package:receyta/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Supabase.initialize(
+      url: kSupabaseUrl,
+      publishableKey: kSupabasePublishableKey,
+    );
+  } catch (e) {
+    debugPrint('Supabase.initialize: $e');
+  }
   final settings = await loadAppSettings();
   runApp(
     ProviderScope(
