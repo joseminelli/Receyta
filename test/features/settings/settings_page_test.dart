@@ -2,12 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receyta/data/services/auth_service.dart';
+import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/screens/settings_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Widget _host({AppSettings initial = const AppSettings()}) {
+import '../../helpers/fake_auth_service.dart';
+
+Widget _host({
+  AppSettings initial = const AppSettings(),
+  FakeAuthService? auth,
+}) {
   final router = GoRouter(
     initialLocation: '/settings',
     routes: [
@@ -17,7 +24,10 @@ Widget _host({AppSettings initial = const AppSettings()}) {
     ],
   );
   return ProviderScope(
-    overrides: [initialAppSettingsProvider.overrideWithValue(initial)],
+    overrides: [
+      initialAppSettingsProvider.overrideWithValue(initial),
+      authServiceProvider.overrideWithValue(auth ?? FakeAuthService()),
+    ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
 }
@@ -113,5 +123,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA WELCOME'), findsOneWidget);
+  });
+
+  testWidgets('sem conta, não há seção Conta nem "Sair da conta"',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    expect(find.text('CONTA'), findsNothing);
+    expect(find.text('Sair da conta'), findsNothing);
+    expect(find.textContaining('só neste aparelho'), findsOneWidget);
+  });
+
+  testWidgets('logado: seção Conta mostra o e-mail e sair desconecta',
+      (tester) async {
+    _usePhoneSize(tester);
+    final auth = FakeAuthService(
+      user: const AppUser(id: 'u1', email: 'ana@x.com', name: 'Ana Souza'),
+    );
+    await tester.pumpWidget(_host(auth: auth));
+    await tester.pumpAndSettle();
+
+    expect(find.text('CONTA'), findsOneWidget);
+    expect(find.text('ana@x.com'), findsOneWidget);
+
+    await tester.tap(find.text('Sair da conta'));
+    await tester.pumpAndSettle();
+
+    expect(auth.signOutCalls, 1);
+    expect(find.text('Sair da conta'), findsNothing);
   });
 }

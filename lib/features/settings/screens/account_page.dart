@@ -12,7 +12,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
-import 'package:receyta/widgets/pill_button.dart';
+import 'package:receyta/widgets/google_g_mark.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -40,8 +40,6 @@ class AccountPage extends ConsumerWidget {
           _Hero(),
           SizedBox(height: AppSpacing.lg),
           _Shortcuts(),
-          SizedBox(height: AppSpacing.lg),
-          _AccountCard(),
         ],
       ),
     );
@@ -177,6 +175,10 @@ class _Hero extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    if (user == null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      _GoogleSignInButton(onColor: onColor),
+                    ],
                     const SizedBox(height: AppSpacing.lg),
                     Row(
                       children: [
@@ -432,72 +434,84 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-/// Entrar com o Google (ou, já logado, quem é e o botão de sair). O login é
-/// opcional — quem não entra continua com tudo, só neste aparelho.
-class _AccountCard extends ConsumerWidget {
-  const _AccountCard();
+/// Entrar com o Google, no alto do perfil: pílula `paper` cheia sobre o bloco
+/// colorido (fundo sempre paper, nunca uma cor de acento — só o texto leva
+/// `ink`), com a letra num medalhão. Some quando já há conta conectada; sair
+/// fica nas Configurações. O login é opcional — a linha embaixo diz isso.
+class _GoogleSignInButton extends ConsumerWidget {
+  const _GoogleSignInButton({required this.onColor});
+
+  final Color onColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final user = ref.watch(authUserProvider).valueOrNull;
     final busy = ref.watch(authControllerProvider).isLoading;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.cloud_sync_outlined, color: colors.textMuted),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user == null ? 'Entre com o Google' : 'Conta conectada',
-                  style: context.texts.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  user == null
-                      ? 'Opcional. Com a conta, suas fotos e receitas ficam '
-                          'guardadas na nuvem. Sem ela, tudo continua '
-                          'funcionando só neste aparelho.'
-                      : (user.email ?? 'Conectado com o Google'),
-                  style: context.texts.bodyMedium
-                      ?.copyWith(color: colors.textMuted),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                if (user == null)
-                  PillButton(
-                    label: 'Entrar com Google',
-                    icon: Icons.login_rounded,
-                    loading: busy,
-                    onPressed: () => _signIn(context, ref),
-                  )
-                else
-                  PillButton(
-                    label: 'Sair',
-                    variant: PillButtonVariant.secondary,
-                    icon: Icons.logout_rounded,
-                    loading: busy,
-                    onPressed: () => _signOut(context, ref),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          button: true,
+          label: 'Entrar com Google',
+          child: Material(
+            color: colors.paper,
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: busy ? null : () => _signIn(context, ref),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 56),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 20, 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colors.paper,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colors.paperSoft,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: busy
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2.5),
+                              )
+                            : const GoogleGMark(size: 24),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          busy ? 'Entrando…' : 'Entrar com Google',
+                          style: context.texts.titleMedium?.copyWith(
+                            color: colors.ink,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_rounded, color: colors.ink),
+                    ],
                   ),
-                TextButton(
-                  onPressed: () => context.push('/settings'),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    alignment: Alignment.centerLeft,
-                  ),
-                  child: const Text('Fazer backup nas configurações'),
                 ),
-              ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Opcional · guarda as fotos das suas receitas na nuvem',
+          style: context.texts.bodySmall
+              ?.copyWith(color: onColor.withValues(alpha: 0.85)),
+        ),
+      ],
     );
   }
 
@@ -509,11 +523,5 @@ class _AccountCard extends ConsumerWidget {
       message: failure.message,
       variant: AppSnackBarVariant.error,
     );
-  }
-
-  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
-    await ref.read(authControllerProvider.notifier).signOut();
-    if (!context.mounted) return;
-    AppSnackBar.show(context, message: 'Você saiu da conta.');
   }
 }

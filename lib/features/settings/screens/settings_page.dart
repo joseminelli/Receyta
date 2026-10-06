@@ -8,6 +8,7 @@ import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/quiet_hours.dart';
+import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/reminder_settings.dart';
@@ -43,6 +44,14 @@ class SettingsPage extends ConsumerWidget {
         variant: AppSnackBarVariant.error,
       ),
     );
+  }
+
+  /// Sai da conta; as receitas continuam neste aparelho. Sem confirmação —
+  /// nada é apagado, e entrar de novo leva um toque.
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    await ref.read(authControllerProvider.notifier).signOut();
+    if (!context.mounted) return;
+    AppSnackBar.show(context, message: 'Você saiu da conta.');
   }
 
   Future<void> _wipe(BuildContext context, WidgetRef ref) async {
@@ -206,6 +215,7 @@ class SettingsPage extends ConsumerWidget {
     final version = ref.watch(appVersionProvider).valueOrNull ?? '';
     final reminders = ref.watch(reminderSettingsProvider);
     final remindersNotifier = ref.read(reminderSettingsProvider.notifier);
+    final user = ref.watch(authUserProvider).valueOrNull;
 
     return Scaffold(
       backgroundColor: colors.paper,
@@ -225,6 +235,18 @@ class SettingsPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (user != null)
+                    _Section(
+                      title: 'Conta',
+                      children: [
+                        _NavRow(
+                          icon: Icons.logout_rounded,
+                          title: 'Sair da conta',
+                          subtitle: user.email ?? 'Conectado com o Google',
+                          onTap: () => _signOut(context, ref),
+                        ),
+                      ],
+                    ),
                   _Section(
                     title: 'Aparência',
                     children: [
@@ -385,7 +407,9 @@ class SettingsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Receyta · seus dados ficam só neste aparelho',
+                    user == null
+                        ? 'Receyta · seus dados ficam só neste aparelho'
+                        : 'Receyta · conta conectada, fotos guardadas na nuvem',
                     style: context.texts.bodySmall
                         ?.copyWith(color: colors.textMuted),
                     textAlign: TextAlign.center,

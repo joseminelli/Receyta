@@ -173,16 +173,18 @@ void main() {
     expect(loaded.profileColor, TileColor.violet);
   });
 
-  testWidgets('o cartão da conta leva às configurações', (tester) async {
+  testWidgets(
+      'sem conta, o botão de entrar fica no alto, com o aviso de opcional',
+      (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    expect(find.text('Entre com o Google'), findsOneWidget);
-    await tester.tap(find.text('Fazer backup nas configurações'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('ROTA AJUSTES'), findsOneWidget);
+    expect(find.text('Entrar com Google'), findsOneWidget);
+    expect(find.textContaining('Opcional'), findsOneWidget);
+    final button = tester.getTopLeft(find.text('Entrar com Google')).dy;
+    final shortcuts = tester.getTopLeft(find.text('SEU LIVRO')).dy;
+    expect(button, lessThan(shortcuts));
   });
 
   testWidgets('tocar em Entrar com Google chama o login', (tester) async {
@@ -197,7 +199,7 @@ void main() {
     expect(auth.signInCalls, 1);
   });
 
-  testWidgets('logado: mostra o e-mail, usa o nome do Google e permite sair',
+  testWidgets('logado: usa o nome do Google e esconde o botão de entrar',
       (tester) async {
     _usePhoneSize(tester);
     final auth = FakeAuthService(
@@ -206,16 +208,10 @@ void main() {
     await tester.pumpWidget(_host(auth: auth));
     await tester.pumpAndSettle();
 
-    expect(find.text('Conta conectada'), findsOneWidget);
-    expect(find.text('ana@x.com'), findsOneWidget);
     expect(find.text('Ana'), findsOneWidget);
     expect(find.text('Entrar com Google'), findsNothing);
-
-    await tester.tap(find.text('Sair'));
-    await tester.pumpAndSettle();
-
-    expect(auth.signOutCalls, 1);
-    expect(find.text('Entre com o Google'), findsOneWidget);
+    expect(find.text('Sair'), findsNothing);
+    expect(find.text('Sair da conta'), findsNothing);
   });
 
   testWidgets('falha ao entrar mostra a mensagem', (tester) async {
