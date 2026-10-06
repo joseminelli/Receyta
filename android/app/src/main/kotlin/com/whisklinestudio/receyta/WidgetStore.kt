@@ -1,7 +1,11 @@
 package com.whisklinestudio.receyta
 
 import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.RemoteViews
 import org.json.JSONObject
 
@@ -27,7 +31,28 @@ object WidgetStore {
         return try { JSONObject(raw) } catch (e: Exception) { null }
     }
 
-    /** Toque em qualquer ponto do widget abre o app. */
+    /**
+     * Redesenha todas as instâncias de um widget e avisa a lista (que rola) pra
+     * reler os dados.
+     */
+    fun refreshAll(context: Context, provider: Class<*>, build: (Context, Int) -> RemoteViews) {
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(ComponentName(context, provider))
+        for (id in ids) manager.updateAppWidget(id, build(context, id))
+        manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list)
+    }
+
+    /** Liga a lista que rola ao serviço que entrega as linhas. */
+    fun attachList(context: Context, views: RemoteViews, id: Int, service: Class<*>) {
+        val intent = Intent(context, service).apply {
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
+            data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+        }
+        views.setRemoteAdapter(R.id.widget_list, intent)
+        views.setEmptyView(R.id.widget_list, R.id.widget_empty)
+    }
+
+    /** Toque no widget (cabeçalho, vazio ou uma linha da lista) abre o app. */
     fun openAppOnClick(context: Context, views: RemoteViews, rootId: Int) {
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
         val pi = PendingIntent.getActivity(
@@ -35,5 +60,6 @@ object WidgetStore {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(rootId, pi)
+        views.setPendingIntentTemplate(R.id.widget_list, pi)
     }
 }

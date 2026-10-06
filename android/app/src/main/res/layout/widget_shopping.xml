@@ -25,7 +25,7 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="16dp"
-            android:paddingVertical="12dp">
+            android:paddingVertical="10dp">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -52,7 +52,7 @@
                     android:fontFamily="sans-serif-black"
                     android:maxLines="1"
                     android:textColor="#FFFFFF"
-                    android:textSize="20sp" />
+                    android:textSize="19sp" />
             </LinearLayout>
 
             <TextView
@@ -69,224 +69,30 @@
         </LinearLayout>
     </FrameLayout>
 
+    <ProgressBar
+        android:id="@+id/widget_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="5dp"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/widget_progress" />
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:paddingHorizontal="16dp"
-        android:paddingVertical="6dp">
+        android:paddingVertical="4dp">
 
-        <LinearLayout
-            android:id="@+id/widget_rows"
+        <ListView
+            android:id="@+id/widget_list"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
-
-        <LinearLayout
-            android:id="@+id/widget_row1"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingVertical="4dp">
-
-            <ImageView
-                android:id="@+id/widget_dot1"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginEnd="12dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_dot_pending" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_name1"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:textColor="#16150F"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/widget_row2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingVertical="4dp">
-
-            <ImageView
-                android:id="@+id/widget_dot2"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginEnd="12dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_dot_pending" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_name2"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:textColor="#16150F"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/widget_row3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingVertical="4dp">
-
-            <ImageView
-                android:id="@+id/widget_dot3"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginEnd="12dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_dot_pending" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_name3"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:textColor="#16150F"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/widget_row4"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingVertical="4dp">
-
-            <ImageView
-                android:id="@+id/widget_dot4"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginEnd="12dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_dot_pending" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_name4"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:textColor="#16150F"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/widget_row5"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingVertical="4dp">
-
-            <ImageView
-                android:id="@+id/widget_dot5"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginEnd="12dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_dot_pending" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_name5"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:textColor="#16150F"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/widget_row6"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingVertical="4dp">
-
-            <ImageView
-                android:id="@+id/widget_dot6"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginEnd="12dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/widget_dot_pending" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/widget_name6"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
-                    android:maxLines="1"
-                    android:textColor="#16150F"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
-
-        </LinearLayout>
+            android:clipToPadding="false"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:scrollbars="none" />
 
         <LinearLayout
             android:id="@+id/widget_empty"
@@ -312,36 +118,5 @@
                 android:textColor="#8A8674"
                 android:textSize="12sp" />
         </LinearLayout>
-
     </FrameLayout>
-
-    <LinearLayout
-        android:id="@+id/widget_footer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/widget_footer_bg"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingHorizontal="16dp"
-        android:paddingVertical="9dp">
-
-        <ProgressBar
-            android:id="@+id/widget_progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="0dp"
-            android:layout_height="8dp"
-            android:layout_weight="1"
-            android:max="100"
-            android:progressDrawable="@drawable/widget_progress" />
-
-        <TextView
-            android:id="@+id/widget_footer_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:textColor="#3D3B30"
-            android:textSize="12sp" />
-    </LinearLayout>
 </LinearLayout>

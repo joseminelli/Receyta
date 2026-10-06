@@ -146,6 +146,15 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/receyta_shopping_widget_info" />
         </receiver>
+        <!-- Entregam as linhas (que rolam) dos dois widgets. -->
+        <service
+            android:name=".TodayWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <service
+            android:name=".ShoppingWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

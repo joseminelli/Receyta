@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:description="@string/widget_today_description"
-    android:initialLayout="@layout/widget_today"
+    android:description="@string/widget_shopping_description"
+    android:initialLayout="@layout/widget_shopping"
+    android:previewLayout="@layout/widget_shopping_preview"
     android:minWidth="180dp"
     android:minHeight="110dp"
     android:minResizeWidth="110dp"

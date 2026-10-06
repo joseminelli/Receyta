@@ -12,7 +12,7 @@ import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 
 /// Quantos itens pendentes vão pro widget de compras.
-const kWidgetShoppingItems = 8;
+const kWidgetShoppingItems = 30;
 
 /// Empurra pros widgets da tela inicial (Android) o que eles mostram: as
 /// refeições dos próximos 7 dias (widget "Hoje") e a lista de compras em aberto

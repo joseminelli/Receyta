@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_today_description">As receitas planejadas para hoje, com as já feitas marcadas.</string>
+    <string name="widget_shopping_description">Sua lista de compras em aberto e o que ainda falta comprar.</string>
+</resources>
