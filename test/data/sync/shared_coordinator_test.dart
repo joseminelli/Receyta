@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,6 +122,7 @@ void main() {
 
   test('aviso em tempo real de mudança dispara uma rodada logo', () async {
     await start();
+    await until(() => shared.events.hasListener, reason: 'canal assinado');
     final before = shared.pullCalls;
 
     shared.events.add(SharedChange.docs);
@@ -130,6 +132,7 @@ void main() {
   test('aviso de que alguém saiu manda reler a casa', () async {
     await start();
 
+    await until(() => shared.events.hasListener, reason: 'canal assinado');
     spaces.space = null;
     shared.events.add(SharedChange.members);
     await until(
@@ -152,5 +155,57 @@ void main() {
     );
 
     expect(shared.pullCalls, 0);
+  });
+
+  test('marcar um item da lista compartilhada sobe sozinho, sem sincronizar',
+      () async {
+    await start();
+    final list = await db.shoppingListDao
+        .create(name: 'Feira', items: const [], at: DateTime.utc(2026, 2, 1));
+    await db.shoppingListDao.addItem(listId: list.id, manualName: 'Leite');
+    await db.shoppingListDao
+        .setSpace(list.id, 'casa-1', DateTime.utc(2026, 2, 2));
+    await until(
+      () => shared.pushed.any((d) => d.kind == 'shopping_item'),
+      reason: 'envio inicial',
+    );
+    shared.pushed.clear();
+
+    final item = (await db.shoppingListDao.itemsOf(list.id)).single;
+    await (db.update(db.shoppingListItems)..where((i) => i.id.equals(item.id)))
+        .write(const ShoppingListItemsCompanion(checked: Value(true)));
+
+    await until(
+      () => shared.pushed.any((d) => d.kind == 'shopping_item'),
+      reason: 'envio do item marcado',
+    );
+  });
+
+  test('marcar como feita a refeição de outra pessoa sobe sozinho', () async {
+    SharedPreferences.setMockInitialValues({'space_calendar_ana': true});
+    await start();
+    final meal = SharedMealRow(
+      id: 'm1',
+      spaceId: 'casa-1',
+      date: DateTime.utc(2026, 3, 10),
+      mealType: 'lunch',
+      done: false,
+      recipeJson: '{"id":"r1","name":"Bolo"}',
+      authorId: 'beto',
+      authorName: 'Beto',
+      createdAt: DateTime.utc(2026, 3, 1),
+      updatedAt: DateTime.utc(2026, 3, 1),
+      syncedAt: DateTime.utc(2026, 3, 1),
+    );
+    await db.mealPlanDao.putShared(meal);
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    shared.pushed.clear();
+
+    await db.mealPlanDao.setSharedDone('m1', true, DateTime.utc(2026, 3, 2));
+
+    await until(
+      () => shared.pushed.any((d) => d.kind == 'meal_plan'),
+      reason: 'envio da refeição marcada',
+    );
   });
 }

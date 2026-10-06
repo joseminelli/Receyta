@@ -94,6 +94,7 @@ class SyncCoordinator extends Notifier<SyncState> {
   StreamSubscription<SharedChange>? _realtime;
   StreamSubscription<void>? _accountRealtime;
   String? _realtimeSpace;
+  bool _disposed = false;
   bool _started = false;
   bool _running = false;
   bool _again = false;
@@ -103,7 +104,10 @@ class SyncCoordinator extends Notifier<SyncState> {
 
   @override
   SyncState build() {
-    ref.onDispose(_cancelWork);
+    ref.onDispose(() {
+      _disposed = true;
+      _cancelWork();
+    });
     return const SyncState();
   }
 
@@ -179,7 +183,8 @@ class SyncCoordinator extends Notifier<SyncState> {
     }
   }
 
-  /// Qualquer escrita em receitas ou pastas. Só vira rodada se sobrou algo
+  /// Qualquer escrita em receitas, pastas, listas, calendário (o da pessoa e o
+  /// dos outros da casa) ou histórico. Só vira rodada se sobrou algo
   /// pendente de envio — a própria sincronização grava no banco ao aplicar o
   /// que veio da nuvem, e isso não deve disparar outra rodada.
   void _watchChanges() {
@@ -190,6 +195,7 @@ class SyncCoordinator extends Notifier<SyncState> {
       db.recipes,
       db.folders,
       db.mealPlanEntries,
+      db.sharedMeals,
       db.shoppingLists,
       db.shoppingListItems,
       db.cookLogs,
@@ -267,11 +273,12 @@ class SyncCoordinator extends Notifier<SyncState> {
       }
     } catch (e) {
       _running = false;
+      if (_disposed) return;
       _fail(classifySyncError(e));
       return;
     }
     _running = false;
-    if (!state.enabled) return;
+    if (_disposed || !state.enabled) return;
 
     switch (result) {
       case Ok():
