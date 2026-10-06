@@ -15,6 +15,7 @@ import 'package:receyta/domain/engine/shared_meal_codec.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/space/controllers/calendar_share.dart';
+import 'package:receyta/features/space/controllers/space_controller.dart';
 
 /// Fonte de verdade do planejamento semanal (§RF-04). Toda data que entra é
 /// normalizada pra data de calendário (`dayOf`); timestamps sempre UTC.
@@ -23,8 +24,13 @@ class MealPlanRepository {
     this._dao, {
     DateTime Function() clock = DateTime.now,
     String? Function()? spaceIdForNew,
+    Map<String, String> memberNames = const {},
   })  : _clock = clock,
-        _spaceIdForNew = spaceIdForNew ?? (() => null);
+        _spaceIdForNew = spaceIdForNew ?? (() => null),
+        _memberNames = memberNames;
+
+  /// Nome atual de cada pessoa da casa (id da conta → nome).
+  final Map<String, String> _memberNames;
 
   final MealPlanDao _dao;
   final DateTime Function() _clock;
@@ -322,7 +328,8 @@ class MealPlanRepository {
       note: m.note,
       done: m.done,
       spaceId: m.spaceId,
-      sharedBy: m.authorName.isEmpty ? 'Alguém da casa' : m.authorName,
+      sharedBy: _memberNames[m.authorId] ??
+          (m.authorName.isEmpty ? 'Alguém da casa' : m.authorName),
     );
   }
 }
@@ -331,5 +338,6 @@ final mealPlanRepositoryProvider = Provider<MealPlanRepository>((ref) {
   return MealPlanRepository(
     ref.watch(databaseProvider).mealPlanDao,
     spaceIdForNew: () => ref.read(calendarSpaceIdProvider),
+    memberNames: ref.watch(memberNamesProvider),
   );
 });

@@ -7,6 +7,8 @@ import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/services/auth_service.dart';
 import 'package:receyta/data/space/space_remote.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -218,6 +220,76 @@ void main() {
 
     test('texto sem código de 8 caracteres volta limpo', () {
       expect(normalizeInviteCode('ab c'), 'ABC');
+    });
+  });
+
+  group('nome na casa', () {
+    test('usa o apelido local ao criar a casa', () async {
+      final remote = FakeSpaceRemote();
+      final c = make(remote: remote);
+      await ready(c);
+      await c
+          .read(appSettingsProvider.notifier)
+          .setProfile(nickname: 'Aninha', color: TileColor.coral);
+
+      await c.read(spaceControllerProvider.notifier).create();
+
+      expect(remote.space!.members.single.displayName, 'Aninha');
+    });
+
+    test('editar o apelido depois atualiza o nome na casa', () async {
+      final remote = FakeSpaceRemote();
+      final c = make(remote: remote);
+      final controller = await ready(c);
+      await controller.create();
+      expect(remote.space!.members.single.displayName, 'Ana');
+
+      await c
+          .read(appSettingsProvider.notifier)
+          .setProfile(nickname: 'Aninha', color: TileColor.coral);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(remote.names, ['Aninha']);
+      expect(remote.space!.members.single.displayName, 'Aninha');
+      expect(c.read(memberNamesProvider)['ana'], 'Aninha');
+    });
+
+    test('ao reler a casa, corrige o nome que ficou velho no servidor',
+        () async {
+      final remote = FakeSpaceRemote();
+      final c = make(remote: remote);
+      final controller = await ready(c);
+      await controller.create();
+      await c
+          .read(appSettingsProvider.notifier)
+          .setProfile(nickname: 'Novo', color: TileColor.coral);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      remote.names.clear();
+      remote.space = SpaceInfo(
+        id: 'casa-1',
+        name: 'Casa',
+        ownerId: 'ana',
+        members: const [
+          SpaceMember(userId: 'ana', displayName: 'Velho', isOwner: true),
+        ],
+      );
+
+      await controller.refresh();
+
+      expect(remote.names, ['Novo']);
+      expect(remote.space!.members.single.displayName, 'Novo');
+    });
+
+    test('sem mudança de nome, não chama o servidor à toa', () async {
+      final remote = FakeSpaceRemote();
+      final c = make(remote: remote);
+      final controller = await ready(c);
+      await controller.create();
+
+      await controller.refresh();
+      await controller.refresh();
+
+      expect(remote.names, isEmpty);
     });
   });
 }

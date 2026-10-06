@@ -255,6 +255,18 @@ begin
 end;
 $$;
 
+-- Atualiza o nome com que a pessoa aparece na casa (quando ela edita o apelido).
+create or replace function public.set_display_name(p_name text)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update space_members
+    set display_name = left(coalesce(trim(p_name), ''), 60)
+    where user_id = auth.uid();
+$$;
+
 -- O dono tira alguém da casa.
 create or replace function public.remove_member(p_user uuid)
 returns void
@@ -308,6 +320,7 @@ revoke all on function public.create_space(text)        from public;
 revoke all on function public.create_invite()           from public;
 revoke all on function public.join_space(text, text)    from public;
 revoke all on function public.leave_space()             from public;
+revoke all on function public.set_display_name(text)    from public;
 revoke all on function public.remove_member(uuid)       from public;
 revoke all on function public.my_space()                from public;
 revoke all on function public.is_space_member(uuid)     from public;
@@ -316,6 +329,7 @@ grant execute on function public.create_space(text)     to authenticated;
 grant execute on function public.create_invite()        to authenticated;
 grant execute on function public.join_space(text, text) to authenticated;
 grant execute on function public.leave_space()          to authenticated;
+grant execute on function public.set_display_name(text) to authenticated;
 grant execute on function public.remove_member(uuid)    to authenticated;
 grant execute on function public.my_space()             to authenticated;
 grant execute on function public.is_space_member(uuid) to authenticated;

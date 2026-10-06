@@ -76,4 +76,29 @@ class FakeSpaceRemote implements SpaceRemote {
     _maybeFail();
     removed.add(userId);
   }
+
+  final names = <String>[];
+
+  @override
+  Future<void> setDisplayName(String name) async {
+    _maybeFail();
+    names.add(name);
+    final s = space;
+    if (s == null) return;
+    space = SpaceInfo(
+      id: s.id,
+      name: s.name,
+      ownerId: s.ownerId,
+      members: [
+        for (final m in s.members)
+          m.userId == userId
+              ? SpaceMember(
+                  userId: m.userId,
+                  displayName: name,
+                  isOwner: m.isOwner,
+                )
+              : m,
+      ],
+    );
+  }
 }

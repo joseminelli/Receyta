@@ -29,6 +29,10 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
   Future<SpaceInfo?> build() async {
     final user = ref.watch(authUserProvider).valueOrNull;
     if (user == null) return null;
+    ref.listen<String>(
+      appSettingsProvider.select((s) => s.nickname),
+      (previous, next) => unawaited(_publishName()),
+    );
     final cachedId = await _readCache(user.id);
     if (cachedId != null) {
       Future.microtask(refresh);
@@ -68,6 +72,41 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
     }
     await _writeCache(user.id, info.id);
     state = AsyncData(info);
+    await _publishName(info);
+  }
+
+  /// Se o nome da pessoa na casa difere do que ela usa aqui (apelido editado,
+  /// inclusive sem internet), manda o atual pra casa.
+  Future<void> _publishName([SpaceInfo? known]) async {
+    final user = ref.read(authUserProvider).valueOrNull;
+    final info = known ?? state.valueOrNull;
+    if (user == null || info == null || info.members.isEmpty) return;
+    SpaceMember? me;
+    for (final m in info.members) {
+      if (m.userId == user.id) me = m;
+    }
+    final mine = displayName();
+    if (me == null || me.displayName == mine) return;
+    try {
+      await _remote.setDisplayName(mine);
+      state = AsyncData(SpaceInfo(
+        id: info.id,
+        name: info.name,
+        ownerId: info.ownerId,
+        members: [
+          for (final m in info.members)
+            m.userId == user.id
+                ? SpaceMember(
+                    userId: m.userId,
+                    displayName: mine,
+                    isOwner: m.isOwner,
+                  )
+                : m,
+        ],
+      ));
+    } catch (e) {
+      debugPrint('SpaceController.setDisplayName: $e');
+    }
   }
 
   /// Como a pessoa aparece pros outros da casa: apelido, senão primeiro nome
@@ -204,3 +243,13 @@ String normalizeInviteCode(String input) {
   if (token != null) return token;
   return upper.replaceAll(RegExp(r'[^0-9A-Z]'), '');
 }
+
+/// Nome atual de cada pessoa da casa, por id da conta. As refeições dos outros
+/// trazem o nome de quando foram planejadas; este é o de agora.
+final memberNamesProvider = Provider<Map<String, String>>((ref) {
+  final members = ref.watch(spaceControllerProvider).valueOrNull?.members;
+  return {
+    for (final m in members ?? const <SpaceMember>[])
+      if (m.displayName.isNotEmpty) m.userId: m.displayName,
+  };
+});

@@ -80,6 +80,9 @@ abstract class SpaceRemote {
   Future<void> leaveSpace();
 
   Future<void> removeMember(String userId);
+
+  /// Muda o nome com que a pessoa aparece na casa.
+  Future<void> setDisplayName(String name);
 }
 
 class SupabaseSpaceRemote implements SpaceRemote {
@@ -132,6 +135,11 @@ class SupabaseSpaceRemote implements SpaceRemote {
   Future<void> removeMember(String userId) async {
     await _client.rpc('remove_member', params: {'p_user': userId});
   }
+
+  @override
+  Future<void> setDisplayName(String name) async {
+    await _client.rpc('set_display_name', params: {'p_name': name});
+  }
 }
 
 /// Usado quando o Supabase não inicializou.
@@ -160,6 +168,9 @@ class NoSpaceRemote implements SpaceRemote {
 
   @override
   Future<void> removeMember(String userId) async {}
+
+  @override
+  Future<void> setDisplayName(String name) async {}
 }
 
 final spaceRemoteProvider = Provider<SpaceRemote>((ref) {
