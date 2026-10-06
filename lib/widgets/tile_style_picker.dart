@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -123,7 +124,6 @@ Future<void> showAppearanceSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
-    showDragHandle: true,
     builder: (_) => _AppearanceSheet(
       title: title,
       color: color,
@@ -162,35 +162,20 @@ class _AppearanceSheetState extends State<_AppearanceSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.screen,
-          0,
-          AppSpacing.screen,
-          AppSpacing.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.title, style: context.texts.displaySmall),
-            const SizedBox(height: AppSpacing.md),
-            TileStylePicker(
-              color: _color,
-              motif: _motif,
-              seedId: widget.seedId,
-              fallbackColor: widget.fallbackColor,
-              onChanged: (c, m) {
-                setState(() {
-                  _color = c;
-                  _motif = m;
-                });
-                widget.onChanged(c, m);
-              },
-            ),
-          ],
-        ),
+    return AppSheetFrame(
+      title: widget.title,
+      child: TileStylePicker(
+        color: _color,
+        motif: _motif,
+        seedId: widget.seedId,
+        fallbackColor: widget.fallbackColor,
+        onChanged: (c, m) {
+          setState(() {
+            _color = c;
+            _motif = m;
+          });
+          widget.onChanged(c, m);
+        },
       ),
     );
   }

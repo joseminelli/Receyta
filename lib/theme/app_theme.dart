@@ -60,7 +60,33 @@ abstract class AppTheme {
       ),
       inputDecorationTheme: _inputTheme(colors),
       textTheme: _textTheme(colors),
+      bottomSheetTheme: _bottomSheetTheme(colors),
       pageTransitionsTheme: _pageTransitionsTheme,
+    );
+  }
+
+  /// Modais de baixo (todos os `showModalBottomSheet` do app): folha `paper`
+  /// sem o tom de superfície do Material 3, canto bem arredondado em cima,
+  /// alça fina no tom do `ink` e fundo escurecido. Sem isso cada folha caía no
+  /// visual padrão do Flutter.
+  static BottomSheetThemeData _bottomSheetTheme(AppColors colors) {
+    return BottomSheetThemeData(
+      backgroundColor: colors.paper,
+      modalBackgroundColor: colors.paper,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.transparent,
+      elevation: 0,
+      modalElevation: 0,
+      clipBehavior: Clip.antiAlias,
+      showDragHandle: true,
+      dragHandleColor: colors.ink.withValues(alpha: 0.18),
+      dragHandleSize: const Size(44, 5),
+      modalBarrierColor: colors.ink.withValues(alpha: 0.55),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadii.lg + 10),
+        ),
+      ),
     );
   }
 

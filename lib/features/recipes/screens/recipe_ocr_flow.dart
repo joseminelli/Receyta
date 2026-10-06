@@ -8,6 +8,7 @@ import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/pill_button.dart';
@@ -202,27 +203,25 @@ class _OcrLoadingDialog extends StatelessWidget {
 }
 
 Future<ImageSource?> _pickImageSource(BuildContext context) {
-  final colors = context.colors;
   return showModalBottomSheet<ImageSource>(
     context: context,
-    backgroundColor: colors.paper,
-    showDragHandle: true,
-    builder: (sheet) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    builder: (sheet) => AppSheetFrame(
+      title: 'Importar de foto',
+      subtitle: 'Lê o texto da receita. A imagem não fica salva.',
+      child: AppSheetOptions(
         children: [
-          ListTile(
-            leading: Icon(Icons.photo_camera_outlined, color: colors.textMuted),
-            title: const Text('Tirar foto'),
+          AppSheetOption(
+            icon: Icons.photo_camera_outlined,
+            title: 'Tirar foto',
+            subtitle: 'Fotografe a receita agora',
             onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
           ),
-          ListTile(
-            leading:
-                Icon(Icons.photo_library_outlined, color: colors.textMuted),
-            title: const Text('Escolher da galeria'),
+          AppSheetOption(
+            icon: Icons.photo_library_outlined,
+            title: 'Escolher da galeria',
+            subtitle: 'Um print ou foto que você já tem',
             onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     ),

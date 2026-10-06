@@ -9,7 +9,7 @@ import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/messenger.dart';
-import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 
 /// Resultado de [choosePhoto]: o nome do arquivo guardado, ou `null` pra
@@ -81,33 +81,34 @@ Future<_PhotoChoice?> _showSheet(
   BuildContext context, {
   required bool hasPhoto,
 }) {
-  final colors = context.colors;
   return showModalBottomSheet<_PhotoChoice>(
     context: context,
-    backgroundColor: colors.paper,
-    showDragHandle: true,
-    builder: (sheet) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    builder: (sheet) => AppSheetFrame(
+      title: hasPhoto ? 'Trocar a foto' : 'Foto da receita',
+      subtitle: 'Fica comprimida e guardada só no seu aparelho'
+          ' (e na sua conta, se estiver conectado).',
+      child: AppSheetOptions(
         children: [
-          ListTile(
-            leading: Icon(Icons.photo_camera_outlined, color: colors.textMuted),
-            title: const Text('Tirar foto'),
+          AppSheetOption(
+            icon: Icons.photo_camera_outlined,
+            title: 'Tirar foto',
+            subtitle: 'Abre a câmera agora',
             onTap: () => Navigator.of(sheet).pop(_PhotoChoice.camera),
           ),
-          ListTile(
-            leading:
-                Icon(Icons.photo_library_outlined, color: colors.textMuted),
-            title: const Text('Escolher da galeria'),
+          AppSheetOption(
+            icon: Icons.photo_library_outlined,
+            title: 'Escolher da galeria',
+            subtitle: 'Uma foto que você já tem',
             onTap: () => Navigator.of(sheet).pop(_PhotoChoice.gallery),
           ),
           if (hasPhoto)
-            ListTile(
-              leading: Icon(Icons.hide_image_outlined, color: colors.danger),
-              title: const Text('Remover foto'),
+            AppSheetOption(
+              icon: Icons.hide_image_outlined,
+              title: 'Remover foto',
+              subtitle: 'Volta a mostrar só o azulejo',
+              danger: true,
               onTap: () => Navigator.of(sheet).pop(_PhotoChoice.remove),
             ),
-          const SizedBox(height: 8),
         ],
       ),
     ),

@@ -19,6 +19,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_dialog.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -125,20 +126,23 @@ class SettingsPage extends ConsumerWidget {
   ) async {
     final weekday = await showModalBottomSheet<int>(
       context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (var d = 1; d <= 7; d++)
-              ListTile(
-                title: Text(_weekdayName(d)),
-                trailing: d == current.planWeekWeekday
-                    ? const Icon(Icons.check)
-                    : null,
-                onTap: () => Navigator.of(sheet).pop(d),
-              ),
-          ],
+      isScrollControlled: true,
+      builder: (sheet) => AppSheetFrame(
+        title: 'Dia do lembrete',
+        child: Flexible(
+          child: SingleChildScrollView(
+            child: AppSheetOptions(
+              children: [
+                for (var d = 1; d <= 7; d++)
+                  AppSheetOption(
+                    icon: Icons.event_outlined,
+                    title: _weekdayName(d),
+                    selected: d == current.planWeekWeekday,
+                    onTap: () => Navigator.of(sheet).pop(d),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
