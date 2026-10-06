@@ -704,7 +704,9 @@ Esforço em dias de trabalho focado.
 
 ### Status de implementação
 
-*Atualizado conforme o código em 2026-09-29; a barra está no início do bloco E.*
+*Atualizado em 2026-10-06 (Bloco G fechado; Bloco H em andamento — conta
+Google e fotos feitas, sync de receitas é o próximo). Os blocos A–F foram
+conferidos pelo código em 2026-09-29/10-01.*
 
 - **Bloco A (A1–A8)** — ✅ completo e commitado.
 - **Bloco B** — ✅ completo, **exceto imagem** (B7 foi movida para o bloco H,
@@ -809,7 +811,16 @@ Esforço em dias de trabalho focado.
   - **Ainda não**: sugestão no calendário do mês, e `servingsOverride` /
     G12 ("tenho X, Y, Z", reaproveita `suggestRecipes`).
 
-- **Bloco G (em andamento, 2026-10-01)** — **G1 ✅ timers do modo cozinha**
+- **Bloco G — ✅ completo (2026-10-06).** Fechado pelo usuário. Conferido no
+  código: G2 escalar porções, G3 onboarding, G4 configurações (`features/
+  settings`), G5/G8 lembretes (`reminder_notifications`), G7 histórico
+  "cozinhei" (`cook_logs`, schema v5), G11 despensa (`ingredients.in_pantry`,
+  schema v6). G9, G10 e G12 foram declarados prontos pelo usuário, sem
+  conferência minha no código. Entrou além do previsto: backup automático
+  (`auto_backup_service`), widget "Hoje" e sugestão da semana, compartilhar dia
+  e semana como imagem, banner no PDF da receita. G0 (vídeo `/brag`) segue por
+  último. Detalhe do G1 (que veio primeiro) abaixo.
+- **G1 ✅ timers do modo cozinha** (2026-10-01)
   (wakelock e passos grandes já existiam). Cartão "Cozimento" no topo inicia um
   timer com o `cookMinutes` da receita; cada tempo que o texto de um passo
   menciona ("20 minutos", "1h30", "meia hora", "20 a 25 min" → o menor) vira um
@@ -834,6 +845,48 @@ Esforço em dias de trabalho focado.
   (`flutter_local_notifications`, `timezone`, desugaring no Gradle, receivers e
   permissões no manifest). iOS não configurado.
   G0 (vídeo `/brag`) fica por último, por decisão do usuário.
+
+- **Bloco H — em andamento (2026-10-06).** O app continua offline primeiro: o
+  banco local é a fonte da verdade e o login é **opcional**.
+  - **Conta com Google ✅.** `supabase_flutter` + `google_sign_in` 6.3.0 (login
+    nativo trocado por sessão com `signInWithIdToken`, sem navegador). Projeto
+    Supabase e IDs públicos em `lib/core/supabase_config.dart` (URL, chave
+    publicável, Client ID Web); o Client Secret do Google **nunca** entra no
+    código, só no painel do Supabase. `AuthService` (+ `UnavailableAuthService`
+    quando o Supabase não sobe), `authUserProvider`, botão "Entrar com Google" /
+    "Sair" na aba Conta. Testado em debug e em release local; clientes Android
+    para debug e para a chave de upload. **Falta:** SHA-1 da Play App Signing no
+    Google Cloud, trocar o Client Secret (foi colado em conversa) e testar o
+    APK vindo da loja.
+  - **H0 — fotos das receitas ✅.** Foto local (câmera/galeria) comprimida até
+    **400 KB** (`RecipeImageService`: lado 1600, qualidade baixa em passos até
+    caber; só o **nome** do arquivo vai em `recipes.image_path`, pasta
+    `recipe_images/`). Aparece no card, no destaque da home e no hero do
+    detalhe (`RecipeCover`, o azulejo continua como fallback e como base do
+    Hero); escolhida no formulário (`_PhotoField`, só grava ao salvar) ou pelo ⋯
+    do detalhe ("Foto"). **Nuvem:** bucket privado `recipe-images` (SQL em
+    `docs/supabase/recipe-images.sql`, 1 MB e só JPEG no próprio bucket,
+    policies por `auth.uid()`); schema **v7** (`recipes.image_synced_path` =
+    qual foto já subiu). `RecipeImageSync.syncPending` envia o pendente, apaga
+    da nuvem a foto trocada/removida e baixa a que faltar localmente
+    (`ensureLocal`); roda ao salvar foto, ao entrar e no boot. Receita apagada
+    de vez libera as fotos (`onImagesReleased`): arquivo local na hora,
+    remoto por fila (`image_remote_deletions`). Rede de segurança no boot,
+    `sweepRemoteOrphans`, apaga do bucket o que nenhuma receita referencia
+    (carência de 1 dia). Gravar a receita preserva o registro de envio
+    (`saveWithChildren` lê o valor atual do banco).
+  - **Foto no backup e no import de link ✅.** `.receyta` ganhou o campo `image`
+    (JPEG em base64, opcional; `schemaVersion` segue 1, arquivo antigo vale);
+    importar restaura a foto, e "substituir" sem foto no arquivo **mantém** a
+    existente. Importar de link baixa a imagem da página (`image` do JSON-LD,
+    com `og:image` de reserva; só http/https, ≤ 8 MB, qualquer falha = receita
+    sem foto) e já entra no formulário como foto. Custo: backup maior (~540 KB
+    por foto).
+  - **Armadilha registrada:** `RecipeDao.findById` esconde receita da lixeira;
+    exclusão definitiva acontece na lixeira, então usa `findIncludingTrashed`.
+  - **Próximo: H3, sync de receitas** (proposta abaixo no bloco H, aguardando
+    as duas decisões do usuário). Resolve a foto em outro aparelho e o risco da
+    limpeza de fotos com a mesma conta em dois aparelhos.
 
 ---
 
@@ -984,15 +1037,49 @@ pedida ao ativar o primeiro lembrete, nunca na abertura do app.
 ---
 
 ### Bloco H — Conta, sync e fotos
-*Só depois de usar o app no dia a dia por algumas semanas. 3+ semanas.*
+*Em andamento desde 2026-10-06 (o usuário decidiu antecipar; a espera de "algumas semanas de uso" caiu).*
 
-Supabase, auth, RLS, espelhamento do schema, fila de mutações offline, compartilhamento de pasta, lista colaborativa.
+Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princípio que vale pro bloco todo: **offline primeiro** — o banco local é a fonte da verdade, salvar nunca espera a internet, e o login é opcional.
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
-| H0 | Imagem de receita (ex-B7): câmera e galeria, compressão, thumbnail, **Supabase Storage** com caminho local como cache | 1 | Foto tirada num aparelho aparece no outro; some da UI mas o arquivo local vira cache |
+| H-auth | ✅ Conta com Google (login nativo → sessão Supabase), botão na aba Conta | 1 | Entrar e sair funcionam em debug e em release; app segue 100% usável sem login |
+| H0 | ✅ Imagem de receita (ex-B7): câmera e galeria, compressão até 400 KB, **Supabase Storage** privado com o arquivo local como cache; apagar receita limpa a nuvem | 1,5 | Foto aparece nos cards e no hero; sobe, troca e some da nuvem junto com a receita |
+| H0b | ✅ Foto no backup `.receyta` e no import de link | 0,5 | Restaurar um backup traz as fotos; importar de link já vem com a foto da página |
+| H3 | **Sync de receitas e pastas** pela conta Google (detalhe abaixo) | 5 | Receita criada, editada ou apagada num aparelho aparece igual no outro, com foto |
+| H4 | Sync do resto: calendário, listas de compras, despensa, histórico "cozinhei" (um por vez, mesmo motor do H3) | 3 | Cada um sincroniza sem duplicar nem perder item |
 | H1 | Link efêmero (ex-D7): function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
 | H2 | Deep link (ex-D8): App Links/Universal Links resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
+
+#### H3 — Sync de receitas e pastas (proposta, 2026-10-06)
+
+**Decisões já tomadas:** usar a conta Google (já configurada) como identidade; começar por receitas e pastas.
+**Decisões pendentes do usuário:** (1) confirmar o escopo inicial — receitas + pastas agora, o resto no H4; (2) aceitar **conflito por "a edição mais recente vence", por receita** (sem mesclar campo a campo).
+
+**Modelo.** Uma linha por receita no Postgres, com a receita inteira em JSON (ingredientes, passos e tags), reaproveitando o serializer do `.receyta` (D1/D2) e a reconciliação do import (ingrediente por **nome**, via `getOrCreate`, nunca por id). Em vez de espelhar 8 tabelas. Pastas do mesmo jeito.
+
+| Coluna | Uso |
+|---|---|
+| `id` (uuid) | O mesmo id da receita local; chave junto com `user_id` |
+| `user_id` | `auth.uid()`; policy RLS só deixa ler/escrever as próprias linhas |
+| `data` (jsonb) | Corpo da receita no formato de export |
+| `updated_at` | Relógio do servidor ao gravar; é o cursor de leitura |
+| `edited_at` | Quando foi editada de verdade (relógio do app, UTC); desempata conflito |
+| `deleted_at` | Marcador de exclusão (tombstone), pro outro aparelho apagar também |
+
+**Banco local (schema v8).** `recipes`/`folders` ganham `synced_at` (o que mudou desde a última sincronização = `updated_at > synced_at`) e uma tabela de exclusões pendentes. O cursor de leitura (último `updated_at` do servidor) fica em `shared_preferences`.
+
+**Motor.** (1) enviar o que mudou, em lote; (2) ler as linhas com `updated_at` maior que o cursor; (3) aplicar: se só um lado mudou, vence ele; se os dois mudaram, vence o `edited_at` mais recente; exclusão de um lado vence edição **mais antiga** do outro. Idempotente e reexecutável; falha de rede deixa tudo pendente.
+
+**Gatilhos.** Ao abrir o app, ao voltar do segundo plano, ao salvar/apagar (com atraso de poucos segundos, agrupando), e ao entrar com o Google. Indicador de estado ("Sincronizado", "Sincronizando…", "Pendente — sem rede") na tela Conta.
+
+**Primeiro login.** Une o que existe no aparelho com o que está na nuvem pelo id; nunca apaga nada de nenhum lado. Receita só local sobe; receita só na nuvem desce.
+
+**Fotos.** Seguem como estão (H0): com a receita chegando ao outro aparelho, `ensureLocal` baixa a foto na hora de abrir. Isso também resolve o risco de `sweepRemoteOrphans` apagar fotos de um aparelho quando o mesmo Google está em dois (hoje as receitas não sincronizam, então as fotos do primeiro contam como "sem uso" no segundo).
+
+**Etapas:** (1) SQL da tabela + RLS (usuário roda no painel, como o do bucket); (2) schema v8 + marcação de mudanças; (3) motor de envio/leitura com testes de conflito, exclusão e primeiro login; (4) gatilhos e indicador na tela Conta; (5) ajustar a limpeza de fotos para o modelo com sync. **Fora do escopo:** edição em tempo real simultânea (Realtime), mesclagem campo a campo, compartilhar com outras pessoas (isso é o H1/H2 e o futuro "pasta compartilhada").
+
+**Riscos.** Relógio errado do aparelho distorce o "mais recente" → usar o `updated_at` do servidor como árbitro entre aparelhos e o `edited_at` só pra desempate. Receita muito grande ou lista enorme → paginar a leitura. Mudança de schema do JSON no futuro → o corpo leva `schemaVersion`, como o `.receyta`.
 
 > **Dois mecanismos de compartilhar uma receita, de propósito (não é
 > duplicação).** `.receyta` (arquivo, D1/D5) e **link efêmero** (H1/H2) resolvem
@@ -1017,7 +1104,7 @@ Supabase, auth, RLS, espelhamento do schema, fila de mutações offline, compart
 >   evitando que compartilhar receitas avulsas lote o tier free do banco
 >   relacional.
 
-Não comece este bloco antes de responder duas coisas com uso real: você de fato precisa de sync, ou export/import já resolve? E quantas pessoas vão compartilhar de verdade? (Se a resposta for "só quero as fotos", dá pra fazer o H0 sozinho com Storage, sem o resto do sync. H1/H2 são independentes do sync — dá pra fazer só eles também.)
+*Nota original do bloco (superada em 2026-10-06):* antes de começar, o plano pedia responder com uso real se o sync era necessário ou se export/import bastava. O usuário decidiu seguir: conta com Google e fotos primeiro (feitos), sync de receitas em seguida (H3). **H1/H2 (link efêmero e deep link) continuam independentes do sync** e ficam por último, como o usuário já havia decidido ("deixar o redis pro final").
 
 ---
 
@@ -1033,9 +1120,11 @@ Não comece este bloco antes de responder duas coisas com uso real: você de fat
 | F — Calendário | 3,5 d | **Fecha o ciclo da semana** |
 | G — Acabamento | 3,5 d | Tira as arestas |
 | **Até G** | **35,5 d** | ~7 semanas de trabalho focado |
+| H — Conta, fotos e sync | ~12 d | Conta Google, fotos (✅), sync de receitas (H3), resto do sync (H4), link efêmero (H1/H2) |
 
-Fora dessa conta: **bloco H** (conta, sync e a foto de receita ex-B7), que só
-entra depois de semanas de uso real.
+O bloco H está **em andamento** (2026-10-06): H-auth, H0 e H0b feitos; H3
+(sync de receitas e pastas, ~5 d) é o próximo; H4 (~3 d) e H1/H2 (~2 d)
+depois. O total "Até G" é a estimativa original e não foi refeito com o tempo real gasto.
 
 Três momentos em que o app fica bom o bastante para parar: **fim do bloco B** (caderno de receitas digital), **fim do bloco E** (receitas + compras) e **fim do bloco F** (o produto completo). Qualquer um deles é um lugar legítimo para parar e usar por um mês antes de continuar.
 
