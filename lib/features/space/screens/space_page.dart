@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:receyta/core/result.dart';
-import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/space/space_remote.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/space/controllers/calendar_share.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/messenger.dart';
@@ -17,50 +18,60 @@ import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
-import 'package:receyta/widgets/header_scaffold.dart';
+import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
+import 'package:receyta/widgets/tile_pattern.dart';
 
-/// A casa: o espaço onde a pessoa divide listas de compras (e o calendário)
-/// com quem mora com ela. Sem casa, oferece criar uma ou entrar com um código;
-/// com casa, mostra quem faz parte, convida e deixa sair.
+/// A casa: o espaço onde a pessoa divide listas de compras e calendário com
+/// quem mora com ela. Sem casa, apresenta o que dá pra dividir e oferece criar
+/// uma ou entrar com um código; com casa, mostra quem faz parte, o que está
+/// dividido, convida e deixa sair.
 class SpacePage extends ConsumerWidget {
   const SpacePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
     final space = ref.watch(spaceControllerProvider);
     final user = ref.watch(authUserProvider).valueOrNull;
+    final info = space.valueOrNull;
 
-    return HeaderScaffold(
-      title: 'Casa',
-      subtitle: 'Divida compras e calendário',
-      color: TileColor.violet,
+    final Widget body;
+    if (user == null) {
+      body = const _Notice(
+        icon: Icons.lock_outline,
+        title: 'Entre na sua conta',
+        text: 'A casa usa a sua conta Google para saber quem é quem. '
+            'Entre pela aba Conta.',
+      );
+    } else if (space.isLoading && !space.hasValue) {
+      body = const Padding(
+        padding: EdgeInsets.all(AppSpacing.xl),
+        child: Center(child: BrandLoader()),
+      );
+    } else if (info == null) {
+      body = const _NoSpace();
+    } else {
+      body = _InSpace(space: info, myId: user.id);
+    }
+
+    return Scaffold(
+      backgroundColor: colors.paper,
       body: RefreshIndicator(
         onRefresh: () => ref.read(spaceControllerProvider.notifier).refresh(),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.screen,
-            AppSpacing.md,
-            AppSpacing.screen,
-            AppSpacing.xl,
-          ),
+          padding: EdgeInsets.zero,
           children: [
-            if (user == null)
-              const _Notice(
-                icon: Icons.lock_outline,
-                title: 'Entre na sua conta',
-                text: 'A casa usa a sua conta Google para saber quem é quem. '
-                    'Entre pela aba Conta.',
-              )
-            else if (space.isLoading && !space.hasValue)
-              const Padding(
-                padding: EdgeInsets.all(AppSpacing.xl),
-                child: Center(child: BrandLoader()),
-              )
-            else if (space.valueOrNull == null)
-              const _NoSpace()
-            else
-              _InSpace(space: space.requireValue!, myId: user.id),
+            _SpaceHeader(info: info, myId: user?.id),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                AppSpacing.lg,
+                AppSpacing.screen,
+                AppSpacing.xl,
+              ),
+              child: body,
+            ),
           ],
         ),
       ),
@@ -71,6 +82,262 @@ class SpacePage extends ConsumerWidget {
 void _report(Failure f) =>
     showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error);
 
+/// Cabeçalho escuro com a textura do app. Sem casa, o convite a criar uma; com
+/// casa, as pessoas dela (avatares e a contagem).
+class _SpaceHeader extends StatelessWidget {
+  const _SpaceHeader({required this.info, required this.myId});
+
+  final SpaceInfo? info;
+  final String? myId;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final members = info?.members ?? const <SpaceMember>[];
+    final people = members.length;
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(AppRadii.lg),
+      ),
+      child: Container(
+        color: colors.ink,
+        child: Stack(
+          children: [
+            Positioned(
+              top: -40,
+              right: -30,
+              child: SizedBox(
+                width: 240,
+                height: 240,
+                child: TilePattern(
+                  motif: TileMotif.ponto,
+                  background: colors.ink,
+                  patternColor: colors.inkPattern,
+                ),
+              ),
+            ),
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.xs,
+                  AppSpacing.screen,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleIconButton(
+                      icon: Icons.arrow_back_rounded,
+                      tooltip: 'Voltar',
+                      background: colors.inkSoft,
+                      onTap: () => context.pop(),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'CASA',
+                      style: context.texts.labelSmall
+                          ?.copyWith(color: colors.lime),
+                    ),
+                    const SizedBox(height: AppSpacing.xs / 2),
+                    Text(
+                      info == null ? 'Cozinhem juntos' : 'Sua casa',
+                      style: AppTextStyles.display(38)
+                          .copyWith(color: colors.onSaturated),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    if (info == null)
+                      Text(
+                        'Divida a lista de compras e o calendário com quem '
+                        'mora com você.',
+                        style: context.texts.bodyMedium?.copyWith(
+                          color: colors.onSaturated.withValues(alpha: 0.75),
+                        ),
+                      )
+                    else if (people > 0)
+                      Row(
+                        children: [
+                          _AvatarStack(members: members, myId: myId),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            people == 1
+                                ? 'Só você, por enquanto'
+                                : '$people pessoas',
+                            style: context.texts.bodyMedium?.copyWith(
+                              color: colors.onSaturated.withValues(alpha: 0.75),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Avatares sobrepostos (iniciais), com anel `lime` em quem é o próprio usuário.
+class _AvatarStack extends StatelessWidget {
+  const _AvatarStack({required this.members, required this.myId});
+
+  final List<SpaceMember> members;
+  final String? myId;
+
+  static const _size = 34.0;
+  static const _step = 24.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final shown = members.take(5).toList();
+    return SizedBox(
+      width: _size + _step * (shown.length - 1),
+      height: _size,
+      child: Stack(
+        children: [
+          for (var i = 0; i < shown.length; i++)
+            Positioned(
+              left: i * _step,
+              child: Container(
+                width: _size,
+                height: _size,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.inkSoft,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: shown[i].userId == myId ? colors.lime : colors.ink,
+                    width: 2,
+                  ),
+                ),
+                child: Text(
+                  _initial(shown[i].displayName),
+                  style: AppTextStyles.display(16)
+                      .copyWith(color: colors.onSaturated),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+String _initial(String name) =>
+    name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Text(
+        text,
+        style:
+            context.texts.labelSmall?.copyWith(color: context.colors.textMuted),
+      ),
+    );
+  }
+}
+
+/// Uma linha de cartão: medalhão `ink` com o ícone, título, descrição e, no
+/// fim, o que a linha pedir ([trailing]).
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.title,
+    required this.text,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String text;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 76),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration:
+                  BoxDecoration(color: colors.ink, shape: BoxShape.circle),
+              child: Icon(icon, size: 22, color: colors.lime),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTextStyles.display(21)),
+                  const SizedBox(height: 2),
+                  Text(
+                    text,
+                    style: context.texts.bodySmall
+                        ?.copyWith(color: colors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            if (trailing != null) ...[
+              const SizedBox(width: AppSpacing.xs),
+              trailing!,
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Cartão `paperSoft` que empilha linhas com um fio entre elas.
+class _Card extends StatelessWidget {
+  const _Card({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              Divider(
+                  height: 1, thickness: 1.5, indent: 72, color: colors.paper),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _Notice extends StatelessWidget {
   const _Notice({required this.icon, required this.title, required this.text});
 
@@ -80,35 +347,7 @@ class _Notice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: colors.paperSoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: colors.ink),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.display(22)),
-                const SizedBox(height: 2),
-                Text(
-                  text,
-                  style: context.texts.bodyMedium
-                      ?.copyWith(color: colors.textMuted),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    return _Card(children: [_InfoRow(icon: icon, title: title, text: text)]);
   }
 }
 
@@ -142,16 +381,28 @@ class _NoSpaceState extends ConsumerState<_NoSpace> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'Uma lista de compras para todo mundo da casa.',
-          style: AppTextStyles.display(28),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          'Crie uma casa e convide quem divide as compras com você. As listas '
-          'que você escolher compartilhar aparecem para todos, e quem marca um '
-          'item atualiza na hora para os outros.',
-          style: context.texts.bodyLarge?.copyWith(color: colors.textMuted),
+        const _SectionLabel('O QUE DÁ PRA DIVIDIR'),
+        const _Card(
+          children: [
+            _InfoRow(
+              icon: Icons.shopping_basket_outlined,
+              title: 'Lista de compras',
+              text: 'Uma lista só: quem está no mercado marca, e todos veem '
+                  'na hora.',
+            ),
+            _InfoRow(
+              icon: Icons.calendar_month_outlined,
+              title: 'Calendário',
+              text: 'Veja o que cada um vai cozinhar e guarde a receita se '
+                  'gostar.',
+            ),
+            _InfoRow(
+              icon: Icons.shield_outlined,
+              title: 'Você escolhe',
+              text: 'Só o que você compartilha entra na casa. Receitas e '
+                  'despensa continuam só suas.',
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.lg),
         PillButton(
@@ -167,12 +418,11 @@ class _NoSpaceState extends ConsumerState<_NoSpace> {
           variant: PillButtonVariant.secondary,
           onPressed: () => showJoinSheet(context, ref),
         ),
-        const SizedBox(height: AppSpacing.lg),
-        const _Notice(
-          icon: Icons.shield_outlined,
-          title: 'Você escolhe o que dividir',
-          text: 'Só as listas que você compartilha ficam na casa. Receitas, '
-              'despensa e o resto continuam só seus.',
+        const SizedBox(height: AppSpacing.md),
+        Text(
+          'Até 6 pessoas por casa. Você entra com o código de um convite.',
+          textAlign: TextAlign.center,
+          style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
         ),
       ],
     );
@@ -236,11 +486,19 @@ class _InSpace extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final lists = ref.watch(shoppingListsProvider).valueOrNull ?? const [];
+    final sharedLists = lists.where((s) => s.list.spaceId != null).length;
+    final calendarOn = ref.watch(calendarSharedProvider).valueOrNull ?? false;
+
+    Future<void> setCalendar(bool value) async {
+      final result = await ref.read(calendarSharedProvider.notifier).set(value);
+      if (result is Err<void>) _report(result.failure);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('QUEM ESTÁ NA CASA', style: _label(context)),
-        const SizedBox(height: AppSpacing.xs),
+        const _SectionLabel('QUEM ESTÁ NA CASA'),
         if (space.members.isEmpty)
           const _Notice(
             icon: Icons.cloud_off_outlined,
@@ -249,61 +507,71 @@ class _InSpace extends ConsumerWidget {
                 'quando a internet voltar.',
           )
         else
-          Container(
-            decoration: BoxDecoration(
-              color: colors.paperSoft,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            child: Column(
-              children: [
-                for (var i = 0; i < space.members.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      thickness: 1.5,
-                      indent: 72,
-                      color: colors.paper,
-                    ),
-                  _MemberRow(
-                    member: space.members[i],
-                    isMe: space.members[i].userId == myId,
-                    canRemove: _iAmOwner && space.members[i].userId != myId,
-                    onRemove: () => _remove(context, ref, space.members[i]),
-                  ),
-                ],
-              ],
-            ),
+          _Card(
+            children: [
+              for (final m in space.members)
+                _MemberRow(
+                  member: m,
+                  isMe: m.userId == myId,
+                  canRemove: _iAmOwner && m.userId != myId,
+                  onRemove: () => _remove(context, ref, m),
+                ),
+            ],
           ),
-        const SizedBox(height: AppSpacing.md),
-        if (_iAmOwner)
+        if (_iAmOwner) ...[
+          const SizedBox(height: AppSpacing.sm),
           PillButton(
             label: 'Convidar alguém',
             icon: Icons.person_add_alt_1_outlined,
             onPressed: () => showInviteSheet(context, ref),
           ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'O convite é um código que vale por 48 horas e serve para uma '
+            'pessoa.',
+            textAlign: TextAlign.center,
+            style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
+          ),
+        ],
         const SizedBox(height: AppSpacing.lg),
-        const _CalendarSwitch(),
-        const SizedBox(height: AppSpacing.sm),
-        const _Notice(
-          icon: Icons.shopping_basket_outlined,
-          title: 'Como compartilhar uma lista',
-          text: 'Na aba Compras, toque nos três pontinhos da lista e escolha '
-              '"Compartilhar com a casa". Ela aparece para todos, e dá para '
-              'deixar de compartilhar quando quiser.',
+        const _SectionLabel('O QUE A CASA DIVIDE'),
+        _Card(
+          children: [
+            _InfoRow(
+              icon: Icons.shopping_basket_outlined,
+              title: 'Listas de compras',
+              text: sharedLists == 0
+                  ? 'Nenhuma ainda. No menu ⋯ de uma lista, escolha '
+                      '"Compartilhar com a casa".'
+                  : sharedLists == 1
+                      ? '1 lista compartilhada'
+                      : '$sharedLists listas compartilhadas',
+            ),
+            _InfoRow(
+              icon: Icons.calendar_month_outlined,
+              title: 'Calendário',
+              text: calendarOn
+                  ? 'Suas refeições de hoje em diante aparecem para todos, e '
+                      'as deles no seu calendário.'
+                  : 'Desligado. Ligue para ver o que a casa vai cozinhar.',
+              trailing: Switch(value: calendarOn, onChanged: setCalendar),
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.xl),
-        PillButton(
-          label: _iAmOwner ? 'Encerrar a casa' : 'Sair da casa',
-          icon: Icons.logout_rounded,
-          variant: PillButtonVariant.danger,
-          onPressed: () => _leave(context, ref),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => _leave(context, ref),
+            icon: Icon(Icons.logout_rounded, color: colors.danger, size: 20),
+            label: Text(
+              _iAmOwner ? 'Encerrar a casa' : 'Sair da casa',
+              style: context.texts.labelLarge?.copyWith(color: colors.danger),
+            ),
+          ),
         ),
       ],
     );
   }
-
-  TextStyle? _label(BuildContext context) =>
-      context.texts.labelSmall?.copyWith(color: context.colors.textMuted);
 }
 
 class _MemberRow extends StatelessWidget {
@@ -336,10 +604,13 @@ class _MemberRow extends StatelessWidget {
               width: 44,
               height: 44,
               alignment: Alignment.center,
-              decoration:
-                  BoxDecoration(color: colors.ink, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: colors.ink,
+                shape: BoxShape.circle,
+                border: isMe ? Border.all(color: colors.lime, width: 2) : null,
+              ),
               child: Text(
-                name.characters.first.toUpperCase(),
+                _initial(name),
                 style: AppTextStyles.display(22).copyWith(color: colors.lime),
               ),
             ),
@@ -524,60 +795,6 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Liga e desliga a participação no calendário da casa.
-class _CalendarSwitch extends ConsumerWidget {
-  const _CalendarSwitch();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    final on = ref.watch(calendarSharedProvider).valueOrNull ?? false;
-
-    Future<void> change(bool value) async {
-      final result = await ref.read(calendarSharedProvider.notifier).set(value);
-      if (result is Err<void>) _report(result.failure);
-    }
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        AppSpacing.sm,
-        AppSpacing.sm,
-        AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: colors.paperSoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.calendar_month_outlined, color: colors.ink),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Calendário da casa', style: AppTextStyles.display(22)),
-                const SizedBox(height: 2),
-                Text(
-                  on
-                      ? 'Suas refeições de hoje em diante aparecem para todos, '
-                          'e as deles aparecem no seu calendário.'
-                      : 'Divida o que vai ser cozinhado: você vê as refeições '
-                          'da casa e elas veem as suas.',
-                  style: context.texts.bodySmall
-                      ?.copyWith(color: colors.textMuted),
-                ),
-              ],
-            ),
-          ),
-          Switch(value: on, onChanged: change),
-        ],
       ),
     );
   }
