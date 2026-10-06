@@ -20,8 +20,28 @@ class _FakeRemote implements ImageRemote {
   bool failUpload = false;
   bool failRemove = false;
 
+  /// Simula a conta cheia: o envio de foto nova é recusado como o servidor faz.
+  bool quotaFull = false;
+  int usedBytes = 0;
+  int quotaBytes = 30 * 1024 * 1024;
+  bool usageUnknown = false;
+  int usageCalls = 0;
+  int uploadAttempts = 0;
+
+  @override
+  Future<PhotoUsage?> usage() async {
+    usageCalls++;
+    if (usageUnknown) return null;
+    return (
+      usedBytes: quotaFull ? quotaBytes : usedBytes,
+      quotaBytes: quotaBytes,
+    );
+  }
+
   @override
   Future<void> upload(String path, File file) async {
+    uploadAttempts++;
+    if (quotaFull) throw PhotoQuotaExceeded(await usage());
     if (failUpload) throw Exception('sem rede');
     uploads.add(path);
     objects[path] = await file.readAsBytes();
@@ -392,6 +412,168 @@ void main() {
 
       remote.failRemove = false;
       expect(await sync.sweepRemoteOrphans(), 1);
+    });
+  });
+
+  group('teto de fotos da conta', () {
+    test('conta cheia: a foto fica pendente e boa no aparelho, sem erro',
+        () async {
+      remote.quotaFull = true;
+      final id = await recipeWithPhoto('A', [1, 2, 3]);
+      final name = (await db.recipeDao.pendingImageSync()).single.imagePath!;
+
+      expect(await sync.syncPending(), 0);
+
+      expect(remote.objects, isEmpty);
+      expect(await db.recipeDao.pendingImageSync(), hasLength(1));
+      expect(await (await images.fileFor(name)).exists(), isTrue);
+      expect((await db.recipeDao.findIncludingTrashed(id))!.imagePath, name);
+      expect(sync.quotaBlocked, isTrue);
+    });
+
+    test('o aviso vem UMA vez por vez que o limite é atingido', () async {
+      remote.quotaFull = true;
+      await recipeWithPhoto('A', [1, 2, 3]);
+
+      await sync.syncPending();
+      expect(sync.takeQuotaNotice(), isTrue);
+      expect(sync.takeQuotaNotice(), isFalse);
+
+      await recipeWithPhoto('B', [4, 5, 6]);
+      await sync.syncPending();
+      expect(sync.takeQuotaNotice(), isFalse,
+          reason: 'já estava bloqueada, não repete o aviso');
+    });
+
+    test('bloqueada, não insiste em enviar: só pergunta se já sobrou espaço',
+        () async {
+      remote.quotaFull = true;
+      await recipeWithPhoto('A', [1, 2, 3]);
+      await sync.syncPending();
+      final attemptsAfterFirst = remote.uploadAttempts;
+      final usageBefore = remote.usageCalls;
+
+      await sync.syncPending();
+      await sync.syncPending();
+
+      expect(remote.uploadAttempts, attemptsAfterFirst,
+          reason: 'nenhuma tentativa nova de envio');
+      expect(remote.usageCalls, greaterThan(usageBefore),
+          reason: 'mas confere se já liberou espaço');
+      expect(sync.quotaBlocked, isTrue);
+    });
+
+    test('a pessoa libera espaço: o bloqueio cai e as fotos pendentes sobem',
+        () async {
+      remote.quotaFull = true;
+      await recipeWithPhoto('A', [1, 2, 3]);
+      await recipeWithPhoto('B', [4, 5, 6]);
+      await sync.syncPending();
+      expect(sync.quotaBlocked, isTrue);
+
+      remote.quotaFull = false;
+      remote.usedBytes = 1024;
+      final done = await sync.syncPending();
+
+      expect(done, 2);
+      expect(sync.quotaBlocked, isFalse);
+      expect(remote.objects, hasLength(2));
+      expect(await db.recipeDao.pendingImageSync(), isEmpty);
+    });
+
+    test('enquanto bloqueada, remover foto e a fila de exclusão continuam',
+        () async {
+      final id = await recipeWithPhoto('A', [1, 2, 3]);
+      await sync.syncPending();
+      final path = remote.objects.keys.single;
+      remote.quotaFull = true;
+      await recipeWithPhoto('B', [4, 5, 6]);
+      await sync.syncPending();
+      expect(sync.quotaBlocked, isTrue);
+
+      await repo.setImage(id, null);
+      await sync.syncPending();
+
+      expect(remote.objects.containsKey(path), isFalse,
+          reason: 'apagar libera espaço mesmo com a conta cheia');
+    });
+
+    test('o bloqueio é lembrado entre aberturas do app', () async {
+      remote.quotaFull = true;
+      await recipeWithPhoto('A', [1, 2, 3]);
+      await sync.syncPending();
+
+      final reopened = RecipeImageSync(remote, db.recipeDao, images);
+      remote.usageUnknown = true;
+      await reopened.quota();
+
+      expect(
+          (await SharedPreferences.getInstance())
+              .getBool('image_quota_blocked'),
+          isTrue);
+    });
+
+    test(
+        'servidor que não sabe dizer o uso (SQL não rodado): tenta e a '
+        'recusa do servidor decide', () async {
+      remote.usageUnknown = true;
+      await recipeWithPhoto('A', [1, 2, 3]);
+
+      expect(await sync.syncPending(), 1);
+      expect(sync.quotaBlocked, isFalse);
+    });
+
+    test('quota() informa uso, teto, bloqueio e quantas esperam', () async {
+      remote.usedBytes = 12 * 1024 * 1024;
+      await recipeWithPhoto('A', [1, 2, 3]);
+
+      final q = (await sync.quota())!;
+
+      expect(q.usedBytes, 12 * 1024 * 1024);
+      expect(q.quotaBytes, 30 * 1024 * 1024);
+      expect(q.blocked, isFalse);
+      expect(q.pending, 1);
+      expect(q.fraction, closeTo(0.4, 0.001));
+      expect(q.nearLimit, isFalse);
+    });
+
+    test('quota(): 80% já é "quase no limite"; cheia é bloqueada', () async {
+      remote.usedBytes = 25 * 1024 * 1024;
+      expect((await sync.quota())!.nearLimit, isTrue);
+
+      remote.usedBytes = 30 * 1024 * 1024;
+      final full = (await sync.quota())!;
+      expect(full.blocked, isTrue);
+      expect(full.nearLimit, isFalse);
+    });
+
+    test('quota() sem login ou sem resposta do servidor devolve null',
+        () async {
+      remote.usageUnknown = true;
+      expect(await sync.quota(), isNull);
+
+      remote.usageUnknown = false;
+      remote.userId = null;
+      expect(await sync.quota(), isNull);
+    });
+
+    test(
+        'foto já na nuvem continua marcada mesmo com a conta cheia (não é '
+        'envio)', () async {
+      final name = await photo([5, 5, 5]);
+      remote.objects['u1/$name'] = Uint8List.fromList([5, 5, 5]);
+      remote.quotaFull = true;
+      final id = ((await repo.saveDetail(name: 'R')).valueOrNull)!.id;
+      await repo.setImage(id, name);
+      // Bloqueia antes: o caminho "já existe" não depende de espaço, mas o
+      // bloqueio pula o envio inteiro — a foto só é adotada depois de liberar.
+      await sync.syncPending();
+
+      remote.quotaFull = false;
+      await sync.syncPending();
+
+      expect(await db.recipeDao.pendingImageSync(), isEmpty);
+      expect(remote.uploads, isEmpty);
     });
   });
 }

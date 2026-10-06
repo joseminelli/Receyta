@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/services/auth_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
@@ -510,6 +511,104 @@ void main() {
       await tester.pump();
 
       expect(c.syncNowCalls, 1);
+    });
+  });
+
+  group('teto de fotos da conta', () {
+    const mb = 1024 * 1024;
+
+    Widget host({PhotoQuota? quota, bool enabled = true}) => ProviderScope(
+          overrides: [
+            initialAppSettingsProvider.overrideWithValue(const AppSettings()),
+            authServiceProvider.overrideWithValue(FakeAuthService()),
+            syncCoordinatorProvider.overrideWith(
+              () => _FakeCoordinator(SyncState(enabled: enabled)),
+            ),
+            photoQuotaProvider.overrideWith((ref) async => quota),
+            libraryStatsProvider.overrideWithValue(
+              const AsyncData((
+                recipes: 1,
+                folders: 0,
+                lists: 0,
+                plannedMeals: 0,
+                doneMeals: 0,
+                topRecipe: null,
+                topRecipeCount: 0,
+              )),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: const Scaffold(body: AccountPage()),
+          ),
+        );
+
+    PhotoQuota quota(int used, {bool blocked = false, int pending = 0}) =>
+        PhotoQuota(
+          usedBytes: used,
+          quotaBytes: 30 * mb,
+          blocked: blocked,
+          pending: pending,
+        );
+
+    testWidgets('mostra quanto a conta usou e o teto, com a barra',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(quota: quota(12 * mb)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fotos na nuvem'), findsOneWidget);
+      expect(find.text('12 MB de 30 MB'), findsOneWidget);
+      final bar = tester.widget<LinearProgressIndicator>(
+          find.byType(LinearProgressIndicator));
+      expect(bar.value, closeTo(0.4, 0.001));
+      expect(find.textContaining('Quase no limite'), findsNothing);
+      expect(find.textContaining('Limite atingido'), findsNothing);
+    });
+
+    testWidgets('perto do teto (80%) avisa antes de bloquear', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(quota: quota(25 * mb)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('25 MB de 30 MB'), findsOneWidget);
+      expect(find.textContaining('Quase no limite'), findsOneWidget);
+    });
+
+    testWidgets(
+        'no teto: explica que as fotos novas ficam só no aparelho e '
+        'quantas esperam', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(
+        host(quota: quota(30 * mb, blocked: true, pending: 3)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Limite atingido'), findsOneWidget);
+      expect(find.textContaining('só neste aparelho'), findsOneWidget);
+      expect(find.textContaining('3 esperando'), findsOneWidget);
+      expect(find.textContaining('Quase no limite'), findsNothing);
+    });
+
+    testWidgets('no teto e sem fotos esperando, não fala em fila',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(quota: quota(30 * mb, blocked: true)));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('esperando'), findsNothing);
+    });
+
+    testWidgets('sem conta, ou sem o servidor informar o uso, não aparece',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(quota: quota(5 * mb), enabled: false));
+      await tester.pumpAndSettle();
+      expect(find.text('Fotos na nuvem'), findsNothing);
+
+      await tester.pumpWidget(host(quota: null));
+      await tester.pumpAndSettle();
+      expect(find.text('Fotos na nuvem'), findsNothing);
     });
   });
 }

@@ -52,6 +52,7 @@ void main() {
       'sync_cursor_u2': '2026-01-02T00:00:00Z',
       'image_owned_names': ['a.jpg'],
       'image_remote_deletions': ['b.jpg'],
+      'image_quota_blocked': true,
       'settings_text_size': 'large',
     });
     root = await Directory.systemTemp.createTemp('data_reset_test');
@@ -103,6 +104,13 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.containsKey('sync_cursor_u1'), isFalse);
       expect(prefs.containsKey('sync_cursor_u2'), isFalse);
+    });
+
+    test('esquece o bloqueio por conta cheia', () async {
+      await service.wipeAll();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('image_quota_blocked'), isFalse);
     });
 
     test('esquece o que este aparelho enviou, senão a limpeza apagaria a nuvem',

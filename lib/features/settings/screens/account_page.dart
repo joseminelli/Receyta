@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/format_bytes.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:receyta/domain/engine/sync_status_text.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
@@ -44,6 +46,7 @@ class AccountPage extends ConsumerWidget {
         children: const [
           _Hero(),
           _SyncStatusTile(),
+          _PhotoQuotaTile(),
           SizedBox(height: AppSpacing.lg),
           _Shortcuts(),
         ],
@@ -715,6 +718,93 @@ class _SyncStatusTileState extends ConsumerState<_SyncStatusTile> {
                       .requestSync(immediate: true),
               child: const Text('Sincronizar'),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Fotos na nuvem · 12 MB de 30 MB", com uma barra. Perto do teto avisa; no
+/// teto explica que as fotos novas ficam só neste aparelho (e quantas esperam).
+/// Some quando não há conta ou o servidor não informa o uso.
+class _PhotoQuotaTile extends ConsumerWidget {
+  const _PhotoQuotaTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(syncCoordinatorProvider.select((s) => s.enabled));
+    if (!enabled) return const SizedBox.shrink();
+    final quota = ref.watch(photoQuotaProvider).valueOrNull;
+    if (quota == null) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    final full = quota.blocked;
+    final accent = full ? colors.danger : colors.ink;
+    final detail = full
+        ? 'Limite atingido. As fotos novas ficam só neste aparelho'
+            '${quota.pending > 0 ? ' (${quota.pending} esperando)' : ''}. '
+            'Apague fotos de receitas que não usa mais para liberar espaço.'
+        : quota.nearLimit
+            ? 'Quase no limite. Apague fotos de receitas que não usa mais '
+                'para abrir espaço.'
+            : null;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.sm,
+        AppSpacing.screen,
+        0,
+      ),
+      child: Semantics(
+        container: true,
+        label: 'Fotos na nuvem: ${formatBytes(quota.usedBytes)} de '
+            '${formatBytes(quota.quotaBytes)}',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.photo_library_outlined,
+                    size: 22, color: full ? colors.danger : colors.textMuted),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Fotos na nuvem',
+                    style: context.texts.bodyMedium
+                        ?.copyWith(color: colors.textMuted),
+                  ),
+                ),
+                Text(
+                  '${formatBytes(quota.usedBytes)} de '
+                  '${formatBytes(quota.quotaBytes)}',
+                  style: context.texts.bodyMedium?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+              child: LinearProgressIndicator(
+                value: quota.fraction,
+                minHeight: 8,
+                backgroundColor: colors.paperSoft,
+                color: accent,
+              ),
+            ),
+            if (detail != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                detail,
+                style: context.texts.bodySmall?.copyWith(
+                  color: full ? colors.danger : colors.textMuted,
+                ),
+              ),
+            ],
           ],
         ),
       ),

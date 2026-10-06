@@ -65,13 +65,27 @@ Future<void> changeRecipePhoto(
   saved.when(
     ok: (_) {
       _releaseLocal(ref, recipe.imagePath, exceptRecipeId: recipe.id);
-      unawaited(ref.read(recipeImageSyncProvider).syncPending());
+      unawaited(syncPhotosAndWarn(ref));
     },
     err: (f) {
       _releaseLocal(ref, change.imagePath, exceptRecipeId: recipe.id);
       showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error);
     },
   );
+}
+
+/// Envia as fotos pendentes e, se a conta acabou de bater no teto de fotos,
+/// avisa UMA vez que a foto ficou só neste aparelho.
+Future<void> syncPhotosAndWarn(WidgetRef ref) async {
+  final sync = ref.read(recipeImageSyncProvider);
+  await sync.syncPending();
+  if (sync.takeQuotaNotice()) {
+    showAppSnackBar(
+      message: 'Limite de fotos da conta atingido. '
+          'A foto ficou só neste aparelho.',
+      variant: AppSnackBarVariant.error,
+    );
+  }
 }
 
 /// Apaga o arquivo local de [name] se nenhuma outra receita o usa (fotos

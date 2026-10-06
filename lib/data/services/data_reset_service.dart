@@ -114,6 +114,7 @@ class DataResetService {
   static const syncCursorPrefix = 'sync_cursor_';
   static const imageOwnedKey = 'image_owned_names';
   static const imageDeletionQueueKey = 'image_remote_deletions';
+  static const imageQuotaBlockedKey = 'image_quota_blocked';
 
   /// Só este aparelho: banco, arquivos de foto e o estado do sync.
   Future<Result<void>> wipeAll() async {
@@ -196,6 +197,8 @@ class DataResetService {
     // vazio, a limpeza de fotos trataria tudo que ela cita como órfão e
     // apagaria da nuvem fotos que a conta ainda usa.
     await prefs.remove(imageOwnedKey);
+    // O bloqueio por conta cheia era da conta antiga / do que havia aqui.
+    await prefs.remove(imageQuotaBlockedKey);
     if (clearDeletionQueue) await prefs.remove(imageDeletionQueueKey);
   }
 

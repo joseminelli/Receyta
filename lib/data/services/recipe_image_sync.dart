@@ -8,9 +8,25 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:receyta/data/database/daos/recipe_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/data/sync/sync_coordinator.dart';
 
 /// Nome do bucket privado (ver `docs/supabase/recipe-images.sql`).
 const kRecipeImagesBucket = 'recipe-images';
+
+/// Quanto a conta já usa de fotos na nuvem e qual é o teto (o valor vem do
+/// servidor — ver `docs/supabase/photo-quota.sql`).
+typedef PhotoUsage = ({int usedBytes, int quotaBytes});
+
+/// O servidor recusou a foto porque a conta chegou ao teto de fotos. Não é
+/// erro de rede: não adianta tentar de novo até a pessoa liberar espaço.
+class PhotoQuotaExceeded implements Exception {
+  const PhotoQuotaExceeded([this.usage]);
+
+  final PhotoUsage? usage;
+
+  @override
+  String toString() => 'PhotoQuotaExceeded($usage)';
+}
 
 /// O que o sync precisa do Storage. Injetável pra o teste não usar rede.
 abstract class ImageRemote {
@@ -23,6 +39,10 @@ abstract class ImageRemote {
 
   /// O arquivo [path] (`<uid>/<nome>`) já está no Storage?
   Future<bool> exists(String path);
+
+  /// Uso de fotos da conta e o teto. `null` = o servidor não sabe dizer (o SQL
+  /// do teto não foi rodado, sem rede…).
+  Future<PhotoUsage?> usage();
 }
 
 class SupabaseImageRemote implements ImageRemote {
@@ -36,7 +56,9 @@ class SupabaseImageRemote implements ImageRemote {
   String? get userId => _client.auth.currentUser?.id;
 
   @override
-  Future<void> upload(String path, File file) => _bucket.upload(
+  Future<void> upload(String path, File file) async {
+    try {
+      await _bucket.upload(
         path,
         file,
         fileOptions: const sb.FileOptions(
@@ -44,6 +66,31 @@ class SupabaseImageRemote implements ImageRemote {
           upsert: true,
         ),
       );
+    } on sb.StorageException catch (e) {
+      // A policy do bucket recusa com 403 quando a conta passou do teto. Só
+      // vira "limite atingido" se o servidor confirmar que é isso mesmo (um
+      // 403 também pode ser sessão vencida).
+      if (e.statusCode == '403') {
+        final u = await usage();
+        if (u != null && u.usedBytes >= u.quotaBytes) {
+          throw PhotoQuotaExceeded(u);
+        }
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Future<PhotoUsage?> usage() async {
+    try {
+      final used = await _client.rpc('photo_usage_bytes');
+      final quota = await _client.rpc('photo_quota_bytes');
+      if (used is! num || quota is! num) return null;
+      return (usedBytes: used.toInt(), quotaBytes: quota.toInt());
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Future<Uint8List> download(String path) => _bucket.download(path);
@@ -82,6 +129,9 @@ class NoImageRemote implements ImageRemote {
 
   @override
   Future<bool> exists(String path) async => false;
+
+  @override
+  Future<PhotoUsage?> usage() async => null;
 }
 
 /// Mantém as fotos locais espelhadas no Storage (H0). Local primeiro: o app
@@ -111,6 +161,72 @@ class RecipeImageSync {
 
   static const _queueKey = 'image_remote_deletions';
   static const _ownedKey = 'image_owned_names';
+  static const _blockedKey = 'image_quota_blocked';
+
+  /// A conta chegou ao teto de fotos: fotos novas ficam só no aparelho (e
+  /// pendentes) até a pessoa liberar espaço. Lembrado entre aberturas do app.
+  bool _blocked = false;
+  bool _blockedLoaded = false;
+  bool _noticePending = false;
+
+  bool get quotaBlocked => _blocked;
+
+  /// `true` UMA vez por vez que o limite é atingido — quem mostra o aviso
+  /// ("a foto ficou só neste aparelho") chama isto pra não repetir a cada
+  /// tentativa.
+  bool takeQuotaNotice() {
+    final pending = _noticePending;
+    _noticePending = false;
+    return pending;
+  }
+
+  Future<void> _loadBlocked() async {
+    if (_blockedLoaded) return;
+    final prefs = await SharedPreferences.getInstance();
+    _blocked = prefs.getBool(_blockedKey) ?? false;
+    _blockedLoaded = true;
+  }
+
+  Future<void> _setBlocked(bool value) async {
+    if (_blocked == value) return;
+    _blocked = value;
+    if (value) _noticePending = true;
+    final prefs = await SharedPreferences.getInstance();
+    if (value) {
+      await prefs.setBool(_blockedKey, true);
+    } else {
+      await prefs.remove(_blockedKey);
+    }
+  }
+
+  /// Bloqueado: o servidor ainda diz que a conta está cheia? Se já sobrou
+  /// espaço (a pessoa apagou fotos), volta a enviar. Se o servidor não sabe
+  /// dizer, também tenta de novo — quem decide é a recusa dele.
+  Future<void> _recheckBlocked() async {
+    if (!_blocked) return;
+    final usage = await _remote.usage();
+    if (usage == null || usage.usedBytes < usage.quotaBytes) {
+      await _setBlocked(false);
+    }
+  }
+
+  /// Uso e teto da conta, mais quantas fotos estão esperando espaço. `null` =
+  /// o servidor não informou (sem login, sem rede, SQL do teto não rodado).
+  Future<PhotoQuota?> quota() async {
+    if (_remote.userId == null) return null;
+    await _loadBlocked();
+    final usage = await _remote.usage();
+    if (usage == null) return null;
+    final pending = (await _dao.pendingImageSync())
+        .where((r) => r.imagePath != null)
+        .length;
+    return PhotoQuota(
+      usedBytes: usage.usedBytes,
+      quotaBytes: usage.quotaBytes,
+      blocked: _blocked || usage.usedBytes >= usage.quotaBytes,
+      pending: pending,
+    );
+  }
 
   /// Anota fotos que precisam sair do Storage (receita apagada de vez). Fica
   /// guardado no aparelho até dar pra apagar de fato — sem login ou sem rede
@@ -168,6 +284,12 @@ class RecipeImageSync {
     _running = true;
     var done = 0;
     try {
+      await _loadBlocked();
+      try {
+        await _recheckBlocked();
+      } catch (e) {
+        debugPrint('imageSync.recheck: $e');
+      }
       try {
         await _flushRemoteDeletions(uid);
       } catch (e) {
@@ -209,6 +331,9 @@ class RecipeImageSync {
       }
     }
     if (current == null) return false;
+    // Conta cheia: a foto continua pendente (e boa no aparelho) até sobrar
+    // espaço. Nem tenta enviar de novo à toa.
+    if (_blocked) return false;
 
     final path = '$uid/$current';
     if (await _remote.exists(path)) {
@@ -217,7 +342,13 @@ class RecipeImageSync {
       final file = await _images.fileFor(current);
       if (!await file.exists()) return false;
       debugPrint('imageSync: enviando $path (receita $id)');
-      await _remote.upload(path, file);
+      try {
+        await _remote.upload(path, file);
+      } on PhotoQuotaExceeded {
+        debugPrint('imageSync: limite de fotos da conta atingido');
+        await _setBlocked(true);
+        return false;
+      }
     }
     await _own([current]);
     await _dao.setImageSynced(id, current);
@@ -275,6 +406,32 @@ class RecipeImageSync {
   }
 }
 
+/// Como está o espaço de fotos da conta (pra tela).
+@immutable
+class PhotoQuota {
+  const PhotoQuota({
+    required this.usedBytes,
+    required this.quotaBytes,
+    required this.blocked,
+    required this.pending,
+  });
+
+  final int usedBytes;
+  final int quotaBytes;
+
+  /// Cheia: fotos novas ficam só no aparelho.
+  final bool blocked;
+
+  /// Fotos que estão esperando espaço pra subir.
+  final int pending;
+
+  double get fraction =>
+      quotaBytes <= 0 ? 0 : (usedBytes / quotaBytes).clamp(0.0, 1.0);
+
+  /// Passou de 80%: hora de avisar antes de bloquear.
+  bool get nearLimit => !blocked && fraction >= 0.8;
+}
+
 final imageRemoteProvider = Provider<ImageRemote>((ref) {
   try {
     return SupabaseImageRemote(sb.Supabase.instance.client);
@@ -289,4 +446,12 @@ final recipeImageSyncProvider = Provider<RecipeImageSync>((ref) {
     ref.watch(databaseProvider).recipeDao,
     ref.watch(recipeImageServiceProvider),
   );
+});
+
+/// Uso de fotos da conta pra tela. Refaz sozinho depois de cada rodada de
+/// sincronização (que é quando o que a pessoa apagou ou enviou já contou no
+/// servidor).
+final photoQuotaProvider = FutureProvider.autoDispose<PhotoQuota?>((ref) {
+  ref.watch(syncCoordinatorProvider.select((s) => s.lastSyncAt));
+  return ref.watch(recipeImageSyncProvider).quota();
 });
