@@ -5,16 +5,25 @@ import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/features/settings/controllers/profile_preview.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 
 /// Edita o perfil local: como a pessoa quer ser chamada e a cor do avatar.
+///
+/// Cada cor tocada aparece na hora no perfil por trás (prévia, sem salvar):
+/// por isso o fundo da folha não escurece a tela. A prévia é zerada quando a
+/// folha fecha, de qualquer jeito — só "Salvar" grava.
 Future<void> showProfileEditSheet(BuildContext context) {
+  final container = ProviderScope.containerOf(context);
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
+    barrierColor: Colors.transparent,
     builder: (_) => const _ProfileEditSheet(),
+  ).whenComplete(
+    () => container.read(profileColorPreviewProvider.notifier).state = null,
   );
 }
 
@@ -46,7 +55,10 @@ class _ProfileEditSheetState extends ConsumerState<_ProfileEditSheet> {
   Widget _dot(TileColor c) => _ColorDot(
         color: c,
         selected: c == _color,
-        onTap: () => setState(() => _color = c),
+        onTap: () {
+          setState(() => _color = c);
+          ref.read(profileColorPreviewProvider.notifier).state = c;
+        },
       );
 
   Future<void> _save() async {

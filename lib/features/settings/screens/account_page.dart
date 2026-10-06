@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
+import 'package:receyta/features/settings/controllers/profile_preview.dart';
 import 'package:receyta/features/settings/screens/profile_edit_sheet.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -28,8 +29,8 @@ class AccountPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final settings = ref.watch(appSettingsProvider);
-    final tile = resolveTileAppearance(colors, color: settings.profileColor);
+    final color = ref.watch(effectiveProfileColorProvider);
+    final tile = resolveTileAppearance(colors, color: color);
     final lightHero = tile.background.computeLuminance() > 0.6;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -53,9 +54,13 @@ class _Hero extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final settings = ref.watch(appSettingsProvider);
-    final tile = resolveTileAppearance(colors, color: settings.profileColor);
+    final tile = resolveTileAppearance(
+      colors,
+      color: ref.watch(effectiveProfileColorProvider),
+    );
     final stats = ref.watch(libraryStatsProvider).valueOrNull;
-    final user = ref.watch(authUserProvider).valueOrNull;
+    final auth = ref.watch(authUserProvider);
+    final user = auth.valueOrNull;
     final name = settings.nickname.isNotEmpty
         ? settings.nickname
         : (user?.name?.split(' ').first ?? '');
@@ -68,7 +73,9 @@ class _Hero extends ConsumerWidget {
       borderRadius: const BorderRadius.vertical(
         bottom: Radius.circular(AppRadii.lg + 10),
       ),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
         width: double.infinity,
         color: tile.background,
         child: Stack(
@@ -79,12 +86,17 @@ class _Hero extends ConsumerWidget {
               child: SizedBox(
                 width: 300,
                 height: 300,
-                child: TilePattern(
-                  motif: tile.motif,
-                  background: tile.background,
-                  patternColor: tile.patternColor,
-                  patternColorAlt: tile.patternColorAlt,
-                  tile: 64,
+                // Troca de cor/textura em fusão suave, não de uma vez.
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: TilePattern(
+                    key: ValueKey((tile.background, tile.motif)),
+                    motif: tile.motif,
+                    background: tile.background,
+                    patternColor: tile.patternColor,
+                    patternColorAlt: tile.patternColorAlt,
+                    tile: 64,
+                  ),
                 ),
               ),
             ),
@@ -122,56 +134,60 @@ class _Hero extends ConsumerWidget {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(AppRadii.lg),
                         onTap: () => showProfileEditSheet(context),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 92,
-                              height: 92,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: colors.paper,
-                                shape: BoxShape.circle,
+                        child: _LoginReveal(
+                          trigger: user?.id,
+                          ready: auth.hasValue,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 92,
+                                height: 92,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: colors.paper,
+                                  shape: BoxShape.circle,
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: _Avatar(
+                                  url: user?.avatarUrl,
+                                  initial: initial,
+                                ),
                               ),
-                              clipBehavior: Clip.antiAlias,
-                              child: _Avatar(
-                                url: user?.avatarUrl,
-                                initial: initial,
-                              ),
-                            ),
-                            const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name.isEmpty ? 'Seu nome aqui' : name,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.display(44)
-                                        .copyWith(color: onColor),
-                                  ),
-                                  const SizedBox(height: AppSpacing.xs / 2),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          'Toque pra editar',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: context.texts.bodyMedium
-                                              ?.copyWith(color: onColor),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      name.isEmpty ? 'Seu nome aqui' : name,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.display(44)
+                                          .copyWith(color: onColor),
+                                    ),
+                                    const SizedBox(height: AppSpacing.xs / 2),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'Toque pra editar',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: context.texts.bodyMedium
+                                                ?.copyWith(color: onColor),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Icon(Icons.edit_outlined,
-                                          size: 16, color: onColor),
-                                    ],
-                                  ),
-                                ],
+                                        const SizedBox(width: 6),
+                                        Icon(Icons.edit_outlined,
+                                            size: 16, color: onColor),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -428,8 +444,22 @@ class _Avatar extends StatelessWidget {
       height: 92,
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => fallback,
-      loadingBuilder: (_, child, progress) =>
-          progress == null ? child : fallback,
+      frameBuilder: (_, child, frame, syncLoaded) {
+        if (syncLoaded) return child;
+        return Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: [
+            Center(child: fallback),
+            AnimatedOpacity(
+              opacity: frame == null ? 0 : 1,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              child: child,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -522,6 +552,71 @@ class _GoogleSignInButton extends ConsumerWidget {
       context,
       message: failure.message,
       variant: AppSnackBarVariant.error,
+    );
+  }
+}
+
+/// Entrada com "bounce" do nome e da foto quando a pessoa **acaba de entrar na
+/// conta**: escala elástica com um respiro de fade. Só dispara na troca de
+/// "sem conta" pra "com conta" depois que o estado já tinha carregado — abrir
+/// a aba com a conta já conectada não anima (senão toda visita pulava).
+class _LoginReveal extends StatefulWidget {
+  const _LoginReveal({
+    required this.trigger,
+    required this.ready,
+    required this.child,
+  });
+
+  /// Identifica quem está logado; `null` = ninguém.
+  final String? trigger;
+
+  /// O estado de login já foi lido (não é o primeiro quadro de carregamento).
+  final bool ready;
+  final Widget child;
+
+  @override
+  State<_LoginReveal> createState() => _LoginRevealState();
+}
+
+class _LoginRevealState extends State<_LoginReveal>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+    value: 1,
+  );
+  late final Animation<double> _scale = Tween<double>(begin: 0.55, end: 1)
+      .animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _controller,
+    curve: const Interval(0, 0.35, curve: Curves.easeOut),
+  );
+
+  @override
+  void didUpdateWidget(covariant _LoginReveal old) {
+    super.didUpdateWidget(old);
+    final justLoggedIn = old.ready &&
+        widget.ready &&
+        old.trigger == null &&
+        widget.trigger != null;
+    if (justLoggedIn) _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fade,
+      child: ScaleTransition(
+        scale: _scale,
+        alignment: Alignment.centerLeft,
+        child: widget.child,
+      ),
     );
   }
 }

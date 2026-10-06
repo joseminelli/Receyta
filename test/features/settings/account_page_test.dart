@@ -9,6 +9,7 @@ import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
+import 'package:receyta/features/settings/controllers/profile_preview.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -258,5 +259,135 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA HISTORICO'), findsOneWidget);
+  });
+
+  group('prévia da cor do perfil', () {
+    ProviderContainer containerOf(WidgetTester tester) =>
+        ProviderScope.containerOf(tester.element(find.byType(AccountPage)));
+
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(find.text('Seu nome aqui'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('tocar numa cor muda o perfil na hora, antes de salvar',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      final c = containerOf(tester);
+      expect(c.read(effectiveProfileColorProvider), TileColor.coral);
+
+      await openSheet(tester);
+      await tester.tap(find.bySemanticsLabel('Cor mar'));
+      await tester.pump();
+
+      expect(c.read(effectiveProfileColorProvider), TileColor.mar);
+      expect(c.read(appSettingsProvider).profileColor, TileColor.coral);
+    });
+
+    testWidgets('cancelar desfaz a prévia e não salva nada', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      final c = containerOf(tester);
+
+      await openSheet(tester);
+      await tester.tap(find.bySemanticsLabel('Cor mar'));
+      await tester.pump();
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(c.read(profileColorPreviewProvider), isNull);
+      expect(c.read(effectiveProfileColorProvider), TileColor.coral);
+      expect((await loadAppSettings()).profileColor, TileColor.coral);
+    });
+
+    testWidgets('fechar arrastando pra baixo também desfaz a prévia',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      final c = containerOf(tester);
+
+      await openSheet(tester);
+      await tester.tap(find.bySemanticsLabel('Cor mar'));
+      await tester.pump();
+      await tester.tapAt(const Offset(200, 40));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Salvar'), findsNothing);
+      expect(c.read(effectiveProfileColorProvider), TileColor.coral);
+    });
+
+    testWidgets('salvar mantém a cor escolhida', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      final c = containerOf(tester);
+
+      await openSheet(tester);
+      await tester.tap(find.bySemanticsLabel('Cor mar'));
+      await tester.pump();
+      await tester.tap(find.text('Salvar'));
+      await tester.pumpAndSettle();
+
+      expect(c.read(effectiveProfileColorProvider), TileColor.mar);
+      expect((await loadAppSettings()).profileColor, TileColor.mar);
+    });
+  });
+
+  group('entrada do perfil ao logar', () {
+    double revealScale(WidgetTester tester) => tester
+        .widget<ScaleTransition>(
+          find
+              .descendant(
+                of: find.byType(AccountPage),
+                matching: find.byType(ScaleTransition),
+              )
+              .first,
+        )
+        .scale
+        .value;
+
+    testWidgets('ao entrar na conta, nome e foto surgem com bounce',
+        (tester) async {
+      _usePhoneSize(tester);
+      final auth = FakeAuthService()
+        ..nextResult = const Ok(
+          AppUser(id: 'u1', email: 'ana@x.com', name: 'Ana Souza'),
+        );
+      await tester.pumpWidget(_host(auth: auth));
+      await tester.pumpAndSettle();
+      expect(revealScale(tester), 1);
+
+      await tester.tap(find.text('Entrar com Google'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(revealScale(tester), lessThan(1));
+      expect(find.text('Ana'), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 150));
+      final mid = revealScale(tester);
+      expect(mid, isNot(1));
+
+      await tester.pumpAndSettle();
+      expect(revealScale(tester), closeTo(1, 0.001));
+    });
+
+    testWidgets('abrir a aba com a conta já conectada não anima',
+        (tester) async {
+      _usePhoneSize(tester);
+      final auth = FakeAuthService(
+        user: const AppUser(id: 'u1', email: 'ana@x.com', name: 'Ana Souza'),
+      );
+      await tester.pumpWidget(_host(auth: auth));
+      await tester.pump();
+      await tester.pump();
+
+      expect(revealScale(tester), 1);
+      expect(find.text('Ana'), findsOneWidget);
+    });
   });
 }
