@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/receyta_import_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/domain/engine/receyta_file_import.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -20,7 +23,7 @@ Future<void> importReceytaFileFlow(BuildContext context, WidgetRef ref) async {
   final service = ref.read(receytaImportServiceProvider);
   final result = await service.pickAndParseFile();
   if (result == null) return;
-  await _resolveAndImport(service, result);
+  await _resolveAndImport(ref, service, result);
 }
 
 /// Mesmo caminho, mas pro `.receyta` que chegou pronto de outro app (D5) —
@@ -32,10 +35,11 @@ Future<void> importReceytaFileFlow(BuildContext context, WidgetRef ref) async {
 Future<void> importSharedReceytaFileFlow(WidgetRef ref, String path) async {
   final service = ref.read(receytaImportServiceProvider);
   final result = await service.parseFileAtPath(path);
-  await _resolveAndImport(service, result);
+  await _resolveAndImport(ref, service, result);
 }
 
 Future<void> _resolveAndImport(
+  WidgetRef ref,
   ReceytaImportService service,
   Result<ParsedReceytaFile> parseResult,
 ) async {
@@ -57,6 +61,8 @@ Future<void> _resolveAndImport(
 
   final result = await service.importParsedFile(file, resolution: resolution);
   _reportResult(result);
+  // Fotos restauradas: confere o que já está na nuvem (sem reenviar) e marca.
+  if (result.isOk) unawaited(ref.read(recipeImageSyncProvider).syncPending());
 }
 
 Future<ConflictResolution?> _showConflictSheet(

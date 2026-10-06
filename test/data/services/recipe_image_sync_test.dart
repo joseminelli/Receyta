@@ -4,25 +4,26 @@ import 'dart:typed_data';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeRemote implements ImageRemote {
   @override
   String? userId = 'u1';
 
   final objects = <String, Uint8List>{};
+  final uploads = <String>[];
+  final removed = <String>[];
   bool failUpload = false;
   bool failRemove = false;
-  final updatedAt = <String, DateTime>{};
-  final removed = <String>[];
 
   @override
   Future<void> upload(String path, File file) async {
     if (failUpload) throw Exception('sem rede');
+    uploads.add(path);
     objects[path] = await file.readAsBytes();
   }
 
@@ -34,14 +35,7 @@ class _FakeRemote implements ImageRemote {
   }
 
   @override
-  Future<List<RemoteImage>> list(String uid) async => [
-        for (final k in objects.keys)
-          if (k.startsWith('$uid/'))
-            (
-              name: k.substring(uid.length + 1),
-              updatedAt: updatedAt[k] ?? DateTime(2020),
-            ),
-      ];
+  Future<bool> exists(String path) async => objects.containsKey(path);
 
   @override
   Future<void> remove(String path) async {
@@ -58,6 +52,7 @@ void main() {
   late RecipeImageService images;
   late _FakeRemote remote;
   late RecipeImageSync sync;
+  var counter = 0;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -78,12 +73,16 @@ void main() {
     if (await root.exists()) await root.delete(recursive: true);
   });
 
+  /// Guarda uma foto com [bytes] e devolve o nome (hash do conteúdo).
+  Future<String> photo(List<int> bytes) async {
+    final src = File(p.join(root.path, 'src_${counter++}.jpg'))
+      ..writeAsBytesSync(bytes);
+    return images.store(src);
+  }
+
   Future<String> recipeWithPhoto(String name, List<int> bytes) async {
-    final saved = await repo.saveDetail(name: name);
-    final id = (saved.valueOrNull)!.id;
-    final src = File(p.join(root.path, '$name.jpg'))..writeAsBytesSync(bytes);
-    final file = await images.store(src, recipeId: id);
-    await repo.setImage(id, file);
+    final id = ((await repo.saveDetail(name: name)).valueOrNull)!.id;
+    await repo.setImage(id, await photo(bytes));
     return id;
   }
 
@@ -109,10 +108,10 @@ void main() {
   test('segunda rodada não reenvia o que já subiu', () async {
     await recipeWithPhoto('A', [1, 2, 3]);
     await sync.syncPending();
-    remote.objects.clear();
+    remote.uploads.clear();
 
     expect(await sync.syncPending(), 0);
-    expect(remote.objects, isEmpty);
+    expect(remote.uploads, isEmpty);
   });
 
   test('falha de rede deixa pendente e a próxima rodada envia', () async {
@@ -130,16 +129,14 @@ void main() {
   test('foto trocada: sobe a nova e apaga a antiga da nuvem', () async {
     final id = await recipeWithPhoto('A', [1, 2, 3]);
     await sync.syncPending();
-    final oldName = remote.objects.keys.single;
+    final oldPath = remote.objects.keys.single;
 
-    await Future<void>.delayed(const Duration(milliseconds: 3));
-    final src = File(p.join(root.path, 'novo.jpg'))..writeAsBytesSync([9, 9]);
-    final newName = await images.store(src, recipeId: id);
+    final newName = await photo([9, 9]);
     await repo.setImage(id, newName);
 
     expect(await sync.syncPending(), 1);
     expect(remote.objects.keys, ['u1/$newName']);
-    expect(remote.objects.containsKey(oldName), isFalse);
+    expect(remote.objects.containsKey(oldPath), isFalse);
   });
 
   test('foto removida: apaga da nuvem e limpa o registro', () async {
@@ -163,6 +160,85 @@ void main() {
     expect(await db.recipeDao.pendingImageSync(), isEmpty);
   });
 
+  test('salvar com uma cópia velha da receita não faz a foto subir de novo',
+      () async {
+    final id = await recipeWithPhoto('A', [1, 2, 3]);
+    final stale = (await repo.getDetail(id)).valueOrNull!.recipe;
+    await sync.syncPending();
+    remote.uploads.clear();
+
+    await repo.saveDetail(base: stale, name: 'A editada');
+
+    expect(await db.recipeDao.pendingImageSync(), isEmpty);
+    expect(await sync.syncPending(), 0);
+    expect(remote.uploads, isEmpty);
+  });
+
+  group('economia de espaço', () {
+    test('foto que já está na nuvem (backup restaurado) não é reenviada',
+        () async {
+      final name = await photo([5, 5, 5]);
+      remote.objects['u1/$name'] = Uint8List.fromList([5, 5, 5]);
+      final id = ((await repo.saveDetail(name: 'Restaurada')).valueOrNull)!.id;
+      await repo.setImage(id, name);
+
+      expect(await sync.syncPending(), 1);
+
+      expect(remote.uploads, isEmpty);
+      expect(await db.recipeDao.pendingImageSync(), isEmpty);
+      expect(await db.recipeDao.syncedImageNames(), {name});
+    });
+
+    test('duas receitas com a mesma foto enviam UM arquivo só', () async {
+      await recipeWithPhoto('A', [7, 7, 7]);
+      await recipeWithPhoto('B', [7, 7, 7]);
+
+      expect(await sync.syncPending(), 2);
+
+      expect(remote.uploads, hasLength(1));
+      expect(remote.objects, hasLength(1));
+    });
+
+    test('tirar a foto de uma receita não apaga o arquivo que a outra usa',
+        () async {
+      final a = await recipeWithPhoto('A', [7, 7, 7]);
+      final b = await recipeWithPhoto('B', [7, 7, 7]);
+      await sync.syncPending();
+
+      await repo.setImage(a, null);
+      await sync.syncPending();
+      expect(remote.objects, hasLength(1));
+      expect(remote.removed, isEmpty);
+
+      await repo.setImage(b, null);
+      await sync.syncPending();
+      expect(remote.objects, isEmpty);
+    });
+
+    test('trocar a foto de uma receita preserva o arquivo da outra', () async {
+      final a = await recipeWithPhoto('A', [7, 7, 7]);
+      await recipeWithPhoto('B', [7, 7, 7]);
+      await sync.syncPending();
+      final shared = remote.objects.keys.single;
+
+      await repo.setImage(a, await photo([1, 2]));
+      await sync.syncPending();
+
+      expect(remote.objects.containsKey(shared), isTrue);
+      expect(remote.objects, hasLength(2));
+    });
+
+    test('arquivo local ausente e fora da nuvem: nada a enviar, fica pendente',
+        () async {
+      final id = ((await repo.saveDetail(name: 'Sem arquivo')).valueOrNull)!.id;
+      await repo.setImage(id, '${'a' * 40}.jpg');
+
+      expect(await sync.syncPending(), 0);
+      expect(remote.uploads, isEmpty);
+      expect(await db.recipeDao.pendingImageSync(), hasLength(1));
+    });
+  });
+
   test('ensureLocal devolve o local, ou baixa da nuvem quando falta', () async {
     await recipeWithPhoto('A', [1, 2, 3]);
     await sync.syncPending();
@@ -183,23 +259,7 @@ void main() {
     expect(await sync.ensureLocal('inexistente.jpg'), isNull);
   });
 
-  test('salvar com uma cópia velha da receita não faz a foto subir de novo',
-      () async {
-    final id = await recipeWithPhoto('A', [1, 2, 3]);
-    final stale = (await repo.getDetail(id)).valueOrNull!.recipe;
-    await sync.syncPending();
-    remote.objects.clear();
-
-    await repo.saveDetail(base: stale, name: 'A editada');
-
-    expect(await db.recipeDao.pendingImageSync(), isEmpty);
-    expect(await sync.syncPending(), 0);
-    expect(remote.objects, isEmpty);
-  });
-
   group('remoção de fotos de receitas apagadas', () {
-    setUp(() => SharedPreferences.setMockInitialValues({}));
-
     test('logado: apaga da nuvem e esvazia a fila', () async {
       remote.objects['u1/a.jpg'] = Uint8List.fromList([1]);
       await sync.queueRemoteDeletion(['a.jpg']);
@@ -236,22 +296,44 @@ void main() {
       await sync.syncPending();
       expect(remote.objects, isEmpty);
     });
+
+    test('se outra receita ainda usa o arquivo, ele fica na nuvem', () async {
+      final id = await recipeWithPhoto('A', [4, 4, 4]);
+      await sync.syncPending();
+      final name = remote.objects.keys.single.split('/').last;
+      await recipeWithPhoto('B', [4, 4, 4]);
+      await sync.queueRemoteDeletion([name]);
+
+      await repo.softDelete(id);
+      await db.recipeDao.hardDelete(id);
+      await sync.syncPending();
+
+      expect(remote.objects, hasLength(1));
+    });
   });
 
-  group('limpeza do que ninguém usa na nuvem', () {
-    test('apaga o que nenhuma receita referencia e mantém o que está em uso',
-        () async {
-      await recipeWithPhoto('A', [1, 2, 3]);
+  group('limpeza do que este aparelho enviou e ninguém usa', () {
+    test('apaga o que enviou e nenhuma receita referencia mais', () async {
+      final id = await recipeWithPhoto('A', [1, 2, 3]);
       await sync.syncPending();
-      final inUse = remote.objects.keys.single;
-      remote.objects['u1/sobra.jpg'] = Uint8List.fromList([9]);
+      await repo.softDelete(id);
+      await db.recipeDao.hardDelete(id);
 
       expect(await sync.sweepRemoteOrphans(), 1);
-
-      expect(remote.objects.keys, [inUse]);
+      expect(remote.objects, isEmpty);
     });
 
-    test('foto de receita na lixeira ainda conta como em uso', () async {
+    test('NUNCA mexe em arquivo que outro aparelho enviou', () async {
+      remote.objects['u1/de_outro_aparelho.jpg'] = Uint8List.fromList([9]);
+      await recipeWithPhoto('A', [1, 2, 3]);
+      await sync.syncPending();
+
+      expect(await sync.sweepRemoteOrphans(), 0);
+
+      expect(remote.objects.containsKey('u1/de_outro_aparelho.jpg'), isTrue);
+    });
+
+    test('foto em uso (inclusive receita na lixeira) fica', () async {
       final id = await recipeWithPhoto('A', [1, 2, 3]);
       await sync.syncPending();
       await repo.softDelete(id);
@@ -260,31 +342,56 @@ void main() {
       expect(remote.objects, hasLength(1));
     });
 
-    test('arquivo recém-gravado fica (pode ser um envio em andamento)',
+    test('foto adotada da nuvem (restauração) também é nossa pra limpar',
         () async {
-      remote.objects['u1/nova.jpg'] = Uint8List.fromList([9]);
-      remote.updatedAt['u1/nova.jpg'] = DateTime.now();
-
-      expect(await sync.sweepRemoteOrphans(), 0);
-      expect(remote.objects, isNotEmpty);
-    });
-
-    test('sem login não apaga nada', () async {
-      remote.objects['u1/sobra.jpg'] = Uint8List.fromList([9]);
-      remote.userId = null;
-
-      expect(await sync.sweepRemoteOrphans(), 0);
-      expect(remote.objects, isNotEmpty);
-    });
-
-    test('receita apagada de vez cai na limpeza mesmo sem a fila', () async {
-      final id = await recipeWithPhoto('A', [1, 2, 3]);
+      final name = await photo([5, 5, 5]);
+      remote.objects['u1/$name'] = Uint8List.fromList([5, 5, 5]);
+      final id = ((await repo.saveDetail(name: 'R')).valueOrNull)!.id;
+      await repo.setImage(id, name);
       await sync.syncPending();
       await repo.softDelete(id);
       await db.recipeDao.hardDelete(id);
 
       expect(await sync.sweepRemoteOrphans(), 1);
       expect(remote.objects, isEmpty);
+    });
+
+    test('quem já estava enviado antes da lista existir passa a contar',
+        () async {
+      final id = await recipeWithPhoto('A', [1, 2, 3]);
+      await sync.syncPending();
+      SharedPreferences.setMockInitialValues({});
+
+      await sync.sweepRemoteOrphans();
+      await repo.softDelete(id);
+      await db.recipeDao.hardDelete(id);
+
+      expect(await sync.sweepRemoteOrphans(), 1);
+      expect(remote.objects, isEmpty);
+    });
+
+    test('sem login não apaga nada', () async {
+      final id = await recipeWithPhoto('A', [1, 2, 3]);
+      await sync.syncPending();
+      await repo.softDelete(id);
+      await db.recipeDao.hardDelete(id);
+      remote.userId = null;
+
+      expect(await sync.sweepRemoteOrphans(), 0);
+      expect(remote.objects, isNotEmpty);
+    });
+
+    test('falha ao remover deixa pra próxima vez', () async {
+      final id = await recipeWithPhoto('A', [1, 2, 3]);
+      await sync.syncPending();
+      await repo.softDelete(id);
+      await db.recipeDao.hardDelete(id);
+      remote.failRemove = true;
+
+      expect(await sync.sweepRemoteOrphans(), 0);
+
+      remote.failRemove = false;
+      expect(await sync.sweepRemoteOrphans(), 1);
     });
   });
 }

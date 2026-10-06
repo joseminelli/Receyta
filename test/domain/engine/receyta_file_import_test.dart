@@ -252,4 +252,33 @@ void main() {
     expect(
         parseReceytaFile(jsonEncode(json))!.recipes.single.imageBase64, isNull);
   });
+
+  test('round trip: o nome do arquivo da foto também volta', () {
+    final json = buildRecipeExportJson(
+      buildDetail(),
+      ingredientNames: const {'ing1': 'peito de frango'},
+      imagesBase64: const {'r1': 'QUJD'},
+      imageNames: const {'r1': 'abc123.jpg'},
+      clock: () => createdAt,
+    );
+
+    final recipe = parseReceytaFile(jsonEncode(json))!.recipes.single;
+
+    expect(recipe.imageBase64, 'QUJD');
+    expect(recipe.imageName, 'abc123.jpg');
+  });
+
+  test('backup antigo, só com a foto e sem o nome, continua válido', () {
+    final json = buildRecipeExportJson(
+      buildDetail(),
+      ingredientNames: const {'ing1': 'peito de frango'},
+      imagesBase64: const {'r1': 'QUJD'},
+      clock: () => createdAt,
+    );
+
+    final recipe = parseReceytaFile(jsonEncode(json))!.recipes.single;
+
+    expect(recipe.imageBase64, 'QUJD');
+    expect(recipe.imageName, isNull);
+  });
 }

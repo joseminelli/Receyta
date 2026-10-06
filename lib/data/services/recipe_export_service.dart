@@ -37,23 +37,28 @@ class RecipeExportService {
   final IngredientDao _ingredientDao;
   final RecipeImageService? _images;
 
-  /// Foto de cada receita em base64 (id → JPEG). Foto ilegível ou ausente
-  /// no disco é só pulada — nunca derruba o export.
-  Future<Map<String, String>> _imagesFor(List<RecipeDetail> details) async {
+  /// Foto de cada receita em base64 (id → JPEG) e o nome do arquivo de cada
+  /// uma. Foto ilegível ou ausente no disco é só pulada — nunca derruba o
+  /// export.
+  Future<({Map<String, String> data, Map<String, String> names})> _imagesFor(
+    List<RecipeDetail> details,
+  ) async {
     final images = _images;
-    if (images == null) return const {};
-    final out = <String, String>{};
+    final data = <String, String>{};
+    final names = <String, String>{};
+    if (images == null) return (data: data, names: names);
     for (final d in details) {
       final name = d.recipe.imagePath;
       if (name == null) continue;
       try {
         final file = await images.fileFor(name);
         if (await file.exists()) {
-          out[d.recipe.id] = base64Encode(await file.readAsBytes());
+          data[d.recipe.id] = base64Encode(await file.readAsBytes());
+          names[d.recipe.id] = name;
         }
       } catch (_) {}
     }
-    return out;
+    return (data: data, names: names);
   }
 
   /// Monta o payload de export de uma receita (D1, §7) resolvendo os nomes
@@ -65,10 +70,12 @@ class RecipeExportService {
     final detail = (detailResult as Ok<RecipeDetail>).value;
 
     final names = await _namesFor([detail]);
+    final photos = await _imagesFor([detail]);
     return Ok(buildRecipeExportJson(
       detail,
       ingredientNames: names,
-      imagesBase64: await _imagesFor([detail]),
+      imagesBase64: photos.data,
+      imageNames: photos.names,
     ));
   }
 
@@ -130,11 +137,13 @@ class RecipeExportService {
     }
 
     final names = await _namesFor(details);
+    final photos = await _imagesFor(details);
     return Ok(buildFullExportJson(
       folders: folders,
       recipes: details,
       ingredientNames: names,
-      imagesBase64: await _imagesFor(details),
+      imagesBase64: photos.data,
+      imageNames: photos.names,
     ));
   }
 

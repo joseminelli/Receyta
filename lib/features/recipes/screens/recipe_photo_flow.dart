@@ -25,7 +25,6 @@ enum _PhotoChoice { camera, gallery, remove }
 Future<PhotoChange?> choosePhoto(
   BuildContext context,
   WidgetRef ref, {
-  required String recipeId,
   required bool hasPhoto,
 }) async {
   final choice = await _showSheet(context, hasPhoto: hasPhoto);
@@ -36,7 +35,6 @@ Future<PhotoChange?> choosePhoto(
         choice == _PhotoChoice.camera
             ? ImageSource.camera
             : ImageSource.gallery,
-        recipeId: recipeId,
       );
   return result.when(
     ok: (name) => name == null ? null : (imagePath: name),
@@ -57,7 +55,6 @@ Future<void> changeRecipePhoto(
   final change = await choosePhoto(
     context,
     ref,
-    recipeId: recipe.id,
     hasPhoto: recipe.imagePath != null,
   );
   if (change == null) return;
@@ -67,14 +64,25 @@ Future<void> changeRecipePhoto(
       .setImage(recipe.id, change.imagePath);
   saved.when(
     ok: (_) {
-      ref.read(recipeImageServiceProvider).delete(recipe.imagePath);
+      _releaseLocal(ref, recipe.imagePath, exceptRecipeId: recipe.id);
       unawaited(ref.read(recipeImageSyncProvider).syncPending());
     },
     err: (f) {
-      ref.read(recipeImageServiceProvider).delete(change.imagePath);
+      _releaseLocal(ref, change.imagePath, exceptRecipeId: recipe.id);
       showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error);
     },
   );
+}
+
+/// Apaga o arquivo local de [name] se nenhuma outra receita o usa (fotos
+/// iguais são o mesmo arquivo).
+void _releaseLocal(WidgetRef ref, String? name, {String? exceptRecipeId}) {
+  if (name == null) return;
+  final repo = ref.read(recipeRepositoryProvider);
+  unawaited(ref.read(recipeImageServiceProvider).deleteIfUnused(
+        name,
+        (n) => repo.isImageInUse(n, exceptRecipeId: exceptRecipeId),
+      ));
 }
 
 Future<_PhotoChoice?> _showSheet(

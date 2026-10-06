@@ -1,6 +1,7 @@
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -451,6 +452,54 @@ void main() {
       final row = (await db.recipeDao.findById('r1'))!;
       expect(row.imagePath, isNot(old));
       expect(row.imageSyncedPath, old);
+    });
+
+    test('restaura com o MESMO nome do arquivo original', () async {
+      await withImages.importParsedFile(parsedFullFile(recipes: [
+        recipe(image: base64Encode([1, 2, 3]), imageName: 'original_17.jpg'),
+      ]));
+
+      final row = (await db.recipeDao.watchActive().first).single;
+      expect(row.imagePath, 'original_17.jpg');
+      expect(await (await images.fileFor('original_17.jpg')).readAsBytes(),
+          [1, 2, 3]);
+    });
+
+    test('duas receitas do backup com a mesma foto viram um arquivo só',
+        () async {
+      final photo = base64Encode([4, 4, 4]);
+      await withImages.importParsedFile(parsedFullFile(recipes: [
+        recipe(image: photo, imageName: 'mesma.jpg'),
+        recipe(image: photo, imageName: 'mesma.jpg'),
+      ]));
+
+      final rows = await db.recipeDao.watchActive().first;
+      expect(rows.map((r) => r.imagePath).toSet(), {'mesma.jpg'});
+      final dir = await images.directory();
+      expect(await dir.list().length, 1);
+    });
+
+    test('nome do arquivo malicioso é ignorado e a foto vai pra um nome seguro',
+        () async {
+      await withImages.importParsedFile(parsedFullFile(recipes: [
+        recipe(image: base64Encode([7, 7]), imageName: '../../fora.jpg'),
+      ]));
+
+      final row = (await db.recipeDao.watchActive().first).single;
+      expect(row.imagePath, isNot(contains('..')));
+      expect(row.imagePath, matches(RegExp(r'^[0-9a-f]{40}\.jpg$')));
+      expect(await File('${root.path}/fora.jpg').exists(), isFalse);
+    });
+
+    test('arquivo local que já existe com esse nome não é regravado', () async {
+      await images.storeBytes(Uint8List.fromList([1]),
+          name: 'ja_existe.jpg', compress: false);
+
+      await withImages.importParsedFile(parsedFullFile(recipes: [
+        recipe(image: base64Encode([9, 9]), imageName: 'ja_existe.jpg'),
+      ]));
+
+      expect(await (await images.fileFor('ja_existe.jpg')).readAsBytes(), [1]);
     });
   });
 }

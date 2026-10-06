@@ -379,16 +379,19 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
   }
 
   Future<void> _pickPhoto() async {
-    final change = await choosePhoto(
-      context,
-      ref,
-      recipeId: _recipe?.id ?? 'nova',
-      hasPhoto: _photo != null,
-    );
+    final change = await choosePhoto(context, ref, hasPhoto: _photo != null);
     if (change == null || !mounted) return;
     final previous = _photo;
-    if (previous != null && previous != _recipe?.imagePath) {
-      unawaited(ref.read(recipeImageServiceProvider).delete(previous));
+    // Foto intermediária (escolhida aqui e já trocada) só some se nenhuma
+    // receita a usa — e nunca se for a mesma que acabou de ser escolhida,
+    // porque fotos iguais são o mesmo arquivo.
+    if (previous != null &&
+        previous != _recipe?.imagePath &&
+        previous != change.imagePath) {
+      final repo = ref.read(recipeRepositoryProvider);
+      unawaited(ref
+          .read(recipeImageServiceProvider)
+          .deleteIfUnused(previous, (n) => repo.isImageInUse(n)));
     }
     setState(() => _photo = change.imagePath);
   }
@@ -400,7 +403,11 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
     final saved =
         await ref.read(recipeRepositoryProvider).setImage(recipeId, _photo);
     if (saved.isOk) {
-      await images.delete(original);
+      final repo = ref.read(recipeRepositoryProvider);
+      await images.deleteIfUnused(
+        original,
+        (n) => repo.isImageInUse(n, exceptRecipeId: recipeId),
+      );
       unawaited(ref.read(recipeImageSyncProvider).syncPending());
     }
   }

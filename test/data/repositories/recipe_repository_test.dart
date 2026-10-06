@@ -408,4 +408,40 @@ void main() {
       expect(remaining.map((r) => r.id), [fresh.id]);
     });
   });
+
+  group('arquivo de foto em uso', () {
+    test('isImageInUse vê quem tem o arquivo, e ignora a própria receita',
+        () async {
+      final a = unwrap(await repo.saveDetail(name: 'A'));
+      final b = unwrap(await repo.saveDetail(name: 'B'));
+      await repo.setImage(a.id, 'x.jpg');
+
+      expect(await repo.isImageInUse('x.jpg'), isTrue);
+      expect(await repo.isImageInUse('x.jpg', exceptRecipeId: a.id), isFalse);
+      expect(await repo.isImageInUse('x.jpg', exceptRecipeId: b.id), isTrue);
+      expect(await repo.isImageInUse('outro.jpg'), isFalse);
+    });
+
+    test('receita na lixeira ainda conta como dona do arquivo', () async {
+      final a = unwrap(await repo.saveDetail(name: 'A'));
+      await repo.setImage(a.id, 'x.jpg');
+      await repo.softDelete(a.id);
+
+      expect(await repo.isImageInUse('x.jpg'), isTrue);
+    });
+
+    test('na nuvem, quem ainda tem o arquivo como "enviado" também conta',
+        () async {
+      final a = unwrap(await repo.saveDetail(name: 'A'));
+      await repo.setImage(a.id, 'novo.jpg');
+      await db.recipeDao.setImageSynced(a.id, 'velho.jpg');
+
+      expect(await db.recipeDao.isImagePathUsed('velho.jpg'), isFalse);
+      expect(await db.recipeDao.isRemoteImageUsed('velho.jpg'), isTrue);
+      expect(
+        await db.recipeDao.isRemoteImageUsed('velho.jpg', exceptRecipeId: a.id),
+        isFalse,
+      );
+    });
+  });
 }

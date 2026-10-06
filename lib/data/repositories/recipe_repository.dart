@@ -300,6 +300,11 @@ class RecipeRepository {
 
   Future<Set<String>> referencedImagePaths() => _dao.referencedImagePaths();
 
+  /// Alguma receita ainda usa o arquivo de foto [name]? (fotos iguais são o
+  /// mesmo arquivo — ver `RecipeImageService`).
+  Future<bool> isImageInUse(String name, {String? exceptRecipeId}) =>
+      _dao.isImagePathUsed(name, exceptRecipeId: exceptRecipeId);
+
   Future<Result<void>> softDelete(String id) async {
     try {
       await _dao.softDelete(id, _clock().toUtc());
@@ -449,7 +454,7 @@ final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
     onImagesReleased: (local, remote) async {
       final images = ref.read(recipeImageServiceProvider);
       for (final name in local) {
-        await images.delete(name);
+        await images.deleteIfUnused(name, db.recipeDao.isImagePathUsed);
       }
       if (remote.isNotEmpty) {
         final sync = ref.read(recipeImageSyncProvider);

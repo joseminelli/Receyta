@@ -73,9 +73,7 @@ Future<ImportedRecipe> _withPhoto(WidgetRef ref, ImportedRecipe recipe) async {
     final bytes =
         await ref.read(recipeImportServiceProvider).downloadImage(url);
     if (bytes == null) return recipe;
-    final name = await ref
-        .read(recipeImageServiceProvider)
-        .storeBytes(bytes, recipeId: 'nova');
+    final name = await ref.read(recipeImageServiceProvider).storeBytes(bytes);
     return recipe.copyWith(imagePath: name);
   } catch (_) {
     return recipe;

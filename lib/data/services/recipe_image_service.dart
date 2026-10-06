@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,8 +56,10 @@ Future<File?> _nativeCompress(
 ///
 /// No banco (`recipes.image_path`) vai só o NOME do arquivo, nunca o caminho
 /// absoluto — o diretório do app pode mudar (restauração, atualização do SO)
-/// e o nome continua valendo. Cada foto nova ganha nome novo, o que também
-/// derruba o cache de imagem do Flutter sem truque nenhum.
+/// e o nome continua valendo. O nome vem do hash do conteúdo: fotos iguais
+/// (a mesma escolhida duas vezes, receita duplicada, backup restaurado) são
+/// UM arquivo, aqui e na nuvem. Como o nome muda quando o conteúdo muda, o
+/// cache de imagem do Flutter também se invalida sozinho.
 class RecipeImageService {
   RecipeImageService({
     ImagePicker? picker,
@@ -85,16 +88,13 @@ class RecipeImageService {
       File(p.join((await directory()).path, name));
 
   /// `Ok(nome)` = foto guardada; `Ok(null)` = a pessoa cancelou.
-  Future<Result<String?>> pick(
-    ImageSource source, {
-    required String recipeId,
-  }) async {
+  Future<Result<String?>> pick(ImageSource source) async {
     File? picked;
     try {
       final xfile = await _picker.pickImage(source: source);
       if (xfile == null) return const Ok(null);
       picked = File(xfile.path);
-      return Ok(await store(picked, recipeId: recipeId));
+      return Ok(await store(picked));
     } catch (e) {
       return Err(
           ProcessingFailure('Não foi possível salvar a foto.', cause: e));
@@ -104,65 +104,97 @@ class RecipeImageService {
   }
 
   /// Comprime [source] e guarda na pasta do app, abaixo de
-  /// [kRecipeImageMaxBytes] quando der. Devolve o nome do arquivo.
-  Future<String> store(File source, {required String recipeId}) async {
-    final name = '${recipeId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final target = await fileFor(name);
-
-    var side = kRecipeImageMaxSide;
-    var quality = kRecipeImageQuality;
-    while (true) {
-      final out = await _compress(
-        source.path,
-        target.path,
-        maxSide: side,
-        quality: quality,
-      );
-      if (out == null) {
-        throw const FileSystemException('A compressão não gerou arquivo.');
-      }
-      if (out.path != target.path) await out.copy(target.path);
-
-      if (await target.length() <= kRecipeImageMaxBytes) return name;
-      if (quality > _minQuality) {
-        quality = (quality - 10).clamp(_minQuality, kRecipeImageQuality);
-      } else if (side > _minSide) {
-        side = (side * 0.8).round().clamp(_minSide, kRecipeImageMaxSide);
-        quality = kRecipeImageQuality - 20;
-      } else {
-        return name;
-      }
-    }
-  }
-
-  /// Guarda [bytes] como foto da receita. Com [compress] (padrão) passa pela
-  /// mesma compressão de [store] — pro que vem da internet; sem ele grava
-  /// como está — pro que já foi comprimido (restauração de backup).
-  Future<String> storeBytes(
-    Uint8List bytes, {
-    required String recipeId,
-    bool compress = true,
-  }) async {
-    if (!compress) {
-      final name = '${recipeId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await (await fileFor(name)).writeAsBytes(bytes, flush: true);
-      return name;
-    }
-    final temp = File(p.join(
-      (await directory()).path,
-      '.tmp_${DateTime.now().microsecondsSinceEpoch}',
-    ));
+  /// [kRecipeImageMaxBytes] quando der. Devolve o nome do arquivo, que é
+  /// derivado do CONTEÚDO: a mesma foto sempre vira o mesmo arquivo.
+  Future<String> store(File source) async {
+    final temp = await _tempFile();
     try {
-      await temp.writeAsBytes(bytes, flush: true);
-      return await store(temp, recipeId: recipeId);
+      var side = kRecipeImageMaxSide;
+      var quality = kRecipeImageQuality;
+      while (true) {
+        final out = await _compress(
+          source.path,
+          temp.path,
+          maxSide: side,
+          quality: quality,
+        );
+        if (out == null) {
+          throw const FileSystemException('A compressão não gerou arquivo.');
+        }
+        if (out.path != temp.path) await out.copy(temp.path);
+
+        if (await temp.length() <= kRecipeImageMaxBytes) break;
+        if (quality > _minQuality) {
+          quality = (quality - 10).clamp(_minQuality, kRecipeImageQuality);
+        } else if (side > _minSide) {
+          side = (side * 0.8).round().clamp(_minSide, kRecipeImageMaxSide);
+          quality = kRecipeImageQuality - 20;
+        } else {
+          break;
+        }
+      }
+      return await _adopt(temp);
     } finally {
       await _deleteQuietly(temp);
     }
   }
 
+  /// Guarda [bytes] como foto de receita.
+  ///
+  /// Com [compress] (padrão) passa pela mesma compressão de [store] — pro que
+  /// vem da internet. Sem ele grava como está — pro que já foi comprimido
+  /// (restauração de backup); aí, se [name] for um nome válido, o arquivo
+  /// mantém esse nome (é o que deixa o app reconhecer que a foto já está na
+  /// nuvem) e, se já existir aqui, não é regravado.
+  Future<String> storeBytes(
+    Uint8List bytes, {
+    String? name,
+    bool compress = true,
+  }) async {
+    if (!compress && isValidRecipeImageName(name)) {
+      final file = await fileFor(name!);
+      if (!await file.exists()) await file.writeAsBytes(bytes, flush: true);
+      return name;
+    }
+    final temp = await _tempFile();
+    try {
+      await temp.writeAsBytes(bytes, flush: true);
+      return compress ? await store(temp) : await _adopt(temp);
+    } finally {
+      await _deleteQuietly(temp);
+    }
+  }
+
+  /// Nomeia [temp] pelo hash do conteúdo e põe na pasta. Foto igual a uma que
+  /// já existe reaproveita o arquivo — nada de cópia repetida.
+  Future<String> _adopt(File temp) async {
+    final digest = sha256.convert(await temp.readAsBytes()).toString();
+    final name = '${digest.substring(0, 40)}.jpg';
+    final target = await fileFor(name);
+    if (!await target.exists()) await temp.rename(target.path);
+    return name;
+  }
+
+  Future<File> _tempFile() async => File(p.join(
+        (await directory()).path,
+        '.tmp_${DateTime.now().microsecondsSinceEpoch}.jpg',
+      ));
+
   Future<void> delete(String? name) async {
     if (name == null) return;
     await _deleteQuietly(await fileFor(name));
+  }
+
+  /// Apaga a foto só se [isUsed] disser que nenhuma receita ainda a usa. Como
+  /// fotos iguais viram o mesmo arquivo, vários registros podem apontar pra
+  /// ele — apagar sem conferir quebraria as outras receitas.
+  Future<void> deleteIfUnused(
+    String? name,
+    Future<bool> Function(String name) isUsed,
+  ) async {
+    if (name == null) return;
+    if (await isUsed(name)) return;
+    await delete(name);
   }
 
   /// Apaga da pasta toda foto que nenhuma receita referencia mais (receita
@@ -190,6 +222,14 @@ class RecipeImageService {
     } catch (_) {}
   }
 }
+
+final _validName = RegExp(r'^[A-Za-z0-9_-]{1,80}\.jpg$');
+
+/// Nome seguro de arquivo de foto: só letras, números, `_` e `-`, terminado em
+/// `.jpg`. Vindo de um backup é dado de fora — nunca vira caminho sem passar
+/// por aqui (barra e `..` não passam).
+bool isValidRecipeImageName(String? name) =>
+    name != null && _validName.hasMatch(name);
 
 final recipeImageServiceProvider =
     Provider<RecipeImageService>((ref) => RecipeImageService());

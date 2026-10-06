@@ -223,8 +223,9 @@ class ReceytaImportService {
     final existing = (hasConflict && resolution == ConflictResolution.replace)
         ? await _recipeDao.findById(sourceId)
         : null;
-    final imagePath = await _restoreImage(recipe.imageBase64, recipeId) ??
-        existing?.imagePath;
+    final imagePath =
+        await _restoreImage(recipe.imageBase64, recipe.imageName) ??
+            existing?.imagePath;
 
     final ingredients = <RecipeIngredientRow>[];
     for (final i in recipe.ingredients) {
@@ -293,13 +294,15 @@ class ReceytaImportService {
 
   /// Grava a foto do arquivo na pasta do app e devolve o nome. `null` se o
   /// arquivo não traz foto ou ela está corrompida — nunca derruba o import.
-  Future<String?> _restoreImage(String? base64, String recipeId) async {
+  Future<String?> _restoreImage(String? base64, String? name) async {
     final images = _images;
     if (images == null || base64 == null || base64.isEmpty) return null;
     try {
+      // Mantém o nome original quando ele é seguro: assim a foto bate com a
+      // que já está na nuvem e não é enviada de novo.
       return await images.storeBytes(
         base64Decode(base64),
-        recipeId: recipeId,
+        name: name,
         compress: false,
       );
     } catch (_) {

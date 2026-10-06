@@ -239,4 +239,25 @@ void main() {
     expect((withPhoto['recipes'] as List).single['image'], 'QUJD');
     expect((without['recipes'] as List).single.containsKey('image'), isFalse);
   });
+
+  test('o nome do arquivo da foto vai junto, e só quando há foto', () {
+    final detail = buildDetail();
+    final id = detail.recipe.id;
+
+    final withPhoto = buildRecipeExportJson(
+      detail,
+      ingredientNames: const {},
+      imagesBase64: {id: 'QUJD'},
+      imageNames: {id: 'abc123.jpg'},
+    );
+    final onlyName = buildRecipeExportJson(
+      detail,
+      ingredientNames: const {},
+      imageNames: {id: 'abc123.jpg'},
+    );
+
+    expect((withPhoto['recipes'] as List).single['imageName'], 'abc123.jpg');
+    expect(
+        (onlyName['recipes'] as List).single.containsKey('imageName'), isFalse);
+  });
 }

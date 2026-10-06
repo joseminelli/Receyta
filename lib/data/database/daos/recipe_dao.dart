@@ -280,6 +280,34 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         .write(RecipesCompanion(imageSyncedPath: Value(name)));
   }
 
+  /// Alguma receita (que não seja [exceptRecipeId]) tem [name] como foto?
+  /// Decide se o ARQUIVO LOCAL ainda é necessário.
+  Future<bool> isImagePathUsed(String name, {String? exceptRecipeId}) async {
+    final query = select(recipes)
+      ..where((r) {
+        final used = r.imagePath.equals(name);
+        return exceptRecipeId == null
+            ? used
+            : used & r.id.isNotValue(exceptRecipeId);
+      })
+      ..limit(1);
+    return (await query.get()).isNotEmpty;
+  }
+
+  /// Como [isImagePathUsed], mas também conta quem ainda tem [name] como foto
+  /// já enviada. Decide se a cópia NA NUVEM ainda é necessária.
+  Future<bool> isRemoteImageUsed(String name, {String? exceptRecipeId}) async {
+    final query = select(recipes)
+      ..where((r) {
+        final used = r.imagePath.equals(name) | r.imageSyncedPath.equals(name);
+        return exceptRecipeId == null
+            ? used
+            : used & r.id.isNotValue(exceptRecipeId);
+      })
+      ..limit(1);
+    return (await query.get()).isNotEmpty;
+  }
+
   /// Toda foto que alguma receita (inclusive na lixeira) ainda referencia,
   /// local ou já enviada — o que sobrar na nuvem fora disso é lixo.
   Future<Set<String>> referencedImageNames() async {
@@ -293,6 +321,14 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         if (r.imageSyncedPath != null) r.imageSyncedPath!,
       ],
     };
+  }
+
+  /// Nomes de foto que constam como já enviadas ao Storage.
+  Future<Set<String>> syncedImageNames() async {
+    final rows = await (select(recipes)
+          ..where((r) => r.imageSyncedPath.isNotNull()))
+        .get();
+    return {for (final r in rows) r.imageSyncedPath!};
   }
 
   /// Nomes de foto ainda em uso (inclui a lixeira — a receita pode voltar).
