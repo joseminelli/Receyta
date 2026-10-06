@@ -68,6 +68,11 @@ TileColor _colorForMotif(TileMotif m) => switch (m) {
       TileMotif.meiaLua => TileColor.violet,
       TileMotif.diagonal => TileColor.ink,
       TileMotif.ponto => TileColor.lime,
+      TileMotif.losango => TileColor.ink,
+      TileMotif.onda => TileColor.violet,
+      TileMotif.xadrez => TileColor.coral,
+      TileMotif.faixa => TileColor.lime,
+      TileMotif.circulo => TileColor.coral,
     };
 
 TileMotif _motifForColor(TileColor c) => switch (c) {

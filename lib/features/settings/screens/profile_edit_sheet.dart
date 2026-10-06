@@ -59,63 +59,65 @@ class _ProfileEditSheetState extends ConsumerState<_ProfileEditSheet> {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        0,
-        AppSpacing.screen,
-        MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Seu perfil', style: context.texts.titleLarge),
-          const SizedBox(height: AppSpacing.md),
-          TextField(
-            controller: _name,
-            maxLength: 24,
-            textCapitalization: TextCapitalization.words,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _save(),
-            decoration: const InputDecoration(
-              labelText: 'Como quer ser chamado?',
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Cor do avatar', style: context.texts.labelLarge),
-          const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              for (final c in kBaseTileColors) _dot(c),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text('Mais cores', style: context.texts.labelLarge),
-          const SizedBox(height: AppSpacing.xs),
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              for (final c in kExtraTileColors) _dot(c),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child:
-                    Text('Cancelar', style: TextStyle(color: colors.textMuted)),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          0,
+          AppSpacing.screen,
+          MediaQuery.viewInsetsOf(context).bottom + AppSpacing.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Seu perfil', style: context.texts.titleLarge),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: _name,
+              maxLength: 24,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _save(),
+              decoration: const InputDecoration(
+                labelText: 'Como quer ser chamado?',
               ),
-              const SizedBox(width: AppSpacing.xs),
-              PillButton(label: 'Salvar', onPressed: _save),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Cor do avatar', style: context.texts.labelLarge),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final c in kBaseTileColors) _dot(c),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text('Mais cores', style: context.texts.labelLarge),
+            const SizedBox(height: AppSpacing.xs),
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                for (final c in kExtraTileColors) _dot(c),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Cancelar',
+                      style: TextStyle(color: colors.textMuted)),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                PillButton(label: 'Salvar', onPressed: _save),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

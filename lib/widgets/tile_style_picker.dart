@@ -31,6 +31,26 @@ class TileStylePicker extends StatelessWidget {
   /// Id da receita, pra prévia do "Auto" bater com o card real.
   final String? seedId;
 
+  Widget _motifSwatch(TileMotif m, TileAppearance resolved) {
+    return Semantics(
+      button: true,
+      selected: motif == m,
+      label: 'Textura ${m.label}',
+      excludeSemantics: true,
+      child: _Swatch(
+        selected: motif == m,
+        onTap: () => onChanged(color, m),
+        child: TilePattern(
+          motif: m,
+          background: resolved.background,
+          patternColor: resolved.patternColor,
+          patternColorAlt: resolved.patternColorAlt,
+          tile: 32,
+        ),
+      ),
+    );
+  }
+
   Widget _colorSwatch(AppColors colors, TileColor c) {
     return Semantics(
       button: true,
@@ -75,7 +95,7 @@ class TileStylePicker extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        _Caption('Cor'),
+        _Caption('Cores originais'),
         const SizedBox(height: AppSpacing.xs),
         Wrap(
           spacing: AppSpacing.xs,
@@ -100,7 +120,7 @@ class TileStylePicker extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
-        _Caption('Textura'),
+        _Caption('Texturas originais'),
         const SizedBox(height: AppSpacing.xs),
         Wrap(
           spacing: AppSpacing.xs,
@@ -111,18 +131,17 @@ class TileStylePicker extends StatelessWidget {
               onTap: () => onChanged(color, null),
               child: const _Auto(),
             ),
-            for (final m in TileMotif.values)
-              _Swatch(
-                selected: motif == m,
-                onTap: () => onChanged(color, m),
-                child: TilePattern(
-                  motif: m,
-                  background: resolved.background,
-                  patternColor: resolved.patternColor,
-                  patternColorAlt: resolved.patternColorAlt,
-                  tile: 32,
-                ),
-              ),
+            for (final m in kBaseTileMotifs) _motifSwatch(m, resolved),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _Caption('Mais texturas'),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final m in kExtraTileMotifs) _motifSwatch(m, resolved),
           ],
         ),
       ],
@@ -143,6 +162,7 @@ Future<void> showAppearanceSheet(
 }) {
   return showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
     builder: (_) => _AppearanceSheet(
       title: title,
       color: color,
@@ -183,6 +203,7 @@ class _AppearanceSheetState extends State<_AppearanceSheet> {
   Widget build(BuildContext context) {
     return AppSheetFrame(
       title: widget.title,
+      scrollable: true,
       child: TileStylePicker(
         color: _color,
         motif: _motif,

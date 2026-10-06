@@ -129,20 +129,17 @@ class SettingsPage extends ConsumerWidget {
       isScrollControlled: true,
       builder: (sheet) => AppSheetFrame(
         title: 'Dia do lembrete',
-        child: Flexible(
-          child: SingleChildScrollView(
-            child: AppSheetOptions(
-              children: [
-                for (var d = 1; d <= 7; d++)
-                  AppSheetOption(
-                    icon: Icons.event_outlined,
-                    title: _weekdayName(d),
-                    selected: d == current.planWeekWeekday,
-                    onTap: () => Navigator.of(sheet).pop(d),
-                  ),
-              ],
-            ),
-          ),
+        scrollable: true,
+        child: AppSheetOptions(
+          children: [
+            for (var d = 1; d <= 7; d++)
+              AppSheetOption(
+                icon: Icons.event_outlined,
+                title: _weekdayName(d),
+                selected: d == current.planWeekWeekday,
+                onTap: () => Navigator.of(sheet).pop(d),
+              ),
+          ],
         ),
       ),
     );

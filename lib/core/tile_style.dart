@@ -18,6 +18,60 @@ enum TileMotif {
 
   /// Círculos em grade deslocada.
   ponto,
+
+  // Opcionais: só pra personalizar, nunca escolhidos sozinhos. Guardados pelo
+  // `.name` — acrescentar sempre no fim, nunca renomear nem reordenar.
+
+  /// Losangos que se tocam pelas pontas.
+  losango,
+
+  /// Ondas horizontais.
+  onda,
+
+  /// Tabuleiro de quadrados.
+  xadrez,
+
+  /// Faixas na diagonal.
+  faixa,
+
+  /// Círculos grandes que se tocam (quatro quartos por tile).
+  circulo,
+}
+
+/// Os quatro módulos originais (§9.4). **São os únicos que a escolha
+/// automática usa** (`tileMotifForId`) — acrescentar módulos opcionais não
+/// pode mudar a estampa de nenhuma receita que já existe.
+const kBaseTileMotifs = [
+  TileMotif.arco,
+  TileMotif.meiaLua,
+  TileMotif.diagonal,
+  TileMotif.ponto,
+];
+
+/// Os módulos opcionais, na ordem dos seletores.
+const kExtraTileMotifs = [
+  TileMotif.losango,
+  TileMotif.onda,
+  TileMotif.xadrez,
+  TileMotif.faixa,
+  TileMotif.circulo,
+];
+
+extension TileMotifInfo on TileMotif {
+  bool get isExtra => kExtraTileMotifs.contains(this);
+
+  /// Nome pra leitor de tela e legenda.
+  String get label => switch (this) {
+        TileMotif.arco => 'Arco',
+        TileMotif.meiaLua => 'Meia-lua',
+        TileMotif.diagonal => 'Diagonal',
+        TileMotif.ponto => 'Pontos',
+        TileMotif.losango => 'Losango',
+        TileMotif.onda => 'Onda',
+        TileMotif.xadrez => 'Xadrez',
+        TileMotif.faixa => 'Faixas',
+        TileMotif.circulo => 'Círculos',
+      };
 }
 
 /// As cores de bloco. As quatro primeiras são as da §9.2 (a identidade do app)

@@ -13,11 +13,17 @@ class AppSheetFrame extends StatelessWidget {
     super.key,
     this.title,
     this.subtitle,
+    this.scrollable = false,
     required this.child,
   });
 
   final String? title;
   final String? subtitle;
+
+  /// O [child] rola quando passa da altura da tela (título e subtítulo ficam
+  /// fixos em cima). Use com `isScrollControlled: true` no
+  /// `showModalBottomSheet`, senão a folha limita a altura e corta o fim.
+  final bool scrollable;
   final Widget child;
 
   @override
@@ -46,7 +52,10 @@ class AppSheetFrame extends StatelessWidget {
             ],
             if (title != null || subtitle != null)
               const SizedBox(height: AppSpacing.sm),
-            child,
+            if (scrollable)
+              Flexible(child: SingleChildScrollView(child: child))
+            else
+              child,
           ],
         ),
       ),

@@ -6,15 +6,20 @@ import 'package:flutter/material.dart';
 
 import 'package:receyta/core/tile_style.dart';
 
-export 'package:receyta/core/tile_style.dart' show TileMotif;
+export 'package:receyta/core/tile_style.dart'
+    show TileMotif, TileMotifInfo, kBaseTileMotifs, kExtraTileMotifs;
 
 /// Módulo determinístico a partir de um id (§9.4) — sem campo no banco.
 ///
 /// A mesma receita mantém a estampa para sempre e em qualquer dispositivo:
 /// `String.hashCode` é estável dentro de um mesmo runtime, e o plano aceita
 /// essa premissa. Se ela ganhar foto depois, a foto cobre o padrão.
+///
+/// Sorteia só entre os quatro módulos originais ([kBaseTileMotifs]): os
+/// opcionais nunca saem sozinhos, e assim acrescentá-los não muda a estampa
+/// de nenhuma receita que já existe.
 TileMotif tileMotifForId(String id) =>
-    TileMotif.values[id.hashCode.abs() % TileMotif.values.length];
+    kBaseTileMotifs[id.hashCode.abs() % kBaseTileMotifs.length];
 
 /// Preenche o espaço com um bloco de cor chapado e o azulejo por cima,
 /// tom sobre tom (§9.4).
@@ -264,6 +269,85 @@ void _paintMotifTile(Canvas canvas, _TileKey key) {
       final r = t * 0.16;
       canvas.drawCircle(Offset(t * 0.25, t * 0.25), r, fill);
       canvas.drawCircle(Offset(t * 0.75, t * 0.75), r, fill);
+
+    case TileMotif.losango:
+      // Losango inscrito no tile: os vizinhos se tocam só pelas pontas.
+      canvas.drawPath(
+        Path()
+          ..moveTo(t / 2, 0)
+          ..lineTo(t, t / 2)
+          ..lineTo(t / 2, t)
+          ..lineTo(0, t / 2)
+          ..close(),
+        fill,
+      );
+
+    case TileMotif.onda:
+      // Uma senoide de um período por tile — emenda sem costura dos dois
+      // lados. Estende além das bordas pra o traço não ficar cortado.
+      final amplitude = t * 0.18;
+      final wave = Path()..moveTo(-t * 0.1, t / 2);
+      for (var x = -t * 0.1; x <= t * 1.1; x += t / 24) {
+        wave.lineTo(x, t / 2 + amplitude * math.sin(2 * math.pi * x / t));
+      }
+      canvas.drawPath(
+        wave,
+        Paint()
+          ..color = key.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = t * 0.14
+          ..strokeCap = StrokeCap.round
+          ..isAntiAlias = true,
+      );
+
+    case TileMotif.xadrez:
+      // Dois quadrados na diagonal — repetidos, viram o tabuleiro.
+      canvas.drawRect(Rect.fromLTWH(0, 0, t / 2, t / 2), fill);
+      canvas.drawRect(Rect.fromLTWH(t / 2, t / 2, t / 2, t / 2), fill);
+
+    case TileMotif.faixa:
+      // Faixas a 45° nas linhas x+y = 0, t e 2t, que se emendam entre tiles.
+      final w = t * 0.28;
+      canvas.drawPath(
+        Path()
+          ..moveTo(t - w / 2, 0)
+          ..lineTo(t, 0)
+          ..lineTo(t, w / 2)
+          ..lineTo(w / 2, t)
+          ..lineTo(0, t)
+          ..lineTo(0, t - w / 2)
+          ..close(),
+        fill,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(0, 0)
+          ..lineTo(w / 2, 0)
+          ..lineTo(0, w / 2)
+          ..close(),
+        fill,
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(t, t)
+          ..lineTo(t - w / 2, t)
+          ..lineTo(t, t - w / 2)
+          ..close(),
+        fill,
+      );
+
+    case TileMotif.circulo:
+      // Quarto de disco em cada canto: tiles vizinhos completam círculos
+      // grandes centrados nos cantos.
+      final r = t / 2;
+      for (final corner in [
+        Offset.zero,
+        Offset(t, 0),
+        Offset(0, t),
+        Offset(t, t),
+      ]) {
+        canvas.drawCircle(corner, r, fill);
+      }
   }
 }
 
