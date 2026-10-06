@@ -64,6 +64,14 @@ create table if not exists public.shared_docs (
   primary key (space_id, kind, id)
 );
 
+-- Amplia os tipos aceitos (a despensa da casa entrou depois da primeira versão).
+alter table public.shared_docs
+  drop constraint if exists shared_docs_kind_check;
+alter table public.shared_docs
+  add constraint shared_docs_kind_check check (kind in (
+    'shopping_list', 'shopping_item', 'meal_plan', 'recipe', 'pantry'
+  ));
+
 create index if not exists shared_docs_cursor
   on public.shared_docs (space_id, updated_at, kind, id);
 
@@ -267,6 +275,62 @@ as $$
     where user_id = auth.uid();
 $$;
 
+-- O dono muda o nome da casa.
+create or replace function public.rename_space(p_name text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_space uuid;
+  v_name  text := left(trim(coalesce(p_name, '')), 60);
+begin
+  select space_id into v_space
+    from space_members
+    where user_id = auth.uid() and role = 'owner';
+  if v_space is null then
+    raise exception 'not_owner';
+  end if;
+  if v_name = '' then
+    raise exception 'empty_name';
+  end if;
+  update spaces set name = v_name where id = v_space;
+end;
+$$;
+
+-- O dono passa a casa pra outra pessoa da casa (e vira membro).
+create or replace function public.transfer_ownership(p_user uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_space uuid;
+begin
+  select space_id into v_space
+    from space_members
+    where user_id = auth.uid() and role = 'owner';
+  if v_space is null then
+    raise exception 'not_owner';
+  end if;
+  if p_user = auth.uid() then
+    raise exception 'cannot_remove_owner';
+  end if;
+  if not exists (
+    select 1 from space_members where space_id = v_space and user_id = p_user
+  ) then
+    raise exception 'not_member';
+  end if;
+  update spaces set owner_id = p_user where id = v_space;
+  update space_members set role = 'member'
+    where space_id = v_space and user_id = auth.uid();
+  update space_members set role = 'owner'
+    where space_id = v_space and user_id = p_user;
+end;
+$$;
+
 -- O dono tira alguém da casa.
 create or replace function public.remove_member(p_user uuid)
 returns void
@@ -320,6 +384,8 @@ revoke all on function public.create_space(text)        from public;
 revoke all on function public.create_invite()           from public;
 revoke all on function public.join_space(text, text)    from public;
 revoke all on function public.leave_space()             from public;
+revoke all on function public.rename_space(text)        from public;
+revoke all on function public.transfer_ownership(uuid)  from public;
 revoke all on function public.set_display_name(text)    from public;
 revoke all on function public.remove_member(uuid)       from public;
 revoke all on function public.my_space()                from public;
@@ -329,6 +395,8 @@ grant execute on function public.create_space(text)     to authenticated;
 grant execute on function public.create_invite()        to authenticated;
 grant execute on function public.join_space(text, text) to authenticated;
 grant execute on function public.leave_space()          to authenticated;
+grant execute on function public.rename_space(text)     to authenticated;
+grant execute on function public.transfer_ownership(uuid) to authenticated;
 grant execute on function public.set_display_name(text) to authenticated;
 grant execute on function public.remove_member(uuid)    to authenticated;
 grant execute on function public.my_space()             to authenticated;
@@ -353,6 +421,13 @@ begin
       and tablename = 'space_members'
   ) then
     alter publication supabase_realtime add table public.space_members;
+  end if;
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public'
+      and tablename = 'spaces'
+  ) then
+    alter publication supabase_realtime add table public.spaces;
   end if;
 end $$;
 

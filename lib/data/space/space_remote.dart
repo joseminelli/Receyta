@@ -83,6 +83,12 @@ abstract class SpaceRemote {
 
   /// Muda o nome com que a pessoa aparece na casa.
   Future<void> setDisplayName(String name);
+
+  /// O dono muda o nome da casa.
+  Future<void> renameSpace(String name);
+
+  /// O dono passa a casa pra outra pessoa da casa (e vira membro).
+  Future<void> transferOwnership(String userId);
 }
 
 class SupabaseSpaceRemote implements SpaceRemote {
@@ -140,6 +146,16 @@ class SupabaseSpaceRemote implements SpaceRemote {
   Future<void> setDisplayName(String name) async {
     await _client.rpc('set_display_name', params: {'p_name': name});
   }
+
+  @override
+  Future<void> renameSpace(String name) async {
+    await _client.rpc('rename_space', params: {'p_name': name});
+  }
+
+  @override
+  Future<void> transferOwnership(String userId) async {
+    await _client.rpc('transfer_ownership', params: {'p_user': userId});
+  }
 }
 
 /// Usado quando o Supabase não inicializou.
@@ -171,6 +187,12 @@ class NoSpaceRemote implements SpaceRemote {
 
   @override
   Future<void> setDisplayName(String name) async {}
+
+  @override
+  Future<void> renameSpace(String name) async {}
+
+  @override
+  Future<void> transferOwnership(String userId) async {}
 }
 
 final spaceRemoteProvider = Provider<SpaceRemote>((ref) {
@@ -201,6 +223,8 @@ Failure failureForSpace(Object error) {
     'too_many_invites':
         'Há convites demais em aberto. Use um deles ou espere vencer.',
     'cannot_remove_owner': 'O dono não pode ser removido.',
+    'not_member': 'Essa pessoa não está mais na casa.',
+    'empty_name': 'Dê um nome à casa.',
     'not_authenticated': 'Entre na sua conta para usar a casa.',
   });
   if (known != null) return ValidationFailure(known);

@@ -99,7 +99,11 @@ class SupabaseSharedRemote implements SharedRemote {
     late final StreamController<SharedChange> controller;
     final channels = <sb.RealtimeChannel>[];
 
-    sb.RealtimeChannel listen(String table, SharedChange change) {
+    sb.RealtimeChannel listen(
+      String table,
+      SharedChange change, {
+      String column = 'space_id',
+    }) {
       return _client
           .channel('$table-$spaceId')
           .onPostgresChanges(
@@ -108,7 +112,7 @@ class SupabaseSharedRemote implements SharedRemote {
             table: table,
             filter: sb.PostgresChangeFilter(
               type: sb.PostgresChangeFilterType.eq,
-              column: 'space_id',
+              column: column,
               value: spaceId,
             ),
             callback: (_) {
@@ -124,7 +128,8 @@ class SupabaseSharedRemote implements SharedRemote {
       onListen: () {
         channels
           ..add(listen(_table, SharedChange.docs))
-          ..add(listen('space_members', SharedChange.members));
+          ..add(listen('space_members', SharedChange.members))
+          ..add(listen('spaces', SharedChange.members, column: 'id'));
       },
       onCancel: () async {
         for (final c in channels) {

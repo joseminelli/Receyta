@@ -180,6 +180,35 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
     return const Ok(null);
   }
 
+  /// O dono muda o nome da casa.
+  Future<Result<void>> rename(String name) async {
+    final clean = name.trim();
+    if (clean.isEmpty) {
+      return const Err(ValidationFailure('Dê um nome à casa.'));
+    }
+    try {
+      await _remote.renameSpace(clean);
+      await refresh();
+      return const Ok(null);
+    } catch (e) {
+      return Err(failureForSpace(e));
+    }
+  }
+
+  /// O dono passa a casa pra [userId]. Com [thenLeave], sai em seguida (a casa
+  /// continua com os outros).
+  Future<Result<void>> transferTo(String userId,
+      {bool thenLeave = false}) async {
+    try {
+      await _remote.transferOwnership(userId);
+    } catch (e) {
+      return Err(failureForSpace(e));
+    }
+    if (thenLeave) return leave();
+    await refresh();
+    return const Ok(null);
+  }
+
   Future<Result<void>> remove(String userId) async {
     try {
       await _remote.removeMember(userId);

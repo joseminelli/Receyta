@@ -77,8 +77,10 @@ class SupabaseAuthService implements AuthService {
     } on PlatformException catch (e) {
       // Algumas versões do plugin avisam o cancelamento assim, não com `null`.
       if (e.code == 'sign_in_canceled') return const Ok(null);
+      debugPrint('signInWithGoogle: ${e.code} ${e.message}');
       return Err(failureForSignIn(e));
     } catch (e) {
+      debugPrint('signInWithGoogle: $e');
       return Err(failureForSignIn(e));
     }
   }

@@ -62,7 +62,13 @@ class SpacePage extends ConsumerWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            _SpaceHeader(info: info, myId: user?.id),
+            _SpaceHeader(
+              info: info,
+              myId: user?.id,
+              onRename: info != null && user != null && info.ownerId == user.id
+                  ? () => _renameSpace(context, ref, info.name)
+                  : null,
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 AppSpacing.screen,
@@ -79,16 +85,67 @@ class SpacePage extends ConsumerWidget {
   }
 }
 
+/// Marca "encerrar a casa" no seletor de quem sai (não é uma pessoa).
+final _endHouse = SpaceMember(userId: '', displayName: '', isOwner: false);
+
+/// Pergunta o novo nome da casa e grava.
+Future<void> _renameSpace(
+  BuildContext context,
+  WidgetRef ref,
+  String current,
+) async {
+  final controller =
+      TextEditingController(text: current == 'Casa' ? '' : current);
+  final name = await AppDialog.show<String>(
+    context,
+    icon: Icons.home_outlined,
+    accent: context.colors.ink,
+    title: 'Nome da casa',
+    content: TextField(
+      controller: controller,
+      autofocus: true,
+      maxLength: 40,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: const InputDecoration(hintText: 'Ex.: Casa dos Silva'),
+      onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+    ),
+    actions: [
+      PillButton(
+        label: 'Cancelar',
+        variant: PillButtonVariant.ghost,
+        dense: true,
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      PillButton(
+        label: 'Salvar',
+        dense: true,
+        onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+      ),
+    ],
+  );
+  controller.dispose();
+  if (name == null || name.isEmpty || name == current) return;
+  final result = await ref.read(spaceControllerProvider.notifier).rename(name);
+  result.when(ok: (_) {}, err: _report);
+}
+
 void _report(Failure f) =>
     showAppSnackBar(message: f.message, variant: AppSnackBarVariant.error);
 
 /// Cabeçalho escuro com a textura do app. Sem casa, o convite a criar uma; com
 /// casa, as pessoas dela (avatares e a contagem).
 class _SpaceHeader extends StatelessWidget {
-  const _SpaceHeader({required this.info, required this.myId});
+  const _SpaceHeader({
+    required this.info,
+    required this.myId,
+    this.onRename,
+  });
 
   final SpaceInfo? info;
   final String? myId;
+
+  /// Só o dono renomeia a casa: mostra o lápis ao lado do nome.
+  final VoidCallback? onRename;
 
   @override
   Widget build(BuildContext context) {
@@ -142,10 +199,32 @@ class _SpaceHeader extends StatelessWidget {
                           ?.copyWith(color: colors.lime),
                     ),
                     const SizedBox(height: AppSpacing.xs / 2),
-                    Text(
-                      info == null ? 'Cozinhem juntos' : 'Sua casa',
-                      style: AppTextStyles.display(38)
-                          .copyWith(color: colors.onSaturated),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            info == null
+                                ? 'Cozinhem juntos'
+                                : (info!.name == 'Casa'
+                                    ? 'Sua casa'
+                                    : info!.name),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.display(38)
+                                .copyWith(color: colors.onSaturated),
+                          ),
+                        ),
+                        if (onRename != null)
+                          IconButton(
+                            tooltip: 'Renomear a casa',
+                            onPressed: onRename,
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: colors.onSaturated.withValues(alpha: 0.8),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     if (info == null)
@@ -438,6 +517,14 @@ class _InSpace extends ConsumerWidget {
   bool get _iAmOwner => space.ownerId == myId;
 
   Future<void> _leave(BuildContext context, WidgetRef ref) async {
+    final others = [
+      for (final m in space.members)
+        if (m.userId != myId) m,
+    ];
+    if (_iAmOwner && others.isNotEmpty) {
+      await _ownerLeaves(context, ref, others);
+      return;
+    }
     final ok = await AppDialog.confirm(
       context,
       icon: Icons.logout_rounded,
@@ -457,6 +544,128 @@ class _InSpace extends ConsumerWidget {
       ok: (_) => showAppSnackBar(
         message: _iAmOwner ? 'Casa encerrada.' : 'Você saiu da casa.',
       ),
+      err: _report,
+    );
+  }
+
+  /// O dono que sai com outras pessoas na casa: passa a casa pra alguém (e a
+  /// casa segue) ou encerra pra todos.
+  Future<void> _ownerLeaves(
+    BuildContext context,
+    WidgetRef ref,
+    List<SpaceMember> others,
+  ) async {
+    final choice = await showModalBottomSheet<SpaceMember?>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheet) => AppSheetFrame(
+        title: 'Antes de sair',
+        subtitle: 'Passe a casa para alguém e ela continua com os outros.',
+        scrollable: true,
+        child: AppSheetOptions(
+          children: [
+            for (final m in others)
+              AppSheetOption(
+                icon: Icons.swap_horiz_rounded,
+                title:
+                    'Passar para ${m.displayName.isEmpty ? 'essa pessoa' : m.displayName}',
+                subtitle: 'Você sai e ela vira a dona',
+                onTap: () => Navigator.of(sheet).pop(m),
+              ),
+            AppSheetOption(
+              icon: Icons.home_work_outlined,
+              title: 'Encerrar a casa',
+              subtitle: 'Acaba para todos',
+              danger: true,
+              onTap: () => Navigator.of(sheet).pop(_endHouse),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    if (identical(choice, _endHouse)) {
+      final ok = await AppDialog.confirm(
+        context,
+        icon: Icons.logout_rounded,
+        accent: context.colors.danger,
+        title: 'Encerrar a casa?',
+        message: 'A casa acaba para todos. Cada pessoa continua com as listas '
+            'que já tem no próprio aparelho, mas elas deixam de ser '
+            'compartilhadas.',
+        confirmLabel: 'Encerrar',
+      );
+      if (!ok) return;
+      final result = await ref.read(spaceControllerProvider.notifier).leave();
+      result.when(
+        ok: (_) => showAppSnackBar(message: 'Casa encerrada.'),
+        err: _report,
+      );
+      return;
+    }
+    final result = await ref
+        .read(spaceControllerProvider.notifier)
+        .transferTo(choice.userId, thenLeave: true);
+    result.when(
+      ok: (_) => showAppSnackBar(
+        message: 'Você saiu. A casa agora é de ${choice.displayName}.',
+      ),
+      err: _report,
+    );
+  }
+
+  /// Menu da pessoa (só o dono vê): passar a casa pra ela ou removê-la.
+  Future<void> _memberMenu(
+    BuildContext context,
+    WidgetRef ref,
+    SpaceMember member,
+  ) async {
+    final name =
+        member.displayName.isEmpty ? 'essa pessoa' : member.displayName;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => AppSheetFrame(
+        title: name,
+        child: AppSheetOptions(
+          children: [
+            AppSheetOption(
+              icon: Icons.swap_horiz_rounded,
+              title: 'Passar a casa',
+              subtitle: 'Ela vira a dona e você vira membro',
+              onTap: () => Navigator.of(sheet).pop('transfer'),
+            ),
+            AppSheetOption(
+              icon: Icons.person_remove_outlined,
+              title: 'Remover da casa',
+              danger: true,
+              onTap: () => Navigator.of(sheet).pop('remove'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !context.mounted) return;
+    if (action == 'remove') {
+      await _remove(context, ref, member);
+      return;
+    }
+    final ok = await AppDialog.confirm(
+      context,
+      icon: Icons.swap_horiz_rounded,
+      accent: context.colors.ink,
+      title: 'Passar a casa para $name?',
+      message: 'Ela passa a poder convidar, remover pessoas e renomear a '
+          'casa. Você continua na casa como membro.',
+      confirmLabel: 'Passar',
+    );
+    if (!ok) return;
+    final result = await ref
+        .read(spaceControllerProvider.notifier)
+        .transferTo(member.userId);
+    result.when(
+      ok: (_) => showAppSnackBar(message: 'A casa agora é de $name.'),
       err: _report,
     );
   }
@@ -513,8 +722,9 @@ class _InSpace extends ConsumerWidget {
                 _MemberRow(
                   member: m,
                   isMe: m.userId == myId,
-                  canRemove: _iAmOwner && m.userId != myId,
-                  onRemove: () => _remove(context, ref, m),
+                  onMenu: _iAmOwner && m.userId != myId
+                      ? () => _memberMenu(context, ref, m)
+                      : null,
                 ),
             ],
           ),
@@ -578,14 +788,14 @@ class _MemberRow extends StatelessWidget {
   const _MemberRow({
     required this.member,
     required this.isMe,
-    required this.canRemove,
-    required this.onRemove,
+    required this.onMenu,
   });
 
   final SpaceMember member;
   final bool isMe;
-  final bool canRemove;
-  final VoidCallback onRemove;
+
+  /// Só o dono tem o menu das outras pessoas.
+  final VoidCallback? onMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -634,11 +844,11 @@ class _MemberRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (canRemove)
+            if (onMenu != null)
               IconButton(
-                tooltip: 'Remover da casa',
-                onPressed: onRemove,
-                icon: Icon(Icons.person_remove_outlined, color: colors.danger),
+                tooltip: 'Mais opções',
+                onPressed: onMenu,
+                icon: Icon(Icons.more_horiz, color: colors.textMuted),
               ),
           ],
         ),
