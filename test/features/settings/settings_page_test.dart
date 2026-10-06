@@ -71,6 +71,11 @@ void _usePhoneSize(WidgetTester tester) {
   addTearDown(tester.view.resetDevicePixelRatio);
 }
 
+Future<void> _open(WidgetTester tester, String panel) async {
+  await tester.tap(find.text(panel));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
@@ -102,11 +107,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Configurações'), findsOneWidget);
-    expect(find.text('APARÊNCIA'), findsOneWidget);
-    expect(find.text('TIMERS DO MODO COZINHA'), findsOneWidget);
-    expect(find.text('SEUS DADOS'), findsOneWidget);
-    expect(find.text('ZONA DE RISCO'), findsOneWidget);
+    expect(find.text('Aparência'), findsOneWidget);
+    expect(find.text('Timers e lembretes'), findsOneWidget);
+    expect(find.text('Seus dados'), findsOneWidget);
+    expect(find.text('Zona de risco'), findsOneWidget);
     expect(find.text('Você ainda não fez backup'), findsOneWidget);
+    expect(find.text('Alto contraste'), findsNothing);
+  });
+
+  testWidgets('abrir um painel fecha o que estava aberto', (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    await _open(tester, 'Aparência');
+    expect(find.text('Alto contraste'), findsOneWidget);
+
+    await _open(tester, 'Seus dados');
+    expect(find.text('Alto contraste'), findsNothing);
+    expect(find.text('Ver a introdução de novo'), findsOneWidget);
+
+    await _open(tester, 'Seus dados');
+    expect(find.text('Ver a introdução de novo'), findsNothing);
   });
 
   testWidgets('mostra a data do último backup quando há', (tester) async {
@@ -117,6 +139,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Último: 12/09/2026 às 08:05'), findsOneWidget);
+    await _open(tester, 'Seus dados');
+    expect(find.text('Último: 12/09/2026 às 08:05'), findsNWidgets(2));
   });
 
   testWidgets('escolher um tamanho de texto atualiza a configuração',
@@ -125,6 +149,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
+    await _open(tester, 'Aparência');
     expect(find.text('Normal'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Texto Maior'));
     await tester.pumpAndSettle();
@@ -137,6 +162,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
+    await _open(tester, 'Aparência');
     final finder = find.byType(Switch).first;
     expect(tester.widget<Switch>(finder).value, isFalse);
 
@@ -151,24 +177,25 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
+    await _open(tester, 'Seus dados');
     await tester.tap(find.text('Ver a introdução de novo'));
     await tester.pumpAndSettle();
 
     expect(find.text('ROTA WELCOME'), findsOneWidget);
   });
 
-  testWidgets('sem conta, não há seção Conta nem "Sair da conta"',
+  testWidgets('sem conta, não há cartão da conta nem "Sair"',
       (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    expect(find.text('CONTA'), findsNothing);
-    expect(find.text('Sair da conta'), findsNothing);
+    expect(find.text('Conectado com o Google'), findsNothing);
+    expect(find.text('Sair'), findsNothing);
     expect(find.textContaining('só neste aparelho'), findsOneWidget);
   });
 
-  testWidgets('logado: seção Conta mostra o e-mail e sair desconecta',
+  testWidgets('logado: o cartão da conta mostra o e-mail e sair desconecta',
       (tester) async {
     _usePhoneSize(tester);
     final auth = FakeAuthService(
@@ -177,14 +204,14 @@ void main() {
     await tester.pumpWidget(_host(auth: auth));
     await tester.pumpAndSettle();
 
-    expect(find.text('CONTA'), findsOneWidget);
+    expect(find.text('Ana Souza'), findsOneWidget);
     expect(find.text('ana@x.com'), findsOneWidget);
 
-    await tester.tap(find.text('Sair da conta'));
+    await tester.tap(find.text('Sair'));
     await tester.pumpAndSettle();
 
     expect(auth.signOutCalls, 1);
-    expect(find.text('Sair da conta'), findsNothing);
+    expect(find.text('Sair'), findsNothing);
   });
 
   group('zona de risco', () {
@@ -195,6 +222,7 @@ void main() {
       _usePhoneSize(tester);
       await tester.pumpWidget(_host());
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       expect(find.text('Limpar dados'), findsOneWidget);
       expect(find.text('Apagar tudo, inclusive da conta'), findsNothing);
@@ -205,6 +233,7 @@ void main() {
       _usePhoneSize(tester);
       await tester.pumpWidget(_host(auth: FakeAuthService(user: ana)));
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       expect(find.text('Limpar este aparelho'), findsOneWidget);
       expect(find.textContaining('volta ao sincronizar'), findsOneWidget);
@@ -220,6 +249,7 @@ void main() {
         _host(auth: FakeAuthService(user: ana), reset: reset),
       );
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       await tester.tap(find.text('Limpar este aparelho'));
       await tester.pumpAndSettle();
@@ -241,6 +271,7 @@ void main() {
         _host(auth: FakeAuthService(user: ana), reset: reset),
       );
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       await tester.tap(find.text('Apagar tudo, inclusive da conta'));
       await tester.pumpAndSettle();
@@ -275,6 +306,7 @@ void main() {
         _host(auth: FakeAuthService(user: ana), reset: reset),
       );
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       await tester.tap(find.text('Apagar tudo, inclusive da conta'));
       await tester.pumpAndSettle();
@@ -304,6 +336,7 @@ void main() {
         _host(auth: FakeAuthService(user: ana), reset: reset),
       );
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       await tester.tap(find.text('Apagar tudo, inclusive da conta'));
       await tester.pumpAndSettle();
@@ -327,10 +360,12 @@ void main() {
       _usePhoneSize(tester);
       await tester.pumpWidget(_host());
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
       expect(find.text('Excluir minha conta'), findsNothing);
 
       await tester.pumpWidget(_host(auth: FakeAuthService(user: ana)));
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
       expect(find.text('Excluir minha conta'), findsOneWidget);
     });
 
@@ -341,6 +376,7 @@ void main() {
       final auth = FakeAuthService(user: ana);
       await tester.pumpWidget(_host(auth: auth, reset: reset));
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       await tester.tap(find.text('Excluir minha conta'));
       await tester.pumpAndSettle();
@@ -376,6 +412,7 @@ void main() {
       final auth = FakeAuthService(user: ana);
       await tester.pumpWidget(_host(auth: auth, reset: reset));
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       await tester.tap(find.text('Excluir minha conta'));
       await tester.pumpAndSettle();
@@ -396,6 +433,7 @@ void main() {
       final auth = FakeAuthService(user: ana);
       await tester.pumpWidget(_host(auth: auth, reset: reset));
       await tester.pumpAndSettle();
+      await _open(tester, 'Zona de risco');
 
       await tester.tap(find.text('Excluir minha conta'));
       await tester.pumpAndSettle();

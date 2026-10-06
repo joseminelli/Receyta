@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/app_info.dart';
+import 'package:receyta/data/services/auth_service.dart';
 import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
@@ -14,7 +15,6 @@ import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/reminder_settings.dart';
 import 'package:receyta/features/settings/screens/auto_backup_sheet.dart';
-import 'package:receyta/features/settings/screens/feedback_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -34,6 +34,16 @@ import 'package:receyta/widgets/tile_pattern.dart';
 /// quem muda vê o resultado na hora, sem tela de "pré-visualização".
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
+
+  Future<void> _openStore(BuildContext context, WidgetRef ref) async {
+    final ok = await ref.read(storeLauncherProvider).open();
+    if (!ok && context.mounted) {
+      showAppSnackBar(
+        message: 'Não foi possível abrir a loja.',
+        variant: AppSnackBarVariant.error,
+      );
+    }
+  }
 
   Future<void> _backup(BuildContext context, WidgetRef ref) async {
     final result =
@@ -383,6 +393,25 @@ class SettingsPage extends ConsumerWidget {
     return last == null ? n : '$n · última: ${formatBackupDate(last)}';
   }
 
+  /// Uma linha que resume o painel "Timers e lembretes" fechado.
+  static String _alertsSummary(
+    CookingAlertSettings alerts,
+    ReminderSettings reminders,
+  ) {
+    final timers = alerts.vibrate && alerts.sound
+        ? 'vibram e tocam'
+        : alerts.vibrate
+            ? 'só vibram'
+            : alerts.sound
+                ? 'só tocam'
+                : 'mudos';
+    final week = reminders.planWeek
+        ? '${_weekdayName(reminders.planWeekWeekday)} '
+            '${formatMinutes(reminders.planWeekMinutes)}'
+        : 'sem lembrete semanal';
+    return 'Timers $timers · $week';
+  }
+
   static String _backupSubtitle(DateTime? at) {
     if (at == null) return 'Você ainda não fez backup';
     final l = at.toLocal();
@@ -423,199 +452,226 @@ class SettingsPage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (user != null)
-                    _Section(
-                      title: 'Conta',
-                      children: [
-                        _NavRow(
-                          icon: Icons.logout_rounded,
-                          title: 'Sair da conta',
-                          subtitle: user.email ?? 'Conectado com o Google',
-                          onTap: () => _signOut(context, ref),
-                        ),
-                      ],
+                  if (user != null) ...[
+                    _AccountCard(
+                      user: user,
+                      onSignOut: () => _signOut(context, ref),
                     ),
-                  _Section(
-                    title: 'Aparência',
-                    children: [
-                      _TextSizeRow(
-                        current: settings.textSize,
-                        onSelected: settingsNotifier.setTextSize,
-                      ),
-                      _SwitchRow(
-                        icon: Icons.contrast,
-                        title: 'Alto contraste',
-                        subtitle: 'Cores mais fortes e texto mais escuro',
-                        value: settings.highContrast,
-                        onChanged: settingsNotifier.setHighContrast,
-                      ),
-                    ],
-                  ),
-                  _Section(
-                    title: 'Timers do modo cozinha',
-                    children: [
-                      _SwitchRow(
-                        icon: Icons.vibration,
-                        title: 'Vibrar ao acabar',
-                        subtitle: 'Funciona também com o app minimizado',
-                        value: alerts.vibrate,
-                        onChanged: alertsNotifier.setVibrate,
-                      ),
-                      _SwitchRow(
-                        icon: Icons.volume_up_outlined,
-                        title: 'Tocar som ao acabar',
-                        subtitle: 'No volume de alarme do aparelho',
-                        value: alerts.sound,
-                        onChanged: alertsNotifier.setSound,
-                      ),
-                    ],
-                  ),
-                  _Section(
-                    title: 'Lembretes',
-                    children: [
-                      _SwitchRow(
-                        icon: Icons.event_available_outlined,
-                        title: 'Planejar a semana',
-                        subtitle: _planWeekSubtitle(reminders),
-                        value: reminders.planWeek,
-                        onChanged: (on) async {
-                          final ok = await remindersNotifier.setPlanWeek(on);
-                          if (!ok && context.mounted) {
-                            showAppSnackBar(
-                              message: 'Sem permissão de notificação. Ative '
-                                  'nas configurações do aparelho.',
-                              variant: AppSnackBarVariant.error,
-                            );
-                          }
-                        },
-                      ),
-                      if (reminders.planWeek)
-                        _NavRow(
-                          icon: Icons.schedule,
-                          title: 'Dia e hora',
-                          subtitle:
-                              '${_weekdayName(reminders.planWeekWeekday)} às '
-                              '${formatMinutes(reminders.planWeekMinutes)}',
-                          onTap: () => _pickPlanWeekWhen(
-                            context,
-                            reminders,
-                            remindersNotifier,
+                    const SizedBox(height: AppSpacing.md),
+                  ],
+                  _Accordion(
+                    items: [
+                      _AccordionItem(
+                        id: 'aparencia',
+                        icon: Icons.palette_outlined,
+                        title: 'Aparência',
+                        summary:
+                            'Texto ${settings.textSize.label.toLowerCase()}'
+                            ' · ${settings.highContrast ? 'alto contraste' : 'contraste padrão'}',
+                        children: [
+                          _TextSizeRow(
+                            current: settings.textSize,
+                            onSelected: settingsNotifier.setTextSize,
                           ),
-                        ),
-                      _SwitchRow(
-                        icon: Icons.bedtime_outlined,
-                        title: 'Horário silencioso',
-                        subtitle: reminders.quiet.enabled
-                            ? 'Sem lembretes das '
-                                '${formatMinutes(reminders.quiet.startMinutes)} '
-                                'às ${formatMinutes(reminders.quiet.endMinutes)}'
-                            : 'Os lembretes chegam a qualquer hora',
-                        value: reminders.quiet.enabled,
-                        onChanged: (on) => remindersNotifier
-                            .setQuiet(reminders.quiet.copyWith(enabled: on)),
-                      ),
-                      if (reminders.quiet.enabled)
-                        _NavRow(
-                          icon: Icons.nights_stay_outlined,
-                          title: 'Começo e fim',
-                          subtitle:
-                              '${formatMinutes(reminders.quiet.startMinutes)} às '
-                              '${formatMinutes(reminders.quiet.endMinutes)}',
-                          onTap: () => _pickQuietRange(
-                            context,
-                            reminders,
-                            remindersNotifier,
+                          _SwitchRow(
+                            icon: Icons.contrast,
+                            title: 'Alto contraste',
+                            subtitle: 'Cores mais fortes e texto mais escuro',
+                            value: settings.highContrast,
+                            onChanged: settingsNotifier.setHighContrast,
                           ),
-                        ),
-                    ],
-                  ),
-                  _Section(
-                    title: 'Seus dados',
-                    children: [
-                      _NavRow(
+                        ],
+                      ),
+                      _AccordionItem(
+                        id: 'lembretes',
+                        icon: Icons.notifications_none_rounded,
+                        title: 'Timers e lembretes',
+                        summary: _alertsSummary(alerts, reminders),
+                        children: [
+                          _SwitchRow(
+                            icon: Icons.vibration,
+                            title: 'Vibrar ao acabar',
+                            subtitle:
+                                'Timers do modo cozinha, mesmo minimizado',
+                            value: alerts.vibrate,
+                            onChanged: alertsNotifier.setVibrate,
+                          ),
+                          _SwitchRow(
+                            icon: Icons.volume_up_outlined,
+                            title: 'Tocar som ao acabar',
+                            subtitle: 'No volume de alarme do aparelho',
+                            value: alerts.sound,
+                            onChanged: alertsNotifier.setSound,
+                          ),
+                          _SwitchRow(
+                            icon: Icons.event_available_outlined,
+                            title: 'Planejar a semana',
+                            subtitle: _planWeekSubtitle(reminders),
+                            value: reminders.planWeek,
+                            onChanged: (on) async {
+                              final ok =
+                                  await remindersNotifier.setPlanWeek(on);
+                              if (!ok && context.mounted) {
+                                showAppSnackBar(
+                                  message:
+                                      'Sem permissão de notificação. Ative '
+                                      'nas configurações do aparelho.',
+                                  variant: AppSnackBarVariant.error,
+                                );
+                              }
+                            },
+                          ),
+                          if (reminders.planWeek)
+                            _NavRow(
+                              icon: Icons.schedule,
+                              title: 'Dia e hora',
+                              subtitle:
+                                  '${_weekdayName(reminders.planWeekWeekday)} às '
+                                  '${formatMinutes(reminders.planWeekMinutes)}',
+                              onTap: () => _pickPlanWeekWhen(
+                                context,
+                                reminders,
+                                remindersNotifier,
+                              ),
+                            ),
+                          _SwitchRow(
+                            icon: Icons.bedtime_outlined,
+                            title: 'Horário silencioso',
+                            subtitle: reminders.quiet.enabled
+                                ? 'Sem lembretes das '
+                                    '${formatMinutes(reminders.quiet.startMinutes)} '
+                                    'às ${formatMinutes(reminders.quiet.endMinutes)}'
+                                : 'Os lembretes chegam a qualquer hora',
+                            value: reminders.quiet.enabled,
+                            onChanged: (on) => remindersNotifier.setQuiet(
+                              reminders.quiet.copyWith(enabled: on),
+                            ),
+                          ),
+                          if (reminders.quiet.enabled)
+                            _NavRow(
+                              icon: Icons.nights_stay_outlined,
+                              title: 'Começo e fim',
+                              subtitle:
+                                  '${formatMinutes(reminders.quiet.startMinutes)} às '
+                                  '${formatMinutes(reminders.quiet.endMinutes)}',
+                              onTap: () => _pickQuietRange(
+                                context,
+                                reminders,
+                                remindersNotifier,
+                              ),
+                            ),
+                        ],
+                      ),
+                      _AccordionItem(
+                        id: 'dados',
                         icon: Icons.backup_outlined,
-                        title: 'Backup',
-                        subtitle: _backupSubtitle(settings.lastBackupAt),
+                        title: 'Seus dados',
+                        summary: _backupSubtitle(settings.lastBackupAt),
                         warn: settings.lastBackupAt == null,
-                        onTap: () => _backup(context, ref),
+                        children: [
+                          _NavRow(
+                            icon: Icons.backup_outlined,
+                            title: 'Backup',
+                            subtitle: _backupSubtitle(settings.lastBackupAt),
+                            warn: settings.lastBackupAt == null,
+                            onTap: () => _backup(context, ref),
+                          ),
+                          _SwitchRow(
+                            icon: Icons.history_toggle_off,
+                            title: 'Backup automático',
+                            subtitle: auto.enabled
+                                ? 'Uma cópia por dia, guardada no aparelho'
+                                : 'Desligado',
+                            value: auto.enabled,
+                            onChanged: ref
+                                .read(autoBackupProvider.notifier)
+                                .setEnabled,
+                          ),
+                          _NavRow(
+                            icon: Icons.settings_backup_restore,
+                            title: 'Cópias automáticas',
+                            subtitle: _copiesSubtitle(auto),
+                            onTap: () => showAutoBackupSheet(context),
+                          ),
+                          _NavRow(
+                            icon: Icons.school_outlined,
+                            title: 'Ver a introdução de novo',
+                            subtitle: 'Revê as boas-vindas e o tour do app',
+                            onTap: () => context.go('/welcome'),
+                          ),
+                        ],
                       ),
-                      _SwitchRow(
-                        icon: Icons.history_toggle_off,
-                        title: 'Backup automático',
-                        subtitle: auto.enabled
-                            ? 'Uma cópia por dia, guardada no aparelho'
-                            : 'Desligado',
-                        value: auto.enabled,
-                        onChanged:
-                            ref.read(autoBackupProvider.notifier).setEnabled,
-                      ),
-                      _NavRow(
-                        icon: Icons.settings_backup_restore,
-                        title: 'Cópias automáticas',
-                        subtitle: _copiesSubtitle(auto),
-                        onTap: () => showAutoBackupSheet(context),
-                      ),
-                      _NavRow(
-                        icon: Icons.school_outlined,
-                        title: 'Ver a introdução de novo',
-                        subtitle: 'Revê as boas-vindas e o tour do app',
-                        onTap: () => context.go('/welcome'),
-                      ),
-                    ],
-                  ),
-                  _Section(
-                    title: 'Sobre',
-                    children: [
-                      _InfoRow(
+                      _AccordionItem(
+                        id: 'sobre',
                         icon: Icons.info_outline,
-                        title: 'Versão do app',
-                        value: version.isEmpty ? '—' : version,
+                        title: 'Sobre',
+                        summary:
+                            version.isEmpty ? 'Receyta' : 'Versão $version',
+                        children: [
+                          _InfoRow(
+                            icon: Icons.info_outline,
+                            title: 'Versão do app',
+                            value: version.isEmpty ? '—' : version,
+                          ),
+                          _NavRow(
+                            icon: Icons.auto_stories_outlined,
+                            title: 'Sobre o Receyta',
+                            subtitle:
+                                'O app, perguntas frequentes e privacidade',
+                            onTap: () => context.push('/about'),
+                          ),
+                          _NavRow(
+                            icon: Icons.star_outline_rounded,
+                            title: 'Avaliar na loja',
+                            subtitle: 'Deixe sua opinião na Play Store',
+                            onTap: () => _openStore(context, ref),
+                          ),
+                        ],
                       ),
-                      _NavRow(
-                        icon: Icons.chat_bubble_outline,
-                        title: 'Enviar feedback',
-                        subtitle: 'Em breve',
-                        enabled: false,
-                        onTap: () =>
-                            showFeedbackSheet(context, version: version),
-                      ),
-                    ],
-                  ),
-                  _Section(
-                    title: 'Zona de risco',
-                    children: [
-                      _NavRow(
-                        icon: Icons.delete_outline,
-                        title: user == null
-                            ? 'Limpar dados'
-                            : 'Limpar este aparelho',
-                        subtitle: user == null
-                            ? 'Apaga tudo o que está salvo neste aparelho'
-                            : 'A conta guarda uma cópia, que volta ao sincronizar',
+                      _AccordionItem(
+                        id: 'risco',
+                        icon: Icons.warning_amber_rounded,
+                        title: 'Zona de risco',
+                        summary: user == null
+                            ? 'Limpar os dados deste aparelho'
+                            : 'Limpar o aparelho, a conta ou excluir a conta',
                         danger: true,
-                        onTap: () => _wipe(context, ref),
+                        children: [
+                          _NavRow(
+                            icon: Icons.delete_outline,
+                            title: user == null
+                                ? 'Limpar dados'
+                                : 'Limpar este aparelho',
+                            subtitle: user == null
+                                ? 'Apaga tudo o que está salvo neste aparelho'
+                                : 'A conta guarda uma cópia, que volta ao sincronizar',
+                            danger: true,
+                            onTap: () => _wipe(context, ref),
+                          ),
+                          if (user != null)
+                            _NavRow(
+                              icon: Icons.delete_forever_outlined,
+                              title: 'Apagar tudo, inclusive da conta',
+                              subtitle: 'Receitas, pastas e fotos, aqui e na '
+                                  'nuvem. Não dá para desfazer',
+                              danger: true,
+                              onTap: () => _wipeEverything(context, ref),
+                            ),
+                          if (user != null)
+                            _NavRow(
+                              icon: Icons.person_remove_outlined,
+                              title: 'Excluir minha conta',
+                              subtitle:
+                                  'Remove a conta e os dados dela da nuvem. '
+                                  'O que está aqui continua',
+                              danger: true,
+                              onTap: () => _deleteAccount(context, ref),
+                            ),
+                        ],
                       ),
-                      if (user != null)
-                        _NavRow(
-                          icon: Icons.delete_forever_outlined,
-                          title: 'Apagar tudo, inclusive da conta',
-                          subtitle: 'Receitas, pastas e fotos, aqui e na '
-                              'nuvem. Não dá para desfazer',
-                          danger: true,
-                          onTap: () => _wipeEverything(context, ref),
-                        ),
-                      if (user != null)
-                        _NavRow(
-                          icon: Icons.person_remove_outlined,
-                          title: 'Excluir minha conta',
-                          subtitle: 'Remove a conta e os dados dela da nuvem. '
-                              'O que está aqui continua',
-                          danger: true,
-                          onTap: () => _deleteAccount(context, ref),
-                        ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.xs),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     user == null
                         ? 'Receyta · seus dados ficam só neste aparelho'
@@ -704,55 +760,289 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
+/// Cartão da conta no topo: quem está conectado e o "Sair" à mostra (antes era
+/// uma linha perdida no meio da lista).
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({required this.user, required this.onSignOut});
 
-  final String title;
-  final List<Widget> children;
+  final AppUser user;
+  final VoidCallback onSignOut;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final name = (user.name ?? '').trim();
+    final label = name.isEmpty ? (user.email ?? 'Conta conectada') : name;
+    final initial = label.characters.first.toUpperCase();
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.only(
-              left: AppSpacing.xs,
-              bottom: AppSpacing.xs,
-            ),
-            child: Semantics(
-              header: true,
-              child: Text(
-                title.toUpperCase(),
-                style:
-                    context.texts.labelSmall?.copyWith(color: colors.textMuted),
-              ),
-            ),
-          ),
-          Material(
-            color: colors.paperSoft,
-            borderRadius: BorderRadius.circular(AppRadii.md),
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
             clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < children.length; i++) ...[
-                  if (i > 0)
-                    Divider(
-                      height: 1,
-                      indent: 72,
-                      color: colors.paper,
-                      thickness: 1.5,
+            decoration:
+                BoxDecoration(color: colors.ink, shape: BoxShape.circle),
+            child: user.avatarUrl == null
+                ? Text(
+                    initial,
+                    style:
+                        AppTextStyles.display(26).copyWith(color: colors.lime),
+                  )
+                : Image.network(
+                    user.avatarUrl!,
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Text(
+                      initial,
+                      style: AppTextStyles.display(26)
+                          .copyWith(color: colors.lime),
                     ),
-                  children[i],
-                ],
+                  ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                if (user.email != null && name.isNotEmpty)
+                  Text(
+                    user.email!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.texts.bodySmall
+                        ?.copyWith(color: colors.textMuted),
+                  ),
+                Text(
+                  'Conectado com o Google',
+                  style: context.texts.labelSmall
+                      ?.copyWith(color: colors.textMuted),
+                ),
               ],
             ),
           ),
+          const SizedBox(width: AppSpacing.xs),
+          PillButton(
+            label: 'Sair',
+            icon: Icons.logout_rounded,
+            variant: PillButtonVariant.secondary,
+            dense: true,
+            onPressed: onSignOut,
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// Um painel da tela: título, uma linha de resumo (visível fechado) e as
+/// linhas de ajuste (visíveis aberto).
+class _AccordionItem {
+  const _AccordionItem({
+    required this.id,
+    required this.icon,
+    required this.title,
+    required this.summary,
+    required this.children,
+    this.warn = false,
+    this.danger = false,
+  });
+
+  final String id;
+  final IconData icon;
+  final String title;
+  final String summary;
+  final List<Widget> children;
+
+  /// Resumo em destaque (algo que merece atenção, como "sem backup").
+  final bool warn;
+
+  /// Painel de ações perigosas: ícone e título em vermelho, e uma distância
+  /// maior dos outros.
+  final bool danger;
+}
+
+/// Painéis que abrem e fecham, UM aberto por vez: abrir um fecha o outro. Tudo
+/// começa fechado — o resumo de cada painel já diz como está o ajuste.
+class _Accordion extends StatefulWidget {
+  const _Accordion({required this.items});
+
+  final List<_AccordionItem> items;
+
+  @override
+  State<_Accordion> createState() => _AccordionState();
+}
+
+class _AccordionState extends State<_Accordion> {
+  String? _open;
+
+  void _toggle(String id) => setState(() => _open = _open == id ? null : id);
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (final item in widget.items)
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: AppSpacing.sm,
+              top: item.danger ? AppSpacing.md : 0,
+            ),
+            child: _AccordionCard(
+              item: item,
+              open: _open == item.id,
+              onToggle: () => _toggle(item.id),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _AccordionCard extends StatelessWidget {
+  const _AccordionCard({
+    required this.item,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final _AccordionItem item;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accent = item.danger ? colors.danger : colors.ink;
+
+    return Material(
+      color: colors.paperSoft,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            button: true,
+            expanded: open,
+            label: '${item.title}. ${item.summary}',
+            excludeSemantics: true,
+            child: InkWell(
+              onTap: onToggle,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 72),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      _PanelBadge(icon: item.icon, danger: item.danger),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.title,
+                              style: AppTextStyles.display(22)
+                                  .copyWith(color: accent),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              item.summary,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.texts.bodySmall?.copyWith(
+                                color: item.warn
+                                    ? colors.danger
+                                    : colors.textMuted,
+                                fontWeight: item.warn ? FontWeight.w700 : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      AnimatedRotation(
+                        turns: open ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: colors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: open
+                ? Column(
+                    children: [
+                      Divider(height: 1, thickness: 1.5, color: colors.paper),
+                      for (var i = 0; i < item.children.length; i++) ...[
+                        if (i > 0)
+                          Divider(
+                            height: 1,
+                            indent: 72,
+                            color: colors.paper,
+                            thickness: 1.5,
+                          ),
+                        item.children[i],
+                      ],
+                    ],
+                  )
+                : const SizedBox(width: double.infinity),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ícone do cabeçalho de um painel: quadrado arredondado só com borda, para
+/// se distinguir dos medalhões redondos e cheios das linhas que dão ação.
+class _PanelBadge extends StatelessWidget {
+  const _PanelBadge({required this.icon, this.danger = false});
+
+  final IconData icon;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final accent = danger ? colors.danger : colors.ink;
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: colors.paper,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: accent, width: 2),
+      ),
+      child: Icon(icon, size: 22, color: accent),
     );
   }
 }
@@ -829,7 +1119,6 @@ class _NavRow extends StatelessWidget {
     required this.onTap,
     this.warn = false,
     this.danger = false,
-    this.enabled = true,
   });
 
   final IconData icon;
@@ -839,38 +1128,32 @@ class _NavRow extends StatelessWidget {
   final bool warn;
   final bool danger;
 
-  /// Desligada: aparece apagada, sem seta e sem reagir ao toque.
-  final bool enabled;
-
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return InkWell(
-      onTap: enabled ? onTap : null,
-      child: Opacity(
-        opacity: enabled ? 1 : 0.45,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 72),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                _Medallion(icon: icon, danger: danger),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _RowText(
-                    title: title,
-                    subtitle: subtitle,
-                    warn: warn,
-                    danger: danger,
-                  ),
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 72),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              _Medallion(icon: icon, danger: danger),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _RowText(
+                  title: title,
+                  subtitle: subtitle,
+                  warn: warn,
+                  danger: danger,
                 ),
-                if (enabled) Icon(Icons.chevron_right, color: colors.textMuted),
-              ],
-            ),
+              ),
+              Icon(Icons.chevron_right, color: colors.textMuted),
+            ],
           ),
         ),
       ),

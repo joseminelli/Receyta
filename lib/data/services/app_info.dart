@@ -8,6 +8,34 @@ import 'package:url_launcher/url_launcher.dart';
 /// compartilhar do celular com a mensagem pronta, em vez de um e-mail.
 const kFeedbackEmail = '';
 
+const kPlayPackageId = 'com.whisklinestudio.receyta';
+
+/// Abre a página do app na loja: o app da Play Store quando existe, senão o
+/// site. Devolve false se nada abriu.
+class StoreLauncher {
+  Future<bool> open() async {
+    try {
+      final inApp = Uri.parse('market://details?id=$kPlayPackageId');
+      if (await launchUrl(inApp, mode: LaunchMode.externalApplication)) {
+        return true;
+      }
+    } catch (e) {
+      debugPrint('StoreLauncher.market: $e');
+    }
+    try {
+      final web = Uri.parse(
+        'https://play.google.com/store/apps/details?id=$kPlayPackageId',
+      );
+      return await launchUrl(web, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('StoreLauncher.web: $e');
+      return false;
+    }
+  }
+}
+
+final storeLauncherProvider = Provider<StoreLauncher>((ref) => StoreLauncher());
+
 /// "1.0.0 (3)": versão e build instalados. Vazio se a leitura falhar.
 final appVersionProvider = FutureProvider<String>((ref) async {
   try {
