@@ -117,6 +117,12 @@ class Ingredients extends Table {
   /// de compras geradas.
   BoolColumn get inPantry => boolean().withDefault(const Constant(false))();
 
+  /// Quando `in_pantry` mudou pela última vez (um gatilho do banco preenche) e
+  /// o valor que já foi sincronizado com a conta (H4). Nulo = a despensa nunca
+  /// foi mexida neste ingrediente, não há o que sincronizar.
+  DateTimeColumn get pantryUpdatedAt => dateTime().nullable()();
+  DateTimeColumn get pantrySyncedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -221,6 +227,9 @@ class MealPlanEntries extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// Versão (`updated_at`) já sincronizada com a conta (H4); ver `Recipes`.
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -238,6 +247,11 @@ class CookLogs extends Table {
   TextColumn get mealPlanEntryId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// Última mudança (um gatilho do banco preenche ao inserir e ao editar) e a
+  /// versão já sincronizada com a conta (H4).
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -249,6 +263,9 @@ class ShoppingLists extends Table {
   TextColumn get status => text().withDefault(const Constant('active'))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Versão (`updated_at`) já sincronizada com a conta (H4).
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -270,6 +287,12 @@ class ShoppingListItems extends Table {
   BoolColumn get checked => boolean().withDefault(const Constant(false))();
   TextColumn get note => text().nullable()();
   IntColumn get position => integer().withDefault(const Constant(0))();
+
+  /// Última mudança (um gatilho do banco preenche ao inserir e ao editar — o
+  /// item é alterado em muitos lugares e nenhum precisa lembrar disso) e a
+  /// versão já sincronizada com a conta (H4).
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+  DateTimeColumn get syncedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

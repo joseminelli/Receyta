@@ -12,12 +12,11 @@ library;
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 
+export 'package:receyta/core/sync_kinds.dart';
+
 /// Versão do corpo. Um aparelho que lê um item de versão MAIOR ignora o item
 /// (não entende) em vez de aplicar pela metade.
 const kSyncSchemaVersion = 1;
-
-const kSyncKindRecipe = 'recipe';
-const kSyncKindFolder = 'folder';
 
 class SyncIngredient {
   const SyncIngredient({

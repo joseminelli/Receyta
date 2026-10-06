@@ -72,7 +72,7 @@ MealType defaultMealFor(List<MealPlanEntry> dayEntries) {
       orElse: () => MealType.lunch);
 }
 
-/// Até cinco refeições ainda por fazer nos 14 dias a partir de [from], em
+/// Até três refeições ainda por fazer nos 14 dias a partir de [from], em
 /// ordem de dia e de refeição — o "Próximas refeições" do calendário. Família
 /// por dia: virou o dia, a tela pede outra chave e recalcula sozinha.
 final upcomingEntriesProvider =

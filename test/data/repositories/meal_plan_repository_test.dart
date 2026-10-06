@@ -118,7 +118,7 @@ void main() {
     expect((await week()).map((e) => e.recipeName), ['Sopa']);
   });
 
-  test('upcoming: pendentes dos próximos 14 dias, em ordem, no máximo 5',
+  test('upcoming: pendentes dos próximos 14 dias, em ordem, no máximo 3',
       () async {
     final from = DateTime.utc(2026, 9, 29);
     final doneId =
@@ -140,15 +140,13 @@ void main() {
     addTearDown(container.dispose);
     final upcoming = await container.read(upcomingEntriesProvider(from).future);
 
-    expect(upcoming, hasLength(5));
+    expect(upcoming, hasLength(3));
     expect(
       upcoming.map((e) => (e.date, e.mealType)),
       [
         (from, MealType.lunch),
         (from, MealType.dinner),
         (addDays(from, 1), MealType.snack),
-        (addDays(from, 2), MealType.lunch),
-        (addDays(from, 3), MealType.dinner),
       ],
     );
     expect(upcoming.any((e) => e.done), isFalse);

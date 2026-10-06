@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v8 versionado', () async {
-    final connection = await verifier.startAt(8);
+  test('schema do código bate com o snapshot v9 versionado', () async {
+    final connection = await verifier.startAt(9);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -54,7 +54,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
     addTearDown(db.close);
 
     final kept = await db.customSelect(
@@ -96,7 +96,7 @@ void main() {
     await at2.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
     addTearDown(db.close);
 
     final recipe = await db
@@ -137,7 +137,7 @@ void main() {
     await at3.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
     addTearDown(db.close);
     // O backfill de `last_opened_at` roda em `ensureReady()` (não na
     // migração em si — ver o comentário em `app_database.dart`), então o
@@ -176,7 +176,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
     addTearDown(db.close);
 
     final recipe =
@@ -208,7 +208,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
     addTearDown(db.close);
 
     final row = await db
@@ -236,7 +236,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
     addTearDown(db.close);
 
     final row = await db
@@ -264,7 +264,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 8);
+    await verifier.migrateAndValidate(db, 9);
     addTearDown(db.close);
 
     final recipe = await db
@@ -275,5 +275,52 @@ void main() {
     expect(await db.recipeDao.dirtyForSync(), hasLength(1));
     expect(await db.folderDao.dirtyForSync(), hasLength(1));
     expect(await db.select(db.syncTombstones).get(), isEmpty);
+  });
+
+  test('migração v8→v9: dados preservados, tudo pendente e com carimbos',
+      () async {
+    final schema = await verifier.schemaAt(8);
+
+    final oldDb = AppDatabase.forTesting(schema.newConnection());
+    await oldDb.customStatement(
+      "INSERT INTO recipes (id, name, created_at, updated_at, is_favorite) "
+      "VALUES ('r1', 'Bolo', '2026-01-01T00:00:00.000Z', "
+      "'2026-01-01T00:00:00.000Z', 0)",
+    );
+    await oldDb.customStatement(
+      "INSERT INTO shopping_lists (id, name, status, created_at, updated_at) "
+      "VALUES ('l1', 'Feira', 'active', '2026-01-02T00:00:00.000Z', "
+      "'2026-01-03T00:00:00.000Z')",
+    );
+    await oldDb.customStatement(
+      "INSERT INTO shopping_list_items (id, list_id, manual_name, checked, "
+      "position) VALUES ('i1', 'l1', 'Leite', 0, 0)",
+    );
+    await oldDb.customStatement(
+      "INSERT INTO cook_logs (id, recipe_id, cooked_at, created_at) "
+      "VALUES ('c1', 'r1', '2026-01-04T00:00:00.000Z', "
+      "'2026-01-04T00:00:00.000Z')",
+    );
+    await oldDb.customStatement(
+      "INSERT INTO ingredients (id, display_name, normalized_key, "
+      "usage_count, in_pantry) VALUES ('g1', 'Sal', 'sal', 0, 1)",
+    );
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 9);
+    addTearDown(db.close);
+    await db.ensureReady();
+
+    expect((await db.select(db.recipes).getSingle()).name, 'Bolo');
+    final item = await db.select(db.shoppingListItems).getSingle();
+    expect(item.updatedAt, DateTime.utc(2026, 1, 3));
+    expect(item.syncedAt, isNull);
+    final log = await db.select(db.cookLogs).getSingle();
+    expect(log.updatedAt, DateTime.utc(2026, 1, 4));
+    expect((await db.ingredientDao.dirtyPantry()).single.id, 'g1');
+    expect(await db.shoppingListDao.dirtyLists(), hasLength(1));
+    expect(await db.shoppingListDao.dirtyItems(), hasLength(1));
+    expect(await db.cookLogDao.dirtyForSync(), hasLength(1));
   });
 }

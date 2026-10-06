@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../app_database.dart';
 import '../tables.dart';
+import 'package:receyta/core/sync_kinds.dart';
 
 part 'cook_log_dao.g.dart';
 
@@ -62,12 +63,51 @@ class CookLogDao extends DatabaseAccessor<AppDatabase> with _$CookLogDaoMixin {
         );
   }
 
-  Future<int> remove(String id) =>
-      (delete(cookLogs)..where((l) => l.id.equals(id))).go();
+  /// Apaga o registro; se já tinha sido sincronizado, avisa a nuvem (H4).
+  Future<int> remove(String id) {
+    return transaction(() async {
+      final row = await findById(id);
+      final count =
+          await (delete(cookLogs)..where((l) => l.id.equals(id))).go();
+      if (row?.syncedAt != null) {
+        await attachedDatabase.addTombstone(kSyncKindCookLog, id);
+      }
+      return count;
+    });
+  }
 
-  Future<int> removeForMealEntry(String mealPlanEntryId) => (delete(cookLogs)
-        ..where((l) => l.mealPlanEntryId.equals(mealPlanEntryId)))
-      .go();
+  Future<int> removeForMealEntry(String mealPlanEntryId) {
+    return transaction(() async {
+      final rows = await (select(cookLogs)
+            ..where((l) => l.mealPlanEntryId.equals(mealPlanEntryId)))
+          .get();
+      final count = await (delete(cookLogs)
+            ..where((l) => l.mealPlanEntryId.equals(mealPlanEntryId)))
+          .go();
+      for (final r in rows) {
+        if (r.syncedAt != null) {
+          await attachedDatabase.addTombstone(kSyncKindCookLog, r.id);
+        }
+      }
+      return count;
+    });
+  }
+
+  Future<CookLogRow?> findById(String id) =>
+      (select(cookLogs)..where((l) => l.id.equals(id))).getSingleOrNull();
+
+  /// Registros que mudaram desde a última sincronização ou nunca subiram.
+  Future<List<CookLogRow>> dirtyForSync() {
+    return (select(cookLogs)
+          ..where((l) =>
+              l.syncedAt.isNull() | l.updatedAt.isBiggerThan(l.syncedAt)))
+        .get();
+  }
+
+  Future<int> markSynced(String id, DateTime? updatedAt) {
+    return (update(cookLogs)..where((l) => l.id.equals(id)))
+        .write(CookLogsCompanion(syncedAt: Value(updatedAt)));
+  }
 
   Future<bool> existsForMealEntry(String mealPlanEntryId) async {
     final row = await (select(cookLogs)

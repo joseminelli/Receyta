@@ -161,19 +161,24 @@ class SyncCoordinator extends Notifier<SyncState> {
     final db = ref.read(databaseProvider);
     _changes?.cancel();
     _changes = db
-        .tableUpdates(TableUpdateQuery.onAllTables([db.recipes, db.folders]))
+        .tableUpdates(TableUpdateQuery.onAllTables([
+      db.recipes,
+      db.folders,
+      db.mealPlanEntries,
+      db.shoppingLists,
+      db.shoppingListItems,
+      db.cookLogs,
+      db.ingredients,
+      db.syncTombstones,
+    ]))
         .listen((_) async {
       if (!state.enabled) return;
       if (await _hasPendingChanges()) requestSync();
     });
   }
 
-  Future<bool> _hasPendingChanges() async {
-    final db = ref.read(databaseProvider);
-    return (await db.recipeDao.dirtyForSync()).isNotEmpty ||
-        (await db.folderDao.dirtyForSync()).isNotEmpty ||
-        (await db.recipeDao.pendingTombstones()).isNotEmpty;
-  }
+  Future<bool> _hasPendingChanges() =>
+      ref.read(syncEngineProvider).hasPending();
 
   Future<void> _run() async {
     if (!state.enabled) return;

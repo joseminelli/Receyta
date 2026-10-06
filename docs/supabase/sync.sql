@@ -2,8 +2,8 @@
 -- Idempotente: pode rodar de novo sem erro.
 --
 -- Uma linha por item sincronizado (receita ou pasta), com o corpo em JSON.
--- Hoje só 'recipe' e 'folder'; calendário, listas e despensa entram depois
--- (H4) ampliando o `check` de `kind`.
+-- 'recipe' e 'folder' aqui; os demais tipos (calendário, listas, histórico,
+-- despensa) entram com o `sync-h4.sql`, que amplia o `check` de `kind`.
 
 create table if not exists public.sync_docs (
   user_id    uuid        not null default auth.uid()

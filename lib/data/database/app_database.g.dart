@@ -1755,9 +1755,29 @@ class $IngredientsTable extends Ingredients
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("in_pantry" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _pantryUpdatedAtMeta =
+      const VerificationMeta('pantryUpdatedAt');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, displayName, normalizedKey, categoryId, usageCount, inPantry];
+  late final GeneratedColumn<DateTime> pantryUpdatedAt =
+      GeneratedColumn<DateTime>('pantry_updated_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _pantrySyncedAtMeta =
+      const VerificationMeta('pantrySyncedAt');
+  @override
+  late final GeneratedColumn<DateTime> pantrySyncedAt =
+      GeneratedColumn<DateTime>('pantry_synced_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        displayName,
+        normalizedKey,
+        categoryId,
+        usageCount,
+        inPantry,
+        pantryUpdatedAt,
+        pantrySyncedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1805,6 +1825,18 @@ class $IngredientsTable extends Ingredients
       context.handle(_inPantryMeta,
           inPantry.isAcceptableOrUnknown(data['in_pantry']!, _inPantryMeta));
     }
+    if (data.containsKey('pantry_updated_at')) {
+      context.handle(
+          _pantryUpdatedAtMeta,
+          pantryUpdatedAt.isAcceptableOrUnknown(
+              data['pantry_updated_at']!, _pantryUpdatedAtMeta));
+    }
+    if (data.containsKey('pantry_synced_at')) {
+      context.handle(
+          _pantrySyncedAtMeta,
+          pantrySyncedAt.isAcceptableOrUnknown(
+              data['pantry_synced_at']!, _pantrySyncedAtMeta));
+    }
     return context;
   }
 
@@ -1826,6 +1858,10 @@ class $IngredientsTable extends Ingredients
           .read(DriftSqlType.int, data['${effectivePrefix}usage_count'])!,
       inPantry: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}in_pantry'])!,
+      pantryUpdatedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}pantry_updated_at']),
+      pantrySyncedAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}pantry_synced_at']),
     );
   }
 
@@ -1845,13 +1881,21 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
   /// "Sempre tenho" (G11): ingrediente da despensa, que não entra nas listas
   /// de compras geradas.
   final bool inPantry;
+
+  /// Quando `in_pantry` mudou pela última vez (um gatilho do banco preenche) e
+  /// o valor que já foi sincronizado com a conta (H4). Nulo = a despensa nunca
+  /// foi mexida neste ingrediente, não há o que sincronizar.
+  final DateTime? pantryUpdatedAt;
+  final DateTime? pantrySyncedAt;
   const IngredientRow(
       {required this.id,
       required this.displayName,
       required this.normalizedKey,
       this.categoryId,
       required this.usageCount,
-      required this.inPantry});
+      required this.inPantry,
+      this.pantryUpdatedAt,
+      this.pantrySyncedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1863,6 +1907,12 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
     }
     map['usage_count'] = Variable<int>(usageCount);
     map['in_pantry'] = Variable<bool>(inPantry);
+    if (!nullToAbsent || pantryUpdatedAt != null) {
+      map['pantry_updated_at'] = Variable<DateTime>(pantryUpdatedAt);
+    }
+    if (!nullToAbsent || pantrySyncedAt != null) {
+      map['pantry_synced_at'] = Variable<DateTime>(pantrySyncedAt);
+    }
     return map;
   }
 
@@ -1876,6 +1926,12 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           : Value(categoryId),
       usageCount: Value(usageCount),
       inPantry: Value(inPantry),
+      pantryUpdatedAt: pantryUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pantryUpdatedAt),
+      pantrySyncedAt: pantrySyncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pantrySyncedAt),
     );
   }
 
@@ -1889,6 +1945,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       usageCount: serializer.fromJson<int>(json['usageCount']),
       inPantry: serializer.fromJson<bool>(json['inPantry']),
+      pantryUpdatedAt: serializer.fromJson<DateTime?>(json['pantryUpdatedAt']),
+      pantrySyncedAt: serializer.fromJson<DateTime?>(json['pantrySyncedAt']),
     );
   }
   @override
@@ -1901,6 +1959,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       'categoryId': serializer.toJson<String?>(categoryId),
       'usageCount': serializer.toJson<int>(usageCount),
       'inPantry': serializer.toJson<bool>(inPantry),
+      'pantryUpdatedAt': serializer.toJson<DateTime?>(pantryUpdatedAt),
+      'pantrySyncedAt': serializer.toJson<DateTime?>(pantrySyncedAt),
     };
   }
 
@@ -1910,7 +1970,9 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           String? normalizedKey,
           Value<String?> categoryId = const Value.absent(),
           int? usageCount,
-          bool? inPantry}) =>
+          bool? inPantry,
+          Value<DateTime?> pantryUpdatedAt = const Value.absent(),
+          Value<DateTime?> pantrySyncedAt = const Value.absent()}) =>
       IngredientRow(
         id: id ?? this.id,
         displayName: displayName ?? this.displayName,
@@ -1918,6 +1980,11 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
         categoryId: categoryId.present ? categoryId.value : this.categoryId,
         usageCount: usageCount ?? this.usageCount,
         inPantry: inPantry ?? this.inPantry,
+        pantryUpdatedAt: pantryUpdatedAt.present
+            ? pantryUpdatedAt.value
+            : this.pantryUpdatedAt,
+        pantrySyncedAt:
+            pantrySyncedAt.present ? pantrySyncedAt.value : this.pantrySyncedAt,
       );
   IngredientRow copyWithCompanion(IngredientsCompanion data) {
     return IngredientRow(
@@ -1932,6 +1999,12 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       usageCount:
           data.usageCount.present ? data.usageCount.value : this.usageCount,
       inPantry: data.inPantry.present ? data.inPantry.value : this.inPantry,
+      pantryUpdatedAt: data.pantryUpdatedAt.present
+          ? data.pantryUpdatedAt.value
+          : this.pantryUpdatedAt,
+      pantrySyncedAt: data.pantrySyncedAt.present
+          ? data.pantrySyncedAt.value
+          : this.pantrySyncedAt,
     );
   }
 
@@ -1943,14 +2016,16 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           ..write('normalizedKey: $normalizedKey, ')
           ..write('categoryId: $categoryId, ')
           ..write('usageCount: $usageCount, ')
-          ..write('inPantry: $inPantry')
+          ..write('inPantry: $inPantry, ')
+          ..write('pantryUpdatedAt: $pantryUpdatedAt, ')
+          ..write('pantrySyncedAt: $pantrySyncedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, displayName, normalizedKey, categoryId, usageCount, inPantry);
+  int get hashCode => Object.hash(id, displayName, normalizedKey, categoryId,
+      usageCount, inPantry, pantryUpdatedAt, pantrySyncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1960,7 +2035,9 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           other.normalizedKey == this.normalizedKey &&
           other.categoryId == this.categoryId &&
           other.usageCount == this.usageCount &&
-          other.inPantry == this.inPantry);
+          other.inPantry == this.inPantry &&
+          other.pantryUpdatedAt == this.pantryUpdatedAt &&
+          other.pantrySyncedAt == this.pantrySyncedAt);
 }
 
 class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
@@ -1970,6 +2047,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
   final Value<String?> categoryId;
   final Value<int> usageCount;
   final Value<bool> inPantry;
+  final Value<DateTime?> pantryUpdatedAt;
+  final Value<DateTime?> pantrySyncedAt;
   final Value<int> rowid;
   const IngredientsCompanion({
     this.id = const Value.absent(),
@@ -1978,6 +2057,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     this.categoryId = const Value.absent(),
     this.usageCount = const Value.absent(),
     this.inPantry = const Value.absent(),
+    this.pantryUpdatedAt = const Value.absent(),
+    this.pantrySyncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   IngredientsCompanion.insert({
@@ -1987,6 +2068,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     this.categoryId = const Value.absent(),
     this.usageCount = const Value.absent(),
     this.inPantry = const Value.absent(),
+    this.pantryUpdatedAt = const Value.absent(),
+    this.pantrySyncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         displayName = Value(displayName),
@@ -1998,6 +2081,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     Expression<String>? categoryId,
     Expression<int>? usageCount,
     Expression<bool>? inPantry,
+    Expression<DateTime>? pantryUpdatedAt,
+    Expression<DateTime>? pantrySyncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2007,6 +2092,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       if (categoryId != null) 'category_id': categoryId,
       if (usageCount != null) 'usage_count': usageCount,
       if (inPantry != null) 'in_pantry': inPantry,
+      if (pantryUpdatedAt != null) 'pantry_updated_at': pantryUpdatedAt,
+      if (pantrySyncedAt != null) 'pantry_synced_at': pantrySyncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2018,6 +2105,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       Value<String?>? categoryId,
       Value<int>? usageCount,
       Value<bool>? inPantry,
+      Value<DateTime?>? pantryUpdatedAt,
+      Value<DateTime?>? pantrySyncedAt,
       Value<int>? rowid}) {
     return IngredientsCompanion(
       id: id ?? this.id,
@@ -2026,6 +2115,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       categoryId: categoryId ?? this.categoryId,
       usageCount: usageCount ?? this.usageCount,
       inPantry: inPantry ?? this.inPantry,
+      pantryUpdatedAt: pantryUpdatedAt ?? this.pantryUpdatedAt,
+      pantrySyncedAt: pantrySyncedAt ?? this.pantrySyncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2051,6 +2142,12 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     if (inPantry.present) {
       map['in_pantry'] = Variable<bool>(inPantry.value);
     }
+    if (pantryUpdatedAt.present) {
+      map['pantry_updated_at'] = Variable<DateTime>(pantryUpdatedAt.value);
+    }
+    if (pantrySyncedAt.present) {
+      map['pantry_synced_at'] = Variable<DateTime>(pantrySyncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2066,6 +2163,8 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
           ..write('categoryId: $categoryId, ')
           ..write('usageCount: $usageCount, ')
           ..write('inPantry: $inPantry, ')
+          ..write('pantryUpdatedAt: $pantryUpdatedAt, ')
+          ..write('pantrySyncedAt: $pantrySyncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3974,6 +4073,12 @@ class $MealPlanEntriesTable extends MealPlanEntries
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -3984,7 +4089,8 @@ class $MealPlanEntriesTable extends MealPlanEntries
         note,
         done,
         createdAt,
-        updatedAt
+        updatedAt,
+        syncedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4041,6 +4147,10 @@ class $MealPlanEntriesTable extends MealPlanEntries
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
     return context;
   }
 
@@ -4068,6 +4178,8 @@ class $MealPlanEntriesTable extends MealPlanEntries
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
     );
   }
 
@@ -4088,6 +4200,9 @@ class MealPlanEntryRow extends DataClass
   final bool done;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Versão (`updated_at`) já sincronizada com a conta (H4); ver `Recipes`.
+  final DateTime? syncedAt;
   const MealPlanEntryRow(
       {required this.id,
       required this.recipeId,
@@ -4097,7 +4212,8 @@ class MealPlanEntryRow extends DataClass
       this.note,
       required this.done,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      this.syncedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -4114,6 +4230,9 @@ class MealPlanEntryRow extends DataClass
     map['done'] = Variable<bool>(done);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
     return map;
   }
 
@@ -4130,6 +4249,9 @@ class MealPlanEntryRow extends DataClass
       done: Value(done),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -4146,6 +4268,7 @@ class MealPlanEntryRow extends DataClass
       done: serializer.fromJson<bool>(json['done']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -4161,6 +4284,7 @@ class MealPlanEntryRow extends DataClass
       'done': serializer.toJson<bool>(done),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -4173,7 +4297,8 @@ class MealPlanEntryRow extends DataClass
           Value<String?> note = const Value.absent(),
           bool? done,
           DateTime? createdAt,
-          DateTime? updatedAt}) =>
+          DateTime? updatedAt,
+          Value<DateTime?> syncedAt = const Value.absent()}) =>
       MealPlanEntryRow(
         id: id ?? this.id,
         recipeId: recipeId ?? this.recipeId,
@@ -4186,6 +4311,7 @@ class MealPlanEntryRow extends DataClass
         done: done ?? this.done,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
       );
   MealPlanEntryRow copyWithCompanion(MealPlanEntriesCompanion data) {
     return MealPlanEntryRow(
@@ -4200,6 +4326,7 @@ class MealPlanEntryRow extends DataClass
       done: data.done.present ? data.done.value : this.done,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -4214,14 +4341,15 @@ class MealPlanEntryRow extends DataClass
           ..write('note: $note, ')
           ..write('done: $done, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, recipeId, date, mealType,
-      servingsOverride, note, done, createdAt, updatedAt);
+      servingsOverride, note, done, createdAt, updatedAt, syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4234,7 +4362,8 @@ class MealPlanEntryRow extends DataClass
           other.note == this.note &&
           other.done == this.done &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
@@ -4247,6 +4376,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
   final Value<bool> done;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const MealPlanEntriesCompanion({
     this.id = const Value.absent(),
@@ -4258,6 +4388,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     this.done = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MealPlanEntriesCompanion.insert({
@@ -4270,6 +4401,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     this.done = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         recipeId = Value(recipeId),
@@ -4285,6 +4417,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     Expression<bool>? done,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4297,6 +4430,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
       if (done != null) 'done': done,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4311,6 +4445,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
       Value<bool>? done,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
+      Value<DateTime?>? syncedAt,
       Value<int>? rowid}) {
     return MealPlanEntriesCompanion(
       id: id ?? this.id,
@@ -4322,6 +4457,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
       done: done ?? this.done,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4356,6 +4492,9 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4374,6 +4513,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
           ..write('done: $done, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4425,9 +4565,29 @@ class $CookLogsTable extends CookLogs
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, recipeId, cookedAt, note, mealPlanEntryId, createdAt];
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        recipeId,
+        cookedAt,
+        note,
+        mealPlanEntryId,
+        createdAt,
+        updatedAt,
+        syncedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4469,6 +4629,14 @@ class $CookLogsTable extends CookLogs
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
     return context;
   }
 
@@ -4490,6 +4658,10 @@ class $CookLogsTable extends CookLogs
           DriftSqlType.string, data['${effectivePrefix}meal_plan_entry_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
     );
   }
 
@@ -4506,13 +4678,20 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
   final String? note;
   final String? mealPlanEntryId;
   final DateTime createdAt;
+
+  /// Última mudança (um gatilho do banco preenche ao inserir e ao editar) e a
+  /// versão já sincronizada com a conta (H4).
+  final DateTime? updatedAt;
+  final DateTime? syncedAt;
   const CookLogRow(
       {required this.id,
       required this.recipeId,
       required this.cookedAt,
       this.note,
       this.mealPlanEntryId,
-      required this.createdAt});
+      required this.createdAt,
+      this.updatedAt,
+      this.syncedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -4526,6 +4705,12 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
       map['meal_plan_entry_id'] = Variable<String>(mealPlanEntryId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
     return map;
   }
 
@@ -4539,6 +4724,12 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           ? const Value.absent()
           : Value(mealPlanEntryId),
       createdAt: Value(createdAt),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -4552,6 +4743,8 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
       note: serializer.fromJson<String?>(json['note']),
       mealPlanEntryId: serializer.fromJson<String?>(json['mealPlanEntryId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -4564,6 +4757,8 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
       'note': serializer.toJson<String?>(note),
       'mealPlanEntryId': serializer.toJson<String?>(mealPlanEntryId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -4573,7 +4768,9 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           DateTime? cookedAt,
           Value<String?> note = const Value.absent(),
           Value<String?> mealPlanEntryId = const Value.absent(),
-          DateTime? createdAt}) =>
+          DateTime? createdAt,
+          Value<DateTime?> updatedAt = const Value.absent(),
+          Value<DateTime?> syncedAt = const Value.absent()}) =>
       CookLogRow(
         id: id ?? this.id,
         recipeId: recipeId ?? this.recipeId,
@@ -4583,6 +4780,8 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
             ? mealPlanEntryId.value
             : this.mealPlanEntryId,
         createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
       );
   CookLogRow copyWithCompanion(CookLogsCompanion data) {
     return CookLogRow(
@@ -4594,6 +4793,8 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           ? data.mealPlanEntryId.value
           : this.mealPlanEntryId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -4605,14 +4806,16 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           ..write('cookedAt: $cookedAt, ')
           ..write('note: $note, ')
           ..write('mealPlanEntryId: $mealPlanEntryId, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, recipeId, cookedAt, note, mealPlanEntryId, createdAt);
+  int get hashCode => Object.hash(id, recipeId, cookedAt, note, mealPlanEntryId,
+      createdAt, updatedAt, syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4622,7 +4825,9 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           other.cookedAt == this.cookedAt &&
           other.note == this.note &&
           other.mealPlanEntryId == this.mealPlanEntryId &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
@@ -4632,6 +4837,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
   final Value<String?> note;
   final Value<String?> mealPlanEntryId;
   final Value<DateTime> createdAt;
+  final Value<DateTime?> updatedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const CookLogsCompanion({
     this.id = const Value.absent(),
@@ -4640,6 +4847,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     this.note = const Value.absent(),
     this.mealPlanEntryId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   CookLogsCompanion.insert({
@@ -4649,6 +4858,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     this.note = const Value.absent(),
     this.mealPlanEntryId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         recipeId = Value(recipeId),
@@ -4660,6 +4871,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     Expression<String>? note,
     Expression<String>? mealPlanEntryId,
     Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4669,6 +4882,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
       if (note != null) 'note': note,
       if (mealPlanEntryId != null) 'meal_plan_entry_id': mealPlanEntryId,
       if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4680,6 +4895,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
       Value<String?>? note,
       Value<String?>? mealPlanEntryId,
       Value<DateTime>? createdAt,
+      Value<DateTime?>? updatedAt,
+      Value<DateTime?>? syncedAt,
       Value<int>? rowid}) {
     return CookLogsCompanion(
       id: id ?? this.id,
@@ -4688,6 +4905,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
       note: note ?? this.note,
       mealPlanEntryId: mealPlanEntryId ?? this.mealPlanEntryId,
       createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4713,6 +4932,12 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4728,6 +4953,8 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
           ..write('note: $note, ')
           ..write('mealPlanEntryId: $mealPlanEntryId, ')
           ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5003,9 +5230,15 @@ class $ShoppingListsTable extends ShoppingLists
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, name, status, createdAt, updatedAt];
+      [id, name, status, createdAt, updatedAt, syncedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -5039,6 +5272,10 @@ class $ShoppingListsTable extends ShoppingLists
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
     }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
     return context;
   }
 
@@ -5058,6 +5295,8 @@ class $ShoppingListsTable extends ShoppingLists
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
     );
   }
 
@@ -5073,12 +5312,16 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Versão (`updated_at`) já sincronizada com a conta (H4).
+  final DateTime? syncedAt;
   const ShoppingListRow(
       {required this.id,
       required this.name,
       required this.status,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      this.syncedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -5087,6 +5330,9 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
     return map;
   }
 
@@ -5097,6 +5343,9 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -5109,6 +5358,7 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -5120,6 +5370,7 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -5128,13 +5379,15 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
           String? name,
           String? status,
           DateTime? createdAt,
-          DateTime? updatedAt}) =>
+          DateTime? updatedAt,
+          Value<DateTime?> syncedAt = const Value.absent()}) =>
       ShoppingListRow(
         id: id ?? this.id,
         name: name ?? this.name,
         status: status ?? this.status,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
       );
   ShoppingListRow copyWithCompanion(ShoppingListsCompanion data) {
     return ShoppingListRow(
@@ -5143,6 +5396,7 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -5153,13 +5407,15 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
           ..write('name: $name, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, status, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, status, createdAt, updatedAt, syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5168,7 +5424,8 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
           other.name == this.name &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
@@ -5177,6 +5434,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
   final Value<String> status;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const ShoppingListsCompanion({
     this.id = const Value.absent(),
@@ -5184,6 +5442,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ShoppingListsCompanion.insert({
@@ -5192,6 +5451,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name);
@@ -5201,6 +5461,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5209,6 +5470,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5219,6 +5481,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
       Value<String>? status,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
+      Value<DateTime?>? syncedAt,
       Value<int>? rowid}) {
     return ShoppingListsCompanion(
       id: id ?? this.id,
@@ -5226,6 +5489,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5248,6 +5512,9 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5262,6 +5529,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5339,6 +5607,18 @@ class $ShoppingListItemsTable extends ShoppingListItems
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -5349,7 +5629,9 @@ class $ShoppingListItemsTable extends ShoppingListItems
         unitId,
         checked,
         note,
-        position
+        position,
+        updatedAt,
+        syncedAt
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5405,6 +5687,14 @@ class $ShoppingListItemsTable extends ShoppingListItems
       context.handle(_positionMeta,
           position.isAcceptableOrUnknown(data['position']!, _positionMeta));
     }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
     return context;
   }
 
@@ -5432,6 +5722,10 @@ class $ShoppingListItemsTable extends ShoppingListItems
           .read(DriftSqlType.string, data['${effectivePrefix}note']),
       position: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}position'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
     );
   }
 
@@ -5452,6 +5746,12 @@ class ShoppingListItemRow extends DataClass
   final bool checked;
   final String? note;
   final int position;
+
+  /// Última mudança (um gatilho do banco preenche ao inserir e ao editar — o
+  /// item é alterado em muitos lugares e nenhum precisa lembrar disso) e a
+  /// versão já sincronizada com a conta (H4).
+  final DateTime? updatedAt;
+  final DateTime? syncedAt;
   const ShoppingListItemRow(
       {required this.id,
       required this.listId,
@@ -5461,7 +5761,9 @@ class ShoppingListItemRow extends DataClass
       this.unitId,
       required this.checked,
       this.note,
-      required this.position});
+      required this.position,
+      this.updatedAt,
+      this.syncedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -5484,6 +5786,12 @@ class ShoppingListItemRow extends DataClass
       map['note'] = Variable<String>(note);
     }
     map['position'] = Variable<int>(position);
+    if (!nullToAbsent || updatedAt != null) {
+      map['updated_at'] = Variable<DateTime>(updatedAt);
+    }
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
     return map;
   }
 
@@ -5505,6 +5813,12 @@ class ShoppingListItemRow extends DataClass
       checked: Value(checked),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       position: Value(position),
+      updatedAt: updatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
     );
   }
 
@@ -5521,6 +5835,8 @@ class ShoppingListItemRow extends DataClass
       checked: serializer.fromJson<bool>(json['checked']),
       note: serializer.fromJson<String?>(json['note']),
       position: serializer.fromJson<int>(json['position']),
+      updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
   }
   @override
@@ -5536,6 +5852,8 @@ class ShoppingListItemRow extends DataClass
       'checked': serializer.toJson<bool>(checked),
       'note': serializer.toJson<String?>(note),
       'position': serializer.toJson<int>(position),
+      'updatedAt': serializer.toJson<DateTime?>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
   }
 
@@ -5548,7 +5866,9 @@ class ShoppingListItemRow extends DataClass
           Value<String?> unitId = const Value.absent(),
           bool? checked,
           Value<String?> note = const Value.absent(),
-          int? position}) =>
+          int? position,
+          Value<DateTime?> updatedAt = const Value.absent(),
+          Value<DateTime?> syncedAt = const Value.absent()}) =>
       ShoppingListItemRow(
         id: id ?? this.id,
         listId: listId ?? this.listId,
@@ -5560,6 +5880,8 @@ class ShoppingListItemRow extends DataClass
         checked: checked ?? this.checked,
         note: note.present ? note.value : this.note,
         position: position ?? this.position,
+        updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
       );
   ShoppingListItemRow copyWithCompanion(ShoppingListItemsCompanion data) {
     return ShoppingListItemRow(
@@ -5575,6 +5897,8 @@ class ShoppingListItemRow extends DataClass
       checked: data.checked.present ? data.checked.value : this.checked,
       note: data.note.present ? data.note.value : this.note,
       position: data.position.present ? data.position.value : this.position,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
   }
 
@@ -5589,14 +5913,16 @@ class ShoppingListItemRow extends DataClass
           ..write('unitId: $unitId, ')
           ..write('checked: $checked, ')
           ..write('note: $note, ')
-          ..write('position: $position')
+          ..write('position: $position, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, listId, ingredientId, manualName,
-      quantity, unitId, checked, note, position);
+      quantity, unitId, checked, note, position, updatedAt, syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5609,7 +5935,9 @@ class ShoppingListItemRow extends DataClass
           other.unitId == this.unitId &&
           other.checked == this.checked &&
           other.note == this.note &&
-          other.position == this.position);
+          other.position == this.position &&
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
 }
 
 class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
@@ -5622,6 +5950,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
   final Value<bool> checked;
   final Value<String?> note;
   final Value<int> position;
+  final Value<DateTime?> updatedAt;
+  final Value<DateTime?> syncedAt;
   final Value<int> rowid;
   const ShoppingListItemsCompanion({
     this.id = const Value.absent(),
@@ -5633,6 +5963,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     this.checked = const Value.absent(),
     this.note = const Value.absent(),
     this.position = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ShoppingListItemsCompanion.insert({
@@ -5645,6 +5977,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     this.checked = const Value.absent(),
     this.note = const Value.absent(),
     this.position = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         listId = Value(listId);
@@ -5658,6 +5992,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     Expression<bool>? checked,
     Expression<String>? note,
     Expression<int>? position,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5670,6 +6006,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
       if (checked != null) 'checked': checked,
       if (note != null) 'note': note,
       if (position != null) 'position': position,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5684,6 +6022,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
       Value<bool>? checked,
       Value<String?>? note,
       Value<int>? position,
+      Value<DateTime?>? updatedAt,
+      Value<DateTime?>? syncedAt,
       Value<int>? rowid}) {
     return ShoppingListItemsCompanion(
       id: id ?? this.id,
@@ -5695,6 +6035,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
       checked: checked ?? this.checked,
       note: note ?? this.note,
       position: position ?? this.position,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5729,6 +6071,12 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     if (position.present) {
       map['position'] = Variable<int>(position.value);
     }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5747,6 +6095,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
           ..write('checked: $checked, ')
           ..write('note: $note, ')
           ..write('position: $position, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7247,6 +7597,8 @@ typedef $$IngredientsTableCreateCompanionBuilder = IngredientsCompanion
   Value<String?> categoryId,
   Value<int> usageCount,
   Value<bool> inPantry,
+  Value<DateTime?> pantryUpdatedAt,
+  Value<DateTime?> pantrySyncedAt,
   Value<int> rowid,
 });
 typedef $$IngredientsTableUpdateCompanionBuilder = IngredientsCompanion
@@ -7257,6 +7609,8 @@ typedef $$IngredientsTableUpdateCompanionBuilder = IngredientsCompanion
   Value<String?> categoryId,
   Value<int> usageCount,
   Value<bool> inPantry,
+  Value<DateTime?> pantryUpdatedAt,
+  Value<DateTime?> pantrySyncedAt,
   Value<int> rowid,
 });
 
@@ -7283,6 +7637,8 @@ class $$IngredientsTableTableManager extends RootTableManager<
             Value<String?> categoryId = const Value.absent(),
             Value<int> usageCount = const Value.absent(),
             Value<bool> inPantry = const Value.absent(),
+            Value<DateTime?> pantryUpdatedAt = const Value.absent(),
+            Value<DateTime?> pantrySyncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IngredientsCompanion(
@@ -7292,6 +7648,8 @@ class $$IngredientsTableTableManager extends RootTableManager<
             categoryId: categoryId,
             usageCount: usageCount,
             inPantry: inPantry,
+            pantryUpdatedAt: pantryUpdatedAt,
+            pantrySyncedAt: pantrySyncedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -7301,6 +7659,8 @@ class $$IngredientsTableTableManager extends RootTableManager<
             Value<String?> categoryId = const Value.absent(),
             Value<int> usageCount = const Value.absent(),
             Value<bool> inPantry = const Value.absent(),
+            Value<DateTime?> pantryUpdatedAt = const Value.absent(),
+            Value<DateTime?> pantrySyncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IngredientsCompanion.insert(
@@ -7310,6 +7670,8 @@ class $$IngredientsTableTableManager extends RootTableManager<
             categoryId: categoryId,
             usageCount: usageCount,
             inPantry: inPantry,
+            pantryUpdatedAt: pantryUpdatedAt,
+            pantrySyncedAt: pantrySyncedAt,
             rowid: rowid,
           ),
         ));
@@ -7340,6 +7702,16 @@ class $$IngredientsTableFilterComposer
 
   ColumnFilters<bool> get inPantry => $state.composableBuilder(
       column: $state.table.inPantry,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get pantryUpdatedAt => $state.composableBuilder(
+      column: $state.table.pantryUpdatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get pantrySyncedAt => $state.composableBuilder(
+      column: $state.table.pantrySyncedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -7432,6 +7804,16 @@ class $$IngredientsTableOrderingComposer
 
   ColumnOrderings<bool> get inPantry => $state.composableBuilder(
       column: $state.table.inPantry,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get pantryUpdatedAt => $state.composableBuilder(
+      column: $state.table.pantryUpdatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get pantrySyncedAt => $state.composableBuilder(
+      column: $state.table.pantrySyncedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -8353,6 +8735,7 @@ typedef $$MealPlanEntriesTableCreateCompanionBuilder = MealPlanEntriesCompanion
   Value<bool> done,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 typedef $$MealPlanEntriesTableUpdateCompanionBuilder = MealPlanEntriesCompanion
@@ -8366,6 +8749,7 @@ typedef $$MealPlanEntriesTableUpdateCompanionBuilder = MealPlanEntriesCompanion
   Value<bool> done,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 
@@ -8396,6 +8780,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             Value<bool> done = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MealPlanEntriesCompanion(
@@ -8408,6 +8793,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             done: done,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8420,6 +8806,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             Value<bool> done = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MealPlanEntriesCompanion.insert(
@@ -8432,6 +8819,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             done: done,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
         ));
@@ -8477,6 +8865,11 @@ class $$MealPlanEntriesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
       column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8536,6 +8929,11 @@ class $$MealPlanEntriesTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
+  ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
   $$RecipesTableOrderingComposer get recipeId {
     final $$RecipesTableOrderingComposer composer = $state.composerBuilder(
         composer: this,
@@ -8556,6 +8954,8 @@ typedef $$CookLogsTableCreateCompanionBuilder = CookLogsCompanion Function({
   Value<String?> note,
   Value<String?> mealPlanEntryId,
   Value<DateTime> createdAt,
+  Value<DateTime?> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 typedef $$CookLogsTableUpdateCompanionBuilder = CookLogsCompanion Function({
@@ -8565,6 +8965,8 @@ typedef $$CookLogsTableUpdateCompanionBuilder = CookLogsCompanion Function({
   Value<String?> note,
   Value<String?> mealPlanEntryId,
   Value<DateTime> createdAt,
+  Value<DateTime?> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 
@@ -8591,6 +8993,8 @@ class $$CookLogsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> mealPlanEntryId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               CookLogsCompanion(
@@ -8600,6 +9004,8 @@ class $$CookLogsTableTableManager extends RootTableManager<
             note: note,
             mealPlanEntryId: mealPlanEntryId,
             createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8609,6 +9015,8 @@ class $$CookLogsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> mealPlanEntryId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               CookLogsCompanion.insert(
@@ -8618,6 +9026,8 @@ class $$CookLogsTableTableManager extends RootTableManager<
             note: note,
             mealPlanEntryId: mealPlanEntryId,
             createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
         ));
@@ -8648,6 +9058,16 @@ class $$CookLogsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
       column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8689,6 +9109,16 @@ class $$CookLogsTableOrderingComposer
 
   ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
       column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
@@ -8809,6 +9239,7 @@ typedef $$ShoppingListsTableCreateCompanionBuilder = ShoppingListsCompanion
   Value<String> status,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 typedef $$ShoppingListsTableUpdateCompanionBuilder = ShoppingListsCompanion
@@ -8818,6 +9249,7 @@ typedef $$ShoppingListsTableUpdateCompanionBuilder = ShoppingListsCompanion
   Value<String> status,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 
@@ -8843,6 +9275,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             Value<String> status = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListsCompanion(
@@ -8851,6 +9284,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             status: status,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8859,6 +9293,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             Value<String> status = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListsCompanion.insert(
@@ -8867,6 +9302,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             status: status,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
         ));
@@ -8897,6 +9333,11 @@ class $$ShoppingListsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
       column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8945,6 +9386,11 @@ class $$ShoppingListsTableOrderingComposer
       column: $state.table.updatedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
 typedef $$ShoppingListItemsTableCreateCompanionBuilder
@@ -8958,6 +9404,8 @@ typedef $$ShoppingListItemsTableCreateCompanionBuilder
   Value<bool> checked,
   Value<String?> note,
   Value<int> position,
+  Value<DateTime?> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 typedef $$ShoppingListItemsTableUpdateCompanionBuilder
@@ -8971,6 +9419,8 @@ typedef $$ShoppingListItemsTableUpdateCompanionBuilder
   Value<bool> checked,
   Value<String?> note,
   Value<int> position,
+  Value<DateTime?> updatedAt,
+  Value<DateTime?> syncedAt,
   Value<int> rowid,
 });
 
@@ -9001,6 +9451,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             Value<bool> checked = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<int> position = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListItemsCompanion(
@@ -9013,6 +9465,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             checked: checked,
             note: note,
             position: position,
+            updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -9025,6 +9479,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             Value<bool> checked = const Value.absent(),
             Value<String?> note = const Value.absent(),
             Value<int> position = const Value.absent(),
+            Value<DateTime?> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListItemsCompanion.insert(
@@ -9037,6 +9493,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             checked: checked,
             note: note,
             position: position,
+            updatedAt: updatedAt,
+            syncedAt: syncedAt,
             rowid: rowid,
           ),
         ));
@@ -9072,6 +9530,16 @@ class $$ShoppingListItemsTableFilterComposer
 
   ColumnFilters<int> get position => $state.composableBuilder(
       column: $state.table.position,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -9159,6 +9627,16 @@ class $$ShoppingListItemsTableOrderingComposer
 
   ColumnOrderings<int> get position => $state.composableBuilder(
       column: $state.table.position,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

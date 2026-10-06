@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../app_database.dart';
 import '../tables.dart';
+import 'package:receyta/core/sync_kinds.dart';
 
 part 'meal_plan_dao.g.dart';
 
@@ -100,8 +101,31 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
     return row;
   }
 
+  /// Tira a refeição do plano; se já tinha sido sincronizada, avisa a nuvem
+  /// (H4).
   Future<int> remove(String id) {
-    return (delete(mealPlanEntries)..where((e) => e.id.equals(id))).go();
+    return transaction(() async {
+      final row = await findById(id);
+      final count =
+          await (delete(mealPlanEntries)..where((e) => e.id.equals(id))).go();
+      if (row?.syncedAt != null) {
+        await attachedDatabase.addTombstone(kSyncKindMealPlan, id);
+      }
+      return count;
+    });
+  }
+
+  /// Refeições que mudaram desde a última sincronização ou nunca subiram.
+  Future<List<MealPlanEntryRow>> dirtyForSync() {
+    return (select(mealPlanEntries)
+          ..where((e) =>
+              e.syncedAt.isNull() | e.updatedAt.isBiggerThan(e.syncedAt)))
+        .get();
+  }
+
+  Future<int> markSynced(String id, DateTime updatedAt) {
+    return (update(mealPlanEntries)..where((e) => e.id.equals(id)))
+        .write(MealPlanEntriesCompanion(syncedAt: Value(updatedAt)));
   }
 
   Future<int> move(
@@ -166,8 +190,16 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
       if (written == 0) return 0;
 
       if (!done) {
+        final logs = await (select(cookLogs)
+              ..where((l) => l.mealPlanEntryId.equals(id)))
+            .get();
         await (delete(cookLogs)..where((l) => l.mealPlanEntryId.equals(id)))
             .go();
+        for (final l in logs) {
+          if (l.syncedAt != null) {
+            await attachedDatabase.addTombstone(kSyncKindCookLog, l.id);
+          }
+        }
         return written;
       }
 

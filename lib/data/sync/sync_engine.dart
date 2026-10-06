@@ -12,31 +12,15 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
+import 'package:receyta/data/sync/sync_handler.dart';
+import 'package:receyta/data/sync/sync_handlers.dart';
 import 'package:receyta/data/sync/sync_remote.dart';
 import 'package:receyta/domain/engine/sync_codec.dart';
 
+export 'package:receyta/data/sync/sync_handler.dart' show remoteWins;
+
 /// O que uma rodada de sincronização fez.
 typedef SyncReport = ({int pulled, int applied, int removed, int pushed});
-
-/// Decide, pra um item que chegou da nuvem, se ele deve sobrescrever o local.
-///
-/// - não existe aqui: aplica;
-/// - existe e NÃO mudou desde a última sincronização: segue a nuvem (se for
-///   exatamente a mesma versão, não há o que fazer);
-/// - existe e MUDOU aqui (pendente de envio): vence a edição mais recente.
-@visibleForTesting
-bool remoteWins({
-  required bool exists,
-  required DateTime remoteEditedAt,
-  DateTime? localUpdatedAt,
-  DateTime? localSyncedAt,
-}) {
-  if (!exists) return true;
-  final local = localUpdatedAt!;
-  final dirty = localSyncedAt == null || local.isAfter(localSyncedAt);
-  if (!dirty) return remoteEditedAt != local;
-  return remoteEditedAt.isAfter(local);
-}
 
 /// Sincroniza receitas e pastas com a conta (H3). Local primeiro: o banco do
 /// aparelho é a fonte da verdade, e a rodada é sempre "puxar o que mudou na
@@ -50,15 +34,21 @@ class SyncEngine {
     required this.recipes,
     this.imageSync,
     this.images,
+    List<SyncHandler>? handlers,
     this.overlap = const Duration(minutes: 2),
     Uuid uuid = const Uuid(),
-  }) : _uuid = uuid;
+  })  : handlers = handlers ?? defaultSyncHandlers(db),
+        _uuid = uuid;
 
   final SyncRemote remote;
   final AppDatabase db;
   final RecipeRepository recipes;
   final RecipeImageSync? imageSync;
   final RecipeImageService? images;
+
+  /// Os demais tipos de item (calendário, listas, histórico, despensa), na ordem
+  /// em que aplicam. Receitas e pastas o próprio motor cuida.
+  final List<SyncHandler> handlers;
 
   /// Quanto recuar o ponto de leitura. O `updated_at` do servidor vem de
   /// `now()` (início da transação), então uma gravação mais lenta pode
@@ -68,6 +58,20 @@ class SyncEngine {
   final Uuid _uuid;
 
   static const _batchSize = 50;
+
+  /// Sobrou algo pendente de envio (de qualquer tipo)? É a pergunta barata que
+  /// o coordenador faz a cada escrita no banco.
+  Future<bool> hasPending() async {
+    if ((await db.recipeDao.dirtyForSync()).isNotEmpty ||
+        (await db.folderDao.dirtyForSync()).isNotEmpty ||
+        (await db.recipeDao.pendingTombstones()).isNotEmpty) {
+      return true;
+    }
+    for (final h in handlers) {
+      if (await h.hasPending()) return true;
+    }
+    return false;
+  }
 
   Future<Result<SyncReport>> sync() async {
     final uid = remote.userId;
@@ -248,6 +252,19 @@ class SyncEngine {
         }
         applied++;
       }
+
+      // 5) o resto, depois das receitas (calendário, histórico e origens dos
+      // itens de compras dependem delas)
+      for (final h in handlers) {
+        final mine = [
+          for (final d in docs)
+            if (d.kind == h.kind) d
+        ];
+        if (mine.isEmpty) continue;
+        final result = await h.apply(mine);
+        applied += result.applied;
+        removed += result.removed;
+      }
     });
 
     // Arquivos de foto que deixaram de ter dono (receita apagada ou foto
@@ -342,9 +359,6 @@ class SyncEngine {
     final dirtyFolders = await db.folderDao.dirtyForSync();
     final dirtyRecipes = await db.recipeDao.dirtyForSync();
     final tombstones = await db.recipeDao.pendingTombstones();
-    if (dirtyFolders.isEmpty && dirtyRecipes.isEmpty && tombstones.isEmpty) {
-      return 0;
-    }
 
     // Cada item leva junto "o que fazer quando o servidor confirmar".
     final items = <({SyncDoc doc, Future<void> Function() onSent})>[];
@@ -395,6 +409,11 @@ class SyncEngine {
       ));
     }
 
+    // Listas antes dos itens, pra o item nunca chegar a um aparelho sem a lista.
+    for (final h in handlers) {
+      items.addAll(await h.pending());
+    }
+
     for (final t in tombstones) {
       items.add((
         doc: SyncDoc(
@@ -406,6 +425,8 @@ class SyncEngine {
         onSent: () => db.recipeDao.clearTombstone(t.kind, t.id),
       ));
     }
+
+    if (items.isEmpty) return 0;
 
     var pushed = 0;
     for (var i = 0; i < items.length; i += _batchSize) {

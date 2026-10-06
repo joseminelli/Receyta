@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'package:receyta/domain/engine/shopping_aggregator.dart';
 import '../app_database.dart';
 import '../tables.dart';
+import 'package:receyta/core/sync_kinds.dart';
 
 part 'shopping_list_dao.g.dart';
 
@@ -249,9 +250,53 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
-  /// Apaga a lista; itens e origens caem em cascata.
+  /// Apaga a lista; itens e origens caem em cascata. O que já tinha sido
+  /// sincronizado (a lista e cada item) deixa aviso pra nuvem (H4).
   Future<int> deleteList(String id) {
-    return (delete(shoppingLists)..where((l) => l.id.equals(id))).go();
+    return transaction(() async {
+      final list = await (select(shoppingLists)..where((l) => l.id.equals(id)))
+          .getSingleOrNull();
+      final items = await (select(shoppingListItems)
+            ..where((i) => i.listId.equals(id)))
+          .get();
+      final count =
+          await (delete(shoppingLists)..where((l) => l.id.equals(id))).go();
+      if (list?.syncedAt != null) {
+        await attachedDatabase.addTombstone(kSyncKindShoppingList, id);
+      }
+      for (final i in items) {
+        if (i.syncedAt != null) {
+          await attachedDatabase.addTombstone(kSyncKindShoppingItem, i.id);
+        }
+      }
+      return count;
+    });
+  }
+
+  /// Listas que mudaram desde a última sincronização ou nunca subiram.
+  Future<List<ShoppingListRow>> dirtyLists() {
+    return (select(shoppingLists)
+          ..where((l) =>
+              l.syncedAt.isNull() | l.updatedAt.isBiggerThan(l.syncedAt)))
+        .get();
+  }
+
+  Future<int> markListSynced(String id, DateTime updatedAt) {
+    return (update(shoppingLists)..where((l) => l.id.equals(id)))
+        .write(ShoppingListsCompanion(syncedAt: Value(updatedAt)));
+  }
+
+  /// Itens que mudaram desde a última sincronização ou nunca subiram.
+  Future<List<ShoppingListItemRow>> dirtyItems() {
+    return (select(shoppingListItems)
+          ..where((i) =>
+              i.syncedAt.isNull() | i.updatedAt.isBiggerThan(i.syncedAt)))
+        .get();
+  }
+
+  Future<int> markItemSynced(String id, DateTime? updatedAt) {
+    return (update(shoppingListItems)..where((i) => i.id.equals(id)))
+        .write(ShoppingListItemsCompanion(syncedAt: Value(updatedAt)));
   }
 
   Future<List<ShoppingListItemRow>> itemsOf(String listId) {
@@ -300,7 +345,18 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
 
   /// Tira um item da lista (as origens caem em cascata).
   Future<int> deleteItem(String itemId) {
-    return (delete(shoppingListItems)..where((i) => i.id.equals(itemId))).go();
+    return transaction(() async {
+      final row = await (select(shoppingListItems)
+            ..where((i) => i.id.equals(itemId)))
+          .getSingleOrNull();
+      final count = await (delete(shoppingListItems)
+            ..where((i) => i.id.equals(itemId)))
+          .go();
+      if (row?.syncedAt != null) {
+        await attachedDatabase.addTombstone(kSyncKindShoppingItem, itemId);
+      }
+      return count;
+    });
   }
 
   /// Desmarca todos os itens da lista e devolve os ids que estavam marcados

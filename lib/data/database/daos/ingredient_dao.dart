@@ -120,6 +120,22 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
   /// nome de novo) e apaga a linha de origem. `RecipeIngredients.ingredientId`
   /// é `onDelete: restrict` — por isso reapontar tem que vir antes do apagar.
   /// Marca ou desmarca "sempre tenho" (G11).
+  /// Ingredientes cuja despensa mudou desde a última sincronização (ou nunca
+  /// subiu). Só entra quem alguma vez foi marcado ou desmarcado.
+  Future<List<IngredientRow>> dirtyPantry() {
+    return (select(ingredients)
+          ..where((i) =>
+              i.pantryUpdatedAt.isNotNull() &
+              (i.pantrySyncedAt.isNull() |
+                  i.pantryUpdatedAt.isBiggerThan(i.pantrySyncedAt))))
+        .get();
+  }
+
+  Future<int> markPantrySynced(String id, DateTime updatedAt) {
+    return (update(ingredients)..where((i) => i.id.equals(id)))
+        .write(IngredientsCompanion(pantrySyncedAt: Value(updatedAt)));
+  }
+
   Future<int> setInPantry(String id, bool value) {
     return (update(ingredients)..where((i) => i.id.equals(id)))
         .write(IngredientsCompanion(inPantry: Value(value)));
