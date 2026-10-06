@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import 'package:receyta/data/database/daos/recipe_dao.dart';
@@ -19,7 +20,14 @@ abstract class ImageRemote {
   Future<void> upload(String path, File file);
   Future<Uint8List> download(String path);
   Future<void> remove(String path);
+
+  /// Arquivos da pasta [uid] no Storage.
+  Future<List<RemoteImage>> list(String uid);
 }
+
+/// Um arquivo do bucket: o nome (sem a pasta do usuário) e quando foi
+/// gravado, pra a limpeza respeitar uma carência.
+typedef RemoteImage = ({String name, DateTime? updatedAt});
 
 class SupabaseImageRemote implements ImageRemote {
   SupabaseImageRemote(this._client);
@@ -46,6 +54,26 @@ class SupabaseImageRemote implements ImageRemote {
 
   @override
   Future<void> remove(String path) => _bucket.remove([path]);
+
+  @override
+  Future<List<RemoteImage>> list(String uid) async {
+    const page = 100;
+    final out = <RemoteImage>[];
+    for (var offset = 0;; offset += page) {
+      final files = await _bucket.list(
+        path: uid,
+        searchOptions: sb.SearchOptions(limit: page, offset: offset),
+      );
+      for (final f in files) {
+        if (f.id == null) continue;
+        out.add((
+          name: f.name,
+          updatedAt: DateTime.tryParse(f.updatedAt ?? f.createdAt ?? ''),
+        ));
+      }
+      if (files.length < page) return out;
+    }
+  }
 }
 
 /// Usado quando o Supabase não inicializou.
@@ -63,6 +91,9 @@ class NoImageRemote implements ImageRemote {
 
   @override
   Future<void> remove(String path) async {}
+
+  @override
+  Future<List<RemoteImage>> list(String uid) async => const [];
 }
 
 /// Mantém as fotos locais espelhadas no Storage (H0). Local primeiro: o app
@@ -81,6 +112,34 @@ class RecipeImageSync {
 
   bool _running = false;
 
+  static const _queueKey = 'image_remote_deletions';
+
+  /// Anota fotos que precisam sair do Storage (receita apagada de vez). Fica
+  /// guardado no aparelho até dar pra apagar de fato — sem login ou sem rede
+  /// a remoção espera a próxima rodada.
+  Future<void> queueRemoteDeletion(Iterable<String> names) async {
+    final prefs = await SharedPreferences.getInstance();
+    final queue = {...?prefs.getStringList(_queueKey), ...names};
+    await prefs.setStringList(_queueKey, queue.toList());
+  }
+
+  Future<void> _flushRemoteDeletions(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    final queue = prefs.getStringList(_queueKey) ?? const [];
+    if (queue.isEmpty) return;
+    final left = <String>[];
+    for (final name in queue) {
+      try {
+        debugPrint('imageSync: removendo $uid/$name (receita apagada)');
+        await _remote.remove('$uid/$name');
+      } catch (e) {
+        debugPrint('imageSync.remove($name): $e');
+        left.add(name);
+      }
+    }
+    await prefs.setStringList(_queueKey, left);
+  }
+
   /// Envia as fotos novas e apaga da nuvem as trocadas/removidas. Devolve
   /// quantas receitas acertou. Nunca lança; uma falha numa receita não
   /// impede as outras, e ela fica pendente pra próxima vez.
@@ -90,6 +149,11 @@ class RecipeImageSync {
     _running = true;
     var done = 0;
     try {
+      try {
+        await _flushRemoteDeletions(uid);
+      } catch (e) {
+        debugPrint('imageSync.flush: $e');
+      }
       for (final row in await _dao.pendingImageSync()) {
         try {
           if (await _syncOne(uid, row.id, row.imagePath, row.imageSyncedPath)) {
@@ -114,6 +178,7 @@ class RecipeImageSync {
     String? synced,
   ) async {
     if (synced != null && synced != current) {
+      debugPrint('imageSync: removendo $uid/$synced (receita $id)');
       await _remote.remove('$uid/$synced');
       if (current == null) {
         await _dao.setImageSynced(id, null);
@@ -124,9 +189,42 @@ class RecipeImageSync {
 
     final file = await _images.fileFor(current);
     if (!await file.exists()) return false;
+    debugPrint('imageSync: enviando $uid/$current (receita $id)');
     await _remote.upload('$uid/$current', file);
     await _dao.setImageSynced(id, current);
     return true;
+  }
+
+  /// Apaga do Storage o que nenhuma receita usa mais (sobra de receita
+  /// apagada, foto trocada, envio interrompido) pra não gastar o espaço do
+  /// plano. Devolve quantos apagou. Nunca lança.
+  ///
+  /// Arquivo gravado há menos de [grace] fica: pode ser um envio em andamento
+  /// cuja receita ainda não foi salva. ATENÇÃO: a conta é uma só, mas as
+  /// receitas ainda não sincronizam entre aparelhos — num segundo aparelho
+  /// logado na mesma conta, as fotos do primeiro contam como "sem uso".
+  Future<int> sweepRemoteOrphans({
+    Duration grace = const Duration(days: 1),
+    DateTime Function() clock = DateTime.now,
+  }) async {
+    final uid = _remote.userId;
+    if (uid == null) return 0;
+    var removed = 0;
+    try {
+      final inUse = await _dao.referencedImageNames();
+      final cutoff = clock().subtract(grace);
+      for (final file in await _remote.list(uid)) {
+        if (inUse.contains(file.name)) continue;
+        final at = file.updatedAt;
+        if (at == null || at.isAfter(cutoff)) continue;
+        debugPrint('imageSync: limpando sobra $uid/${file.name}');
+        await _remote.remove('$uid/${file.name}');
+        removed++;
+      }
+    } catch (e) {
+      debugPrint('imageSync.sweep: $e');
+    }
+    return removed;
   }
 
   /// O arquivo local da foto [name]; se não existe (outro aparelho, dados

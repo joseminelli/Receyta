@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -5,6 +7,8 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tag_name.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/database/app_database.dart';
+import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/database/daos/recipe_dao.dart';
 import 'package:receyta/data/database/daos/tag_dao.dart';
@@ -24,10 +28,17 @@ class RecipeRepository {
     this._dao,
     this._tagDao,
     this._ingredientDao, {
+    this.onImagesReleased,
     Uuid uuid = const Uuid(),
     DateTime Function() clock = DateTime.now,
   })  : _uuid = uuid,
         _clock = clock;
+
+  /// Chamado depois que receitas são apagadas de vez, com os nomes das fotos
+  /// que ficaram sem dono: [local] (arquivo no aparelho) e [remote] (o que já
+  /// subiu pro Storage). Quem liga decide apagar uma e outra.
+  final Future<void> Function(List<String> local, List<String> remote)?
+      onImagesReleased;
 
   final RecipeDao _dao;
   final TagDao _tagDao;
@@ -313,7 +324,9 @@ class RecipeRepository {
 
   Future<Result<void>> deleteForever(String id) async {
     try {
+      final row = await _dao.findIncludingTrashed(id);
       await _dao.hardDelete(id);
+      if (row != null) await _releaseImages([row]);
       return const Ok(null);
     } catch (e) {
       return Err(DatabaseFailure('Falha ao excluir de vez', cause: e));
@@ -323,10 +336,30 @@ class RecipeRepository {
   /// Esvazia da lixeira o que já passou dos 30 dias (RF-01.6). Roda no boot.
   Future<void> purgeExpired({Duration keep = const Duration(days: 30)}) async {
     try {
-      await _dao.purgeExpired(_clock().toUtc().subtract(keep));
+      final cutoff = _clock().toUtc().subtract(keep);
+      final expired = await _dao.expiredInTrash(cutoff);
+      await _dao.purgeExpired(cutoff);
+      await _releaseImages(expired);
     } catch (_) {
       // Faxina best-effort: uma falha aqui não pode travar a abertura do app.
     }
+  }
+
+  Future<void> _releaseImages(List<RecipeRow> rows) async {
+    final callback = onImagesReleased;
+    if (callback == null) return;
+    final local = [
+      for (final r in rows)
+        if (r.imagePath != null) r.imagePath!
+    ];
+    final remote = [
+      for (final r in rows)
+        if (r.imageSyncedPath != null) r.imageSyncedPath!,
+    ];
+    if (local.isEmpty && remote.isEmpty) return;
+    try {
+      await callback(local, remote);
+    } catch (_) {}
   }
 
   Future<RecipeDetail> _detail(RecipeRow row) async {
@@ -409,7 +442,22 @@ class RecipeRepository {
 
 final recipeRepositoryProvider = Provider<RecipeRepository>((ref) {
   final db = ref.watch(databaseProvider);
-  return RecipeRepository(db.recipeDao, db.tagDao, db.ingredientDao);
+  return RecipeRepository(
+    db.recipeDao,
+    db.tagDao,
+    db.ingredientDao,
+    onImagesReleased: (local, remote) async {
+      final images = ref.read(recipeImageServiceProvider);
+      for (final name in local) {
+        await images.delete(name);
+      }
+      if (remote.isNotEmpty) {
+        final sync = ref.read(recipeImageSyncProvider);
+        await sync.queueRemoteDeletion(remote);
+        unawaited(sync.syncPending());
+      }
+    },
+  );
 });
 
 /// Linha do banco → domínio. Pública porque outros repositórios que juntam

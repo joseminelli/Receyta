@@ -338,4 +338,74 @@ void main() {
     final second = await repo.reprocessLegacyIngredients();
     expect((second as Ok<int>).value, 0);
   });
+
+  group('fotos ao apagar de vez', () {
+    late List<(List<String>, List<String>)> released;
+    late RecipeRepository withHook;
+
+    setUp(() {
+      released = [];
+      withHook = RecipeRepository(
+        db.recipeDao,
+        db.tagDao,
+        db.ingredientDao,
+        clock: () => clock,
+        onImagesReleased: (local, remote) async =>
+            released.add((local, remote)),
+      );
+    });
+
+    test('deleteForever avisa a foto local e a que já subiu', () async {
+      final r = unwrap(await withHook.saveDetail(name: 'A'));
+      await withHook.setImage(r.id, 'a_1.jpg');
+      await db.recipeDao.setImageSynced(r.id, 'a_1.jpg');
+      await withHook.softDelete(r.id);
+
+      await withHook.deleteForever(r.id);
+
+      expect(released, hasLength(1));
+      expect(released.single.$1, ['a_1.jpg']);
+      expect(released.single.$2, ['a_1.jpg']);
+    });
+
+    test('foto que nunca subiu só libera o arquivo local', () async {
+      final r = unwrap(await withHook.saveDetail(name: 'A'));
+      await withHook.setImage(r.id, 'a_1.jpg');
+      await withHook.softDelete(r.id);
+
+      await withHook.deleteForever(r.id);
+
+      expect(released, hasLength(1));
+      expect(released.single.$1, ['a_1.jpg']);
+      expect(released.single.$2, isEmpty);
+    });
+
+    test('receita sem foto não dispara nada', () async {
+      final r = unwrap(await withHook.saveDetail(name: 'A'));
+      await withHook.softDelete(r.id);
+
+      await withHook.deleteForever(r.id);
+
+      expect(released, isEmpty);
+    });
+
+    test('purgeExpired libera só as fotos das receitas vencidas', () async {
+      final old = unwrap(await withHook.saveDetail(name: 'Velha'));
+      final fresh = unwrap(await withHook.saveDetail(name: 'Nova'));
+      await withHook.setImage(old.id, 'velha.jpg');
+      await withHook.setImage(fresh.id, 'nova.jpg');
+      await withHook.softDelete(old.id);
+      clock = clock.add(const Duration(days: 20));
+      await withHook.softDelete(fresh.id);
+      clock = clock.add(const Duration(days: 15));
+
+      await withHook.purgeExpired();
+
+      expect(released, hasLength(1));
+      expect(released.single.$1, ['velha.jpg']);
+      expect(released.single.$2, isEmpty);
+      final remaining = await db.select(db.recipes).get();
+      expect(remaining.map((r) => r.id), [fresh.id]);
+    });
+  });
 }

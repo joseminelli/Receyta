@@ -91,6 +91,12 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         .getSingleOrNull();
   }
 
+  /// Como [findById], mas enxerga também a receita que está na lixeira — é
+  /// onde ela está quando é apagada de vez.
+  Future<RecipeRow?> findIncludingTrashed(String id) {
+    return (select(recipes)..where((r) => r.id.equals(id))).getSingleOrNull();
+  }
+
   /// Lote de receitas por id — gerar lista de compras (E2) resolve o nome
   /// de cada receita de origem de uma vez só, não um `SELECT` por linha.
   Future<List<RecipeRow>> findByIds(List<String> ids) {
@@ -184,7 +190,15 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     List<String> tagIds = const [],
   }) {
     return transaction(() async {
-      await into(recipes).insertOnConflictUpdate(recipe);
+      // O registro de envio da foto pertence ao sync, não a quem edita: o
+      // objeto que chega aqui pode ser de antes de um envio terminar, e
+      // gravá-lo como está faria a foto subir de novo.
+      final current = await (select(recipes)
+            ..where((r) => r.id.equals(recipe.id)))
+          .getSingleOrNull();
+      await into(recipes).insertOnConflictUpdate(
+        recipe.copyWith(imageSyncedPath: Value(current?.imageSyncedPath)),
+      );
       await (delete(recipeIngredients)
             ..where((i) => i.recipeId.equals(recipe.id)))
           .go();
@@ -266,6 +280,21 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         .write(RecipesCompanion(imageSyncedPath: Value(name)));
   }
 
+  /// Toda foto que alguma receita (inclusive na lixeira) ainda referencia,
+  /// local ou já enviada — o que sobrar na nuvem fora disso é lixo.
+  Future<Set<String>> referencedImageNames() async {
+    final rows = await (select(recipes)
+          ..where(
+              (r) => r.imagePath.isNotNull() | r.imageSyncedPath.isNotNull()))
+        .get();
+    return {
+      for (final r in rows) ...[
+        if (r.imagePath != null) r.imagePath!,
+        if (r.imageSyncedPath != null) r.imageSyncedPath!,
+      ],
+    };
+  }
+
   /// Nomes de foto ainda em uso (inclui a lixeira — a receita pode voltar).
   Future<Set<String>> referencedImagePaths() async {
     final rows =
@@ -311,6 +340,15 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
   /// Apaga de verdade — o cascade leva ingredientes, passos e vínculos de tag.
   Future<int> hardDelete(String id) {
     return (delete(recipes)..where((r) => r.id.equals(id))).go();
+  }
+
+  /// Linhas da lixeira que já passaram do prazo — lidas antes do
+  /// [purgeExpired] pra saber quais fotos ficam sem dono.
+  Future<List<RecipeRow>> expiredInTrash(DateTime cutoff) {
+    return (select(recipes)
+          ..where((r) =>
+              r.deletedAt.isNotNull() & r.deletedAt.isSmallerThanValue(cutoff)))
+        .get();
   }
 
   /// Esvazia da lixeira tudo que passou do prazo. Roda no boot.

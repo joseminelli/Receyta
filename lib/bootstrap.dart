@@ -61,6 +61,7 @@ Future<void> runAppMaintenance(
     await _timed('bootstrap.purgeExpired', recipes.purgeExpired);
     if (imageSync != null) {
       await _timed('bootstrap.imageSync', imageSync.syncPending);
+      await _timed('bootstrap.imageSweep', imageSync.sweepRemoteOrphans);
     }
     if (images != null) {
       await _timed(
