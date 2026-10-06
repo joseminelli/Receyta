@@ -3,6 +3,7 @@ import 'package:receyta/data/services/home_widget_service.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
+import 'package:receyta/domain/models/shopping_list_item.dart';
 
 MealPlanEntry _e(String name, DateTime date, MealType meal,
         {bool done = false}) =>
@@ -55,5 +56,32 @@ void main() {
     expect(p['shoppingPending'], 7);
     expect(p['shoppingLists'], 2);
     expect(p['shoppingList'], 'Feira');
+  });
+
+  test('leva só os itens que faltam da primeira lista em aberto', () {
+    ShoppingListItem item(String name, {bool checked = false}) =>
+        ShoppingListItem(
+          id: name,
+          listId: 'Feira',
+          displayName: name,
+          checked: checked,
+        );
+    final p = buildWidgetPayload(
+      entries: const [],
+      lists: [_l('Feira', 3, 1)],
+      items: [item('Arroz'), item('Leite', checked: true), item('Ovos')],
+    );
+    expect(p['shoppingItems'], ['Arroz', 'Ovos']);
+    expect(p['shoppingTotal'], 3);
+    expect(p['shoppingChecked'], 1);
+  });
+
+  test('sem lista em aberto, o widget de compras fica vazio', () {
+    final p = buildWidgetPayload(
+      entries: const [],
+      lists: [_l('Pronta', 2, 2)],
+    );
+    expect(p['shoppingItems'], isEmpty);
+    expect(p['shoppingTotal'], 0);
   });
 }

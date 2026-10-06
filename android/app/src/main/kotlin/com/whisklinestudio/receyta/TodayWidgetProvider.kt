@@ -1,20 +1,18 @@
 package com.whisklinestudio.receyta
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.view.View
 import android.widget.RemoteViews
-import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Widget "Hoje": refeições do dia e resumo das compras. Os dados vêm do Dart
- * (canal `receyta/home_widget`) e ficam em SharedPreferences; o filtro de
- * "hoje" é feito aqui, pra virar o dia sem o app aberto.
+ * Widget "Hoje": as receitas planejadas pro dia, com a refeição de cada uma e
+ * as já feitas marcadas.
  */
 class TodayWidgetProvider : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
@@ -22,78 +20,92 @@ class TodayWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        private const val PREFS = "receyta_widget"
-        private const val KEY = "payload"
+        private const val MAX_ROWS = 4
 
-        fun save(context: Context, json: String) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .edit().putString(KEY, json).apply()
+        fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
             val ids = manager.getAppWidgetIds(ComponentName(context, TodayWidgetProvider::class.java))
             for (id in ids) manager.updateAppWidget(id, build(context))
         }
 
+        private class Meal(val label: String, val name: String, val done: Boolean)
+
         private fun build(context: Context): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_today)
+            val locale = Locale("pt", "BR")
             val now = Date()
             val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now)
             views.setTextViewText(
+                R.id.widget_weekday,
+                SimpleDateFormat("EEEE", locale).format(now).uppercase(locale)
+            )
+            views.setTextViewText(
                 R.id.widget_date,
-                SimpleDateFormat("EEE, d MMM", Locale("pt", "BR")).format(now)
+                SimpleDateFormat("d 'de' MMMM", locale).format(now)
             )
 
-            val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
-            val json = try { raw?.let { JSONObject(it) } } catch (e: Exception) { null }
-
-            val lines = ArrayList<String>()
-            val meals = json?.optJSONArray("meals")
-            if (meals != null) {
-                for (i in 0 until meals.length()) {
-                    val m = meals.getJSONObject(i)
+            val json = WidgetStore.read(context)
+            val meals = ArrayList<Meal>()
+            val array = json?.optJSONArray("meals")
+            if (array != null) {
+                for (i in 0 until array.length()) {
+                    val m = array.getJSONObject(i)
                     if (m.optString("date") != today) continue
-                    val mark = if (m.optBoolean("done")) "✓ " else ""
-                    lines.add(mark + m.optString("meal") + " · " + m.optString("name"))
+                    meals.add(Meal(m.optString("meal"), m.optString("name"), m.optBoolean("done")))
                 }
             }
 
-            val slots = intArrayOf(R.id.widget_meal1, R.id.widget_meal2, R.id.widget_meal3)
-            if (lines.isEmpty()) {
-                val empty = if (json == null) "Abra o Receyta pra começar" else "Nada planejado pra hoje"
-                views.setTextViewText(slots[0], empty)
-                views.setTextViewText(slots[1], "")
-                views.setTextViewText(slots[2], "")
-            } else {
-                for (i in slots.indices) {
-                    val text = if (i == 2 && lines.size > 3) {
-                        "+" + (lines.size - 2) + " refeições"
-                    } else {
-                        lines.getOrNull(i) ?: ""
-                    }
-                    views.setTextViewText(slots[i], text)
-                }
-            }
+            val rows = intArrayOf(R.id.widget_row1, R.id.widget_row2, R.id.widget_row3, R.id.widget_row4)
+            val dots = intArrayOf(R.id.widget_dot1, R.id.widget_dot2, R.id.widget_dot3, R.id.widget_dot4)
+            val labels = intArrayOf(R.id.widget_label1, R.id.widget_label2, R.id.widget_label3, R.id.widget_label4)
+            val names = intArrayOf(R.id.widget_name1, R.id.widget_name2, R.id.widget_name3, R.id.widget_name4)
 
-            val pending = json?.optInt("shoppingPending", 0) ?: 0
-            val shop = if (json == null) {
-                "Compras"
-            } else if (pending == 0) {
-                "Compras: nada pendente"
-            } else {
-                val name = json.optString("shoppingList")
-                val lists = json.optInt("shoppingLists", 1)
-                val items = if (pending == 1) "1 item" else "$pending itens"
-                if (lists > 1) "Compras: $items em $lists listas" else "Compras: $items · $name"
-            }
-            views.setTextViewText(R.id.widget_shopping, shop)
-
-            val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            if (launch != null) {
-                val pi = PendingIntent.getActivity(
-                    context, 0, launch,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            if (meals.isEmpty()) {
+                views.setViewVisibility(R.id.widget_rows, View.GONE)
+                views.setViewVisibility(R.id.widget_empty, View.VISIBLE)
+                views.setViewVisibility(R.id.widget_count, View.GONE)
+                views.setTextViewText(
+                    R.id.widget_empty_title,
+                    if (json == null) "Abra o Receyta" else "Dia livre"
                 )
-                views.setOnClickPendingIntent(R.id.widget_root, pi)
+                views.setTextViewText(
+                    R.id.widget_empty_sub,
+                    if (json == null) "para começar a planejar" else "Nada planejado pra hoje"
+                )
+            } else {
+                views.setViewVisibility(R.id.widget_rows, View.VISIBLE)
+                views.setViewVisibility(R.id.widget_empty, View.GONE)
+
+                val done = meals.count { it.done }
+                views.setViewVisibility(R.id.widget_count, View.VISIBLE)
+                views.setTextViewText(R.id.widget_count, "$done/${meals.size}")
+
+                val overflow = meals.size > MAX_ROWS
+                for (i in 0 until MAX_ROWS) {
+                    val isMore = overflow && i == MAX_ROWS - 1
+                    val meal = if (isMore) null else meals.getOrNull(i)
+                    if (!isMore && meal == null) {
+                        views.setViewVisibility(rows[i], View.GONE)
+                        continue
+                    }
+                    views.setViewVisibility(rows[i], View.VISIBLE)
+                    if (isMore) {
+                        views.setViewVisibility(dots[i], View.INVISIBLE)
+                        views.setTextViewText(labels[i], "")
+                        views.setTextViewText(names[i], "+" + (meals.size - (MAX_ROWS - 1)) + " receitas")
+                    } else {
+                        views.setViewVisibility(dots[i], View.VISIBLE)
+                        views.setImageViewResource(
+                            dots[i],
+                            if (meal!!.done) R.drawable.widget_dot_done else R.drawable.widget_dot_pending
+                        )
+                        views.setTextViewText(labels[i], meal.label.uppercase(locale))
+                        views.setTextViewText(names[i], meal.name)
+                    }
+                }
             }
+
+            WidgetStore.openAppOnClick(context, views, R.id.widget_root)
             return views
         }
     }

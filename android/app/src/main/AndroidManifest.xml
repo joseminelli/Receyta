@@ -122,7 +122,7 @@
         <receiver
             android:exported="false"
             android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
-        <!-- Widget "Hoje" da tela inicial (agenda do dia + compras). -->
+        <!-- Widget "Hoje" da tela inicial (receitas do dia). -->
         <receiver
             android:name=".TodayWidgetProvider"
             android:exported="false"
@@ -133,6 +133,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/receyta_today_widget_info" />
+        </receiver>
+        <!-- Widget "Compras" da tela inicial (lista em aberto). -->
+        <receiver
+            android:name=".ShoppingWidgetProvider"
+            android:exported="false"
+            android:label="Receyta: Compras">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/receyta_shopping_widget_info" />
         </receiver>
     </application>
     <!-- Required to query activities that can process text, see:

@@ -23,7 +23,7 @@ class MainActivity: FlutterActivity() {
                 if (call.method == "update") {
                     val map = call.arguments as? Map<*, *>
                     if (map != null) {
-                        TodayWidgetProvider.save(applicationContext, JSONObject(map).toString())
+                        WidgetStore.save(applicationContext, JSONObject(map).toString())
                     }
                     result.success(null)
                 } else {
