@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/app_info.dart';
 import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
@@ -150,29 +151,80 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
+  /// Exclui a CONTA (login + nuvem). O que está neste aparelho continua: a
+  /// pessoa segue usando o app sem conta, e pode apagar o aparelho à parte.
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final colors = context.colors;
+    final firstOk = await AppDialog.confirm(
+      context,
+      icon: Icons.warning_amber_rounded,
+      accent: colors.danger,
+      title: 'Excluir minha conta?',
+      message: 'Exclui a sua conta e tudo o que ela guarda na nuvem: receitas, '
+          'pastas e fotos. Os outros aparelhos conectados perdem o acesso.\n\n'
+          'O que está salvo neste aparelho continua aqui, e você segue '
+          'usando o app sem conta. Se entrar de novo depois, será uma conta '
+          'nova.\n\nIsso não pode ser desfeito.',
+      cancelLabel: 'Voltar',
+      confirmLabel: 'Continuar',
+    );
+    if (!firstOk || !context.mounted) return;
+
+    final typed = await _confirmTyped(
+      context,
+      word: 'EXCLUIR',
+      title: 'Confirme digitando',
+      action: 'Excluir conta',
+    );
+    if (!typed || !context.mounted) return;
+
+    _showProgress(context, 'Excluindo a conta…');
+    final result = await ref.read(dataResetServiceProvider).deleteAccount();
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+
+    final failure = result.when(ok: (_) => null, err: (f) => f);
+    if (failure != null) {
+      showAppSnackBar(
+        message: failure.message,
+        variant: AppSnackBarVariant.error,
+      );
+      // Servidor apagou mas o aparelho não preparou: a conta já não existe,
+      // então sai da sessão do mesmo jeito.
+      if (failure is! DatabaseFailure) return;
+    }
+    await ref.read(authControllerProvider.notifier).signOut();
+    if (failure == null) {
+      showAppSnackBar(message: 'Conta excluída');
+    }
+  }
+
   /// Só libera o botão depois de digitar a palavra exata.
-  Future<bool> _confirmTyped(BuildContext context) async {
-    const word = 'APAGAR';
+  Future<bool> _confirmTyped(
+    BuildContext context, {
+    String word = 'APAGAR',
+    String title = 'Confirme digitando',
+    String action = 'Apagar tudo',
+  }) async {
     final colors = context.colors;
     final typed = ValueNotifier<String>('');
     final result = await AppDialog.show<bool>(
       context,
       icon: Icons.delete_forever_outlined,
       accent: colors.danger,
-      title: 'Confirme digitando',
+      title: title,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Para apagar tudo de vez, digite $word abaixo.',
+            'Para continuar, digite $word abaixo.',
             style: context.texts.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             autofocus: true,
             textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(hintText: word),
+            decoration: InputDecoration(hintText: word),
             onChanged: (v) => typed.value = v,
           ),
         ],
@@ -190,7 +242,7 @@ class SettingsPage extends ConsumerWidget {
           builder: (dialogContext) => ValueListenableBuilder<String>(
             valueListenable: typed,
             builder: (_, value, __) => PillButton(
-              label: 'Apagar tudo',
+              label: action,
               variant: PillButtonVariant.danger,
               dense: true,
               onPressed: value.trim().toUpperCase() == word
@@ -551,6 +603,15 @@ class SettingsPage extends ConsumerWidget {
                               'nuvem. Não dá para desfazer',
                           danger: true,
                           onTap: () => _wipeEverything(context, ref),
+                        ),
+                      if (user != null)
+                        _NavRow(
+                          icon: Icons.person_remove_outlined,
+                          title: 'Excluir minha conta',
+                          subtitle: 'Remove a conta e os dados dela da nuvem. '
+                              'O que está aqui continua',
+                          danger: true,
+                          onTap: () => _deleteAccount(context, ref),
                         ),
                     ],
                   ),

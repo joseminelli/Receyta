@@ -19,6 +19,10 @@ abstract class AccountDataRemote {
 
   /// Apaga todas as fotos da conta no Storage.
   Future<void> deleteAllImages();
+
+  /// Exclui a conta de login e tudo dela no servidor (função `delete-account`,
+  /// que precisa de permissão que o app não tem).
+  Future<void> deleteAccount();
 }
 
 class SupabaseAccountDataRemote implements AccountDataRemote {
@@ -62,6 +66,14 @@ class SupabaseAccountDataRemote implements AccountDataRemote {
       await bucket.remove(paths);
     }
   }
+
+  @override
+  Future<void> deleteAccount() async {
+    final response = await _client.functions.invoke('delete-account');
+    if (response.status != 200) {
+      throw Exception('delete-account respondeu ${response.status}');
+    }
+  }
 }
 
 /// Bucket das fotos (ver `docs/supabase/recipe-images.sql`).
@@ -78,6 +90,9 @@ class NoAccountDataRemote implements AccountDataRemote {
 
   @override
   Future<void> deleteAllImages() async {}
+
+  @override
+  Future<void> deleteAccount() async {}
 }
 
 /// "Limpar dados" (RF-08.4), em duas medidas. A confirmação e os avisos ficam
@@ -140,11 +155,39 @@ class DataResetService {
     }
   }
 
-  Future<void> _wipeLocal({required bool clearDeletionQueue}) async {
-    await _db.wipeUserData();
-    // Sem receita nenhuma, toda foto local é órfã.
-    await images?.deleteOrphans(const {});
+  /// Exclui a CONTA (login + dados na nuvem) e deixa este aparelho pronto pra
+  /// seguir sem conta: as receitas e fotos daqui ficam, mas tudo volta a "nunca
+  /// sincronizado" — se a pessoa entrar de novo será uma conta nova, e o que
+  /// está aqui sobe do zero. Exige estar conectado. Se o servidor falhar nada
+  /// muda. Quem chama deve sair da sessão depois.
+  Future<Result<void>> deleteAccount() async {
+    if (_remote.userId == null) {
+      return const Err(
+        ValidationFailure('Entre na sua conta para poder excluí-la.'),
+      );
+    }
+    try {
+      await _remote.deleteAccount();
+    } catch (e) {
+      return Err(NetworkFailure(
+        'Não foi possível excluir a conta agora. '
+        'Nada foi apagado; tente de novo.',
+        cause: e,
+      ));
+    }
+    try {
+      await _db.resetSyncState();
+      await _clearSyncPrefs(clearDeletionQueue: true);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure(
+        'A conta foi excluída, mas falhou preparar este aparelho.',
+        cause: e,
+      ));
+    }
+  }
 
+  Future<void> _clearSyncPrefs({required bool clearDeletionQueue}) async {
     final prefs = await SharedPreferences.getInstance();
     for (final key in prefs.getKeys().toList()) {
       if (key.startsWith(syncCursorPrefix)) await prefs.remove(key);
@@ -154,6 +197,14 @@ class DataResetService {
     // apagaria da nuvem fotos que a conta ainda usa.
     await prefs.remove(imageOwnedKey);
     if (clearDeletionQueue) await prefs.remove(imageDeletionQueueKey);
+  }
+
+  Future<void> _wipeLocal({required bool clearDeletionQueue}) async {
+    await _db.wipeUserData();
+    // Sem receita nenhuma, toda foto local é órfã.
+    await images?.deleteOrphans(const {});
+
+    await _clearSyncPrefs(clearDeletionQueue: clearDeletionQueue);
     debugPrint('DataResetService: dados locais limpos');
   }
 }

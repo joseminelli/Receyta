@@ -17,11 +17,18 @@ class _FakeRemote implements AccountDataRemote {
   final calls = <String>[];
   bool failImages = false;
   bool failDocs = false;
+  bool failAccount = false;
 
   @override
   Future<void> deleteAllImages() async {
     calls.add('images');
     if (failImages) throw Exception('sem rede');
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    calls.add('conta');
+    if (failAccount) throw Exception('sem rede');
   }
 
   @override
@@ -176,6 +183,88 @@ void main() {
 
       expect(second.isOk, isTrue);
       expect(await recipeCount(), 0);
+    });
+  });
+
+  group('excluir a conta', () {
+    Future<void> markEverythingSynced() async {
+      for (final r in await db.select(db.recipes).get()) {
+        await db.recipeDao.markSynced(r.id, r.updatedAt);
+        await db.recipeDao.setImageSynced(r.id, r.imagePath);
+      }
+      await db.into(db.syncTombstones).insert(SyncTombstonesCompanion.insert(
+            kind: 'recipe',
+            id: 'velho',
+            deletedAt: DateTime.utc(2026, 1, 1),
+          ));
+    }
+
+    test('chama a função do servidor e mantém as receitas e fotos do aparelho',
+        () async {
+      final result = await service.deleteAccount();
+
+      expect(result.isOk, isTrue);
+      expect(remote.calls, ['conta']);
+      expect(await recipeCount(), 1);
+      expect(await photoCount(), 1);
+    });
+
+    test('o aparelho volta a "nunca sincronizado": numa conta nova tudo sobe',
+        () async {
+      await markEverythingSynced();
+      expect(await db.recipeDao.dirtyForSync(), isEmpty);
+
+      await service.deleteAccount();
+
+      expect(await db.recipeDao.dirtyForSync(), hasLength(1));
+      expect(
+          (await db.select(db.recipes).get()).single.imageSyncedPath, isNull);
+      expect(await db.select(db.syncTombstones).get(), isEmpty);
+    });
+
+    test('esquece cursor, lista do que enviou e fila de fotos da conta velha',
+        () async {
+      await service.deleteAccount();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('sync_cursor_u1'), isFalse);
+      expect(prefs.containsKey('image_owned_names'), isFalse);
+      expect(prefs.containsKey('image_remote_deletions'), isFalse);
+      expect(prefs.getString('settings_text_size'), 'large');
+    });
+
+    test('não mexe na nuvem por conta própria (a função do servidor cuida)',
+        () async {
+      await service.deleteAccount();
+
+      expect(remote.calls, isNot(contains('images')));
+      expect(remote.calls, isNot(contains('docs')));
+    });
+
+    test('sem conta conectada, recusa', () async {
+      remote.userId = null;
+
+      final result = await service.deleteAccount();
+
+      expect((result as Err<void>).failure, isA<ValidationFailure>());
+      expect(remote.calls, isEmpty);
+    });
+
+    test('se o servidor falha, nada muda no aparelho e dá pra repetir',
+        () async {
+      await markEverythingSynced();
+      remote.failAccount = true;
+
+      final result = await service.deleteAccount();
+
+      expect((result as Err<void>).failure, isA<NetworkFailure>());
+      expect(result.failure.message, contains('Nada foi apagado'));
+      expect(await db.recipeDao.dirtyForSync(), isEmpty);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('sync_cursor_u1'), isTrue);
+
+      remote.failAccount = false;
+      expect((await service.deleteAccount()).isOk, isTrue);
     });
   });
 }

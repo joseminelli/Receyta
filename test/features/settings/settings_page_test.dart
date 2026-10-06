@@ -17,6 +17,7 @@ import '../../helpers/fake_auth_service.dart';
 class _FakeReset implements DataResetService {
   final calls = <String>[];
   Result<void> everything = const Ok(null);
+  Result<void> account = const Ok(null);
 
   @override
   RecipeImageService? get images => null;
@@ -25,6 +26,12 @@ class _FakeReset implements DataResetService {
   Future<Result<void>> wipeAll() async {
     calls.add('local');
     return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> deleteAccount() async {
+    calls.add('conta');
+    return account;
   }
 
   @override
@@ -313,6 +320,95 @@ void main() {
       expect(reset.calls, ['tudo']);
       expect(find.text('Confirme digitando'), findsNothing);
       expect(find.text('Apagar tudo, inclusive da conta'), findsOneWidget);
+    });
+
+    testWidgets('"Excluir minha conta" só aparece com conta conectada',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+      expect(find.text('Excluir minha conta'), findsNothing);
+
+      await tester.pumpWidget(_host(auth: FakeAuthService(user: ana)));
+      await tester.pumpAndSettle();
+      expect(find.text('Excluir minha conta'), findsOneWidget);
+    });
+
+    testWidgets('excluir a conta: avisa o que fica, exige EXCLUIR e desconecta',
+        (tester) async {
+      _usePhoneSize(tester);
+      final reset = _FakeReset();
+      final auth = FakeAuthService(user: ana);
+      await tester.pumpWidget(_host(auth: auth, reset: reset));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Excluir minha conta'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('continua aqui'), findsOneWidget);
+      expect(find.textContaining('será uma conta nova'), findsOneWidget);
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('digite EXCLUIR'), findsOneWidget);
+      await tester.tap(find.text('Excluir conta'));
+      await tester.pumpAndSettle();
+      expect(reset.calls, isEmpty);
+
+      await tester.enterText(find.byType(TextField), 'apagar');
+      await tester.pump();
+      await tester.tap(find.text('Excluir conta'));
+      await tester.pumpAndSettle();
+      expect(reset.calls, isEmpty);
+
+      await tester.enterText(find.byType(TextField), 'excluir');
+      await tester.pump();
+      await tester.tap(find.text('Excluir conta'));
+      await tester.pumpAndSettle();
+
+      expect(reset.calls, ['conta']);
+      expect(auth.signOutCalls, 1);
+      expect(find.text('Excluir minha conta'), findsNothing);
+    });
+
+    testWidgets('cancelar a exclusão não faz nada', (tester) async {
+      _usePhoneSize(tester);
+      final reset = _FakeReset();
+      final auth = FakeAuthService(user: ana);
+      await tester.pumpWidget(_host(auth: auth, reset: reset));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Excluir minha conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(reset.calls, isEmpty);
+      expect(auth.signOutCalls, 0);
+    });
+
+    testWidgets('se o servidor falha, a pessoa continua conectada',
+        (tester) async {
+      _usePhoneSize(tester);
+      final reset = _FakeReset()
+        ..account = const Err(NetworkFailure('Sem rede.'));
+      final auth = FakeAuthService(user: ana);
+      await tester.pumpWidget(_host(auth: auth, reset: reset));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Excluir minha conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'EXCLUIR');
+      await tester.pump();
+      await tester.tap(find.text('Excluir conta'));
+      await tester.pumpAndSettle();
+
+      expect(reset.calls, ['conta']);
+      expect(auth.signOutCalls, 0);
+      expect(find.text('Excluir minha conta'), findsOneWidget);
     });
   });
 }

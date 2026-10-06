@@ -89,7 +89,14 @@ class SupabaseAuthService implements AuthService {
     } catch (e) {
       debugPrint('signOut(google): $e');
     }
-    await _client.auth.signOut();
+    try {
+      await _client.auth.signOut();
+    } catch (e) {
+      // Conta já excluída no servidor (ou sem rede): o token não vale mais, e
+      // sair só no aparelho resolve. Nunca deixa a pessoa presa logada.
+      debugPrint('signOut(supabase): $e');
+      await _client.auth.signOut(scope: sb.SignOutScope.local);
+    }
   }
 
   AppUser? _toUser(sb.User? user) {

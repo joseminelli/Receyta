@@ -273,6 +273,22 @@ class AppDatabase extends _$AppDatabase {
   /// nunca esbarrar no `onDelete: restrict` de
   /// `recipe_ingredients.ingredient_id` nem no autorreferencial de
   /// `folders.parent_id`.
+  /// Esquece tudo o que se sabia da nuvem: receitas e pastas voltam a "nunca
+  /// sincronizadas", as fotos a "nunca enviadas" e os avisos de exclusão somem.
+  /// Os dados em si ficam. Usado quando a conta some (excluída): se a pessoa
+  /// entrar de novo, é uma conta nova e tudo precisa subir outra vez.
+  Future<void> resetSyncState() {
+    return transaction(() async {
+      await update(recipes).write(const RecipesCompanion(
+        syncedAt: Value(null),
+        imageSyncedPath: Value(null),
+      ));
+      await update(folders)
+          .write(const FoldersCompanion(syncedAt: Value(null)));
+      await delete(syncTombstones).go();
+    });
+  }
+
   Future<void> wipeUserData() {
     return transaction(() async {
       await delete(shoppingItemSources).go();
