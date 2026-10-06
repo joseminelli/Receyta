@@ -22,6 +22,7 @@ import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 
 /// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
 /// home_shell usa `extendBody`, então a aba desenha por baixo dela.
@@ -221,24 +222,23 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      builder: (sheet) => AppSheetFrame(
+        title: 'Nova lista',
+        child: AppSheetOptions(
           children: [
-            ListTile(
-              leading: const Icon(Icons.add_shopping_cart_outlined),
-              title: const Text('A partir de receitas'),
-              subtitle:
-                  const Text('Soma os ingredientes das que você escolher'),
+            AppSheetOption(
+              icon: Icons.add_shopping_cart_outlined,
+              title: 'A partir de receitas',
+              subtitle: 'Soma os ingredientes das que você escolher',
               onTap: () {
                 Navigator.of(sheet).pop();
                 _createFromRecipes(context);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.edit_note),
-              title: const Text('Lista em branco'),
-              subtitle: const Text('Você adiciona os itens'),
+            AppSheetOption(
+              icon: Icons.edit_note,
+              title: 'Lista em branco',
+              subtitle: 'Você adiciona os itens',
               onTap: () {
                 Navigator.of(sheet).pop();
                 _createEmpty(context);
@@ -285,70 +285,59 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      builder: (sheet) => AppSheetFrame(
+        title: list.name,
+        child: AppSheetOptions(
           children: [
-            ListTile(
-              leading: const Icon(Icons.drive_file_rename_outline),
-              title: const Text('Renomear'),
+            AppSheetOption(
+              icon: Icons.drive_file_rename_outline,
+              title: 'Renomear',
               onTap: () {
                 Navigator.of(sheet).pop();
                 _rename(list);
               },
             ),
-            ListTile(
+            AppSheetOption(
+              icon: Icons.remove_done,
+              title: 'Desmarcar todos',
               enabled: summary.checked > 0,
-              leading: const Icon(Icons.remove_done),
-              title: const Text('Desmarcar todos'),
-              subtitle: Text(
-                summary.checked == 0
-                    ? 'Nenhum item marcado'
-                    : 'Deixa a lista pronta pra próxima compra',
-              ),
+              subtitle: summary.checked == 0
+                  ? 'Nenhum item marcado'
+                  : 'Deixa a lista pronta pra próxima compra',
               onTap: () {
                 Navigator.of(sheet).pop();
                 uncheckAllShoppingItems(ref, list.id);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.copy_all_outlined),
-              title: const Text('Duplicar'),
-              subtitle: const Text('Mesma lista, com tudo desmarcado'),
+            AppSheetOption(
+              icon: Icons.copy_all_outlined,
+              title: 'Duplicar',
+              subtitle: 'Mesma lista, com tudo desmarcado',
               onTap: () {
                 Navigator.of(sheet).pop();
                 _duplicate(list);
               },
             ),
             if (ref.read(authUserProvider).valueOrNull != null)
-              ListTile(
-                leading: Icon(
-                  list.spaceId == null
-                      ? Icons.group_add_outlined
-                      : Icons.group_off_outlined,
-                ),
-                title: Text(
-                  list.spaceId == null
-                      ? 'Compartilhar com a casa'
-                      : 'Deixar de compartilhar',
-                ),
-                subtitle: Text(
-                  list.spaceId == null
-                      ? 'Quem está na casa vê e marca os itens'
-                      : 'Quem está na casa deixa de ver esta lista',
-                ),
+              AppSheetOption(
+                icon: list.spaceId == null
+                    ? Icons.group_add_outlined
+                    : Icons.group_off_outlined,
+                title: list.spaceId == null
+                    ? 'Compartilhar com a casa'
+                    : 'Deixar de compartilhar',
+                subtitle: list.spaceId == null
+                    ? 'Quem está na casa vê e marca os itens'
+                    : 'Quem está na casa deixa de ver esta lista',
                 onTap: () {
                   Navigator.of(sheet).pop();
                   _toggleShared(list);
                 },
               ),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: context.colors.danger),
-              title: Text(
-                'Excluir lista',
-                style: context.texts.bodyLarge
-                    ?.copyWith(color: context.colors.danger),
-              ),
+            AppSheetOption(
+              icon: Icons.delete_outline,
+              title: 'Excluir lista',
+              danger: true,
               onTap: () async {
                 Navigator.of(sheet).pop();
                 if (await _confirmDelete(list)) _delete(list);

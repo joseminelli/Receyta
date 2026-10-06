@@ -7,6 +7,9 @@ import 'package:receyta/features/folders/screens/folder_actions.dart';
 import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/app_sheet.dart';
+import 'package:receyta/widgets/pill_button.dart';
 
 /// Uma escolha do seletor de pasta. `id` nulo = raiz (sem pasta). O `Future`
 /// externo é nulo quando o usuário fecha sem escolher.
@@ -44,84 +47,76 @@ class _FolderPickerSheet extends ConsumerWidget {
         ref.watch(allFoldersProvider).valueOrNull ?? const <Folder>[];
     final rows = _flatten(folders, excludeSubtreeOf);
 
-    return SafeArea(
+    return AppSheetFrame(
+      title: 'Mover para',
+      subtitle: rows.isEmpty
+          ? 'Você ainda não tem pastas. Crie a primeira.'
+          : 'Escolha a pasta de destino',
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.6,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildTitle(context),
             Flexible(child: _buildList(context, rows)),
-            Divider(height: 1, color: context.colors.paperSoft),
-            _buildNewFolderTile(context, ref),
+            const SizedBox(height: AppSpacing.sm),
+            PillButton(
+              label: 'Nova pasta',
+              icon: Icons.create_new_folder_outlined,
+              variant: PillButtonVariant.secondary,
+              onPressed: () => _createFolder(context, ref),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTitle(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        0,
-        AppSpacing.screen,
-        AppSpacing.sm,
-      ),
-      child: Text('Mover para', style: context.texts.displaySmall),
-    );
-  }
-
   Widget _buildList(BuildContext context, List<_FlatFolder> rows) {
-    return ListView(
-      shrinkWrap: true,
-      children: [
+    final colors = context.colors;
+    final entries = <Widget>[
+      _Row(
+        label: 'Raiz',
+        hint: 'Sem pasta',
+        icon: Icons.home_outlined,
+        depth: 0,
+        selected: currentId == null,
+        onTap: () => Navigator.of(context).pop<FolderChoice>((id: null)),
+      ),
+      for (final r in rows)
         _Row(
-          label: 'Raiz',
-          icon: Icons.home_outlined,
-          depth: 0,
-          selected: currentId == null,
-          onTap: () => Navigator.of(context).pop<FolderChoice>((id: null)),
+          label: r.folder.name,
+          icon: Icons.folder_outlined,
+          depth: r.depth,
+          selected: currentId == r.folder.id,
+          onTap: () =>
+              Navigator.of(context).pop<FolderChoice>((id: r.folder.id)),
         ),
-        for (final r in rows)
-          _Row(
-            label: r.folder.name,
-            icon: Icons.folder_outlined,
-            depth: r.depth,
-            selected: currentId == r.folder.id,
-            onTap: () =>
-                Navigator.of(context).pop<FolderChoice>((id: r.folder.id)),
-          ),
-      ],
+    ];
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      itemCount: entries.length,
+      separatorBuilder: (_, __) =>
+          Divider(height: 1, thickness: 1.5, color: colors.paperSoft),
+      itemBuilder: (_, i) => entries[i],
     );
   }
 
-  Widget _buildNewFolderTile(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
-    return ListTile(
-      leading: Icon(Icons.add, color: colors.violet),
-      title: Text(
-        'Nova pasta',
-        style: context.texts.bodyLarge?.copyWith(color: colors.violet),
-      ),
-      onTap: () async {
-        final name = await promptFolderName(
-          context,
-          title: 'Nova pasta',
-          action: 'Criar',
-        );
-        if (name == null || name.isEmpty) return;
-        final result =
-            await ref.read(folderRepositoryProvider).create(name: name);
-        result.when(
-          ok: (folder) =>
-              Navigator.of(context).pop<FolderChoice>((id: folder.id)),
-          err: (_) {},
-        );
-      },
+  Future<void> _createFolder(BuildContext context, WidgetRef ref) async {
+    final name = await promptFolderName(
+      context,
+      title: 'Nova pasta',
+      action: 'Criar',
+    );
+    if (name == null || name.isEmpty || !context.mounted) return;
+    final result = await ref.read(folderRepositoryProvider).create(name: name);
+    if (!context.mounted) return;
+    result.when(
+      ok: (folder) => Navigator.of(context).pop<FolderChoice>((id: folder.id)),
+      err: (_) {},
     );
   }
 }
@@ -152,6 +147,9 @@ List<_FlatFolder> _flatten(List<Folder> all, String? excludeId) {
   return out;
 }
 
+/// Uma pasta do seletor: medalhão `ink` com o ícone em `lime` (o mesmo par das
+/// outras folhas), recuo e uma seta de subpasta conforme o nível, e um check
+/// em quem já é o destino atual.
 class _Row extends StatelessWidget {
   const _Row({
     required this.label,
@@ -159,9 +157,11 @@ class _Row extends StatelessWidget {
     required this.depth,
     required this.selected,
     required this.onTap,
+    this.hint,
   });
 
   final String label;
+  final String? hint;
   final IconData icon;
   final int depth;
   final bool selected;
@@ -170,21 +170,70 @@ class _Row extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return ListTile(
-      contentPadding: EdgeInsets.only(
-        left: AppSpacing.screen + depth * AppSpacing.lg,
-        right: AppSpacing.screen,
-      ),
-      leading: Icon(icon, color: selected ? colors.violet : colors.textMuted),
-      title: Text(
-        label,
-        style: context.texts.bodyLarge?.copyWith(
-          color: selected ? colors.violet : colors.textBody,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+    final subtitle = selected ? 'Aqui agora' : hint;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 64),
+          child: Padding(
+            padding: EdgeInsets.only(left: depth * AppSpacing.md),
+            child: Row(
+              children: [
+                if (depth > 0) ...[
+                  Icon(
+                    Icons.subdirectory_arrow_right_rounded,
+                    size: 18,
+                    color: colors.textMuted,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                ],
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colors.ink,
+                    shape: BoxShape.circle,
+                    border: selected
+                        ? Border.all(color: colors.lime, width: 2)
+                        : null,
+                  ),
+                  child: Icon(icon, size: 21, color: colors.lime),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.display(21),
+                      ),
+                      if (subtitle != null)
+                        Text(
+                          subtitle,
+                          style: context.texts.bodySmall
+                              ?.copyWith(color: colors.textMuted),
+                        ),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  Icon(Icons.check_rounded, color: colors.ink)
+                else
+                  Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
+              ],
+            ),
+          ),
         ),
       ),
-      trailing: selected ? Icon(Icons.check, color: colors.violet) : null,
-      onTap: onTap,
     );
   }
 }

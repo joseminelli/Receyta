@@ -29,6 +29,7 @@ import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/recipe_card.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 
 /// Home da seção Receitas (§9.2): lista lida do Drift, `+` abre o formulário,
 /// tocar num card abre o detalhe, lista horizontal de tags filtra (§RF-01.10).
@@ -43,10 +44,32 @@ class RecipesPage extends ConsumerStatefulWidget {
 class _RecipesPageState extends ConsumerState<RecipesPage> {
   final _controller = ScrollController();
 
+  /// Onde a lista estava quando o arrasto começou, pra voltar pra lá quando
+  /// terminar (soltar numa pasta, na lixeira ou cancelar).
+  double? _offsetBeforeDrag;
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Volta a lista pra onde estava antes do arrasto. Espera o quadro seguinte:
+  /// soltar numa pasta tira a receita da lista, e só depois disso o tamanho
+  /// final (e o limite do que dá pra rolar) está certo.
+  void _restoreOffset() {
+    final target = _offsetBeforeDrag;
+    _offsetBeforeDrag = null;
+    if (target == null || target <= 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controller.hasClients) return;
+      final max = _controller.position.maxScrollExtent;
+      _controller.animateTo(
+        target > max ? max : target,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   @override
@@ -65,12 +88,16 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
     // Ao começar a arrastar um card, sobe até a faixa de pastas pra ela estar
     // visível como alvo de soltar.
     ref.listen(draggingItemProvider, (prev, next) {
-      if (prev == null && next != null && _controller.hasClients) {
+      if (!_controller.hasClients) return;
+      if (prev == null && next != null) {
+        _offsetBeforeDrag = _controller.offset;
         _controller.animateTo(
           0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
+      } else if (prev != null && next == null) {
+        _restoreOffset();
       }
     });
 
@@ -673,27 +700,26 @@ Future<void> _confirmDeleteTag(
   await showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
-    builder: (sheet) => SafeArea(
-      child: ListTile(
-        leading: Icon(Icons.label_off_outlined, color: context.colors.danger),
-        title: Text(
-          'Remover "${tag.name}"',
-          style:
-              context.texts.bodyLarge?.copyWith(color: context.colors.danger),
-        ),
-        subtitle: Text(
-          uses == 0
-              ? 'Não está em nenhuma receita.'
-              : 'Sai de $uses receita${uses == 1 ? '' : 's'}.',
-          style: context.texts.bodyMedium,
-        ),
-        onTap: () async {
-          Navigator.of(sheet).pop();
-          await repo.delete(tag.id);
-          if (selected.contains(tag.id)) {
-            setSelected(Set<String>.from(selected)..remove(tag.id));
-          }
-        },
+    builder: (sheet) => AppSheetFrame(
+      title: tag.name,
+      child: AppSheetOptions(
+        children: [
+          AppSheetOption(
+            icon: Icons.label_off_outlined,
+            title: 'Remover tag',
+            subtitle: uses == 0
+                ? 'Não está em nenhuma receita.'
+                : 'Sai de $uses receita${uses == 1 ? '' : 's'}.',
+            danger: true,
+            onTap: () async {
+              Navigator.of(sheet).pop();
+              await repo.delete(tag.id);
+              if (selected.contains(tag.id)) {
+                setSelected(Set<String>.from(selected)..remove(tag.id));
+              }
+            },
+          ),
+        ],
       ),
     ),
   );

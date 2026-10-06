@@ -77,6 +77,7 @@ class AppSheetOption extends StatelessWidget {
     required this.onTap,
     this.danger = false,
     this.selected = false,
+    this.enabled = true,
   });
 
   final IconData icon;
@@ -86,61 +87,68 @@ class AppSheetOption extends StatelessWidget {
   final bool danger;
   final bool selected;
 
+  /// Desligada: aparece apagada e não reage ao toque.
+  final bool enabled;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Semantics(
       button: true,
       selected: selected,
+      enabled: enabled,
       label: title,
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(AppRadii.sm),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 72),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: danger ? colors.danger : colors.ink,
-                  shape: BoxShape.circle,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.45,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: danger ? colors.danger : colors.ink,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: danger ? colors.onSaturated : colors.lime,
+                  ),
                 ),
-                child: Icon(
-                  icon,
-                  size: 22,
-                  color: danger ? colors.onSaturated : colors.lime,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      style: AppTextStyles.display(23).copyWith(
-                        color: danger ? colors.danger : colors.ink,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                       Text(
-                        subtitle!,
-                        style: context.texts.bodyMedium
-                            ?.copyWith(color: colors.textMuted),
+                        title,
+                        style: AppTextStyles.display(23).copyWith(
+                          color: danger ? colors.danger : colors.ink,
+                        ),
                       ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          style: context.texts.bodyMedium
+                              ?.copyWith(color: colors.textMuted),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (selected)
-                Icon(Icons.check_rounded, color: colors.ink)
-              else
-                Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
-            ],
+                if (selected)
+                  Icon(Icons.check_rounded, color: colors.ink)
+                else if (enabled)
+                  Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
+              ],
+            ),
           ),
         ),
       ),

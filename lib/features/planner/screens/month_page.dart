@@ -23,6 +23,7 @@ import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 
 /// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
 /// home_shell usa `extendBody`, então a aba desenha por baixo dela.
@@ -71,33 +72,21 @@ class MonthPage extends ConsumerWidget {
     final monday = await showModalBottomSheet<DateTime>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      isScrollControlled: true,
+      builder: (sheet) => AppSheetFrame(
+        title: 'Compartilhar a semana',
+        subtitle: 'Escolha qual semana do mês mandar',
+        scrollable: true,
+        child: AppSheetOptions(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                0,
-                AppSpacing.screen,
-                AppSpacing.xs,
-              ),
-              child: Text(
-                'Compartilhar a semana',
-                style: Theme.of(sheet).textTheme.titleLarge,
-              ),
-            ),
             for (final m in monthWeeks(month))
-              ListTile(
+              AppSheetOption(
+                icon: Icons.ios_share,
+                title: weekRangeLabel(m),
                 enabled: countOf(m) > 0,
-                leading: const Icon(Icons.ios_share),
-                title: Text(weekRangeLabel(m)),
-                subtitle: Text(
-                  countOf(m) == 0
-                      ? 'Nada planejado'
-                      : '${countOf(m)} ${countOf(m) == 1 ? 'refeição' : 'refeições'}',
-                ),
+                subtitle: countOf(m) == 0
+                    ? 'Nada planejado'
+                    : '${countOf(m)} ${countOf(m) == 1 ? 'refeição' : 'refeições'}',
                 onTap: () => Navigator.of(sheet).pop(m),
               ),
           ],

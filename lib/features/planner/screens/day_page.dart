@@ -26,6 +26,7 @@ import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 
 /// Tela do dia (§RF-04.2/04.3), segunda etapa do planejamento: as quatro
 /// refeições (café, almoço, jantar, lanche) com as receitas agendadas. Rota
@@ -325,44 +326,44 @@ class _DayPageState extends ConsumerState<DayPage> {
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      builder: (sheet) => AppSheetFrame(
+        title: entry.recipeName,
+        subtitle: entry.sharedBy == null
+            ? entry.mealType.label
+            : '${entry.mealType.label} · ${entry.sharedBy}',
+        child: AppSheetOptions(
           children: [
-            ListTile(
-              leading: const Icon(Icons.drive_file_move_outline),
-              title: const Text('Mover para…'),
+            AppSheetOption(
+              icon: Icons.drive_file_move_outline,
+              title: 'Mover para…',
               onTap: () {
                 Navigator.of(sheet).pop();
                 _moveFlow(entry);
               },
             ),
             if (entry.isFromOther)
-              ListTile(
-                leading: const Icon(Icons.menu_book_outlined),
-                title: const Text('Ver a receita'),
-                subtitle: const Text('Ingredientes e preparo, e guardar'),
+              AppSheetOption(
+                icon: Icons.menu_book_outlined,
+                title: 'Ver a receita',
+                subtitle: 'Ingredientes e preparo, e guardar',
                 onTap: () {
                   Navigator.of(sheet).pop();
                   showSharedMealSheet(context, ref, entry);
                 },
               )
             else
-              ListTile(
-                leading: const Icon(Icons.copy_all_outlined),
-                title: const Text('Duplicar para…'),
+              AppSheetOption(
+                icon: Icons.copy_all_outlined,
+                title: 'Duplicar para…',
                 onTap: () {
                   Navigator.of(sheet).pop();
                   _duplicateFlow(entry);
                 },
               ),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: context.colors.danger),
-              title: Text(
-                'Remover do plano',
-                style: context.texts.bodyLarge
-                    ?.copyWith(color: context.colors.danger),
-              ),
+            AppSheetOption(
+              icon: Icons.delete_outline,
+              title: 'Remover do plano',
+              danger: true,
               onTap: () {
                 Navigator.of(sheet).pop();
                 _remove(entry);

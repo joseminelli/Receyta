@@ -16,6 +16,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 
 /// Altura fixa dos dois cartões: baixa o bastante pra não empurrar os
 /// ingredientes pra longe.
@@ -73,15 +74,16 @@ class _ShoppingCard extends ConsumerWidget {
     final picked = await showModalBottomSheet<ShoppingList>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      isScrollControlled: true,
+      builder: (sheet) => AppSheetFrame(
+        title: 'Em qual lista?',
+        scrollable: true,
+        child: AppSheetOptions(
           children: [
             for (final l in lists)
-              ListTile(
-                leading: const Icon(Icons.shopping_bag_outlined),
-                title:
-                    Text(l.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              AppSheetOption(
+                icon: Icons.shopping_bag_outlined,
+                title: l.name,
                 onTap: () => Navigator.of(sheet).pop(l),
               ),
           ],

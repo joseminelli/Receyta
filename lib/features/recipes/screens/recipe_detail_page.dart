@@ -32,6 +32,7 @@ import 'package:receyta/widgets/skeleton_box.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/recipe_cover.dart';
 import 'package:receyta/widgets/tile_style_picker.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 
 /// Tela de detalhe da receita (B6): "dá para cozinhar lendo pelo app". Hero
 /// `coral` com azulejo (§9.2), sheet de conteúdo subindo 18px sobre ele
@@ -470,29 +471,29 @@ class _Hero extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      builder: (sheet) => AppSheetFrame(
+        title: 'Compartilhar',
+        subtitle: recipe.name,
+        child: AppSheetOptions(
           children: [
-            ListTile(
-              leading: const Icon(Icons.description_outlined),
-              title: const Text('Arquivo .receyta'),
-              subtitle: const Text('Pra importar em outro Receyta'),
+            AppSheetOption(
+              icon: Icons.description_outlined,
+              title: 'Arquivo .receyta',
+              subtitle: 'Pra importar em outro Receyta',
               onTap: () {
                 Navigator.of(sheet).pop();
                 _shareAs(context, ref, (s) => s.shareRecipe(recipe.id));
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.picture_as_pdf_outlined),
-              title: const Text('PDF'),
-              subtitle: const Text('Pra imprimir ou ler em outro app'),
+            AppSheetOption(
+              icon: Icons.picture_as_pdf_outlined,
+              title: 'PDF',
+              subtitle: 'Pra imprimir ou ler em outro app',
               onTap: () {
                 Navigator.of(sheet).pop();
                 _shareAs(context, ref, (s) => s.sharePdf(recipe.id));
               },
             ),
-            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),

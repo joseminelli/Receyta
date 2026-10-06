@@ -8,11 +8,11 @@ import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/screens/folder_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
-import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/tile_style_picker.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 
 /// Diálogo de nome de pasta — serve pra criar ("Nova pasta") e renomear.
 /// Devolve o texto confirmado, ou nulo se cancelou.
@@ -167,59 +167,55 @@ Future<void> showFolderMenu(
   Folder folder, {
   required VoidCallback onDeleted,
 }) {
-  final colors = context.colors;
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
-    builder: (sheet) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    builder: (sheet) => AppSheetFrame(
+      title: folder.name,
+      child: AppSheetOptions(
         children: [
-          ListTile(
-            leading: const Icon(Icons.drive_file_rename_outline),
-            title: const Text('Renomear'),
+          AppSheetOption(
+            icon: Icons.drive_file_rename_outline,
+            title: 'Renomear',
             onTap: () {
               Navigator.of(sheet).pop();
               renameFolderFlow(context, ref, folder);
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.palette_outlined),
-            title: const Text('Aparência'),
+          AppSheetOption(
+            icon: Icons.palette_outlined,
+            title: 'Aparência',
             onTap: () {
               Navigator.of(sheet).pop();
               folderAppearanceFlow(context, ref, folder);
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.drive_file_move_outline),
-            title: const Text('Mover pasta'),
+          AppSheetOption(
+            icon: Icons.drive_file_move_outline,
+            title: 'Mover pasta',
             onTap: () {
               Navigator.of(sheet).pop();
               moveFolderFlow(context, ref, folder);
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.create_new_folder_outlined),
-            title: const Text('Nova subpasta'),
+          AppSheetOption(
+            icon: Icons.create_new_folder_outlined,
+            title: 'Nova subpasta',
             onTap: () {
               Navigator.of(sheet).pop();
               createFolderFlow(context, ref, parentId: folder.id);
             },
           ),
-          ListTile(
-            leading: Icon(Icons.delete_outline, color: colors.danger),
-            title: Text(
-              'Excluir pasta',
-              style: context.texts.bodyLarge?.copyWith(color: colors.danger),
-            ),
+          AppSheetOption(
+            icon: Icons.delete_outline,
+            title: 'Excluir pasta',
+            danger: true,
             onTap: () async {
               Navigator.of(sheet).pop();
               final deleted = await deleteFolderFlow(context, ref, folder);
               if (deleted) onDeleted();
             },
           ),
-          const SizedBox(height: AppSpacing.sm),
         ],
       ),
     ),
