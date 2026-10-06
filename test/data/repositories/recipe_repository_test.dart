@@ -120,6 +120,36 @@ void main() {
     expect(raw.read<DateTime?>('deleted_at'), isNotNull);
   });
 
+  test('setImage grava e tira a foto; referencedImagePaths lista as em uso',
+      () async {
+    final a = unwrap(await repo.saveDetail(name: 'A'));
+    final b = unwrap(await repo.saveDetail(name: 'B'));
+
+    await repo.setImage(a.id, 'a_1.jpg');
+    await repo.setImage(b.id, 'b_1.jpg');
+
+    expect(unwrapDetail(await repo.getDetail(a.id)).recipe.imagePath, 'a_1.jpg');
+    expect(await repo.referencedImagePaths(), {'a_1.jpg', 'b_1.jpg'});
+
+    await repo.setImage(a.id, null);
+
+    expect(unwrapDetail(await repo.getDetail(a.id)).recipe.imagePath, isNull);
+    expect(await repo.referencedImagePaths(), {'b_1.jpg'});
+  });
+
+  test('editar o conteúdo da receita não perde a foto', () async {
+    final a = unwrap(await repo.saveDetail(name: 'A'));
+    await repo.setImage(a.id, 'a_1.jpg');
+    final loaded = unwrapDetail(await repo.getDetail(a.id)).recipe;
+
+    await repo.saveDetail(base: loaded, name: 'A editada');
+
+    expect(
+      unwrapDetail(await repo.getDetail(a.id)).recipe.imagePath,
+      'a_1.jpg',
+    );
+  });
+
   test('setFavorite alterna e reflete no watch', () async {
     final r = unwrap(await repo.saveDetail(name: 'Bolo'));
     expect(r.isFavorite, isFalse);

@@ -243,6 +243,21 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     );
   }
 
+  /// Nome do arquivo da foto (ou nulo pra tirar a foto).
+  Future<int> setImagePath(String id, String? imagePath, DateTime at) {
+    return (update(recipes)..where((r) => r.id.equals(id))).write(
+      RecipesCompanion(imagePath: Value(imagePath), updatedAt: Value(at)),
+    );
+  }
+
+  /// Nomes de foto ainda em uso (inclui a lixeira — a receita pode voltar).
+  Future<Set<String>> referencedImagePaths() async {
+    final rows = await (select(recipes)
+          ..where((r) => r.imagePath.isNotNull()))
+        .get();
+    return {for (final r in rows) r.imagePath!};
+  }
+
   Future<int> setLastOpenedAt(String id, DateTime at) {
     return (update(recipes)..where((r) => r.id.equals(id)))
         .write(RecipesCompanion(lastOpenedAt: Value(at)));

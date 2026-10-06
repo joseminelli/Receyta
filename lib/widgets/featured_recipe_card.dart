@@ -5,7 +5,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
-import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/recipe_cover.dart';
 
 /// Card grande da "Recentes" (§9.8): nome em escala grande sobre o bloco de
 /// azulejo `coral`, faixa `ink` embaixo com o tempo grande e os chips.
@@ -61,11 +61,10 @@ class FeaturedRecipeCard extends StatelessWidget {
                           tag: recipeTileHeroTag(recipe.id),
                           flightShuttleBuilder:
                               recipeTileHeroFlightShuttleBuilder,
-                          child: TilePattern(
-                            motif: tile.motif,
-                            background: tile.background,
-                            patternColor: tile.patternColor,
-                            patternColorAlt: tile.patternColorAlt,
+                          child: RecipeCover(
+                            recipe: recipe,
+                            tile: tile,
+                            scrim: true,
                           ),
                         ),
                       ),
@@ -77,7 +76,9 @@ class FeaturedRecipeCard extends StatelessWidget {
                       child: Text(
                         recipe.name,
                         style: AppTextStyles.display(42)
-                            .copyWith(color: tile.onColor),
+                            .copyWith(
+                          color: RecipeCover.onColor(context, recipe, tile),
+                        ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),

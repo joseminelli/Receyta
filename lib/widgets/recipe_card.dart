@@ -4,10 +4,10 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
-import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/recipe_cover.dart';
 
-/// Card de receita da grade (§9.4). Bloco de azulejo em cima, faixa `paperSoft`
-/// com nome e tempo embaixo. Sem foto ainda — a imagem (B7) cobre o azulejo.
+/// Card de receita da grade (§9.4). Capa em cima (a foto, ou o azulejo quando a receita não tem),
+/// faixa `paperSoft` com nome e tempo embaixo.
 /// A cor e o módulo vêm da escolha do usuário (`recipe.tileColor/tileMotif`),
 /// ou derivam do id quando ele não escolheu.
 class RecipeCard extends StatelessWidget {
@@ -54,12 +54,7 @@ class RecipeCard extends StatelessWidget {
                   child: Hero(
                     tag: recipeTileHeroTag(recipe.id),
                     flightShuttleBuilder: recipeTileHeroFlightShuttleBuilder,
-                    child: TilePattern(
-                      motif: tile.motif,
-                      background: tile.background,
-                      patternColor: tile.patternColor,
-                      patternColorAlt: tile.patternColorAlt,
-                    ),
+                    child: RecipeCover(recipe: recipe, tile: tile),
                   ),
                 ),
               ),

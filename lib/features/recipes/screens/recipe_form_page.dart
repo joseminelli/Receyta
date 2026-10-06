@@ -1,17 +1,24 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path/path.dart' as p;
 
+import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tag_name.dart';
+import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/domain/models/tag.dart';
+import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/screens/recipe_photo_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
@@ -191,6 +198,10 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
 
   bool _saving = false;
 
+  /// Foto escolhida no formulário. Só vai pro banco no "Salvar"; um arquivo
+  /// novo que ficar sem receita é apagado na manutenção do próximo boot.
+  late String? _photo = _recipe?.imagePath;
+
   bool get _isEditing => _recipe != null;
 
   double get _keyboardInset =>
@@ -348,6 +359,10 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
           sourceUrl: _draft?.sourceUrl,
         );
 
+    if (result case Ok<Recipe>(:final value)) {
+      await _commitPhoto(value.id);
+    }
+
     if (!mounted) return;
     result.when(
       ok: (_) => context.pop(),
@@ -360,6 +375,30 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
         );
       },
     );
+  }
+
+  Future<void> _pickPhoto() async {
+    final change = await choosePhoto(
+      context,
+      ref,
+      recipeId: _recipe?.id ?? 'nova',
+      hasPhoto: _photo != null,
+    );
+    if (change == null || !mounted) return;
+    final previous = _photo;
+    if (previous != null && previous != _recipe?.imagePath) {
+      unawaited(ref.read(recipeImageServiceProvider).delete(previous));
+    }
+    setState(() => _photo = change.imagePath);
+  }
+
+  Future<void> _commitPhoto(String recipeId) async {
+    final original = _recipe?.imagePath;
+    if (_photo == original) return;
+    final images = ref.read(recipeImageServiceProvider);
+    final saved =
+        await ref.read(recipeRepositoryProvider).setImage(recipeId, _photo);
+    if (saved.isOk) await images.delete(original);
   }
 
   void _reorder(List<_Line> list, int oldIndex, int newIndex) {
@@ -398,6 +437,7 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
                     : AppSpacing.xxl,
               ),
               children: [
+                _PhotoField(photo: _photo, onTap: _pickPhoto),
                 _Field(
                   label: 'Nome',
                   controller: _name,
@@ -897,6 +937,74 @@ class _RemovableChip extends StatelessWidget {
               const SizedBox(width: AppSpacing.xs / 2),
               Icon(Icons.close, size: 16, color: colors.textMuted),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Foto da receita no formulário: prévia (ou convite) que abre a folha de
+/// escolha — tirar, galeria, remover.
+class _PhotoField extends ConsumerWidget {
+  const _PhotoField({required this.photo, required this.onTap});
+
+  final String? photo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final name = photo;
+    final dir =
+        name == null ? null : ref.watch(recipeImagesDirProvider).valueOrNull;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Semantics(
+        button: true,
+        label: name == null ? 'Adicionar foto' : 'Trocar foto',
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: Material(
+            color: colors.paperSoft,
+            child: InkWell(
+              onTap: onTap,
+              child: SizedBox(
+                height: 160,
+                child: name != null && dir != null
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.file(
+                            File(p.join(dir.path, name)),
+                            fit: BoxFit.cover,
+                            cacheWidth: 900,
+                            errorBuilder: (_, __, ___) => const SizedBox(),
+                          ),
+                          Positioned(
+                            right: AppSpacing.sm,
+                            bottom: AppSpacing.sm,
+                            child: Icon(Icons.edit_outlined,
+                                color: colors.onSaturated),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo_outlined,
+                              size: 32, color: colors.textMuted),
+                          const SizedBox(height: AppSpacing.xs),
+                          Text(
+                            'Adicionar foto',
+                            style: context.texts.bodyMedium
+                                ?.copyWith(color: colors.textMuted),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
           ),
         ),
       ),

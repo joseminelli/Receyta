@@ -21,6 +21,7 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/features/recipes/screens/recipe_photo_flow.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/expanding_create_menu.dart';
@@ -29,7 +30,7 @@ import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/section_header.dart';
 import 'package:receyta/widgets/skeleton_box.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
-import 'package:receyta/widgets/tile_pattern.dart';
+import 'package:receyta/widgets/recipe_cover.dart';
 import 'package:receyta/widgets/tile_style_picker.dart';
 
 /// Tela de detalhe da receita (B6): "dá para cozinhar lendo pelo app". Hero
@@ -513,6 +514,11 @@ class _Hero extends ConsumerWidget {
         onSelected: () => _showShare(context, ref),
       ),
       CreateMenuAction(
+        icon: Icons.add_a_photo_outlined,
+        label: 'Foto',
+        onSelected: () => changeRecipePhoto(context, ref, recipe),
+      ),
+      CreateMenuAction(
         icon: Icons.palette_outlined,
         label: 'Aparência',
         onSelected: () => showAppearanceSheet(
@@ -586,15 +592,15 @@ class _Hero extends ConsumerWidget {
                     child: Hero(
                       tag: recipeTileHeroTag(recipe.id),
                       flightShuttleBuilder: recipeTileHeroFlightShuttleBuilder,
-                      child: TilePattern(
-                        motif: tile.motif,
-                        background: tile.background,
-                        patternColor: tile.patternColor,
-                        patternColorAlt: tile.patternColorAlt,
+                      child: RecipeCover(
+                        recipe: recipe,
+                        tile: tile,
+                        scrim: true,
+                        cacheWidth: 1200,
                       ),
                     ),
                   ),
-                  if (minutes != null) _buildMinutesBadge(minutes, tile),
+                  if (minutes != null) _buildMinutesBadge(context, minutes, tile),
                   _buildTopContent(context, ref, colors, tile),
                 ],
               ),
@@ -605,13 +611,18 @@ class _Hero extends ConsumerWidget {
     );
   }
 
-  Widget _buildMinutesBadge(int minutes, TileAppearance tile) {
+  Widget _buildMinutesBadge(
+    BuildContext context,
+    int minutes,
+    TileAppearance tile,
+  ) {
     return Transform.translate(
       offset: const Offset(-40, -20), // 40px pra esquerda, 30px pra cima
       child: HeroNumber(
         value: '$minutes',
         unit: 'min',
-        color: tile.onColor.withValues(alpha: 0.5),
+        color: RecipeCover.onColor(context, recipe, tile)
+            .withValues(alpha: 0.5),
         corner: Alignment.bottomRight,
         size: 100,
       ),
@@ -673,7 +684,8 @@ class _Hero extends ConsumerWidget {
             const Spacer(),
             Text(
               recipe.name,
-              style: AppTextStyles.display(44).copyWith(color: tile.onColor),
+              style: AppTextStyles.display(44)
+                  .copyWith(color: RecipeCover.onColor(context, recipe, tile)),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/data/services/recipe_image_service.dart';
 
 /// Quanto esperar depois da abertura pra rodar a manutenção em segundo plano
 /// (deixa a home aparecer e o primeiro gesto passar antes de mexer no
@@ -34,8 +35,10 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
   final delay = ref.read(maintenanceDelayProvider);
   if (delay != null) {
     final recipes = ref.read(recipeRepositoryProvider);
+    final images = ref.read(recipeImageServiceProvider);
     unawaited(
-      Future<void>.delayed(delay).then((_) => runAppMaintenance(recipes)),
+      Future<void>.delayed(delay)
+          .then((_) => runAppMaintenance(recipes, images: images)),
     );
   }
 });
@@ -43,9 +46,21 @@ final appBootstrapProvider = FutureProvider<void>((ref) async {
 /// Manutenção que não precisa bloquear a abertura: apaga da lixeira o que
 /// passou de 30 dias (RF-01.6) e resolve ingredientes de receitas antigas
 /// (C5). Nunca lança — falha aqui não pode derrubar o app, só vira log.
-Future<void> runAppMaintenance(RecipeRepository recipes) async {
+/// Com [images], apaga também as fotos que nenhuma receita usa mais (receita
+/// apagada de vez, foto trocada).
+Future<void> runAppMaintenance(
+  RecipeRepository recipes, {
+  RecipeImageService? images,
+}) async {
   try {
     await _timed('bootstrap.purgeExpired', recipes.purgeExpired);
+    if (images != null) {
+      await _timed(
+        'bootstrap.deleteOrphanImages',
+        () async =>
+            images.deleteOrphans(await recipes.referencedImagePaths()),
+      );
+    }
     await _timed(
       'bootstrap.reprocessLegacyIngredients',
       recipes.reprocessLegacyIngredients,

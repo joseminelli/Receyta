@@ -276,6 +276,19 @@ class RecipeRepository {
     }
   }
 
+  /// Troca (ou tira, com `null`) a foto da receita. Recebe o NOME do arquivo
+  /// já guardado pelo `RecipeImageService`.
+  Future<Result<void>> setImage(String id, String? imagePath) async {
+    try {
+      await _dao.setImagePath(id, imagePath, _clock().toUtc());
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao salvar a foto', cause: e));
+    }
+  }
+
+  Future<Set<String>> referencedImagePaths() => _dao.referencedImagePaths();
+
   Future<Result<void>> softDelete(String id) async {
     try {
       await _dao.softDelete(id, _clock().toUtc());
