@@ -12,6 +12,9 @@ class FakeSyncRemote implements SyncRemote {
   int pullCalls = 0;
   int pushCalls = 0;
   bool failPull = false;
+
+  /// Se preenchido, a leitura lança este erro (pra testar cada causa de falha).
+  Object? pullError;
   var _clock = DateTime.utc(2026, 1, 1);
 
   @override
@@ -33,6 +36,8 @@ class FakeSyncRemote implements SyncRemote {
   @override
   Future<List<SyncDoc>> pullSince(DateTime? since) async {
     pullCalls++;
+    final error = pullError;
+    if (error != null) throw error;
     if (failPull) throw Exception('sem rede');
     return [
       for (final d in docs.values)

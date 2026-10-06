@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -73,12 +74,12 @@ class SupabaseAuthService implements AuthService {
         accessToken: auth.accessToken,
       );
       return Ok(_toUser(response.user));
-    } on SocketException catch (e) {
-      return Err(NetworkFailure('Sem conexão com a internet.', cause: e));
-    } on sb.AuthException catch (e) {
-      return Err(ProcessingFailure(e.message, cause: e));
+    } on PlatformException catch (e) {
+      // Algumas versões do plugin avisam o cancelamento assim, não com `null`.
+      if (e.code == 'sign_in_canceled') return const Ok(null);
+      return Err(failureForSignIn(e));
     } catch (e) {
-      return Err(ProcessingFailure('Não foi possível entrar.', cause: e));
+      return Err(failureForSignIn(e));
     }
   }
 
@@ -109,6 +110,34 @@ class SupabaseAuthService implements AuthService {
       avatarUrl: (meta['avatar_url'] ?? meta['picture']) as String?,
     );
   }
+}
+
+/// A falha de login em português: sem rede, o Google recusando neste aparelho
+/// (quase sempre configuração do app) ou outra coisa. O texto cru do Google e
+/// do Supabase (em inglês, técnico) fica só em `cause`.
+Failure failureForSignIn(Object error) {
+  final text = error.toString().toLowerCase();
+  final offline = error is SocketException ||
+      error is sb.AuthRetryableFetchException ||
+      (error is PlatformException && error.code == 'network_error') ||
+      text.contains('socketexception') ||
+      text.contains('failed host lookup') ||
+      text.contains('network_error') ||
+      text.contains('unable to resolve host');
+  if (offline) {
+    return NetworkFailure(
+      'Sem internet. Conecte-se e tente de novo.',
+      cause: error,
+    );
+  }
+  if (error is PlatformException) {
+    return ProcessingFailure(
+      'Não foi possível entrar com o Google neste aparelho. Tente de novo.',
+      cause: error,
+    );
+  }
+  return ProcessingFailure('Não foi possível entrar. Tente de novo.',
+      cause: error);
 }
 
 /// Usado quando o Supabase não inicializou: ninguém logado e entrar falha

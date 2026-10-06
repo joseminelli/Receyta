@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,7 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/auth_service.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:receyta/data/sync/sync_remote.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -265,5 +268,97 @@ void main() {
     await until(() => state().lastSyncAt != null, reason: 'hora salva');
 
     expect(state().lastSyncAt, DateTime.utc(2026, 2, 28, 8));
+  });
+
+  group('cada causa de falha tem a sua reação', () {
+    Future<void> startWithFailure(Object error) async {
+      remote.pullError = error;
+      auth = FakeAuthService(user: _ana);
+      container.dispose();
+      container = ProviderContainer(overrides: [
+        databaseProvider.overrideWithValue(db),
+        syncRemoteProvider.overrideWithValue(remote),
+        authServiceProvider.overrideWithValue(auth),
+        imageRemoteProvider.overrideWithValue(const NoImageRemote()),
+        syncDebounceProvider
+            .overrideWithValue(const Duration(milliseconds: 30)),
+        syncPeriodProvider.overrideWithValue(null),
+        syncRetryBaseProvider
+            .overrideWithValue(const Duration(milliseconds: 40)),
+        syncClockProvider.overrideWithValue(() => now),
+      ]);
+      container.listen(syncCoordinatorProvider, (_, __) {});
+      coordinator().start();
+      await until(() => state().phase == SyncPhase.error, reason: 'erro');
+    }
+
+    test('sem internet: mostra a mensagem certa e tenta de novo sozinho',
+        () async {
+      await startWithFailure(const SocketException('x'));
+
+      expect(state().problem, SyncProblem.offline);
+      expect(state().failure, 'Sem internet. Tentamos de novo sozinhos.');
+      final pulls = remote.pullCalls;
+      await until(() => remote.pullCalls > pulls, reason: 'nova tentativa');
+    });
+
+    test('sessão vencida: mensagem pede entrar de novo e NÃO fica tentando',
+        () async {
+      await startWithFailure(sb.AuthException('Invalid Refresh Token'));
+
+      expect(state().problem, SyncProblem.auth);
+      expect(state().failure, contains('Entre de novo'));
+      final pulls = remote.pullCalls;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(remote.pullCalls, pulls, reason: 'sem tentativa automática');
+    });
+
+    test('sessão vencida: um novo pedido (voltar pro app, botão) tenta uma vez',
+        () async {
+      await startWithFailure(sb.AuthException('Invalid Refresh Token'));
+      final pulls = remote.pullCalls;
+
+      remote.pullError = null;
+      coordinator().requestSync(immediate: true);
+      await until(() => state().lastSyncAt != null, reason: 'recuperou');
+
+      expect(remote.pullCalls, greaterThan(pulls));
+      expect(state().problem, isNull);
+      expect(state().failure, isNull);
+    });
+
+    test('espaço da nuvem acabado: espera MUITO mais antes de tentar de novo',
+        () async {
+      await startWithFailure(
+          sb.PostgrestException(message: 'x', code: '25006'));
+
+      expect(state().problem, SyncProblem.serverFull);
+      final pulls = remote.pullCalls;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(remote.pullCalls, pulls,
+          reason: 'espera 20x a base (800 ms aqui), não os 40 ms do resto');
+    });
+
+    test('servidor ruim: mensagem própria e tenta de novo', () async {
+      await startWithFailure(sb.PostgrestException(message: 'x', code: '503'));
+
+      expect(state().problem, SyncProblem.server);
+      expect(state().failure, contains('servidor'));
+      final pulls = remote.pullCalls;
+      await until(() => remote.pullCalls > pulls, reason: 'nova tentativa');
+    });
+
+    test('ao dar certo de novo, a causa e a mensagem somem', () async {
+      await startWithFailure(const SocketException('x'));
+
+      remote.pullError = null;
+      await until(() => state().lastSyncAt != null, reason: 'recuperou');
+
+      expect(state().problem, isNull);
+      expect(state().failure, isNull);
+      expect(state().phase, SyncPhase.idle);
+    });
   });
 }

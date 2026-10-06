@@ -9,6 +9,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/services/auth_service.dart';
 import 'package:receyta/data/sync/sync_engine.dart';
+import 'package:receyta/data/sync/sync_error.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 
 enum SyncPhase { idle, syncing, error }
@@ -21,6 +22,7 @@ class SyncState {
     this.phase = SyncPhase.idle,
     this.lastSyncAt,
     this.failure,
+    this.problem,
   });
 
   /// Há conta conectada (sem ela não há o que sincronizar nem o que mostrar).
@@ -30,14 +32,19 @@ class SyncState {
   /// Última rodada que deu certo.
   final DateTime? lastSyncAt;
 
-  /// Mensagem da última falha, enquanto durar.
+  /// Mensagem da última falha, enquanto durar (já em português, pronta pra
+  /// mostrar).
   final String? failure;
+
+  /// O que causou a falha — a tela e as novas tentativas dependem disso.
+  final SyncProblem? problem;
 
   SyncState copyWith({
     bool? enabled,
     SyncPhase? phase,
     DateTime? lastSyncAt,
     String? failure,
+    SyncProblem? problem,
     bool clearFailure = false,
   }) {
     return SyncState(
@@ -45,6 +52,7 @@ class SyncState {
       phase: phase ?? this.phase,
       lastSyncAt: lastSyncAt ?? this.lastSyncAt,
       failure: clearFailure ? null : (failure ?? this.failure),
+      problem: clearFailure ? null : (problem ?? this.problem),
     );
   }
 }
@@ -195,7 +203,7 @@ class SyncCoordinator extends Notifier<SyncState> {
       result = await ref.read(syncEngineProvider).sync();
     } catch (e) {
       _running = false;
-      _fail('Não foi possível sincronizar agora.');
+      _fail(classifySyncError(e));
       return;
     }
     _running = false;
@@ -216,7 +224,11 @@ class SyncCoordinator extends Notifier<SyncState> {
           requestSync();
         }
       case Err(:final failure):
-        _fail(failure.message);
+        _fail(
+          failure is SyncFailure
+              ? failure
+              : SyncFailure(SyncProblem.unknown, failure.message),
+        );
     }
   }
 
@@ -225,18 +237,31 @@ class SyncCoordinator extends Notifier<SyncState> {
     await prefs.setString(_lastSyncKey, at.toIso8601String());
   }
 
-  void _fail(String message) {
+  /// Guarda a falha e agenda (ou não) a próxima tentativa conforme a causa:
+  /// sessão vencida não melhora sozinha — espera a pessoa entrar de novo (ou o
+  /// app voltar ao primeiro plano); espaço da nuvem acabado tenta raramente;
+  /// o resto tenta com espera crescente.
+  void _fail(SyncFailure failure) {
     _failures++;
     _again = false;
-    state = state.copyWith(phase: SyncPhase.error, failure: message);
-    // 1x, 2x, 4x, 8x e no máximo 10x a espera base (30 s → até 5 min).
-    final base = ref.read(syncRetryBaseProvider).inMilliseconds;
-    final factor = (1 << (_failures - 1).clamp(0, 3)).clamp(1, 10);
-    _retry?.cancel();
-    _retry = Timer(
-      Duration(milliseconds: base * factor),
-      () => unawaited(_run()),
+    state = state.copyWith(
+      phase: SyncPhase.error,
+      failure: failure.message,
+      problem: failure.problem,
     );
+    _retry?.cancel();
+    _retry = null;
+
+    final base = ref.read(syncRetryBaseProvider).inMilliseconds;
+    final Duration? wait = switch (failure.problem) {
+      SyncProblem.auth => null,
+      // 20x a espera base: 10 minutos com a base de 30 s.
+      SyncProblem.serverFull => Duration(milliseconds: base * 20),
+      _ => Duration(
+          milliseconds: base * (1 << (_failures - 1).clamp(0, 3)).clamp(1, 10),
+        ),
+    };
+    if (wait != null) _retry = Timer(wait, () => unawaited(_run()));
   }
 
   void _cancelWork() {

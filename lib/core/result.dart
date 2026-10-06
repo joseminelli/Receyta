@@ -62,6 +62,32 @@ final class NetworkFailure extends Failure {
   const NetworkFailure(super.message, {super.cause});
 }
 
+/// Por que uma rodada de sincronização falhou — cada causa pede uma reação.
+enum SyncProblem {
+  /// Sem internet: tenta de novo sozinho.
+  offline,
+
+  /// O servidor respondeu com erro: tenta de novo, com espera.
+  server,
+
+  /// O espaço da nuvem acabou (banco somente leitura). Esperar não resolve;
+  /// o app segue funcionando só no aparelho.
+  serverFull,
+
+  /// Sessão vencida ou recusada: só entrando de novo.
+  auth,
+
+  /// Qualquer outra coisa.
+  unknown,
+}
+
+/// Falha do sync já traduzida pra pessoa (ver `classifySyncError`).
+final class SyncFailure extends Failure {
+  const SyncFailure(this.problem, super.message, {super.cause});
+
+  final SyncProblem problem;
+}
+
 /// Falha de processamento local — OCR (C8), leitura de arquivo, o que não é
 /// nem banco nem rede.
 final class ProcessingFailure extends Failure {

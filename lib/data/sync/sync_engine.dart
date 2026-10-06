@@ -12,6 +12,8 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
+import 'package:receyta/data/sync/sync_dedupe.dart';
+import 'package:receyta/data/sync/sync_error.dart';
 import 'package:receyta/data/sync/sync_handler.dart';
 import 'package:receyta/data/sync/sync_handlers.dart';
 import 'package:receyta/data/sync/sync_remote.dart';
@@ -20,7 +22,13 @@ import 'package:receyta/domain/engine/sync_codec.dart';
 export 'package:receyta/data/sync/sync_handler.dart' show remoteWins;
 
 /// O que uma rodada de sincronização fez.
-typedef SyncReport = ({int pulled, int applied, int removed, int pushed});
+typedef SyncReport = ({
+  int pulled,
+  int applied,
+  int removed,
+  int pushed,
+  int merged,
+});
 
 /// Sincroniza receitas e pastas com a conta (H3). Local primeiro: o banco do
 /// aparelho é a fonte da verdade, e a rodada é sempre "puxar o que mudou na
@@ -91,13 +99,11 @@ class SyncEngine {
         applied: pull.applied,
         removed: pull.removed,
         pushed: pushed,
+        merged: pull.merged,
       ));
     } catch (e) {
       debugPrint('SyncEngine: $e');
-      return Err(NetworkFailure(
-        'Não foi possível sincronizar agora.',
-        cause: e,
-      ));
+      return Err(classifySyncError(e));
     }
   }
 
@@ -105,12 +111,14 @@ class SyncEngine {
   // Puxar
   // -------------------------------------------------------------------------
 
-  Future<({int pulled, int applied, int removed})> _pull(String uid) async {
+  Future<({int pulled, int applied, int removed, int merged})> _pull(
+    String uid,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final key = '${DataResetService.syncCursorPrefix}$uid';
     final saved = DateTime.tryParse(prefs.getString(key) ?? '');
     final docs = await remote.pullSince(saved?.subtract(overlap));
-    if (docs.isEmpty) return (pulled: 0, applied: 0, removed: 0);
+    if (docs.isEmpty) return (pulled: 0, applied: 0, removed: 0, merged: 0);
 
     final result = await _apply(docs);
 
@@ -127,10 +135,13 @@ class SyncEngine {
       pulled: docs.length,
       applied: result.applied,
       removed: result.removed,
+      merged: result.merged,
     );
   }
 
-  Future<({int applied, int removed})> _apply(List<SyncDoc> docs) async {
+  Future<({int applied, int removed, int merged})> _apply(
+    List<SyncDoc> docs,
+  ) async {
     final liveFolders = <SyncFolder>[];
     final goneFolders = <SyncDoc>[];
     final liveRecipes = <SyncRecipe>[];
@@ -154,7 +165,10 @@ class SyncEngine {
 
     var applied = 0;
     var removed = 0;
+    var merged = 0;
     final imagesToCheck = <String>{};
+    final freshFolders = <SyncFolder>[];
+    final freshRecipes = <SyncRecipe>[];
 
     await db.transaction(() async {
       // Pais e filhos chegam em qualquer ordem; as chaves estrangeiras são
@@ -198,6 +212,7 @@ class SyncEngine {
                 folderIds.contains(f.parentId))
             ? f.parentId
             : null;
+        if (local == null) freshFolders.add(f);
         await db.folderDao.upsertRaw(FolderRow(
           id: f.id,
           parentId: parent,
@@ -246,12 +261,22 @@ class SyncEngine {
         )) {
           continue;
         }
+        if (local == null) freshRecipes.add(r);
         await _applyRecipe(r, local, knownFolders, knownUnits);
         if (local?.imagePath != null && local!.imagePath != r.imageName) {
           imagesToCheck.add(local.imagePath!);
         }
         applied++;
       }
+
+      // 4b) cópias locais idênticas às que acabaram de chegar (mesmo conteúdo
+      // criado separado em dois aparelhos antes da conta)
+      final deduper = SyncDeduper(db);
+      merged += await deduper.mergeFolders(freshFolders);
+      merged += await deduper.mergeRecipes(
+        freshRecipes,
+        onImageFreed: imagesToCheck.add,
+      );
 
       // 5) o resto, depois das receitas (calendário, histórico e origens dos
       // itens de compras dependem delas)
@@ -275,7 +300,7 @@ class SyncEngine {
         await service.deleteIfUnused(name, db.recipeDao.isImagePathUsed);
       }
     }
-    return (applied: applied, removed: removed);
+    return (applied: applied, removed: removed, merged: merged);
   }
 
   Future<void> _applyRecipe(

@@ -14,6 +14,8 @@ import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 
+import '../../../helpers/db_settle.dart';
+
 Recipe _trashed(String id, String name) => Recipe(
       id: id,
       name: name,
@@ -68,7 +70,7 @@ void main() {
     trash.add(const []);
     await tester.pumpAndSettle();
 
-    expect(find.text('A lixeira está vazia.'), findsOneWidget);
+    expect(find.text('A lixeira está vazia'), findsOneWidget);
   });
 
   testWidgets('restaura e exclui de vez chamam o repositório', (tester) async {
@@ -82,20 +84,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sopa'), findsOneWidget);
-    expect(find.textContaining('Apaga em'), findsNWidgets(2));
+    // Cada linha mostra a contagem regressiva num distintivo. Apagada há 5
+    // dias e uns milissegundos: faltam 24 dias e uma fração, e o distintivo
+    // mostra só os dias inteiros.
+    expect(find.text('dias restantes'), findsNWidgets(2));
+    expect(find.text('24'), findsNWidgets(2));
 
-    await tester.tap(find.descendant(
-      of: find.widgetWithText(ListTile, 'Sopa'),
-      matching: find.byIcon(Icons.restore_from_trash_outlined),
-    ));
+    // As linhas seguem a ordem da lista: Sopa primeiro, Bolo depois.
+    await tester.tap(find.byTooltip('Restaurar').first);
     await tester.pumpAndSettle();
+    await settleDb(tester);
     expect(await stateOf(tester, a.value.id), 'ativa');
 
-    await tester.tap(find.descendant(
-      of: find.widgetWithText(ListTile, 'Bolo'),
-      matching: find.byIcon(Icons.delete_forever_outlined),
-    ));
+    await tester.tap(find.byTooltip('Excluir de vez').last);
     await tester.pumpAndSettle();
+    expect(find.textContaining('Excluir "Bolo"'), findsOneWidget);
+    await tester.tap(find.text('Excluir'));
+    await tester.pumpAndSettle();
+    await settleDb(tester);
     expect(await stateOf(tester, b.value.id), 'sumiu');
   });
 }

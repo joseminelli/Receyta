@@ -485,20 +485,97 @@ void main() {
       expect(c.syncNowCalls, 0);
     });
 
-    testWidgets('falha: mostra o aviso, em vermelho, sem esconder o botão',
+    testWidgets(
+        'sem internet: mostra a mensagem do motor, nuvem cortada, '
+        'botão Sincronizar', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(coordinator(const SyncState(
+        enabled: true,
+        phase: SyncPhase.error,
+        problem: SyncProblem.offline,
+        failure: 'Sem internet. Tentamos de novo sozinhos.',
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sem internet. Tentamos de novo sozinhos.'),
+          findsOneWidget);
+      expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+      expect(find.text('Sincronizar'), findsOneWidget);
+      expect(find.text('Entrar de novo'), findsNothing);
+    });
+
+    testWidgets('espaço da nuvem acabou: mensagem própria e ícone de aviso',
         (tester) async {
       _usePhoneSize(tester);
       await tester.pumpWidget(host(coordinator(const SyncState(
         enabled: true,
         phase: SyncPhase.error,
-        failure: 'x',
+        problem: SyncProblem.serverFull,
+        failure:
+            'O espaço da nuvem acabou. Seus dados continuam salvos neste aparelho.',
       ))));
       await tester.pumpAndSettle();
 
-      expect(
-          find.text('Sem conexão. Tentamos de novo sozinhos.'), findsOneWidget);
-      expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+      expect(find.textContaining('espaço da nuvem acabou'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_off_outlined), findsNothing);
       expect(find.text('Sincronizar'), findsOneWidget);
+    });
+
+    testWidgets('sessão vencida: o botão vira "Entrar de novo" e faz o login',
+        (tester) async {
+      _usePhoneSize(tester);
+      final auth = FakeAuthService();
+      await tester.pumpWidget(ProviderScope(
+        overrides: [
+          initialAppSettingsProvider.overrideWithValue(const AppSettings()),
+          authServiceProvider.overrideWithValue(auth),
+          syncCoordinatorProvider.overrideWith(
+            () => coordinator(const SyncState(
+              enabled: true,
+              phase: SyncPhase.error,
+              problem: SyncProblem.auth,
+              failure:
+                  'Sua sessão expirou. Entre de novo para voltar a sincronizar.',
+            )),
+          ),
+          syncClockProvider.overrideWithValue(() => now),
+          libraryStatsProvider.overrideWithValue(
+            const AsyncData((
+              recipes: 1,
+              folders: 0,
+              lists: 0,
+              plannedMeals: 0,
+              doneMeals: 0,
+              topRecipe: null,
+              topRecipeCount: 0,
+            )),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(body: AccountPage()),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('sessão expirou'), findsOneWidget);
+      expect(find.text('Sincronizar'), findsNothing);
+      await tester.tap(find.text('Entrar de novo'));
+      await tester.pump();
+
+      expect(auth.signInCalls, 1);
+    });
+
+    testWidgets('falha sem mensagem ainda mostra algo útil', (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(host(coordinator(const SyncState(
+        enabled: true,
+        phase: SyncPhase.error,
+      ))));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Não foi possível sincronizar agora.'), findsOneWidget);
     });
 
     testWidgets('tocar em Sincronizar pede uma rodada na hora', (tester) async {

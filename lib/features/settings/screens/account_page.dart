@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/format_bytes.dart';
+import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:receyta/domain/engine/sync_status_text.dart';
@@ -666,12 +667,13 @@ class _SyncStatusTileState extends ConsumerState<_SyncStatusTile> {
     final now = ref.watch(syncClockProvider)();
     final syncing = sync.phase == SyncPhase.syncing;
     final failed = sync.phase == SyncPhase.error;
+    final needsSignIn = failed && sync.problem == SyncProblem.auth;
     final last = sync.lastSyncAt;
 
     final text = syncing
         ? 'Sincronizando…'
         : failed
-            ? 'Sem conexão. Tentamos de novo sozinhos.'
+            ? (sync.failure ?? 'Não foi possível sincronizar agora.')
             : last == null
                 ? 'Aguardando a primeira sincronização'
                 : 'Sincronizado · ${formatSyncAgo(last, now)}';
@@ -695,7 +697,10 @@ class _SyncStatusTileState extends ConsumerState<_SyncStatusTile> {
                   ? const CircularProgressIndicator(strokeWidth: 2.5)
                   : Icon(
                       failed
-                          ? Icons.cloud_off_outlined
+                          ? (needsSignIn ||
+                                  sync.problem == SyncProblem.serverFull
+                              ? Icons.error_outline_rounded
+                              : Icons.cloud_off_outlined)
                           : Icons.cloud_done_outlined,
                       size: 22,
                       color: failed ? colors.danger : colors.textMuted,
@@ -713,10 +718,12 @@ class _SyncStatusTileState extends ConsumerState<_SyncStatusTile> {
             TextButton(
               onPressed: syncing
                   ? null
-                  : () => ref
-                      .read(syncCoordinatorProvider.notifier)
-                      .requestSync(immediate: true),
-              child: const Text('Sincronizar'),
+                  : needsSignIn
+                      ? () => ref.read(authControllerProvider.notifier).signIn()
+                      : () => ref
+                          .read(syncCoordinatorProvider.notifier)
+                          .requestSync(immediate: true),
+              child: Text(needsSignIn ? 'Entrar de novo' : 'Sincronizar'),
             ),
           ],
         ),
