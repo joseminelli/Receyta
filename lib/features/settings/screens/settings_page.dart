@@ -22,6 +22,7 @@ import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Configurações (RF-08.1), aberta pela engrenagem da aba "Conta". Quatro
@@ -57,20 +58,30 @@ class SettingsPage extends ConsumerWidget {
 
   Future<void> _wipe(BuildContext context, WidgetRef ref) async {
     final colors = context.colors;
+    final loggedIn = ref.read(authUserProvider).valueOrNull != null;
     final neverBackedUp = ref.read(appSettingsProvider).lastBackupAt == null;
     final firstOk = await AppDialog.confirm(
       context,
       icon: Icons.warning_amber_rounded,
       accent: colors.danger,
-      title: 'Limpar todos os dados?',
-      message: neverBackedUp
-          ? 'Você ainda não fez um backup. Apaga receitas, pastas, tags e '
+      title: loggedIn ? 'Limpar este aparelho?' : 'Limpar todos os dados?',
+      message: [
+        if (loggedIn)
+          'Apaga receitas, pastas, tags, ingredientes e fotos só neste '
+              'aparelho. A sua conta continua com uma cópia, e ela volta '
+              'quando o app sincronizar. Para apagar também da conta, use '
+              '"Apagar tudo, inclusive da conta".'
+        else if (neverBackedUp)
+          'Você ainda não fez um backup. Apaga receitas, pastas, tags e '
               'ingredientes deste aparelho — volte e use "Backup" antes, se '
               'quiser guardar uma cópia.'
-          : 'Apaga receitas, pastas, tags e ingredientes salvos neste '
+        else
+          'Apaga receitas, pastas, tags e ingredientes salvos neste '
               'aparelho. Seu último backup fica com você, fora do app.',
+      ].join(' '),
       cancelLabel: 'Voltar',
-      confirmLabel: neverBackedUp ? 'Continuar assim mesmo' : 'Continuar',
+      confirmLabel:
+          (!loggedIn && neverBackedUp) ? 'Continuar assim mesmo' : 'Continuar',
     );
     if (!firstOk || !context.mounted) return;
 
@@ -79,17 +90,141 @@ class SettingsPage extends ConsumerWidget {
       icon: Icons.delete_forever_outlined,
       accent: colors.danger,
       title: 'Tem certeza?',
-      message: 'Essa ação não pode ser desfeita — os dados somem de vez.',
-      confirmLabel: 'Apagar tudo',
+      message: loggedIn
+          ? 'Os dados somem deste aparelho. Com a conta conectada, eles '
+              'voltam na próxima sincronização.'
+          : 'Essa ação não pode ser desfeita — os dados somem de vez.',
+      confirmLabel: loggedIn ? 'Limpar' : 'Apagar tudo',
     );
     if (!finalOk) return;
 
     final result = await ref.read(dataResetServiceProvider).wipeAll();
     result.when(
-      ok: (_) => showAppSnackBar(message: 'Dados apagados'),
+      ok: (_) => showAppSnackBar(
+        message: loggedIn ? 'Este aparelho foi limpo' : 'Dados apagados',
+      ),
       err: (f) => showAppSnackBar(
         message: f.message,
         variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
+  /// Apaga tudo: aparelho E conta. Três travas — aviso (com lembrete de
+  /// backup), confirmação DIGITADA e o aviso de que não há volta — porque é a
+  /// única ação do app que não dá pra desfazer de jeito nenhum.
+  Future<void> _wipeEverything(BuildContext context, WidgetRef ref) async {
+    final colors = context.colors;
+    final neverBackedUp = ref.read(appSettingsProvider).lastBackupAt == null;
+
+    final firstOk = await AppDialog.confirm(
+      context,
+      icon: Icons.warning_amber_rounded,
+      accent: colors.danger,
+      title: 'Apagar tudo, inclusive da conta?',
+      message: 'Apaga receitas, pastas, tags e fotos deste aparelho E da sua '
+          'conta na nuvem. Os outros aparelhos conectados também perdem tudo '
+          'na próxima sincronização.\n\n'
+          '${neverBackedUp ? 'Você ainda não fez um backup — volte e use '
+              '"Backup" antes se quiser guardar uma cópia. ' : ''}'
+          'Isso não pode ser desfeito.',
+      cancelLabel: 'Voltar',
+      confirmLabel: 'Continuar',
+    );
+    if (!firstOk || !context.mounted) return;
+
+    final typed = await _confirmTyped(context);
+    if (!typed || !context.mounted) return;
+
+    _showProgress(context, 'Apagando tudo…');
+    final result = await ref.read(dataResetServiceProvider).wipeEverything();
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+    result.when(
+      ok: (_) => showAppSnackBar(
+        message: 'Tudo foi apagado, deste aparelho e da conta',
+      ),
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
+  /// Só libera o botão depois de digitar a palavra exata.
+  Future<bool> _confirmTyped(BuildContext context) async {
+    const word = 'APAGAR';
+    final colors = context.colors;
+    final typed = ValueNotifier<String>('');
+    final result = await AppDialog.show<bool>(
+      context,
+      icon: Icons.delete_forever_outlined,
+      accent: colors.danger,
+      title: 'Confirme digitando',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Para apagar tudo de vez, digite $word abaixo.',
+            style: context.texts.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(hintText: word),
+            onChanged: (v) => typed.value = v,
+          ),
+        ],
+      ),
+      actions: [
+        Builder(
+          builder: (dialogContext) => PillButton(
+            label: 'Cancelar',
+            variant: PillButtonVariant.ghost,
+            dense: true,
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+          ),
+        ),
+        Builder(
+          builder: (dialogContext) => ValueListenableBuilder<String>(
+            valueListenable: typed,
+            builder: (_, value, __) => PillButton(
+              label: 'Apagar tudo',
+              variant: PillButtonVariant.danger,
+              dense: true,
+              onPressed: value.trim().toUpperCase() == word
+                  ? () => Navigator.of(dialogContext).pop(true)
+                  : null,
+            ),
+          ),
+        ),
+      ],
+    );
+    typed.dispose();
+    return result ?? false;
+  }
+
+  void _showProgress(BuildContext context, String message) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          backgroundColor: context.colors.paper,
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(strokeWidth: 3),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(child: Text(message)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -398,12 +533,25 @@ class SettingsPage extends ConsumerWidget {
                     title: 'Zona de risco',
                     children: [
                       _NavRow(
-                        icon: Icons.delete_forever_outlined,
-                        title: 'Limpar dados',
-                        subtitle: 'Apaga tudo o que está salvo neste aparelho',
+                        icon: Icons.delete_outline,
+                        title: user == null
+                            ? 'Limpar dados'
+                            : 'Limpar este aparelho',
+                        subtitle: user == null
+                            ? 'Apaga tudo o que está salvo neste aparelho'
+                            : 'A conta guarda uma cópia, que volta ao sincronizar',
                         danger: true,
                         onTap: () => _wipe(context, ref),
                       ),
+                      if (user != null)
+                        _NavRow(
+                          icon: Icons.delete_forever_outlined,
+                          title: 'Apagar tudo, inclusive da conta',
+                          subtitle: 'Receitas, pastas e fotos, aqui e na '
+                              'nuvem. Não dá para desfazer',
+                          danger: true,
+                          onTap: () => _wipeEverything(context, ref),
+                        ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),

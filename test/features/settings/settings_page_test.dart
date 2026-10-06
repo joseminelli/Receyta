@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/auth_service.dart';
+import 'package:receyta/data/services/data_reset_service.dart';
+import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/screens/settings_page.dart';
@@ -11,9 +14,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../helpers/fake_auth_service.dart';
 
+class _FakeReset implements DataResetService {
+  final calls = <String>[];
+  Result<void> everything = const Ok(null);
+
+  @override
+  RecipeImageService? get images => null;
+
+  @override
+  Future<Result<void>> wipeAll() async {
+    calls.add('local');
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<void>> wipeEverything() async {
+    calls.add('tudo');
+    return everything;
+  }
+}
+
 Widget _host({
   AppSettings initial = const AppSettings(),
   FakeAuthService? auth,
+  _FakeReset? reset,
 }) {
   final router = GoRouter(
     initialLocation: '/settings',
@@ -27,6 +51,7 @@ Widget _host({
     overrides: [
       initialAppSettingsProvider.overrideWithValue(initial),
       authServiceProvider.overrideWithValue(auth ?? FakeAuthService()),
+      if (reset != null) dataResetServiceProvider.overrideWithValue(reset),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -153,5 +178,141 @@ void main() {
 
     expect(auth.signOutCalls, 1);
     expect(find.text('Sair da conta'), findsNothing);
+  });
+
+  group('zona de risco', () {
+    const ana = AppUser(id: 'u1', email: 'ana@x.com', name: 'Ana Souza');
+
+    testWidgets('sem conta: só "Limpar dados", sem a opção da nuvem',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(_host());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Limpar dados'), findsOneWidget);
+      expect(find.text('Apagar tudo, inclusive da conta'), findsNothing);
+    });
+
+    testWidgets('com conta: as duas opções, com textos que dizem a diferença',
+        (tester) async {
+      _usePhoneSize(tester);
+      await tester.pumpWidget(_host(auth: FakeAuthService(user: ana)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Limpar este aparelho'), findsOneWidget);
+      expect(find.textContaining('volta ao sincronizar'), findsOneWidget);
+      expect(find.text('Apagar tudo, inclusive da conta'), findsOneWidget);
+      expect(find.textContaining('Não dá para desfazer'), findsOneWidget);
+    });
+
+    testWidgets('limpar este aparelho avisa que a conta guarda uma cópia',
+        (tester) async {
+      _usePhoneSize(tester);
+      final reset = _FakeReset();
+      await tester.pumpWidget(
+        _host(auth: FakeAuthService(user: ana), reset: reset),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Limpar este aparelho'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('A sua conta continua com uma cópia'),
+          findsOneWidget);
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Limpar'));
+      await tester.pumpAndSettle();
+
+      expect(reset.calls, ['local']);
+    });
+
+    testWidgets('apagar tudo exige digitar APAGAR; antes disso o botão não age',
+        (tester) async {
+      _usePhoneSize(tester);
+      final reset = _FakeReset();
+      await tester.pumpWidget(
+        _host(auth: FakeAuthService(user: ana), reset: reset),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Apagar tudo, inclusive da conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Confirme digitando'), findsOneWidget);
+      await tester.tap(find.text('Apagar tudo'));
+      await tester.pumpAndSettle();
+      expect(reset.calls, isEmpty);
+      expect(find.text('Confirme digitando'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'apag');
+      await tester.pump();
+      await tester.tap(find.text('Apagar tudo'));
+      await tester.pumpAndSettle();
+      expect(reset.calls, isEmpty);
+
+      await tester.enterText(find.byType(TextField), 'apagar');
+      await tester.pump();
+      await tester.tap(find.text('Apagar tudo'));
+      await tester.pumpAndSettle();
+
+      expect(reset.calls, ['tudo']);
+      expect(find.text('Confirme digitando'), findsNothing);
+    });
+
+    testWidgets('cancelar em qualquer passo não apaga nada', (tester) async {
+      _usePhoneSize(tester);
+      final reset = _FakeReset();
+      await tester.pumpWidget(
+        _host(auth: FakeAuthService(user: ana), reset: reset),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Apagar tudo, inclusive da conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Voltar'));
+      await tester.pumpAndSettle();
+      expect(reset.calls, isEmpty);
+
+      await tester.tap(find.text('Apagar tudo, inclusive da conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(reset.calls, isEmpty);
+    });
+
+    testWidgets('falha na nuvem termina o fluxo sem derrubar a tela',
+        (tester) async {
+      _usePhoneSize(tester);
+      final reset = _FakeReset()
+        ..everything = const Err(NetworkFailure(
+          'Não foi possível apagar os dados da conta. '
+          'Nada foi apagado neste aparelho; tente de novo.',
+        ));
+      await tester.pumpWidget(
+        _host(auth: FakeAuthService(user: ana), reset: reset),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Apagar tudo, inclusive da conta'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'APAGAR');
+      await tester.pump();
+      await tester.tap(find.text('Apagar tudo'));
+      await tester.pumpAndSettle();
+
+      // O erro vem como mensagem; o aviso em si usa o overlay da raiz (que
+      // este host de teste não monta), então aqui só garante que o fluxo
+      // terminou sem derrubar a tela.
+      expect(reset.calls, ['tudo']);
+      expect(find.text('Confirme digitando'), findsNothing);
+      expect(find.text('Apagar tudo, inclusive da conta'), findsOneWidget);
+    });
   });
 }
