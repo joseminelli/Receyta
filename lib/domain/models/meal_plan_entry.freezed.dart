@@ -24,6 +24,14 @@ mixin _$MealPlanEntry {
   String? get note => throw _privateConstructorUsedError;
   bool get done => throw _privateConstructorUsedError;
 
+  /// Casa em que a refeição é compartilhada (nulo = só da pessoa).
+  String? get spaceId => throw _privateConstructorUsedError;
+
+  /// Nome de quem planejou, quando foi OUTRA pessoa da casa; nulo nas
+  /// refeições da própria pessoa. Refeição de outra pessoa carrega só um
+  /// resumo da receita (não existe na biblioteca daqui).
+  String? get sharedBy => throw _privateConstructorUsedError;
+
   /// Create a copy of MealPlanEntry
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -44,7 +52,9 @@ abstract class $MealPlanEntryCopyWith<$Res> {
       MealType mealType,
       int? servingsOverride,
       String? note,
-      bool done});
+      bool done,
+      String? spaceId,
+      String? sharedBy});
 
   $RecipeCopyWith<$Res> get recipe;
 }
@@ -71,6 +81,8 @@ class _$MealPlanEntryCopyWithImpl<$Res, $Val extends MealPlanEntry>
     Object? servingsOverride = freezed,
     Object? note = freezed,
     Object? done = null,
+    Object? spaceId = freezed,
+    Object? sharedBy = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -101,6 +113,14 @@ class _$MealPlanEntryCopyWithImpl<$Res, $Val extends MealPlanEntry>
           ? _value.done
           : done // ignore: cast_nullable_to_non_nullable
               as bool,
+      spaceId: freezed == spaceId
+          ? _value.spaceId
+          : spaceId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sharedBy: freezed == sharedBy
+          ? _value.sharedBy
+          : sharedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 
@@ -130,7 +150,9 @@ abstract class _$$MealPlanEntryImplCopyWith<$Res>
       MealType mealType,
       int? servingsOverride,
       String? note,
-      bool done});
+      bool done,
+      String? spaceId,
+      String? sharedBy});
 
   @override
   $RecipeCopyWith<$Res> get recipe;
@@ -156,6 +178,8 @@ class __$$MealPlanEntryImplCopyWithImpl<$Res>
     Object? servingsOverride = freezed,
     Object? note = freezed,
     Object? done = null,
+    Object? spaceId = freezed,
+    Object? sharedBy = freezed,
   }) {
     return _then(_$MealPlanEntryImpl(
       id: null == id
@@ -186,6 +210,14 @@ class __$$MealPlanEntryImplCopyWithImpl<$Res>
           ? _value.done
           : done // ignore: cast_nullable_to_non_nullable
               as bool,
+      spaceId: freezed == spaceId
+          ? _value.spaceId
+          : spaceId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sharedBy: freezed == sharedBy
+          ? _value.sharedBy
+          : sharedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -200,7 +232,9 @@ class _$MealPlanEntryImpl extends _MealPlanEntry {
       required this.mealType,
       this.servingsOverride,
       this.note,
-      this.done = false})
+      this.done = false,
+      this.spaceId,
+      this.sharedBy})
       : super._();
 
   @override
@@ -219,9 +253,19 @@ class _$MealPlanEntryImpl extends _MealPlanEntry {
   @JsonKey()
   final bool done;
 
+  /// Casa em que a refeição é compartilhada (nulo = só da pessoa).
+  @override
+  final String? spaceId;
+
+  /// Nome de quem planejou, quando foi OUTRA pessoa da casa; nulo nas
+  /// refeições da própria pessoa. Refeição de outra pessoa carrega só um
+  /// resumo da receita (não existe na biblioteca daqui).
+  @override
+  final String? sharedBy;
+
   @override
   String toString() {
-    return 'MealPlanEntry(id: $id, recipe: $recipe, date: $date, mealType: $mealType, servingsOverride: $servingsOverride, note: $note, done: $done)';
+    return 'MealPlanEntry(id: $id, recipe: $recipe, date: $date, mealType: $mealType, servingsOverride: $servingsOverride, note: $note, done: $done, spaceId: $spaceId, sharedBy: $sharedBy)';
   }
 
   @override
@@ -237,12 +281,15 @@ class _$MealPlanEntryImpl extends _MealPlanEntry {
             (identical(other.servingsOverride, servingsOverride) ||
                 other.servingsOverride == servingsOverride) &&
             (identical(other.note, note) || other.note == note) &&
-            (identical(other.done, done) || other.done == done));
+            (identical(other.done, done) || other.done == done) &&
+            (identical(other.spaceId, spaceId) || other.spaceId == spaceId) &&
+            (identical(other.sharedBy, sharedBy) ||
+                other.sharedBy == sharedBy));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType, id, recipe, date, mealType, servingsOverride, note, done);
+  int get hashCode => Object.hash(runtimeType, id, recipe, date, mealType,
+      servingsOverride, note, done, spaceId, sharedBy);
 
   /// Create a copy of MealPlanEntry
   /// with the given fields replaced by the non-null parameter values.
@@ -261,7 +308,9 @@ abstract class _MealPlanEntry extends MealPlanEntry {
       required final MealType mealType,
       final int? servingsOverride,
       final String? note,
-      final bool done}) = _$MealPlanEntryImpl;
+      final bool done,
+      final String? spaceId,
+      final String? sharedBy}) = _$MealPlanEntryImpl;
   const _MealPlanEntry._() : super._();
 
   @override
@@ -278,6 +327,16 @@ abstract class _MealPlanEntry extends MealPlanEntry {
   String? get note;
   @override
   bool get done;
+
+  /// Casa em que a refeição é compartilhada (nulo = só da pessoa).
+  @override
+  String? get spaceId;
+
+  /// Nome de quem planejou, quando foi OUTRA pessoa da casa; nulo nas
+  /// refeições da própria pessoa. Refeição de outra pessoa carrega só um
+  /// resumo da receita (não existe na biblioteca daqui).
+  @override
+  String? get sharedBy;
 
   /// Create a copy of MealPlanEntry
   /// with the given fields replaced by the non-null parameter values.

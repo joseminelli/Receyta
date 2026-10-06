@@ -7,5 +7,6 @@ mixin _$MealPlanDaoMixin on DatabaseAccessor<AppDatabase> {
   $FoldersTable get folders => attachedDatabase.folders;
   $RecipesTable get recipes => attachedDatabase.recipes;
   $MealPlanEntriesTable get mealPlanEntries => attachedDatabase.mealPlanEntries;
+  $SharedMealsTable get sharedMeals => attachedDatabase.sharedMeals;
   $CookLogsTable get cookLogs => attachedDatabase.cookLogs;
 }

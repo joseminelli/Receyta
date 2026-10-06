@@ -96,14 +96,16 @@ final upcomingEntriesProvider =
 
 /// Quantas vezes cada receita aparece nas refeições ainda por fazer
 /// (`done == false`) a partir de [from] — é o que a lista de compras da
-/// semana precisa comprar (receita feita 2× = ingredientes em dobro).
+/// semana precisa comprar (receita feita 2× = ingredientes em dobro). As
+/// refeições de outras pessoas da casa ficam de fora: a receita delas não
+/// existe na biblioteca daqui.
 Map<String, int> pendingRecipeCounts(
   List<MealPlanEntry> entries,
   DateTime from,
 ) {
   final counts = <String, int>{};
   for (final e in entries) {
-    if (e.done || e.date.isBefore(dayOf(from))) continue;
+    if (e.done || e.isFromOther || e.date.isBefore(dayOf(from))) continue;
     counts.update(e.recipeId, (n) => n + 1, ifAbsent: () => 1);
   }
   return counts;

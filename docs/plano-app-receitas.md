@@ -1048,8 +1048,18 @@ Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princí
 | H0b | ✅ Foto no backup `.receyta` e no import de link | 0,5 | Restaurar um backup traz as fotos; importar de link já vem com a foto da página |
 | H3 | **Sync de receitas e pastas** pela conta Google (detalhe abaixo) | 5 | Receita criada, editada ou apagada num aparelho aparece igual no outro, com foto |
 | H4 | ✅ Sync do resto: calendário, listas de compras (lista + cada item), despensa, histórico "cozinhei" — mesmo motor do H3, um tratador por tipo | 3 | Cada um sincroniza sem duplicar nem perder item |
+| H5 | ✅ **Casa**: espaço compartilhado entre pessoas (até 6, uma casa por pessoa, convite por código de uso único, 48 h). **Listas de compras** compartilhadas uma a uma e **calendário** da casa (interruptor). Tempo real via Supabase Realtime | 4 | Quem marca um item ou planeja uma refeição aparece no outro aparelho em ~1 s; sair da casa devolve tudo à pessoa |
 | H1 | Link efêmero (ex-D7): function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
 | H2 | Deep link (ex-D8): App Links/Universal Links resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
+
+#### H5 — Casa (2026-10-06)
+
+**Modelo.** Tabelas `spaces`, `space_members`, `space_invites` e `shared_docs` (mesmo formato do `sync_docs`, mas da casa), com RLS por `is_space_member`; criar, convidar, entrar, sair e remover são funções do servidor (`docs/supabase/spaces.sql`, que o usuário precisa rodar). Schema local **v10** (`space_id` em listas, refeições e avisos de exclusão) e **v11** (`shared_meals`). O que tem `space_id` sincroniza com a casa (`SharedSyncEngine`, `shared_cursor_<casa>`), o resto continua com a conta; o motor da conta ignora o que é da casa e o da casa ignora o que é da conta, inclusive nos avisos de exclusão.
+
+**Calendário.** As refeições da pessoa sobem com um resumo da receita (nome, azulejo, ingredientes, preparo); quem recebe vê a refeição sem ter a receita (`shared_meals`) e pode guardá-la na biblioteca. Marcar como feita, mover e apagar a refeição de outra pessoa voltam pro dono. Entra só de hoje em diante; as da lista de compras da semana ignoram refeições de outras pessoas.
+
+**Sair.** Sair da casa, ser removido ou a casa acabar devolve listas e refeições à pessoa (sobem pra conta) e apaga as refeições dos outros; ninguém perde o que já tinha no aparelho. Mudanças de preferências NÃO sincronizam (decisão do usuário, pra não gastar banco).
+
 
 #### H3 — Sync de receitas e pastas (em andamento)
 

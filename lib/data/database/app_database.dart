@@ -118,6 +118,7 @@ END''',
     Tags,
     RecipeTags,
     MealPlanEntries,
+    SharedMeals,
     CookLogs,
     SyncTombstones,
     ShoppingLists,
@@ -142,7 +143,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 11;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -171,6 +172,9 @@ class AppDatabase extends _$AppDatabase {
   /// preenchem `updated_at` e o backfill ficam em `ensureReady()` (o mesmo
   /// motivo do `last_opened_at`: a conexão da migração não enxerga com
   /// certeza dado já gravado).
+  /// v10: `space_id` em listas de compras, refeições e avisos de exclusão — a
+  /// "casa" (espaço compartilhado). Tudo entra nulo = só da pessoa.
+  /// v11: tabela `shared_meals` (refeições planejadas por outras pessoas da casa).
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -247,6 +251,16 @@ class AppDatabase extends _$AppDatabase {
                 m, ingredients, ingredients.pantryUpdatedAt);
             await _addColumnIfMissing(
                 m, ingredients, ingredients.pantrySyncedAt);
+          }
+          if (from < 10) {
+            await _addColumnIfMissing(
+                m, mealPlanEntries, mealPlanEntries.spaceId);
+            await _addColumnIfMissing(m, shoppingLists, shoppingLists.spaceId);
+            await _addColumnIfMissing(
+                m, syncTombstones, syncTombstones.spaceId);
+          }
+          if (from < 11) {
+            await m.createTable(sharedMeals);
           }
         },
         beforeOpen: (details) async {
@@ -387,14 +401,43 @@ class AppDatabase extends _$AppDatabase {
   /// Deixa um aviso de exclusão pra nuvem (H4: o `kind` diz de que tabela é).
   /// Quem chama só deve avisar de item que JÁ foi sincronizado — o que nunca
   /// subiu não existe lá.
-  Future<void> addTombstone(String kind, String id) {
+  Future<void> addTombstone(String kind, String id, {String? spaceId}) {
     return into(syncTombstones).insertOnConflictUpdate(
       SyncTombstonesCompanion.insert(
         kind: kind,
         id: id,
         deletedAt: DateTime.now().toUtc(),
+        spaceId: Value(spaceId),
       ),
     );
+  }
+
+  /// A pessoa saiu da casa (ou foi removida, ou a casa acabou): o que era
+  /// compartilhado vira só dela e volta a "nunca sincronizado", pra subir pra
+  /// conta. Os avisos de exclusão que eram da casa somem — não há mais pra
+  /// quem avisar.
+  Future<void> detachSpace(String spaceId) {
+    return transaction(() async {
+      final lists = await (select(shoppingLists)
+            ..where((l) => l.spaceId.equals(spaceId)))
+          .get();
+      await (update(shoppingLists)..where((l) => l.spaceId.equals(spaceId)))
+          .write(const ShoppingListsCompanion(
+        spaceId: Value(null),
+        syncedAt: Value(null),
+      ));
+      await (update(shoppingListItems)
+            ..where((i) => i.listId.isIn([for (final l in lists) l.id])))
+          .write(const ShoppingListItemsCompanion(syncedAt: Value(null)));
+      await (update(mealPlanEntries)..where((e) => e.spaceId.equals(spaceId)))
+          .write(const MealPlanEntriesCompanion(
+        spaceId: Value(null),
+        syncedAt: Value(null),
+      ));
+      await (delete(syncTombstones)..where((t) => t.spaceId.equals(spaceId)))
+          .go();
+      await (delete(sharedMeals)..where((m) => m.spaceId.equals(spaceId))).go();
+    });
   }
 
   /// Esquece tudo o que se sabia da nuvem: tudo volta a "nunca sincronizado",
@@ -409,10 +452,14 @@ class AppDatabase extends _$AppDatabase {
       ));
       await update(folders)
           .write(const FoldersCompanion(syncedAt: Value(null)));
-      await update(mealPlanEntries)
-          .write(const MealPlanEntriesCompanion(syncedAt: Value(null)));
-      await update(shoppingLists)
-          .write(const ShoppingListsCompanion(syncedAt: Value(null)));
+      await update(mealPlanEntries).write(const MealPlanEntriesCompanion(
+        syncedAt: Value(null),
+        spaceId: Value(null),
+      ));
+      await update(shoppingLists).write(const ShoppingListsCompanion(
+        syncedAt: Value(null),
+        spaceId: Value(null),
+      ));
       await update(shoppingListItems)
           .write(const ShoppingListItemsCompanion(syncedAt: Value(null)));
       await update(cookLogs)
@@ -439,6 +486,7 @@ class AppDatabase extends _$AppDatabase {
       await delete(cookLogs).go();
       await delete(syncTombstones).go();
       await delete(mealPlanEntries).go();
+      await delete(sharedMeals).go();
       await delete(recipeTags).go();
       await delete(recipeSteps).go();
       await delete(recipeIngredients).go();

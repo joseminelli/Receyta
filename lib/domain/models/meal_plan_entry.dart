@@ -40,7 +40,17 @@ class MealPlanEntry with _$MealPlanEntry {
     int? servingsOverride,
     String? note,
     @Default(false) bool done,
+
+    /// Casa em que a refeição é compartilhada (nulo = só da pessoa).
+    String? spaceId,
+
+    /// Nome de quem planejou, quando foi OUTRA pessoa da casa; nulo nas
+    /// refeições da própria pessoa. Refeição de outra pessoa carrega só um
+    /// resumo da receita (não existe na biblioteca daqui).
+    String? sharedBy,
   }) = _MealPlanEntry;
+
+  bool get isFromOther => sharedBy != null;
 
   String get recipeId => recipe.id;
   String get recipeName => recipe.name;

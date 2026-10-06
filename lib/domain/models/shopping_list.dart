@@ -13,6 +13,9 @@ class ShoppingList with _$ShoppingList {
     @Default('active') String status,
     required DateTime createdAt,
     required DateTime updatedAt,
+
+    /// Casa em que a lista é compartilhada; nulo = só da pessoa.
+    String? spaceId,
   }) = _ShoppingList;
 }
 

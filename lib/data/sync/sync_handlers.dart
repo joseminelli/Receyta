@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 
 import 'package:receyta/core/sync_kinds.dart';
 import 'package:receyta/data/database/app_database.dart';
+import 'package:receyta/data/sync/shared_meal_sync.dart';
 import 'package:receyta/data/sync/sync_handler.dart';
 import 'package:receyta/data/sync/sync_remote.dart';
 import 'package:receyta/domain/engine/sync_codec_h4.dart';
@@ -165,6 +166,7 @@ class MealPlanSync implements SyncHandler {
       final local = await db.mealPlanDao.findById(d.id);
       if (d.deleted) {
         if (local != null &&
+            local.spaceId == null &&
             remoteWins(
               exists: true,
               remoteEditedAt: d.editedAt,
@@ -177,6 +179,7 @@ class MealPlanSync implements SyncHandler {
         }
         continue;
       }
+      if (local != null && local.spaceId != null) continue;
       final entry = parseMealPlanSync(d.data);
       if (entry == null ||
           entry.id != d.id ||
@@ -223,21 +226,24 @@ class MealPlanSync implements SyncHandler {
 /// A lista em si (nome, status). Os itens são outro tipo, `shopping_item`, pra
 /// duas pessoas marcando coisas diferentes na mesma lista não se atropelarem.
 class ShoppingListSync implements SyncHandler {
-  ShoppingListSync(this.db);
+  ShoppingListSync(this.db, {this.spaceId});
 
   final AppDatabase db;
+
+  /// Casa que este tratador sincroniza; nulo = as listas só da pessoa.
+  final String? spaceId;
 
   @override
   String get kind => kSyncKindShoppingList;
 
   @override
   Future<bool> hasPending() async =>
-      (await db.shoppingListDao.dirtyLists()).isNotEmpty;
+      (await db.shoppingListDao.dirtyLists(spaceId: spaceId)).isNotEmpty;
 
   @override
   Future<List<PendingDoc>> pending() async {
     return [
-      for (final l in await db.shoppingListDao.dirtyLists())
+      for (final l in await db.shoppingListDao.dirtyLists(spaceId: spaceId))
         (
           doc: SyncDoc(
             kind: kind,
@@ -256,6 +262,13 @@ class ShoppingListSync implements SyncHandler {
     ];
   }
 
+  /// A lista local pode ser sobrescrita por este escopo? A da conta só toma o
+  /// que é da conta; a da casa toma o da conta (a lista foi compartilhada) e o
+  /// que já é desta casa — nunca o de outra.
+  bool _canTake(String? localSpace) => spaceId == null
+      ? localSpace == null
+      : (localSpace == null || localSpace == spaceId);
+
   @override
   Future<ApplyResult> apply(List<SyncDoc> docs) async {
     var applied = 0;
@@ -266,6 +279,7 @@ class ShoppingListSync implements SyncHandler {
           .getSingleOrNull();
       if (d.deleted) {
         if (local != null &&
+            local.spaceId == spaceId &&
             remoteWins(
               exists: true,
               remoteEditedAt: d.editedAt,
@@ -281,6 +295,7 @@ class ShoppingListSync implements SyncHandler {
       }
       final list = parseShoppingListSync(d.data);
       if (list == null || list.id != d.id) continue;
+      if (local != null && !_canTake(local.spaceId)) continue;
       if (!remoteWins(
         exists: local != null,
         remoteEditedAt: list.updatedAt,
@@ -296,6 +311,7 @@ class ShoppingListSync implements SyncHandler {
         createdAt: list.createdAt,
         updatedAt: list.updatedAt,
         syncedAt: list.updatedAt,
+        spaceId: spaceId,
       );
       if (local == null) {
         await db.into(db.shoppingLists).insert(row);
@@ -312,9 +328,12 @@ class ShoppingListSync implements SyncHandler {
 /// Cada item da lista (com as receitas de onde veio). Só aplica se a lista
 /// existe aqui.
 class ShoppingItemSync implements SyncHandler {
-  ShoppingItemSync(this.db);
+  ShoppingItemSync(this.db, {this.spaceId});
 
   final AppDatabase db;
+
+  /// Casa que este tratador sincroniza; nulo = os itens das listas só da pessoa.
+  final String? spaceId;
 
   @override
   String get kind => kSyncKindShoppingItem;
@@ -323,11 +342,11 @@ class ShoppingItemSync implements SyncHandler {
 
   @override
   Future<bool> hasPending() async =>
-      (await db.shoppingListDao.dirtyItems()).isNotEmpty;
+      (await db.shoppingListDao.dirtyItems(spaceId: spaceId)).isNotEmpty;
 
   @override
   Future<List<PendingDoc>> pending() async {
-    final items = await db.shoppingListDao.dirtyItems();
+    final items = await db.shoppingListDao.dirtyItems(spaceId: spaceId);
     if (items.isEmpty) return const [];
 
     final ingredientIds = {
@@ -382,9 +401,19 @@ class ShoppingItemSync implements SyncHandler {
     return out;
   }
 
+  /// Só entra item de lista que existe aqui E é deste escopo.
+  Future<Set<String>> _scopedListIds() async {
+    final rows = await (db.select(db.shoppingLists)
+          ..where((l) => spaceId == null
+              ? l.spaceId.isNull()
+              : l.spaceId.equals(spaceId!)))
+        .get();
+    return {for (final l in rows) l.id};
+  }
+
   @override
   Future<ApplyResult> apply(List<SyncDoc> docs) async {
-    final listIds = await _ids(db, 'shopping_lists');
+    final listIds = await _scopedListIds();
     final recipeIds = await _ids(db, 'recipes');
     final units = await _unitIds(db);
     var applied = 0;
@@ -396,6 +425,7 @@ class ShoppingItemSync implements SyncHandler {
           .getSingleOrNull();
       if (d.deleted) {
         if (local != null &&
+            listIds.contains(local.listId) &&
             remoteWins(
               exists: true,
               remoteEditedAt: d.editedAt,
@@ -555,4 +585,18 @@ List<SyncHandler> defaultSyncHandlers(AppDatabase db) => [
       ShoppingItemSync(db),
       MealPlanSync(db),
       CookLogSync(db),
+    ];
+
+/// Os tratadores de uma casa: o que é compartilhado e tem `space_id`. A lista
+/// antes dos itens. O calendário só entra quando há como montar o resumo das
+/// receitas ([meals]).
+List<SyncHandler> sharedSyncHandlers(
+  AppDatabase db,
+  String spaceId, {
+  SharedMealSync? meals,
+}) =>
+    [
+      ShoppingListSync(db, spaceId: spaceId),
+      ShoppingItemSync(db, spaceId: spaceId),
+      if (meals != null) meals,
     ];

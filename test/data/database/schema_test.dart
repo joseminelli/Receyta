@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v9 versionado', () async {
-    final connection = await verifier.startAt(9);
+  test('schema do código bate com o snapshot v11 versionado', () async {
+    final connection = await verifier.startAt(11);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -54,7 +54,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
 
     final kept = await db.customSelect(
@@ -96,7 +96,7 @@ void main() {
     await at2.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
 
     final recipe = await db
@@ -137,7 +137,7 @@ void main() {
     await at3.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
     // O backfill de `last_opened_at` roda em `ensureReady()` (não na
     // migração em si — ver o comentário em `app_database.dart`), então o
@@ -176,7 +176,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
 
     final recipe =
@@ -208,7 +208,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
 
     final row = await db
@@ -236,7 +236,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
 
     final row = await db
@@ -264,7 +264,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
 
     final recipe = await db
@@ -308,7 +308,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 9);
+    await verifier.migrateAndValidate(db, 11);
     addTearDown(db.close);
     await db.ensureReady();
 
@@ -322,5 +322,45 @@ void main() {
     expect(await db.shoppingListDao.dirtyLists(), hasLength(1));
     expect(await db.shoppingListDao.dirtyItems(), hasLength(1));
     expect(await db.cookLogDao.dirtyForSync(), hasLength(1));
+  });
+
+  test('migração v9→v10: dados preservados, nada vem de uma casa', () async {
+    final schema = await verifier.schemaAt(9);
+
+    final oldDb = AppDatabase.forTesting(schema.newConnection());
+    await oldDb.customStatement(
+      "INSERT INTO shopping_lists (id, name, status, created_at, updated_at) "
+      "VALUES ('l1', 'Feira', 'active', '2026-01-02T00:00:00.000Z', "
+      "'2026-01-03T00:00:00.000Z')",
+    );
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 11);
+    addTearDown(db.close);
+
+    final list = await db.select(db.shoppingLists).getSingle();
+    expect(list.name, 'Feira');
+    expect(list.spaceId, isNull);
+  });
+
+  test('migração v10→v11: dados preservados, shared_meals nasce vazia',
+      () async {
+    final schema = await verifier.schemaAt(10);
+
+    final oldDb = AppDatabase.forTesting(schema.newConnection());
+    await oldDb.customStatement(
+      "INSERT INTO shopping_lists (id, name, status, created_at, updated_at, "
+      "space_id) VALUES ('l1', 'Feira', 'active', '2026-01-02T00:00:00.000Z', "
+      "'2026-01-03T00:00:00.000Z', 'casa-1')",
+    );
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 11);
+    addTearDown(db.close);
+
+    expect((await db.select(db.shoppingLists).getSingle()).spaceId, 'casa-1');
+    expect(await db.select(db.sharedMeals).get(), isEmpty);
   });
 }

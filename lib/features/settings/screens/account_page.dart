@@ -347,6 +347,12 @@ class _Shortcuts extends StatelessWidget {
   const _Shortcuts();
 
   static const _rows = [
+    (
+      Icons.home_outlined,
+      'Casa',
+      'Divida listas de compras com quem mora com você',
+      '/space'
+    ),
     (Icons.history, 'Histórico', 'Tudo o que você já cozinhou', '/history'),
     (Icons.sell_outlined, 'Tags', 'Organize e renomeie', '/tags'),
     (

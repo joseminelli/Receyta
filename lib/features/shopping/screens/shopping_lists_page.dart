@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/core/result.dart';
+import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
@@ -318,6 +320,28 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
                 _duplicate(list);
               },
             ),
+            if (ref.read(authUserProvider).valueOrNull != null)
+              ListTile(
+                leading: Icon(
+                  list.spaceId == null
+                      ? Icons.group_add_outlined
+                      : Icons.group_off_outlined,
+                ),
+                title: Text(
+                  list.spaceId == null
+                      ? 'Compartilhar com a casa'
+                      : 'Deixar de compartilhar',
+                ),
+                subtitle: Text(
+                  list.spaceId == null
+                      ? 'Quem está na casa vê e marca os itens'
+                      : 'Quem está na casa deixa de ver esta lista',
+                ),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  _toggleShared(list);
+                },
+              ),
             ListTile(
               leading: Icon(Icons.delete_outline, color: context.colors.danger),
               title: Text(
@@ -334,6 +358,37 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _toggleShared(ShoppingList list) async {
+    final controller = ref.read(spaceControllerProvider.notifier);
+    if (list.spaceId == null) {
+      if (ref.read(currentSpaceIdProvider) == null) {
+        showAppSnackBar(message: 'Crie uma casa para compartilhar listas.');
+        context.push('/space');
+        return;
+      }
+      final result = await controller.setListShared(list.id, true);
+      result.when(
+        ok: (_) => showAppSnackBar(message: 'Lista compartilhada com a casa.'),
+        err: (f) => showAppSnackBar(
+          message: f.message,
+          variant: AppSnackBarVariant.error,
+        ),
+      );
+      return;
+    }
+    final ok = await AppDialog.confirm(
+      context,
+      icon: Icons.group_off_outlined,
+      accent: context.colors.danger,
+      title: 'Deixar de compartilhar?',
+      message: 'Quem está na casa deixa de ver esta lista. Ela continua com '
+          'você.',
+      confirmLabel: 'Deixar de compartilhar',
+    );
+    if (!ok) return;
+    _report(await controller.setListShared(list.id, false));
   }
 
   Future<void> _rename(ShoppingList list) async {
@@ -531,11 +586,26 @@ class _ListCard extends StatelessWidget {
                             ?.copyWith(color: colors.onSaturated),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        _subtitle,
-                        style: context.texts.bodySmall?.copyWith(
-                          color: colors.onSaturated.withValues(alpha: 0.6),
-                        ),
+                      Row(
+                        children: [
+                          if (summary.list.spaceId != null) ...[
+                            Icon(
+                              Icons.people_alt_outlined,
+                              size: 14,
+                              color: colors.lime,
+                            ),
+                            const SizedBox(width: 4),
+                          ],
+                          Flexible(
+                            child: Text(
+                              _subtitle,
+                              style: context.texts.bodySmall?.copyWith(
+                                color:
+                                    colors.onSaturated.withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

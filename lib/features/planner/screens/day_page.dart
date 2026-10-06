@@ -13,6 +13,7 @@ import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/add_meal_sheet.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart';
+import 'package:receyta/features/planner/screens/shared_meal_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -276,10 +277,12 @@ class _DayPageState extends ConsumerState<DayPage> {
             buildTile: (entry) => _EntryTile(
               entry: entry,
               useHero: heroOwners[entry.recipeId] == entry.id,
-              onOpen: () => context.push(
-                '/recipe/${entry.recipeId}',
-                extra: entry.recipe,
-              ),
+              onOpen: () => entry.isFromOther
+                  ? showSharedMealSheet(context, ref, entry)
+                  : context.push(
+                      '/recipe/${entry.recipeId}',
+                      extra: entry.recipe,
+                    ),
               onToggleDone: () => _repo.setDone(entry.id, !entry.done),
               onRemove: () => _remove(entry),
               onMenu: () => _openMenu(entry),
@@ -334,14 +337,25 @@ class _DayPageState extends ConsumerState<DayPage> {
                 _moveFlow(entry);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.copy_all_outlined),
-              title: const Text('Duplicar para…'),
-              onTap: () {
-                Navigator.of(sheet).pop();
-                _duplicateFlow(entry);
-              },
-            ),
+            if (entry.isFromOther)
+              ListTile(
+                leading: const Icon(Icons.menu_book_outlined),
+                title: const Text('Ver a receita'),
+                subtitle: const Text('Ingredientes e preparo, e guardar'),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  showSharedMealSheet(context, ref, entry);
+                },
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.copy_all_outlined),
+                title: const Text('Duplicar para…'),
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  _duplicateFlow(entry);
+                },
+              ),
             ListTile(
               leading: Icon(Icons.delete_outline, color: context.colors.danger),
               title: Text(
@@ -797,17 +811,49 @@ class _EntryTile extends StatelessWidget {
                 child: Center(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      recipe.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.texts.titleMedium?.copyWith(
-                        color: tile.onColor,
-                        fontWeight: FontWeight.w700,
-                        decoration:
-                            entry.done ? TextDecoration.lineThrough : null,
-                        decorationColor: tile.onColor,
-                      ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          recipe.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.texts.titleMedium?.copyWith(
+                            color: tile.onColor,
+                            fontWeight: FontWeight.w700,
+                            decoration:
+                                entry.done ? TextDecoration.lineThrough : null,
+                            decorationColor: tile.onColor,
+                          ),
+                        ),
+                        if (entry.spaceId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.people_alt_outlined,
+                                  size: 14,
+                                  color: tile.onColor.withValues(alpha: 0.85),
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    entry.sharedBy ?? 'Casa',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: context.texts.labelSmall?.copyWith(
+                                      color:
+                                          tile.onColor.withValues(alpha: 0.85),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),

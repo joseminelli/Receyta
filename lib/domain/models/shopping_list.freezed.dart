@@ -22,6 +22,9 @@ mixin _$ShoppingList {
   DateTime get createdAt => throw _privateConstructorUsedError;
   DateTime get updatedAt => throw _privateConstructorUsedError;
 
+  /// Casa em que a lista é compartilhada; nulo = só da pessoa.
+  String? get spaceId => throw _privateConstructorUsedError;
+
   /// Create a copy of ShoppingList
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -40,7 +43,8 @@ abstract class $ShoppingListCopyWith<$Res> {
       String name,
       String status,
       DateTime createdAt,
-      DateTime updatedAt});
+      DateTime updatedAt,
+      String? spaceId});
 }
 
 /// @nodoc
@@ -63,6 +67,7 @@ class _$ShoppingListCopyWithImpl<$Res, $Val extends ShoppingList>
     Object? status = null,
     Object? createdAt = null,
     Object? updatedAt = null,
+    Object? spaceId = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -85,6 +90,10 @@ class _$ShoppingListCopyWithImpl<$Res, $Val extends ShoppingList>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
+      spaceId: freezed == spaceId
+          ? _value.spaceId
+          : spaceId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -102,7 +111,8 @@ abstract class _$$ShoppingListImplCopyWith<$Res>
       String name,
       String status,
       DateTime createdAt,
-      DateTime updatedAt});
+      DateTime updatedAt,
+      String? spaceId});
 }
 
 /// @nodoc
@@ -123,6 +133,7 @@ class __$$ShoppingListImplCopyWithImpl<$Res>
     Object? status = null,
     Object? createdAt = null,
     Object? updatedAt = null,
+    Object? spaceId = freezed,
   }) {
     return _then(_$ShoppingListImpl(
       id: null == id
@@ -145,6 +156,10 @@ class __$$ShoppingListImplCopyWithImpl<$Res>
           ? _value.updatedAt
           : updatedAt // ignore: cast_nullable_to_non_nullable
               as DateTime,
+      spaceId: freezed == spaceId
+          ? _value.spaceId
+          : spaceId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -157,7 +172,8 @@ class _$ShoppingListImpl implements _ShoppingList {
       required this.name,
       this.status = 'active',
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      this.spaceId});
 
   @override
   final String id;
@@ -171,9 +187,13 @@ class _$ShoppingListImpl implements _ShoppingList {
   @override
   final DateTime updatedAt;
 
+  /// Casa em que a lista é compartilhada; nulo = só da pessoa.
+  @override
+  final String? spaceId;
+
   @override
   String toString() {
-    return 'ShoppingList(id: $id, name: $name, status: $status, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ShoppingList(id: $id, name: $name, status: $status, createdAt: $createdAt, updatedAt: $updatedAt, spaceId: $spaceId)';
   }
 
   @override
@@ -187,12 +207,13 @@ class _$ShoppingListImpl implements _ShoppingList {
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt) &&
             (identical(other.updatedAt, updatedAt) ||
-                other.updatedAt == updatedAt));
+                other.updatedAt == updatedAt) &&
+            (identical(other.spaceId, spaceId) || other.spaceId == spaceId));
   }
 
   @override
   int get hashCode =>
-      Object.hash(runtimeType, id, name, status, createdAt, updatedAt);
+      Object.hash(runtimeType, id, name, status, createdAt, updatedAt, spaceId);
 
   /// Create a copy of ShoppingList
   /// with the given fields replaced by the non-null parameter values.
@@ -209,7 +230,8 @@ abstract class _ShoppingList implements ShoppingList {
       required final String name,
       final String status,
       required final DateTime createdAt,
-      required final DateTime updatedAt}) = _$ShoppingListImpl;
+      required final DateTime updatedAt,
+      final String? spaceId}) = _$ShoppingListImpl;
 
   @override
   String get id;
@@ -221,6 +243,10 @@ abstract class _ShoppingList implements ShoppingList {
   DateTime get createdAt;
   @override
   DateTime get updatedAt;
+
+  /// Casa em que a lista é compartilhada; nulo = só da pessoa.
+  @override
+  String? get spaceId;
 
   /// Create a copy of ShoppingList
   /// with the given fields replaced by the non-null parameter values.

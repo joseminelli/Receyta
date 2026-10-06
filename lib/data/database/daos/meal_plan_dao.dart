@@ -9,7 +9,7 @@ part 'meal_plan_dao.g.dart';
 
 /// Acesso bruto ao planejamento semanal (§RF-04): receitas agendadas por dia
 /// e refeição. Receita na lixeira some do plano (volta se for restaurada).
-@DriftAccessor(tables: [MealPlanEntries, Recipes, CookLogs])
+@DriftAccessor(tables: [MealPlanEntries, SharedMeals, Recipes, CookLogs])
 class MealPlanDao extends DatabaseAccessor<AppDatabase>
     with _$MealPlanDaoMixin {
   MealPlanDao(super.db, {Uuid uuid = const Uuid()}) : _uuid = uuid;
@@ -85,6 +85,7 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
     required DateTime at,
     int? servingsOverride,
     String? note,
+    String? spaceId,
   }) async {
     final row = MealPlanEntryRow(
       id: _uuid.v4(),
@@ -96,6 +97,7 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
       done: false,
       createdAt: at,
       updatedAt: at,
+      spaceId: spaceId,
     );
     await into(mealPlanEntries).insert(row);
     return row;
@@ -109,18 +111,169 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
       final count =
           await (delete(mealPlanEntries)..where((e) => e.id.equals(id))).go();
       if (row?.syncedAt != null) {
-        await attachedDatabase.addTombstone(kSyncKindMealPlan, id);
+        await attachedDatabase.addTombstone(
+          kSyncKindMealPlan,
+          id,
+          spaceId: row!.spaceId,
+        );
       }
       return count;
     });
   }
 
-  /// Refeições que mudaram desde a última sincronização ou nunca subiram.
-  Future<List<MealPlanEntryRow>> dirtyForSync() {
+  /// Refeições que mudaram desde a última sincronização ou nunca subiram, do
+  /// escopo pedido: a conta ([spaceId] nulo) ou uma casa.
+  Future<List<MealPlanEntryRow>> dirtyForSync({String? spaceId}) {
     return (select(mealPlanEntries)
           ..where((e) =>
-              e.syncedAt.isNull() | e.updatedAt.isBiggerThan(e.syncedAt)))
+              (spaceId == null
+                  ? e.spaceId.isNull()
+                  : e.spaceId.equals(spaceId)) &
+              (e.syncedAt.isNull() | e.updatedAt.isBiggerThan(e.syncedAt))))
         .get();
+  }
+
+  /// Passa as refeições de [from] em diante pra casa [spaceId]. O que já tinha
+  /// subido pra conta deixa aviso de exclusão lá, e tudo volta a "nunca
+  /// sincronizado" pra subir pra casa. O passado fica só da pessoa.
+  Future<int> shareFrom(String spaceId, DateTime from) {
+    return transaction(() async {
+      final rows = await (select(mealPlanEntries)
+            ..where(
+                (e) => e.spaceId.isNull() & e.date.isBiggerOrEqualValue(from)))
+          .get();
+      for (final e in rows) {
+        if (e.syncedAt != null) {
+          await attachedDatabase.addTombstone(kSyncKindMealPlan, e.id);
+        }
+        await (attachedDatabase.delete(attachedDatabase.syncTombstones)
+              ..where((t) =>
+                  t.kind.equals(kSyncKindMealPlan) &
+                  t.id.equals(e.id) &
+                  t.spaceId.equals(spaceId)))
+            .go();
+      }
+      await (update(mealPlanEntries)
+            ..where(
+                (e) => e.spaceId.isNull() & e.date.isBiggerOrEqualValue(from)))
+          .write(MealPlanEntriesCompanion(
+        spaceId: Value(spaceId),
+        syncedAt: const Value(null),
+      ));
+      return rows.length;
+    });
+  }
+
+  /// Deixa de compartilhar o calendário: as refeições da pessoa voltam a ser só
+  /// dela (e sobem pra conta), com aviso de exclusão pra casa, e somem as
+  /// refeições que eram dos outros.
+  Future<void> unshare(String spaceId) {
+    return transaction(() async {
+      final rows = await (select(mealPlanEntries)
+            ..where((e) => e.spaceId.equals(spaceId)))
+          .get();
+      for (final e in rows) {
+        if (e.syncedAt != null) {
+          await attachedDatabase.addTombstone(
+            kSyncKindMealPlan,
+            e.id,
+            spaceId: spaceId,
+          );
+        }
+      }
+      await (update(mealPlanEntries)..where((e) => e.spaceId.equals(spaceId)))
+          .write(const MealPlanEntriesCompanion(
+        spaceId: Value(null),
+        syncedAt: Value(null),
+      ));
+      await (delete(sharedMeals)..where((m) => m.spaceId.equals(spaceId))).go();
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Refeições de outras pessoas da casa
+  // ---------------------------------------------------------------------
+
+  Stream<List<SharedMealRow>> watchShared(DateTime from, DateTime toExclusive) {
+    return (select(sharedMeals)
+          ..where((m) =>
+              m.date.isBiggerOrEqualValue(from) &
+              m.date.isSmallerThanValue(toExclusive))
+          ..orderBy([
+            (m) => OrderingTerm.asc(m.date),
+            (m) => OrderingTerm.asc(m.createdAt),
+          ]))
+        .watch();
+  }
+
+  Future<SharedMealRow?> findShared(String id) {
+    return (select(sharedMeals)..where((m) => m.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  Future<void> putShared(SharedMealRow row) =>
+      into(sharedMeals).insertOnConflictUpdate(row);
+
+  Future<List<SharedMealRow>> dirtySharedMeals(String spaceId) {
+    return (select(sharedMeals)
+          ..where((m) =>
+              m.spaceId.equals(spaceId) &
+              (m.syncedAt.isNull() | m.updatedAt.isBiggerThan(m.syncedAt))))
+        .get();
+  }
+
+  Future<int> markSharedSynced(String id, DateTime updatedAt) {
+    return (update(sharedMeals)..where((m) => m.id.equals(id)))
+        .write(SharedMealsCompanion(syncedAt: Value(updatedAt)));
+  }
+
+  /// Apaga o aviso de exclusão de uma refeição da casa (desfazer a remoção).
+  Future<int> clearTombstone(String id, String spaceId) {
+    return (attachedDatabase.delete(attachedDatabase.syncTombstones)
+          ..where((t) =>
+              t.kind.equals(kSyncKindMealPlan) &
+              t.id.equals(id) &
+              t.spaceId.equals(spaceId)))
+        .go();
+  }
+
+  Future<int> deleteSharedRaw(String id) =>
+      (delete(sharedMeals)..where((m) => m.id.equals(id))).go();
+
+  /// Tira a refeição de outra pessoa daqui e avisa a casa.
+  Future<int> removeShared(String id) {
+    return transaction(() async {
+      final row = await findShared(id);
+      if (row == null) return 0;
+      final count = await deleteSharedRaw(id);
+      await attachedDatabase.addTombstone(
+        kSyncKindMealPlan,
+        id,
+        spaceId: row.spaceId,
+      );
+      return count;
+    });
+  }
+
+  Future<int> setSharedDone(String id, bool done, DateTime at) {
+    return (update(sharedMeals)..where((m) => m.id.equals(id))).write(
+      SharedMealsCompanion(done: Value(done), updatedAt: Value(at)),
+    );
+  }
+
+  Future<int> moveShared(
+    String id, {
+    required DateTime date,
+    required String mealType,
+    required DateTime at,
+  }) {
+    return (update(sharedMeals)..where((m) => m.id.equals(id))).write(
+      SharedMealsCompanion(
+        date: Value(date),
+        mealType: Value(mealType),
+        updatedAt: Value(at),
+      ),
+    );
   }
 
   Future<int> markSynced(String id, DateTime updatedAt) {
@@ -160,6 +313,7 @@ class MealPlanDao extends DatabaseAccessor<AppDatabase>
       at: at,
       servingsOverride: source.servingsOverride,
       note: source.note,
+      spaceId: source.spaceId,
     );
   }
 

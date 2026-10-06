@@ -35,7 +35,7 @@ class _FakeCoordinator extends SyncCoordinator {
   SyncState build() => initial;
 
   @override
-  void requestSync({bool immediate = false}) {
+  void requestSync({bool immediate = false, Duration? after}) {
     if (immediate) syncNowCalls++;
   }
 }

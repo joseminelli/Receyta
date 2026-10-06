@@ -8,9 +8,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/services/auth_service.dart';
+import 'package:receyta/data/sync/shared_remote.dart';
 import 'package:receyta/data/sync/sync_engine.dart';
 import 'package:receyta/data/sync/sync_error.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/features/space/controllers/shared_sync_providers.dart';
+import 'package:receyta/features/space/controllers/space_controller.dart';
 
 enum SyncPhase { idle, syncing, error }
 
@@ -87,6 +90,8 @@ class SyncCoordinator extends Notifier<SyncState> {
   Timer? _retry;
   Timer? _periodic;
   StreamSubscription<Object?>? _changes;
+  StreamSubscription<SharedChange>? _realtime;
+  String? _realtimeSpace;
   bool _started = false;
   bool _running = false;
   bool _again = false;
@@ -105,6 +110,11 @@ class SyncCoordinator extends Notifier<SyncState> {
   void start() {
     if (_started) return;
     _started = true;
+    ref.listen<String?>(currentSpaceIdProvider, (previous, next) {
+      if (!state.enabled) return;
+      _watchSpace(next);
+      requestSync(immediate: true);
+    });
     ref.listen<AsyncValue<AppUser?>>(
       authUserProvider,
       (previous, next) => _onUser(next.valueOrNull),
@@ -112,15 +122,18 @@ class SyncCoordinator extends Notifier<SyncState> {
     );
   }
 
-  /// Pede uma rodada. Com [immediate] não espera o atraso (login, botão).
-  void requestSync({bool immediate = false}) {
+  /// Pede uma rodada. Com [immediate] não espera o atraso (login, botão);
+  /// [after] troca o atraso padrão (avisos em tempo real usam um bem curto).
+  void requestSync({bool immediate = false, Duration? after}) {
     if (!state.enabled) return;
     _debounce?.cancel();
     if (immediate) {
       unawaited(_run());
     } else {
-      _debounce =
-          Timer(ref.read(syncDebounceProvider), () => unawaited(_run()));
+      _debounce = Timer(
+        after ?? ref.read(syncDebounceProvider),
+        () => unawaited(_run()),
+      );
     }
   }
 
@@ -147,6 +160,7 @@ class SyncCoordinator extends Notifier<SyncState> {
     state = state.copyWith(enabled: true);
     unawaited(_loadLastSync());
     _watchChanges();
+    _watchSpace(ref.read(currentSpaceIdProvider));
     final period = ref.read(syncPeriodProvider);
     if (period != null) {
       _periodic = Timer.periodic(period, (_) => onResumed(minGap: period));
@@ -185,8 +199,40 @@ class SyncCoordinator extends Notifier<SyncState> {
     });
   }
 
-  Future<bool> _hasPendingChanges() =>
-      ref.read(syncEngineProvider).hasPending();
+  /// Escuta a casa em tempo real: mudança nos itens vira uma rodada logo; gente
+  /// que entra ou sai manda reler a casa.
+  void _watchSpace(String? spaceId) {
+    if (_realtimeSpace == spaceId) return;
+    _realtime?.cancel();
+    _realtime = null;
+    _realtimeSpace = spaceId;
+    if (spaceId == null) return;
+    _realtime = ref.read(sharedRemoteProvider).changes(spaceId).listen(
+      (change) {
+        switch (change) {
+          case SharedChange.docs:
+            requestSync(after: const Duration(seconds: 1));
+          case SharedChange.members:
+            unawaited(ref.read(spaceControllerProvider.notifier).refresh());
+        }
+      },
+      onError: (Object e) => debugPrint('SyncCoordinator.realtime: $e'),
+    );
+  }
+
+  Future<bool> _hasPendingChanges() async {
+    if (await ref.read(syncEngineProvider).hasPending()) return true;
+    final space = ref.read(currentSpaceIdProvider);
+    if (space == null) return false;
+    return ref.read(sharedSyncEngineProvider(space)).hasPending();
+  }
+
+  /// A rodada da casa, depois da da conta. `null` = não há casa.
+  Future<Result<SyncReport>?> _syncShared() async {
+    final space = ref.read(currentSpaceIdProvider);
+    if (space == null) return null;
+    return ref.read(sharedSyncEngineProvider(space)).sync();
+  }
 
   Future<void> _run() async {
     if (!state.enabled) return;
@@ -198,9 +244,13 @@ class SyncCoordinator extends Notifier<SyncState> {
     _retry?.cancel();
     state = state.copyWith(phase: SyncPhase.syncing, clearFailure: true);
 
-    final Result<SyncReport> result;
+    Result<SyncReport> result;
     try {
       result = await ref.read(syncEngineProvider).sync();
+      if (result is Ok<SyncReport>) {
+        final shared = await _syncShared();
+        if (shared is Err<SyncReport>) result = shared;
+      }
     } catch (e) {
       _running = false;
       _fail(classifySyncError(e));
@@ -269,8 +319,11 @@ class SyncCoordinator extends Notifier<SyncState> {
     _retry?.cancel();
     _periodic?.cancel();
     _changes?.cancel();
+    _realtime?.cancel();
     _debounce = _retry = _periodic = null;
     _changes = null;
+    _realtime = null;
+    _realtimeSpace = null;
     _again = false;
   }
 }

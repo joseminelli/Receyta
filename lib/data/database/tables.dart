@@ -88,6 +88,9 @@ class SyncTombstones extends Table {
   TextColumn get id => text()();
   DateTimeColumn get deletedAt => dateTime()();
 
+  /// Casa onde o item vivia; nulo = a conta da pessoa (v10).
+  TextColumn get spaceId => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {kind, id};
 }
@@ -230,6 +233,37 @@ class MealPlanEntries extends Table {
   /// Versão (`updated_at`) já sincronizada com a conta (H4); ver `Recipes`.
   DateTimeColumn get syncedAt => dateTime().nullable()();
 
+  /// Casa (espaço compartilhado) a que a refeição pertence; nulo = só da
+  /// pessoa. Quem tem casa sincroniza com ela, não com a conta (v10).
+  TextColumn get spaceId => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Refeição planejada por OUTRA pessoa da casa (v11). Quem recebe pode não ter
+/// a receita, então a linha carrega um resumo dela (`recipeJson`, o mesmo JSON
+/// do sync). As refeições da própria pessoa ficam em `meal_plan_entries`, com
+/// `space_id`; aqui só entram as dos outros.
+@DataClassName('SharedMealRow')
+class SharedMeals extends Table {
+  TextColumn get id => text()();
+  TextColumn get spaceId => text()();
+  DateTimeColumn get date => dateTime()();
+  TextColumn get mealType => text()();
+  IntColumn get servingsOverride => integer().nullable()();
+  TextColumn get note => text().nullable()();
+  BoolColumn get done => boolean().withDefault(const Constant(false))();
+  TextColumn get recipeJson => text()();
+  TextColumn get authorId => text().withDefault(const Constant(''))();
+  TextColumn get authorName => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  /// Versão (`updated_at`) já enviada à casa; nulo = mexida aqui e ainda não
+  /// enviada (marcar como feita, mover, apagar a refeição de outra pessoa).
+  DateTimeColumn get syncedAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -266,6 +300,10 @@ class ShoppingLists extends Table {
 
   /// Versão (`updated_at`) já sincronizada com a conta (H4).
   DateTimeColumn get syncedAt => dateTime().nullable()();
+
+  /// Casa a que a lista pertence (nulo = só da pessoa); os itens seguem a
+  /// lista. Ver `MealPlanEntries.spaceId` (v10).
+  TextColumn get spaceId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

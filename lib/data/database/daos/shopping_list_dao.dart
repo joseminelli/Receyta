@@ -251,7 +251,8 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Apaga a lista; itens e origens caem em cascata. O que já tinha sido
-  /// sincronizado (a lista e cada item) deixa aviso pra nuvem (H4).
+  /// sincronizado (a lista e cada item) deixa aviso pra nuvem (H4) — pra conta
+  /// ou pra casa, conforme onde a lista vivia.
   Future<int> deleteList(String id) {
     return transaction(() async {
       final list = await (select(shoppingLists)..where((l) => l.id.equals(id)))
@@ -262,22 +263,36 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
       final count =
           await (delete(shoppingLists)..where((l) => l.id.equals(id))).go();
       if (list?.syncedAt != null) {
-        await attachedDatabase.addTombstone(kSyncKindShoppingList, id);
+        await attachedDatabase.addTombstone(
+          kSyncKindShoppingList,
+          id,
+          spaceId: list!.spaceId,
+        );
       }
       for (final i in items) {
         if (i.syncedAt != null) {
-          await attachedDatabase.addTombstone(kSyncKindShoppingItem, i.id);
+          await attachedDatabase.addTombstone(
+            kSyncKindShoppingItem,
+            i.id,
+            spaceId: list?.spaceId,
+          );
         }
       }
       return count;
     });
   }
 
-  /// Listas que mudaram desde a última sincronização ou nunca subiram.
-  Future<List<ShoppingListRow>> dirtyLists() {
+  /// Quando a lista é de uma casa ([spaceId]) ou só da pessoa (nulo).
+  Expression<bool> _listInScope(ShoppingLists l, String? spaceId) =>
+      spaceId == null ? l.spaceId.isNull() : l.spaceId.equals(spaceId);
+
+  /// Listas que mudaram desde a última sincronização ou nunca subiram, do
+  /// escopo pedido: a conta ([spaceId] nulo) ou uma casa.
+  Future<List<ShoppingListRow>> dirtyLists({String? spaceId}) {
     return (select(shoppingLists)
           ..where((l) =>
-              l.syncedAt.isNull() | l.updatedAt.isBiggerThan(l.syncedAt)))
+              _listInScope(l, spaceId) &
+              (l.syncedAt.isNull() | l.updatedAt.isBiggerThan(l.syncedAt))))
         .get();
   }
 
@@ -286,17 +301,73 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
         .write(ShoppingListsCompanion(syncedAt: Value(updatedAt)));
   }
 
-  /// Itens que mudaram desde a última sincronização ou nunca subiram.
-  Future<List<ShoppingListItemRow>> dirtyItems() {
+  /// Itens que mudaram desde a última sincronização ou nunca subiram, das
+  /// listas do escopo pedido.
+  Future<List<ShoppingListItemRow>> dirtyItems({String? spaceId}) {
+    final inScope = selectOnly(shoppingLists)
+      ..addColumns([shoppingLists.id])
+      ..where(_listInScope(shoppingLists, spaceId));
     return (select(shoppingListItems)
           ..where((i) =>
-              i.syncedAt.isNull() | i.updatedAt.isBiggerThan(i.syncedAt)))
+              i.listId.isInQuery(inScope) &
+              (i.syncedAt.isNull() | i.updatedAt.isBiggerThan(i.syncedAt))))
         .get();
   }
 
   Future<int> markItemSynced(String id, DateTime? updatedAt) {
     return (update(shoppingListItems)..where((i) => i.id.equals(id)))
         .write(ShoppingListItemsCompanion(syncedAt: Value(updatedAt)));
+  }
+
+  /// Passa a lista (e os itens) pra uma casa, ou de volta pra só da pessoa
+  /// ([spaceId] nulo). O que já tinha subido pro lugar antigo deixa aviso de
+  /// exclusão lá, e tudo volta a "nunca sincronizado" pra subir pro novo.
+  Future<void> setSpace(String listId, String? spaceId, DateTime at) {
+    return transaction(() async {
+      final list = await (select(shoppingLists)
+            ..where((l) => l.id.equals(listId)))
+          .getSingleOrNull();
+      if (list == null || list.spaceId == spaceId) return;
+
+      if (list.syncedAt != null) {
+        await attachedDatabase.addTombstone(
+          kSyncKindShoppingList,
+          listId,
+          spaceId: list.spaceId,
+        );
+      }
+      final items = await (select(shoppingListItems)
+            ..where((i) => i.listId.equals(listId)))
+          .get();
+      for (final i in items) {
+        if (i.syncedAt != null) {
+          await attachedDatabase.addTombstone(
+            kSyncKindShoppingItem,
+            i.id,
+            spaceId: list.spaceId,
+          );
+        }
+      }
+      // Um aviso antigo de exclusão do lugar pra onde a lista volta apagaria a
+      // lista nova.
+      await (delete(attachedDatabase.syncTombstones)
+            ..where((t) =>
+                (spaceId == null
+                    ? t.spaceId.isNull()
+                    : t.spaceId.equals(spaceId)) &
+                (t.id.equals(listId) |
+                    t.id.isIn([for (final i in items) i.id]))))
+          .go();
+      await (update(shoppingLists)..where((l) => l.id.equals(listId))).write(
+        ShoppingListsCompanion(
+          spaceId: Value(spaceId),
+          syncedAt: const Value(null),
+          updatedAt: Value(at),
+        ),
+      );
+      await (update(shoppingListItems)..where((i) => i.listId.equals(listId)))
+          .write(const ShoppingListItemsCompanion(syncedAt: Value(null)));
+    });
   }
 
   Future<List<ShoppingListItemRow>> itemsOf(String listId) {
@@ -353,7 +424,14 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
             ..where((i) => i.id.equals(itemId)))
           .go();
       if (row?.syncedAt != null) {
-        await attachedDatabase.addTombstone(kSyncKindShoppingItem, itemId);
+        final list = await (select(shoppingLists)
+              ..where((l) => l.id.equals(row!.listId)))
+            .getSingleOrNull();
+        await attachedDatabase.addTombstone(
+          kSyncKindShoppingItem,
+          itemId,
+          spaceId: list?.spaceId,
+        );
       }
       return count;
     });

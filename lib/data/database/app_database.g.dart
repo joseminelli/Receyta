@@ -4079,6 +4079,12 @@ class $MealPlanEntriesTable extends MealPlanEntries
   late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
       'synced_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _spaceIdMeta =
+      const VerificationMeta('spaceId');
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+      'space_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -4090,7 +4096,8 @@ class $MealPlanEntriesTable extends MealPlanEntries
         done,
         createdAt,
         updatedAt,
-        syncedAt
+        syncedAt,
+        spaceId
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4151,6 +4158,10 @@ class $MealPlanEntriesTable extends MealPlanEntries
       context.handle(_syncedAtMeta,
           syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
     }
+    if (data.containsKey('space_id')) {
+      context.handle(_spaceIdMeta,
+          spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta));
+    }
     return context;
   }
 
@@ -4180,6 +4191,8 @@ class $MealPlanEntriesTable extends MealPlanEntries
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       syncedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
+      spaceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}space_id']),
     );
   }
 
@@ -4203,6 +4216,10 @@ class MealPlanEntryRow extends DataClass
 
   /// Versão (`updated_at`) já sincronizada com a conta (H4); ver `Recipes`.
   final DateTime? syncedAt;
+
+  /// Casa (espaço compartilhado) a que a refeição pertence; nulo = só da
+  /// pessoa. Quem tem casa sincroniza com ela, não com a conta (v10).
+  final String? spaceId;
   const MealPlanEntryRow(
       {required this.id,
       required this.recipeId,
@@ -4213,7 +4230,8 @@ class MealPlanEntryRow extends DataClass
       required this.done,
       required this.createdAt,
       required this.updatedAt,
-      this.syncedAt});
+      this.syncedAt,
+      this.spaceId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -4232,6 +4250,9 @@ class MealPlanEntryRow extends DataClass
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || syncedAt != null) {
       map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    if (!nullToAbsent || spaceId != null) {
+      map['space_id'] = Variable<String>(spaceId);
     }
     return map;
   }
@@ -4252,6 +4273,9 @@ class MealPlanEntryRow extends DataClass
       syncedAt: syncedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(syncedAt),
+      spaceId: spaceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(spaceId),
     );
   }
 
@@ -4269,6 +4293,7 @@ class MealPlanEntryRow extends DataClass
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      spaceId: serializer.fromJson<String?>(json['spaceId']),
     );
   }
   @override
@@ -4285,6 +4310,7 @@ class MealPlanEntryRow extends DataClass
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'spaceId': serializer.toJson<String?>(spaceId),
     };
   }
 
@@ -4298,7 +4324,8 @@ class MealPlanEntryRow extends DataClass
           bool? done,
           DateTime? createdAt,
           DateTime? updatedAt,
-          Value<DateTime?> syncedAt = const Value.absent()}) =>
+          Value<DateTime?> syncedAt = const Value.absent(),
+          Value<String?> spaceId = const Value.absent()}) =>
       MealPlanEntryRow(
         id: id ?? this.id,
         recipeId: recipeId ?? this.recipeId,
@@ -4312,6 +4339,7 @@ class MealPlanEntryRow extends DataClass
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+        spaceId: spaceId.present ? spaceId.value : this.spaceId,
       );
   MealPlanEntryRow copyWithCompanion(MealPlanEntriesCompanion data) {
     return MealPlanEntryRow(
@@ -4327,6 +4355,7 @@ class MealPlanEntryRow extends DataClass
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
     );
   }
 
@@ -4342,14 +4371,15 @@ class MealPlanEntryRow extends DataClass
           ..write('done: $done, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('syncedAt: $syncedAt')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('spaceId: $spaceId')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(id, recipeId, date, mealType,
-      servingsOverride, note, done, createdAt, updatedAt, syncedAt);
+      servingsOverride, note, done, createdAt, updatedAt, syncedAt, spaceId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4363,7 +4393,8 @@ class MealPlanEntryRow extends DataClass
           other.done == this.done &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.syncedAt == this.syncedAt);
+          other.syncedAt == this.syncedAt &&
+          other.spaceId == this.spaceId);
 }
 
 class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
@@ -4377,6 +4408,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> syncedAt;
+  final Value<String?> spaceId;
   final Value<int> rowid;
   const MealPlanEntriesCompanion({
     this.id = const Value.absent(),
@@ -4389,6 +4421,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
+    this.spaceId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   MealPlanEntriesCompanion.insert({
@@ -4402,6 +4435,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
+    this.spaceId = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         recipeId = Value(recipeId),
@@ -4418,6 +4452,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? syncedAt,
+    Expression<String>? spaceId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4431,6 +4466,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncedAt != null) 'synced_at': syncedAt,
+      if (spaceId != null) 'space_id': spaceId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4446,6 +4482,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? syncedAt,
+      Value<String?>? spaceId,
       Value<int>? rowid}) {
     return MealPlanEntriesCompanion(
       id: id ?? this.id,
@@ -4458,6 +4495,7 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       syncedAt: syncedAt ?? this.syncedAt,
+      spaceId: spaceId ?? this.spaceId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4495,6 +4533,9 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
     if (syncedAt.present) {
       map['synced_at'] = Variable<DateTime>(syncedAt.value);
     }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4511,6 +4552,650 @@ class MealPlanEntriesCompanion extends UpdateCompanion<MealPlanEntryRow> {
           ..write('servingsOverride: $servingsOverride, ')
           ..write('note: $note, ')
           ..write('done: $done, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SharedMealsTable extends SharedMeals
+    with TableInfo<$SharedMealsTable, SharedMealRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SharedMealsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _spaceIdMeta =
+      const VerificationMeta('spaceId');
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+      'space_id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+      'date', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _mealTypeMeta =
+      const VerificationMeta('mealType');
+  @override
+  late final GeneratedColumn<String> mealType = GeneratedColumn<String>(
+      'meal_type', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _servingsOverrideMeta =
+      const VerificationMeta('servingsOverride');
+  @override
+  late final GeneratedColumn<int> servingsOverride = GeneratedColumn<int>(
+      'servings_override', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+      'note', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _doneMeta = const VerificationMeta('done');
+  @override
+  late final GeneratedColumn<bool> done = GeneratedColumn<bool>(
+      'done', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("done" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _recipeJsonMeta =
+      const VerificationMeta('recipeJson');
+  @override
+  late final GeneratedColumn<String> recipeJson = GeneratedColumn<String>(
+      'recipe_json', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _authorIdMeta =
+      const VerificationMeta('authorId');
+  @override
+  late final GeneratedColumn<String> authorId = GeneratedColumn<String>(
+      'author_id', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _authorNameMeta =
+      const VerificationMeta('authorName');
+  @override
+  late final GeneratedColumn<String> authorName = GeneratedColumn<String>(
+      'author_name', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(''));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _updatedAtMeta =
+      const VerificationMeta('updatedAt');
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+      'updated_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _syncedAtMeta =
+      const VerificationMeta('syncedAt');
+  @override
+  late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
+      'synced_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        spaceId,
+        date,
+        mealType,
+        servingsOverride,
+        note,
+        done,
+        recipeJson,
+        authorId,
+        authorName,
+        createdAt,
+        updatedAt,
+        syncedAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'shared_meals';
+  @override
+  VerificationContext validateIntegrity(Insertable<SharedMealRow> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('space_id')) {
+      context.handle(_spaceIdMeta,
+          spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta));
+    } else if (isInserting) {
+      context.missing(_spaceIdMeta);
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+          _dateMeta, date.isAcceptableOrUnknown(data['date']!, _dateMeta));
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('meal_type')) {
+      context.handle(_mealTypeMeta,
+          mealType.isAcceptableOrUnknown(data['meal_type']!, _mealTypeMeta));
+    } else if (isInserting) {
+      context.missing(_mealTypeMeta);
+    }
+    if (data.containsKey('servings_override')) {
+      context.handle(
+          _servingsOverrideMeta,
+          servingsOverride.isAcceptableOrUnknown(
+              data['servings_override']!, _servingsOverrideMeta));
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+          _noteMeta, note.isAcceptableOrUnknown(data['note']!, _noteMeta));
+    }
+    if (data.containsKey('done')) {
+      context.handle(
+          _doneMeta, done.isAcceptableOrUnknown(data['done']!, _doneMeta));
+    }
+    if (data.containsKey('recipe_json')) {
+      context.handle(
+          _recipeJsonMeta,
+          recipeJson.isAcceptableOrUnknown(
+              data['recipe_json']!, _recipeJsonMeta));
+    } else if (isInserting) {
+      context.missing(_recipeJsonMeta);
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(_authorIdMeta,
+          authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta));
+    }
+    if (data.containsKey('author_name')) {
+      context.handle(
+          _authorNameMeta,
+          authorName.isAcceptableOrUnknown(
+              data['author_name']!, _authorNameMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(_updatedAtMeta,
+          updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('synced_at')) {
+      context.handle(_syncedAtMeta,
+          syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SharedMealRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SharedMealRow(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      spaceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}space_id'])!,
+      date: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
+      mealType: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}meal_type'])!,
+      servingsOverride: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}servings_override']),
+      note: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}note']),
+      done: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}done'])!,
+      recipeJson: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}recipe_json'])!,
+      authorId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}author_id'])!,
+      authorName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}author_name'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      updatedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      syncedAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
+    );
+  }
+
+  @override
+  $SharedMealsTable createAlias(String alias) {
+    return $SharedMealsTable(attachedDatabase, alias);
+  }
+}
+
+class SharedMealRow extends DataClass implements Insertable<SharedMealRow> {
+  final String id;
+  final String spaceId;
+  final DateTime date;
+  final String mealType;
+  final int? servingsOverride;
+  final String? note;
+  final bool done;
+  final String recipeJson;
+  final String authorId;
+  final String authorName;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  /// Versão (`updated_at`) já enviada à casa; nulo = mexida aqui e ainda não
+  /// enviada (marcar como feita, mover, apagar a refeição de outra pessoa).
+  final DateTime? syncedAt;
+  const SharedMealRow(
+      {required this.id,
+      required this.spaceId,
+      required this.date,
+      required this.mealType,
+      this.servingsOverride,
+      this.note,
+      required this.done,
+      required this.recipeJson,
+      required this.authorId,
+      required this.authorName,
+      required this.createdAt,
+      required this.updatedAt,
+      this.syncedAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['space_id'] = Variable<String>(spaceId);
+    map['date'] = Variable<DateTime>(date);
+    map['meal_type'] = Variable<String>(mealType);
+    if (!nullToAbsent || servingsOverride != null) {
+      map['servings_override'] = Variable<int>(servingsOverride);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['done'] = Variable<bool>(done);
+    map['recipe_json'] = Variable<String>(recipeJson);
+    map['author_id'] = Variable<String>(authorId);
+    map['author_name'] = Variable<String>(authorName);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || syncedAt != null) {
+      map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    return map;
+  }
+
+  SharedMealsCompanion toCompanion(bool nullToAbsent) {
+    return SharedMealsCompanion(
+      id: Value(id),
+      spaceId: Value(spaceId),
+      date: Value(date),
+      mealType: Value(mealType),
+      servingsOverride: servingsOverride == null && nullToAbsent
+          ? const Value.absent()
+          : Value(servingsOverride),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      done: Value(done),
+      recipeJson: Value(recipeJson),
+      authorId: Value(authorId),
+      authorName: Value(authorName),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      syncedAt: syncedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncedAt),
+    );
+  }
+
+  factory SharedMealRow.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SharedMealRow(
+      id: serializer.fromJson<String>(json['id']),
+      spaceId: serializer.fromJson<String>(json['spaceId']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      mealType: serializer.fromJson<String>(json['mealType']),
+      servingsOverride: serializer.fromJson<int?>(json['servingsOverride']),
+      note: serializer.fromJson<String?>(json['note']),
+      done: serializer.fromJson<bool>(json['done']),
+      recipeJson: serializer.fromJson<String>(json['recipeJson']),
+      authorId: serializer.fromJson<String>(json['authorId']),
+      authorName: serializer.fromJson<String>(json['authorName']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'spaceId': serializer.toJson<String>(spaceId),
+      'date': serializer.toJson<DateTime>(date),
+      'mealType': serializer.toJson<String>(mealType),
+      'servingsOverride': serializer.toJson<int?>(servingsOverride),
+      'note': serializer.toJson<String?>(note),
+      'done': serializer.toJson<bool>(done),
+      'recipeJson': serializer.toJson<String>(recipeJson),
+      'authorId': serializer.toJson<String>(authorId),
+      'authorName': serializer.toJson<String>(authorName),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+    };
+  }
+
+  SharedMealRow copyWith(
+          {String? id,
+          String? spaceId,
+          DateTime? date,
+          String? mealType,
+          Value<int?> servingsOverride = const Value.absent(),
+          Value<String?> note = const Value.absent(),
+          bool? done,
+          String? recipeJson,
+          String? authorId,
+          String? authorName,
+          DateTime? createdAt,
+          DateTime? updatedAt,
+          Value<DateTime?> syncedAt = const Value.absent()}) =>
+      SharedMealRow(
+        id: id ?? this.id,
+        spaceId: spaceId ?? this.spaceId,
+        date: date ?? this.date,
+        mealType: mealType ?? this.mealType,
+        servingsOverride: servingsOverride.present
+            ? servingsOverride.value
+            : this.servingsOverride,
+        note: note.present ? note.value : this.note,
+        done: done ?? this.done,
+        recipeJson: recipeJson ?? this.recipeJson,
+        authorId: authorId ?? this.authorId,
+        authorName: authorName ?? this.authorName,
+        createdAt: createdAt ?? this.createdAt,
+        updatedAt: updatedAt ?? this.updatedAt,
+        syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+      );
+  SharedMealRow copyWithCompanion(SharedMealsCompanion data) {
+    return SharedMealRow(
+      id: data.id.present ? data.id.value : this.id,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
+      date: data.date.present ? data.date.value : this.date,
+      mealType: data.mealType.present ? data.mealType.value : this.mealType,
+      servingsOverride: data.servingsOverride.present
+          ? data.servingsOverride.value
+          : this.servingsOverride,
+      note: data.note.present ? data.note.value : this.note,
+      done: data.done.present ? data.done.value : this.done,
+      recipeJson:
+          data.recipeJson.present ? data.recipeJson.value : this.recipeJson,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      authorName:
+          data.authorName.present ? data.authorName.value : this.authorName,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SharedMealRow(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('date: $date, ')
+          ..write('mealType: $mealType, ')
+          ..write('servingsOverride: $servingsOverride, ')
+          ..write('note: $note, ')
+          ..write('done: $done, ')
+          ..write('recipeJson: $recipeJson, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('syncedAt: $syncedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      id,
+      spaceId,
+      date,
+      mealType,
+      servingsOverride,
+      note,
+      done,
+      recipeJson,
+      authorId,
+      authorName,
+      createdAt,
+      updatedAt,
+      syncedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SharedMealRow &&
+          other.id == this.id &&
+          other.spaceId == this.spaceId &&
+          other.date == this.date &&
+          other.mealType == this.mealType &&
+          other.servingsOverride == this.servingsOverride &&
+          other.note == this.note &&
+          other.done == this.done &&
+          other.recipeJson == this.recipeJson &&
+          other.authorId == this.authorId &&
+          other.authorName == this.authorName &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.syncedAt == this.syncedAt);
+}
+
+class SharedMealsCompanion extends UpdateCompanion<SharedMealRow> {
+  final Value<String> id;
+  final Value<String> spaceId;
+  final Value<DateTime> date;
+  final Value<String> mealType;
+  final Value<int?> servingsOverride;
+  final Value<String?> note;
+  final Value<bool> done;
+  final Value<String> recipeJson;
+  final Value<String> authorId;
+  final Value<String> authorName;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> syncedAt;
+  final Value<int> rowid;
+  const SharedMealsCompanion({
+    this.id = const Value.absent(),
+    this.spaceId = const Value.absent(),
+    this.date = const Value.absent(),
+    this.mealType = const Value.absent(),
+    this.servingsOverride = const Value.absent(),
+    this.note = const Value.absent(),
+    this.done = const Value.absent(),
+    this.recipeJson = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.authorName = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SharedMealsCompanion.insert({
+    required String id,
+    required String spaceId,
+    required DateTime date,
+    required String mealType,
+    this.servingsOverride = const Value.absent(),
+    this.note = const Value.absent(),
+    this.done = const Value.absent(),
+    required String recipeJson,
+    this.authorId = const Value.absent(),
+    this.authorName = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.syncedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        spaceId = Value(spaceId),
+        date = Value(date),
+        mealType = Value(mealType),
+        recipeJson = Value(recipeJson),
+        createdAt = Value(createdAt),
+        updatedAt = Value(updatedAt);
+  static Insertable<SharedMealRow> custom({
+    Expression<String>? id,
+    Expression<String>? spaceId,
+    Expression<DateTime>? date,
+    Expression<String>? mealType,
+    Expression<int>? servingsOverride,
+    Expression<String>? note,
+    Expression<bool>? done,
+    Expression<String>? recipeJson,
+    Expression<String>? authorId,
+    Expression<String>? authorName,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? syncedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (spaceId != null) 'space_id': spaceId,
+      if (date != null) 'date': date,
+      if (mealType != null) 'meal_type': mealType,
+      if (servingsOverride != null) 'servings_override': servingsOverride,
+      if (note != null) 'note': note,
+      if (done != null) 'done': done,
+      if (recipeJson != null) 'recipe_json': recipeJson,
+      if (authorId != null) 'author_id': authorId,
+      if (authorName != null) 'author_name': authorName,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (syncedAt != null) 'synced_at': syncedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SharedMealsCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? spaceId,
+      Value<DateTime>? date,
+      Value<String>? mealType,
+      Value<int?>? servingsOverride,
+      Value<String?>? note,
+      Value<bool>? done,
+      Value<String>? recipeJson,
+      Value<String>? authorId,
+      Value<String>? authorName,
+      Value<DateTime>? createdAt,
+      Value<DateTime>? updatedAt,
+      Value<DateTime?>? syncedAt,
+      Value<int>? rowid}) {
+    return SharedMealsCompanion(
+      id: id ?? this.id,
+      spaceId: spaceId ?? this.spaceId,
+      date: date ?? this.date,
+      mealType: mealType ?? this.mealType,
+      servingsOverride: servingsOverride ?? this.servingsOverride,
+      note: note ?? this.note,
+      done: done ?? this.done,
+      recipeJson: recipeJson ?? this.recipeJson,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      syncedAt: syncedAt ?? this.syncedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (mealType.present) {
+      map['meal_type'] = Variable<String>(mealType.value);
+    }
+    if (servingsOverride.present) {
+      map['servings_override'] = Variable<int>(servingsOverride.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (done.present) {
+      map['done'] = Variable<bool>(done.value);
+    }
+    if (recipeJson.present) {
+      map['recipe_json'] = Variable<String>(recipeJson.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (authorName.present) {
+      map['author_name'] = Variable<String>(authorName.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (syncedAt.present) {
+      map['synced_at'] = Variable<DateTime>(syncedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SharedMealsCompanion(')
+          ..write('id: $id, ')
+          ..write('spaceId: $spaceId, ')
+          ..write('date: $date, ')
+          ..write('mealType: $mealType, ')
+          ..write('servingsOverride: $servingsOverride, ')
+          ..write('note: $note, ')
+          ..write('done: $done, ')
+          ..write('recipeJson: $recipeJson, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncedAt: $syncedAt, ')
@@ -4983,8 +5668,14 @@ class $SyncTombstonesTable extends SyncTombstones
   late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
       'deleted_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _spaceIdMeta =
+      const VerificationMeta('spaceId');
   @override
-  List<GeneratedColumn> get $columns => [kind, id, deletedAt];
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+      'space_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [kind, id, deletedAt, spaceId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -5012,6 +5703,10 @@ class $SyncTombstonesTable extends SyncTombstones
     } else if (isInserting) {
       context.missing(_deletedAtMeta);
     }
+    if (data.containsKey('space_id')) {
+      context.handle(_spaceIdMeta,
+          spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta));
+    }
     return context;
   }
 
@@ -5027,6 +5722,8 @@ class $SyncTombstonesTable extends SyncTombstones
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       deletedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}deleted_at'])!,
+      spaceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}space_id']),
     );
   }
 
@@ -5042,14 +5739,23 @@ class SyncTombstoneRow extends DataClass
   final String kind;
   final String id;
   final DateTime deletedAt;
+
+  /// Casa onde o item vivia; nulo = a conta da pessoa (v10).
+  final String? spaceId;
   const SyncTombstoneRow(
-      {required this.kind, required this.id, required this.deletedAt});
+      {required this.kind,
+      required this.id,
+      required this.deletedAt,
+      this.spaceId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['kind'] = Variable<String>(kind);
     map['id'] = Variable<String>(id);
     map['deleted_at'] = Variable<DateTime>(deletedAt);
+    if (!nullToAbsent || spaceId != null) {
+      map['space_id'] = Variable<String>(spaceId);
+    }
     return map;
   }
 
@@ -5058,6 +5764,9 @@ class SyncTombstoneRow extends DataClass
       kind: Value(kind),
       id: Value(id),
       deletedAt: Value(deletedAt),
+      spaceId: spaceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(spaceId),
     );
   }
 
@@ -5068,6 +5777,7 @@ class SyncTombstoneRow extends DataClass
       kind: serializer.fromJson<String>(json['kind']),
       id: serializer.fromJson<String>(json['id']),
       deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+      spaceId: serializer.fromJson<String?>(json['spaceId']),
     );
   }
   @override
@@ -5077,20 +5787,27 @@ class SyncTombstoneRow extends DataClass
       'kind': serializer.toJson<String>(kind),
       'id': serializer.toJson<String>(id),
       'deletedAt': serializer.toJson<DateTime>(deletedAt),
+      'spaceId': serializer.toJson<String?>(spaceId),
     };
   }
 
-  SyncTombstoneRow copyWith({String? kind, String? id, DateTime? deletedAt}) =>
+  SyncTombstoneRow copyWith(
+          {String? kind,
+          String? id,
+          DateTime? deletedAt,
+          Value<String?> spaceId = const Value.absent()}) =>
       SyncTombstoneRow(
         kind: kind ?? this.kind,
         id: id ?? this.id,
         deletedAt: deletedAt ?? this.deletedAt,
+        spaceId: spaceId.present ? spaceId.value : this.spaceId,
       );
   SyncTombstoneRow copyWithCompanion(SyncTombstonesCompanion data) {
     return SyncTombstoneRow(
       kind: data.kind.present ? data.kind.value : this.kind,
       id: data.id.present ? data.id.value : this.id,
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
     );
   }
 
@@ -5099,37 +5816,42 @@ class SyncTombstoneRow extends DataClass
     return (StringBuffer('SyncTombstoneRow(')
           ..write('kind: $kind, ')
           ..write('id: $id, ')
-          ..write('deletedAt: $deletedAt')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('spaceId: $spaceId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(kind, id, deletedAt);
+  int get hashCode => Object.hash(kind, id, deletedAt, spaceId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SyncTombstoneRow &&
           other.kind == this.kind &&
           other.id == this.id &&
-          other.deletedAt == this.deletedAt);
+          other.deletedAt == this.deletedAt &&
+          other.spaceId == this.spaceId);
 }
 
 class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstoneRow> {
   final Value<String> kind;
   final Value<String> id;
   final Value<DateTime> deletedAt;
+  final Value<String?> spaceId;
   final Value<int> rowid;
   const SyncTombstonesCompanion({
     this.kind = const Value.absent(),
     this.id = const Value.absent(),
     this.deletedAt = const Value.absent(),
+    this.spaceId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncTombstonesCompanion.insert({
     required String kind,
     required String id,
     required DateTime deletedAt,
+    this.spaceId = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : kind = Value(kind),
         id = Value(id),
@@ -5138,12 +5860,14 @@ class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstoneRow> {
     Expression<String>? kind,
     Expression<String>? id,
     Expression<DateTime>? deletedAt,
+    Expression<String>? spaceId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (kind != null) 'kind': kind,
       if (id != null) 'id': id,
       if (deletedAt != null) 'deleted_at': deletedAt,
+      if (spaceId != null) 'space_id': spaceId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5152,11 +5876,13 @@ class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstoneRow> {
       {Value<String>? kind,
       Value<String>? id,
       Value<DateTime>? deletedAt,
+      Value<String?>? spaceId,
       Value<int>? rowid}) {
     return SyncTombstonesCompanion(
       kind: kind ?? this.kind,
       id: id ?? this.id,
       deletedAt: deletedAt ?? this.deletedAt,
+      spaceId: spaceId ?? this.spaceId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5173,6 +5899,9 @@ class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstoneRow> {
     if (deletedAt.present) {
       map['deleted_at'] = Variable<DateTime>(deletedAt.value);
     }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5185,6 +5914,7 @@ class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstoneRow> {
           ..write('kind: $kind, ')
           ..write('id: $id, ')
           ..write('deletedAt: $deletedAt, ')
+          ..write('spaceId: $spaceId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5236,9 +5966,15 @@ class $ShoppingListsTable extends ShoppingLists
   late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
       'synced_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _spaceIdMeta =
+      const VerificationMeta('spaceId');
+  @override
+  late final GeneratedColumn<String> spaceId = GeneratedColumn<String>(
+      'space_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, name, status, createdAt, updatedAt, syncedAt];
+      [id, name, status, createdAt, updatedAt, syncedAt, spaceId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -5276,6 +6012,10 @@ class $ShoppingListsTable extends ShoppingLists
       context.handle(_syncedAtMeta,
           syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
     }
+    if (data.containsKey('space_id')) {
+      context.handle(_spaceIdMeta,
+          spaceId.isAcceptableOrUnknown(data['space_id']!, _spaceIdMeta));
+    }
     return context;
   }
 
@@ -5297,6 +6037,8 @@ class $ShoppingListsTable extends ShoppingLists
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
       syncedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
+      spaceId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}space_id']),
     );
   }
 
@@ -5315,13 +6057,18 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
 
   /// Versão (`updated_at`) já sincronizada com a conta (H4).
   final DateTime? syncedAt;
+
+  /// Casa a que a lista pertence (nulo = só da pessoa); os itens seguem a
+  /// lista. Ver `MealPlanEntries.spaceId` (v10).
+  final String? spaceId;
   const ShoppingListRow(
       {required this.id,
       required this.name,
       required this.status,
       required this.createdAt,
       required this.updatedAt,
-      this.syncedAt});
+      this.syncedAt,
+      this.spaceId});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -5332,6 +6079,9 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || syncedAt != null) {
       map['synced_at'] = Variable<DateTime>(syncedAt);
+    }
+    if (!nullToAbsent || spaceId != null) {
+      map['space_id'] = Variable<String>(spaceId);
     }
     return map;
   }
@@ -5346,6 +6096,9 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       syncedAt: syncedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(syncedAt),
+      spaceId: spaceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(spaceId),
     );
   }
 
@@ -5359,6 +6112,7 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      spaceId: serializer.fromJson<String?>(json['spaceId']),
     );
   }
   @override
@@ -5371,6 +6125,7 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'spaceId': serializer.toJson<String?>(spaceId),
     };
   }
 
@@ -5380,7 +6135,8 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
           String? status,
           DateTime? createdAt,
           DateTime? updatedAt,
-          Value<DateTime?> syncedAt = const Value.absent()}) =>
+          Value<DateTime?> syncedAt = const Value.absent(),
+          Value<String?> spaceId = const Value.absent()}) =>
       ShoppingListRow(
         id: id ?? this.id,
         name: name ?? this.name,
@@ -5388,6 +6144,7 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+        spaceId: spaceId.present ? spaceId.value : this.spaceId,
       );
   ShoppingListRow copyWithCompanion(ShoppingListsCompanion data) {
     return ShoppingListRow(
@@ -5397,6 +6154,7 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      spaceId: data.spaceId.present ? data.spaceId.value : this.spaceId,
     );
   }
 
@@ -5408,14 +6166,15 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('syncedAt: $syncedAt')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('spaceId: $spaceId')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, name, status, createdAt, updatedAt, syncedAt);
+      Object.hash(id, name, status, createdAt, updatedAt, syncedAt, spaceId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5425,7 +6184,8 @@ class ShoppingListRow extends DataClass implements Insertable<ShoppingListRow> {
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
-          other.syncedAt == this.syncedAt);
+          other.syncedAt == this.syncedAt &&
+          other.spaceId == this.spaceId);
 }
 
 class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
@@ -5435,6 +6195,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<DateTime?> syncedAt;
+  final Value<String?> spaceId;
   final Value<int> rowid;
   const ShoppingListsCompanion({
     this.id = const Value.absent(),
@@ -5443,6 +6204,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
+    this.spaceId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ShoppingListsCompanion.insert({
@@ -5452,6 +6214,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
+    this.spaceId = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         name = Value(name);
@@ -5462,6 +6225,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? syncedAt,
+    Expression<String>? spaceId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5471,6 +6235,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncedAt != null) 'synced_at': syncedAt,
+      if (spaceId != null) 'space_id': spaceId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5482,6 +6247,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<DateTime?>? syncedAt,
+      Value<String?>? spaceId,
       Value<int>? rowid}) {
     return ShoppingListsCompanion(
       id: id ?? this.id,
@@ -5490,6 +6256,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       syncedAt: syncedAt ?? this.syncedAt,
+      spaceId: spaceId ?? this.spaceId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5515,6 +6282,9 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
     if (syncedAt.present) {
       map['synced_at'] = Variable<DateTime>(syncedAt.value);
     }
+    if (spaceId.present) {
+      map['space_id'] = Variable<String>(spaceId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5530,6 +6300,7 @@ class ShoppingListsCompanion extends UpdateCompanion<ShoppingListRow> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncedAt: $syncedAt, ')
+          ..write('spaceId: $spaceId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6634,6 +7405,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RecipeTagsTable recipeTags = $RecipeTagsTable(this);
   late final $MealPlanEntriesTable mealPlanEntries =
       $MealPlanEntriesTable(this);
+  late final $SharedMealsTable sharedMeals = $SharedMealsTable(this);
   late final $CookLogsTable cookLogs = $CookLogsTable(this);
   late final $SyncTombstonesTable syncTombstones = $SyncTombstonesTable(this);
   late final $ShoppingListsTable shoppingLists = $ShoppingListsTable(this);
@@ -6667,6 +7439,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         tags,
         recipeTags,
         mealPlanEntries,
+        sharedMeals,
         cookLogs,
         syncTombstones,
         shoppingLists,
@@ -8736,6 +9509,7 @@ typedef $$MealPlanEntriesTableCreateCompanionBuilder = MealPlanEntriesCompanion
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> syncedAt,
+  Value<String?> spaceId,
   Value<int> rowid,
 });
 typedef $$MealPlanEntriesTableUpdateCompanionBuilder = MealPlanEntriesCompanion
@@ -8750,6 +9524,7 @@ typedef $$MealPlanEntriesTableUpdateCompanionBuilder = MealPlanEntriesCompanion
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> syncedAt,
+  Value<String?> spaceId,
   Value<int> rowid,
 });
 
@@ -8781,6 +9556,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String?> spaceId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MealPlanEntriesCompanion(
@@ -8794,6 +9570,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
+            spaceId: spaceId,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8807,6 +9584,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String?> spaceId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               MealPlanEntriesCompanion.insert(
@@ -8820,6 +9598,7 @@ class $$MealPlanEntriesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
+            spaceId: spaceId,
             rowid: rowid,
           ),
         ));
@@ -8870,6 +9649,11 @@ class $$MealPlanEntriesTableFilterComposer
 
   ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
       column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8934,6 +9718,11 @@ class $$MealPlanEntriesTableOrderingComposer
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 
+  ColumnOrderings<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
   $$RecipesTableOrderingComposer get recipeId {
     final $$RecipesTableOrderingComposer composer = $state.composerBuilder(
         composer: this,
@@ -8945,6 +9734,262 @@ class $$MealPlanEntriesTableOrderingComposer
                 $state.db, $state.db.recipes, joinBuilder, parentComposers)));
     return composer;
   }
+}
+
+typedef $$SharedMealsTableCreateCompanionBuilder = SharedMealsCompanion
+    Function({
+  required String id,
+  required String spaceId,
+  required DateTime date,
+  required String mealType,
+  Value<int?> servingsOverride,
+  Value<String?> note,
+  Value<bool> done,
+  required String recipeJson,
+  Value<String> authorId,
+  Value<String> authorName,
+  required DateTime createdAt,
+  required DateTime updatedAt,
+  Value<DateTime?> syncedAt,
+  Value<int> rowid,
+});
+typedef $$SharedMealsTableUpdateCompanionBuilder = SharedMealsCompanion
+    Function({
+  Value<String> id,
+  Value<String> spaceId,
+  Value<DateTime> date,
+  Value<String> mealType,
+  Value<int?> servingsOverride,
+  Value<String?> note,
+  Value<bool> done,
+  Value<String> recipeJson,
+  Value<String> authorId,
+  Value<String> authorName,
+  Value<DateTime> createdAt,
+  Value<DateTime> updatedAt,
+  Value<DateTime?> syncedAt,
+  Value<int> rowid,
+});
+
+class $$SharedMealsTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SharedMealsTable,
+    SharedMealRow,
+    $$SharedMealsTableFilterComposer,
+    $$SharedMealsTableOrderingComposer,
+    $$SharedMealsTableCreateCompanionBuilder,
+    $$SharedMealsTableUpdateCompanionBuilder> {
+  $$SharedMealsTableTableManager(_$AppDatabase db, $SharedMealsTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          filteringComposer:
+              $$SharedMealsTableFilterComposer(ComposerState(db, table)),
+          orderingComposer:
+              $$SharedMealsTableOrderingComposer(ComposerState(db, table)),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> spaceId = const Value.absent(),
+            Value<DateTime> date = const Value.absent(),
+            Value<String> mealType = const Value.absent(),
+            Value<int?> servingsOverride = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<bool> done = const Value.absent(),
+            Value<String> recipeJson = const Value.absent(),
+            Value<String> authorId = const Value.absent(),
+            Value<String> authorName = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime> updatedAt = const Value.absent(),
+            Value<DateTime?> syncedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SharedMealsCompanion(
+            id: id,
+            spaceId: spaceId,
+            date: date,
+            mealType: mealType,
+            servingsOverride: servingsOverride,
+            note: note,
+            done: done,
+            recipeJson: recipeJson,
+            authorId: authorId,
+            authorName: authorName,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncedAt: syncedAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String spaceId,
+            required DateTime date,
+            required String mealType,
+            Value<int?> servingsOverride = const Value.absent(),
+            Value<String?> note = const Value.absent(),
+            Value<bool> done = const Value.absent(),
+            required String recipeJson,
+            Value<String> authorId = const Value.absent(),
+            Value<String> authorName = const Value.absent(),
+            required DateTime createdAt,
+            required DateTime updatedAt,
+            Value<DateTime?> syncedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SharedMealsCompanion.insert(
+            id: id,
+            spaceId: spaceId,
+            date: date,
+            mealType: mealType,
+            servingsOverride: servingsOverride,
+            note: note,
+            done: done,
+            recipeJson: recipeJson,
+            authorId: authorId,
+            authorName: authorName,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            syncedAt: syncedAt,
+            rowid: rowid,
+          ),
+        ));
+}
+
+class $$SharedMealsTableFilterComposer
+    extends FilterComposer<_$AppDatabase, $SharedMealsTable> {
+  $$SharedMealsTableFilterComposer(super.$state);
+  ColumnFilters<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get date => $state.composableBuilder(
+      column: $state.table.date,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get mealType => $state.composableBuilder(
+      column: $state.table.mealType,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get servingsOverride => $state.composableBuilder(
+      column: $state.table.servingsOverride,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get note => $state.composableBuilder(
+      column: $state.table.note,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<bool> get done => $state.composableBuilder(
+      column: $state.table.done,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get recipeJson => $state.composableBuilder(
+      column: $state.table.recipeJson,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get authorId => $state.composableBuilder(
+      column: $state.table.authorId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get authorName => $state.composableBuilder(
+      column: $state.table.authorName,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+}
+
+class $$SharedMealsTableOrderingComposer
+    extends OrderingComposer<_$AppDatabase, $SharedMealsTable> {
+  $$SharedMealsTableOrderingComposer(super.$state);
+  ColumnOrderings<String> get id => $state.composableBuilder(
+      column: $state.table.id,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get date => $state.composableBuilder(
+      column: $state.table.date,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get mealType => $state.composableBuilder(
+      column: $state.table.mealType,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get servingsOverride => $state.composableBuilder(
+      column: $state.table.servingsOverride,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get note => $state.composableBuilder(
+      column: $state.table.note,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<bool> get done => $state.composableBuilder(
+      column: $state.table.done,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get recipeJson => $state.composableBuilder(
+      column: $state.table.recipeJson,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get authorId => $state.composableBuilder(
+      column: $state.table.authorId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get authorName => $state.composableBuilder(
+      column: $state.table.authorName,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
+      column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get updatedAt => $state.composableBuilder(
+      column: $state.table.updatedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
+      column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
 typedef $$CookLogsTableCreateCompanionBuilder = CookLogsCompanion Function({
@@ -9140,6 +10185,7 @@ typedef $$SyncTombstonesTableCreateCompanionBuilder = SyncTombstonesCompanion
   required String kind,
   required String id,
   required DateTime deletedAt,
+  Value<String?> spaceId,
   Value<int> rowid,
 });
 typedef $$SyncTombstonesTableUpdateCompanionBuilder = SyncTombstonesCompanion
@@ -9147,6 +10193,7 @@ typedef $$SyncTombstonesTableUpdateCompanionBuilder = SyncTombstonesCompanion
   Value<String> kind,
   Value<String> id,
   Value<DateTime> deletedAt,
+  Value<String?> spaceId,
   Value<int> rowid,
 });
 
@@ -9171,24 +10218,28 @@ class $$SyncTombstonesTableTableManager extends RootTableManager<
             Value<String> kind = const Value.absent(),
             Value<String> id = const Value.absent(),
             Value<DateTime> deletedAt = const Value.absent(),
+            Value<String?> spaceId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SyncTombstonesCompanion(
             kind: kind,
             id: id,
             deletedAt: deletedAt,
+            spaceId: spaceId,
             rowid: rowid,
           ),
           createCompanionCallback: ({
             required String kind,
             required String id,
             required DateTime deletedAt,
+            Value<String?> spaceId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               SyncTombstonesCompanion.insert(
             kind: kind,
             id: id,
             deletedAt: deletedAt,
+            spaceId: spaceId,
             rowid: rowid,
           ),
         ));
@@ -9211,6 +10262,11 @@ class $$SyncTombstonesTableFilterComposer
       column: $state.table.deletedAt,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
 }
 
 class $$SyncTombstonesTableOrderingComposer
@@ -9230,6 +10286,11 @@ class $$SyncTombstonesTableOrderingComposer
       column: $state.table.deletedAt,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
 }
 
 typedef $$ShoppingListsTableCreateCompanionBuilder = ShoppingListsCompanion
@@ -9240,6 +10301,7 @@ typedef $$ShoppingListsTableCreateCompanionBuilder = ShoppingListsCompanion
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> syncedAt,
+  Value<String?> spaceId,
   Value<int> rowid,
 });
 typedef $$ShoppingListsTableUpdateCompanionBuilder = ShoppingListsCompanion
@@ -9250,6 +10312,7 @@ typedef $$ShoppingListsTableUpdateCompanionBuilder = ShoppingListsCompanion
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<DateTime?> syncedAt,
+  Value<String?> spaceId,
   Value<int> rowid,
 });
 
@@ -9276,6 +10339,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String?> spaceId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListsCompanion(
@@ -9285,6 +10349,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
+            spaceId: spaceId,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -9294,6 +10359,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String?> spaceId = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListsCompanion.insert(
@@ -9303,6 +10369,7 @@ class $$ShoppingListsTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
+            spaceId: spaceId,
             rowid: rowid,
           ),
         ));
@@ -9338,6 +10405,11 @@ class $$ShoppingListsTableFilterComposer
 
   ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
       column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -9389,6 +10461,11 @@ class $$ShoppingListsTableOrderingComposer
 
   ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
       column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get spaceId => $state.composableBuilder(
+      column: $state.table.spaceId,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 }
@@ -9962,6 +11039,8 @@ class $AppDatabaseManager {
       $$RecipeTagsTableTableManager(_db, _db.recipeTags);
   $$MealPlanEntriesTableTableManager get mealPlanEntries =>
       $$MealPlanEntriesTableTableManager(_db, _db.mealPlanEntries);
+  $$SharedMealsTableTableManager get sharedMeals =>
+      $$SharedMealsTableTableManager(_db, _db.sharedMeals);
   $$CookLogsTableTableManager get cookLogs =>
       $$CookLogsTableTableManager(_db, _db.cookLogs);
   $$SyncTombstonesTableTableManager get syncTombstones =>

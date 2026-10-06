@@ -20,6 +20,7 @@ import 'package:receyta/features/recipes/screens/search_page.dart';
 import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/features/settings/screens/about_page.dart';
+import 'package:receyta/features/space/screens/space_page.dart';
 import 'package:receyta/features/settings/screens/settings_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_list_page.dart';
 import 'package:receyta/home_shell.dart';
@@ -136,6 +137,11 @@ final router = GoRouter(
       path: '/trash',
       name: 'trash',
       builder: (context, state) => const TrashPage(),
+    ),
+    GoRoute(
+      path: '/space',
+      name: 'space',
+      builder: (context, state) => const SpacePage(),
     ),
     GoRoute(
       path: '/about',

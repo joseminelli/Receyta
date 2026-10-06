@@ -268,6 +268,18 @@ class ShoppingListRepository {
     }
   }
 
+  /// Compartilha a lista com a casa ([spaceId]) ou volta a deixá-la só da
+  /// pessoa (nulo).
+  Future<Result<void>> setSpace(String id, String? spaceId) async {
+    try {
+      await _dao.setSpace(id, spaceId, _clock().toUtc());
+      return const Ok(null);
+    } catch (e) {
+      debugPrint('ShoppingListRepository.setSpace: $e');
+      return Err(DatabaseFailure('Falha ao compartilhar a lista', cause: e));
+    }
+  }
+
   Future<Result<void>> deleteList(String id) async {
     try {
       await _dao.deleteList(id);
@@ -447,6 +459,7 @@ class ShoppingListRepository {
         status: r.status,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
+        spaceId: r.spaceId,
       );
 
   String _defaultName(DateTime at) =>

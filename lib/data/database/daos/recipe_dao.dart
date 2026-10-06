@@ -449,9 +449,14 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     return (delete(recipes)..where((r) => r.id.equals(id))).go();
   }
 
-  /// Avisos de exclusão que a nuvem ainda não recebeu.
-  Future<List<SyncTombstoneRow>> pendingTombstones() =>
-      select(syncTombstones).get();
+  /// Avisos de exclusão que a nuvem ainda não recebeu: os da conta
+  /// ([spaceId] nulo) ou os de uma casa.
+  Future<List<SyncTombstoneRow>> pendingTombstones({String? spaceId}) {
+    return (select(syncTombstones)
+          ..where((t) =>
+              spaceId == null ? t.spaceId.isNull() : t.spaceId.equals(spaceId)))
+        .get();
+  }
 
   Future<int> clearTombstone(String kind, String id) {
     return (delete(syncTombstones)
