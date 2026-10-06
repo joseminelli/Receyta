@@ -379,11 +379,16 @@ void main() {
       if (await root.exists()) await root.delete(recursive: true);
     });
 
-    ParsedRecipeImport recipe({String? image, String? id}) =>
+    ParsedRecipeImport recipe({
+      String? image,
+      String? id,
+      String? imageName,
+    }) =>
         ParsedRecipeImport(
           sourceId: id,
           name: 'Bolo',
           imageBase64: image,
+          imageName: imageName,
         );
 
     test('restaura a foto do arquivo na pasta do app', () async {
