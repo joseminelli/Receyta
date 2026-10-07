@@ -354,6 +354,36 @@ begin
 end;
 $$;
 
+-- O que cada pessoa escolheu dividir com a casa (calendário, despensa, listas
+-- novas já nascendo compartilhadas). Nulo = nunca escolheu. Fica no servidor
+-- pra voltar sozinho ao reinstalar o app ou entrar em outro aparelho.
+alter table public.space_members
+  add column if not exists share_calendar  boolean,
+  add column if not exists share_pantry    boolean,
+  add column if not exists share_new_lists boolean;
+
+create or replace function public.set_share_pref(p_key text, p_on boolean)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if p_key = 'calendar' then
+    update space_members set share_calendar = p_on where user_id = auth.uid();
+  elsif p_key = 'pantry' then
+    update space_members set share_pantry = p_on where user_id = auth.uid();
+  elsif p_key = 'new_lists' then
+    update space_members set share_new_lists = p_on where user_id = auth.uid();
+  else
+    raise exception 'invalid_pref';
+  end if;
+end;
+$$;
+
+revoke all on function public.set_share_pref(text, boolean) from public;
+grant execute on function public.set_share_pref(text, boolean) to authenticated;
+
 -- A casa de quem chamou e as pessoas dela (ou nulo).
 create or replace function public.my_space()
 returns jsonb
@@ -370,7 +400,10 @@ as $$
       select coalesce(jsonb_agg(jsonb_build_object(
         'user_id', m.user_id,
         'display_name', m.display_name,
-        'role', m.role
+        'role', m.role,
+        'share_calendar', m.share_calendar,
+        'share_pantry', m.share_pantry,
+        'share_new_lists', m.share_new_lists
       ) order by m.joined_at), '[]'::jsonb)
       from space_members m where m.space_id = s.id
     )

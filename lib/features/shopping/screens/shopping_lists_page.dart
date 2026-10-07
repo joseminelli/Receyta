@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/features/space/controllers/new_lists_share.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
@@ -24,9 +24,6 @@ import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/app_sheet.dart';
-
-/// Última escolha do interruptor "Compartilhar com a casa" ao criar uma lista.
-const _kNewListShared = 'space_new_lists_shared';
 
 /// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
 /// home_shell usa `extendBody`, então a aba desenha por baixo dela.
@@ -227,8 +224,9 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
   /// guardada.
   Future<void> _openCreateSheet(BuildContext context) async {
     final hasSpace = ref.read(currentSpaceIdProvider) != null;
-    final prefs = await SharedPreferences.getInstance();
-    var shared = hasSpace && (prefs.getBool(_kNewListShared) ?? false);
+    final flag = ref.read(newListsSharedProvider.notifier);
+    var shared = hasSpace &&
+        (await ref.read(newListsSharedProvider.future).catchError((_) => false));
     if (!context.mounted) return;
 
     final choice =
@@ -266,7 +264,7 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
                   value: shared,
                   onChanged: (v) {
                     setSheet(() => shared = v);
-                    prefs.setBool(_kNewListShared, v);
+                    flag.set(v);
                   },
                 ),
               ],
@@ -347,6 +345,20 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
               onTap: () {
                 Navigator.of(sheet).pop();
                 _rename(list);
+              },
+            ),
+            AppSheetOption(
+              icon: Icons.done_all,
+              title: 'Marcar todos',
+              enabled: summary.checked < summary.total,
+              subtitle: summary.total == 0
+                  ? 'A lista está vazia'
+                  : summary.checked == summary.total
+                      ? 'Todos os itens já estão marcados'
+                      : 'Dá a lista por concluída',
+              onTap: () {
+                Navigator.of(sheet).pop();
+                checkAllShoppingItems(ref, list.id);
               },
             ),
             AppSheetOption(

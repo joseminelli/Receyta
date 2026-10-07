@@ -95,13 +95,7 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
         ownerId: info.ownerId,
         members: [
           for (final m in info.members)
-            m.userId == user.id
-                ? SpaceMember(
-                    userId: m.userId,
-                    displayName: mine,
-                    isOwner: m.isOwner,
-                  )
-                : m,
+            m.userId == user.id ? m.withName(mine) : m,
         ],
       ));
     } catch (e) {
@@ -239,6 +233,7 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
     await prefs.remove('$cachePrefix$userId');
     await prefs.remove('space_calendar_$userId');
     await prefs.remove('space_pantry_$userId');
+    await prefs.remove('space_new_lists_$userId');
   }
 
   Future<String?> _readCache(String userId) async {
@@ -254,6 +249,26 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
 
 final spaceControllerProvider =
     AsyncNotifierProvider<SpaceController, SpaceInfo?>(SpaceController.new);
+
+/// O que a própria pessoa escolheu dividir, como o servidor tem guardado.
+/// Nulo = os membros ainda não chegaram (casa lida só do cache do aparelho).
+typedef SharePrefs = ({bool? calendar, bool? pantry, bool? newLists});
+
+final mySharePrefsProvider = Provider<SharePrefs?>((ref) {
+  final user = ref.watch(authUserProvider).valueOrNull;
+  final members = ref.watch(spaceControllerProvider).valueOrNull?.members;
+  if (user == null || members == null) return null;
+  for (final m in members) {
+    if (m.userId == user.id) {
+      return (
+        calendar: m.shareCalendar,
+        pantry: m.sharePantry,
+        newLists: m.shareNewLists,
+      );
+    }
+  }
+  return null;
+});
 
 /// O id da casa (ou nulo), pra quem só precisa saber se há uma.
 final currentSpaceIdProvider = Provider<String?>(

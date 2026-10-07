@@ -49,6 +49,14 @@ class ShoppingListPage extends ConsumerWidget {
           ?.any((i) => i.checked) ??
       false;
 
+  /// O botão "Marcar todos" só aparece com algo pendente.
+  bool _hasUnchecked(WidgetRef ref, String id) =>
+      ref
+          .watch(shoppingListItemsProvider(id))
+          .valueOrNull
+          ?.any((i) => !i.checked) ??
+      false;
+
   Future<void> _share(WidgetRef ref) async {
     final list = ref.read(shoppingListProvider(listId)).valueOrNull;
     if (list == null) return;
@@ -117,6 +125,13 @@ class ShoppingListPage extends ConsumerWidget {
           ? null
           : ActionMenuButton(
               items: [
+                if (_hasUnchecked(ref, list.id))
+                  ActionMenuItem(
+                    icon: Icons.done_all,
+                    label: 'Marcar todos',
+                    hint: 'Dá a lista por concluída',
+                    onTap: () => checkAllShoppingItems(ref, list.id),
+                  ),
                 if (_hasChecked(ref, list.id))
                   ActionMenuItem(
                     icon: Icons.remove_done,

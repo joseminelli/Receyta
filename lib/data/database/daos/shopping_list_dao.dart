@@ -474,6 +474,26 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Marca todos os itens da lista e devolve os ids que estavam pendentes
+  /// (pra poder desfazer).
+  Future<List<String>> checkAll(String listId) {
+    return transaction(() async {
+      Expression<bool> where(ShoppingListItems i) =>
+          i.listId.equals(listId) & i.checked.equals(false);
+      final ids = [
+        for (final row in await (select(shoppingListItems)..where(where)).get())
+          row.id,
+      ];
+      if (ids.isEmpty) return ids;
+      await (update(shoppingListItems)..where(where))
+          .write(const ShoppingListItemsCompanion(
+        checked: Value(true),
+        checkedBy: Value(null),
+      ));
+      return ids;
+    });
+  }
+
   Future<int> setCheckedMany(List<String> itemIds, bool checked) {
     return (update(shoppingListItems)..where((i) => i.id.isIn(itemIds)))
         .write(ShoppingListItemsCompanion(

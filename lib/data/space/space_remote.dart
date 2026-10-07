@@ -11,11 +11,28 @@ class SpaceMember {
     required this.userId,
     required this.displayName,
     required this.isOwner,
+    this.shareCalendar,
+    this.sharePantry,
+    this.shareNewLists,
   });
 
   final String userId;
   final String displayName;
   final bool isOwner;
+
+  /// O que a pessoa escolheu dividir com a casa; nulo = nunca escolheu.
+  final bool? shareCalendar;
+  final bool? sharePantry;
+  final bool? shareNewLists;
+
+  SpaceMember withName(String name) => SpaceMember(
+        userId: userId,
+        displayName: name,
+        isOwner: isOwner,
+        shareCalendar: shareCalendar,
+        sharePantry: sharePantry,
+        shareNewLists: shareNewLists,
+      );
 }
 
 /// A casa (espaço compartilhado) e as pessoas dela.
@@ -47,6 +64,14 @@ class SpaceInfo {
           userId: m['user_id'] as String,
           displayName: '${m['display_name'] ?? ''}'.trim(),
           isOwner: m['role'] == 'owner',
+          shareCalendar: m['share_calendar'] is bool
+              ? m['share_calendar'] as bool
+              : null,
+          sharePantry:
+              m['share_pantry'] is bool ? m['share_pantry'] as bool : null,
+          shareNewLists: m['share_new_lists'] is bool
+              ? m['share_new_lists'] as bool
+              : null,
         ));
       }
     }
@@ -89,6 +114,10 @@ abstract class SpaceRemote {
 
   /// O dono passa a casa pra outra pessoa da casa (e vira membro).
   Future<void> transferOwnership(String userId);
+
+  /// Guarda no servidor o que a pessoa divide com a casa. [key] é `calendar`,
+  /// `pantry` ou `new_lists`.
+  Future<void> setSharePref(String key, bool on);
 }
 
 class SupabaseSpaceRemote implements SpaceRemote {
@@ -156,6 +185,11 @@ class SupabaseSpaceRemote implements SpaceRemote {
   Future<void> transferOwnership(String userId) async {
     await _client.rpc('transfer_ownership', params: {'p_user': userId});
   }
+
+  @override
+  Future<void> setSharePref(String key, bool on) async {
+    await _client.rpc('set_share_pref', params: {'p_key': key, 'p_on': on});
+  }
 }
 
 /// Usado quando o Supabase não inicializou.
@@ -193,6 +227,9 @@ class NoSpaceRemote implements SpaceRemote {
 
   @override
   Future<void> transferOwnership(String userId) async {}
+
+  @override
+  Future<void> setSharePref(String key, bool on) async {}
 }
 
 final spaceRemoteProvider = Provider<SpaceRemote>((ref) {

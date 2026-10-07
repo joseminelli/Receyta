@@ -115,7 +115,22 @@ class _SpacePageState extends ConsumerState<SpacePage> {
                 AppSpacing.screen,
                 AppSpacing.xl,
               ),
-              child: body,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  body,
+                  if (user != null) ...[
+                    const SizedBox(height: AppSpacing.lg),
+                    const _Notice(
+                      icon: Icons.info_outline,
+                      title: 'Gratuito por enquanto',
+                      text: 'No futuro, a casa pode virar um recurso pago. '
+                          'Avisaremos com antecedência antes de qualquer '
+                          'mudança.',
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ),

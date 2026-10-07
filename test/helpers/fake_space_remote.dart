@@ -77,6 +77,14 @@ class FakeSpaceRemote implements SpaceRemote {
     removed.add(userId);
   }
 
+  final sharePrefs = <String, bool>{};
+
+  @override
+  Future<void> setSharePref(String key, bool on) async {
+    _maybeFail();
+    sharePrefs[key] = on;
+  }
+
   final names = <String>[];
   final renamed = <String>[];
   final transferred = <String>[];
