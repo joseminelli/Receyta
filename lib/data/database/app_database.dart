@@ -143,7 +143,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -175,6 +175,8 @@ class AppDatabase extends _$AppDatabase {
   /// v10: `space_id` em listas de compras, refeições e avisos de exclusão — a
   /// "casa" (espaço compartilhado). Tudo entra nulo = só da pessoa.
   /// v11: tabela `shared_meals` (refeições planejadas por outras pessoas da casa).
+  /// v12: `shopping_list_items.added_by` / `checked_by` (quem adicionou e quem
+  /// marcou, nas listas da casa).
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
@@ -261,6 +263,12 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 11) {
             await m.createTable(sharedMeals);
+          }
+          if (from < 12) {
+            await _addColumnIfMissing(
+                m, shoppingListItems, shoppingListItems.addedBy);
+            await _addColumnIfMissing(
+                m, shoppingListItems, shoppingListItems.checkedBy);
           }
         },
         beforeOpen: (details) async {
@@ -437,6 +445,7 @@ class AppDatabase extends _$AppDatabase {
       await (delete(syncTombstones)..where((t) => t.spaceId.equals(spaceId)))
           .go();
       await (delete(sharedMeals)..where((m) => m.spaceId.equals(spaceId))).go();
+      await ingredientDao.resetPantrySync();
     });
   }
 

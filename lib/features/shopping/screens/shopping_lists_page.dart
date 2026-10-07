@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
@@ -23,6 +24,9 @@ import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/app_sheet.dart';
+
+/// Última escolha do interruptor "Compartilhar com a casa" ao criar uma lista.
+const _kNewListShared = 'space_new_lists_shared';
 
 /// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
 /// home_shell usa `extendBody`, então a aba desenha por baixo dela.
@@ -218,47 +222,79 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
   bool _isComplete(ShoppingListSummary s) =>
       s.total > 0 && s.checked == s.total;
 
-  Future<void> _openCreateSheet(BuildContext context) {
-    return showModalBottomSheet<void>(
+  /// Como criar a lista (de receitas ou em branco) e, se a pessoa tem uma casa,
+  /// se ela já nasce compartilhada. A última escolha do interruptor fica
+  /// guardada.
+  Future<void> _openCreateSheet(BuildContext context) async {
+    final hasSpace = ref.read(currentSpaceIdProvider) != null;
+    final prefs = await SharedPreferences.getInstance();
+    var shared = hasSpace && (prefs.getBool(_kNewListShared) ?? false);
+    if (!context.mounted) return;
+
+    final choice =
+        await showModalBottomSheet<({bool fromRecipes, bool shared})>(
       context: context,
       showDragHandle: true,
-      builder: (sheet) => AppSheetFrame(
-        title: 'Nova lista',
-        child: AppSheetOptions(
-          children: [
-            AppSheetOption(
-              icon: Icons.add_shopping_cart_outlined,
-              title: 'A partir de receitas',
-              subtitle: 'Soma os ingredientes das que você escolher',
-              onTap: () {
-                Navigator.of(sheet).pop();
-                _createFromRecipes(context);
-              },
-            ),
-            AppSheetOption(
-              icon: Icons.edit_note,
-              title: 'Lista em branco',
-              subtitle: 'Você adiciona os itens',
-              onTap: () {
-                Navigator.of(sheet).pop();
-                _createEmpty(context);
-              },
-            ),
-          ],
+      builder: (sheet) => StatefulBuilder(
+        builder: (_, setSheet) => AppSheetFrame(
+          title: 'Nova lista',
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppSheetOptions(
+                children: [
+                  AppSheetOption(
+                    icon: Icons.add_shopping_cart_outlined,
+                    title: 'A partir de receitas',
+                    subtitle: 'Soma os ingredientes das que você escolher',
+                    onTap: () => Navigator.of(sheet)
+                        .pop((fromRecipes: true, shared: shared)),
+                  ),
+                  AppSheetOption(
+                    icon: Icons.edit_note,
+                    title: 'Lista em branco',
+                    subtitle: 'Você adiciona os itens',
+                    onTap: () => Navigator.of(sheet)
+                        .pop((fromRecipes: false, shared: shared)),
+                  ),
+                ],
+              ),
+              if (hasSpace) ...[
+                const SizedBox(height: AppSpacing.xs),
+                _ShareNewListRow(
+                  value: shared,
+                  onChanged: (v) {
+                    setSheet(() => shared = v);
+                    prefs.setBool(_kNewListShared, v);
+                  },
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
+    if (choice == null || !context.mounted) return;
+    if (choice.fromRecipes) {
+      await _createFromRecipes(context, shared: choice.shared);
+    } else {
+      await _createEmpty(context, shared: choice.shared);
+    }
   }
 
-  Future<void> _createFromRecipes(BuildContext context) async {
+  Future<void> _createFromRecipes(
+    BuildContext context, {
+    bool shared = false,
+  }) async {
     final ids = await pickRecipesForShoppingList(context, ref);
     if (ids == null || ids.isEmpty) return;
     final result = await _repo.generateFromRecipes(ids);
     if (!mounted) return;
-    _openCreated(result);
+    await _openCreated(result, shared: shared);
   }
 
-  Future<void> _createEmpty(BuildContext context) async {
+  Future<void> _createEmpty(BuildContext context, {bool shared = false}) async {
     final name = await _promptListName(
       context,
       title: 'Nova lista',
@@ -267,17 +303,33 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     if (name == null) return;
     final result = await _repo.createEmpty(name: name);
     if (!mounted) return;
-    _openCreated(result);
+    await _openCreated(result, shared: shared);
   }
 
-  void _openCreated(Result<ShoppingList> result) {
-    result.when(
-      ok: (list) => context.push('/shopping/${list.id}'),
-      err: (f) => showAppSnackBar(
-        message: f.message,
-        variant: AppSnackBarVariant.error,
-      ),
-    );
+  Future<void> _openCreated(
+    Result<ShoppingList> result, {
+    bool shared = false,
+  }) async {
+    switch (result) {
+      case Err(:final failure):
+        showAppSnackBar(
+          message: failure.message,
+          variant: AppSnackBarVariant.error,
+        );
+      case Ok(:final value):
+        if (shared) {
+          final r = await ref
+              .read(spaceControllerProvider.notifier)
+              .setListShared(value.id, true);
+          if (r is Err<void>) {
+            showAppSnackBar(
+              message: r.failure.message,
+              variant: AppSnackBarVariant.error,
+            );
+          }
+        }
+        if (mounted) context.push('/shopping/${value.id}');
+    }
   }
 
   Future<void> _openListMenu(ShoppingListSummary summary) {
@@ -679,6 +731,57 @@ class _ProgressRing extends StatelessWidget {
             ),
           ),
           center,
+        ],
+      ),
+    );
+  }
+}
+
+/// Interruptor "Compartilhar com a casa" da folha de nova lista.
+class _ShareNewListRow extends StatelessWidget {
+  const _ShareNewListRow({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.xs,
+        AppSpacing.sm,
+        AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.people_alt_outlined, color: colors.ink),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Compartilhar com a casa',
+                  style: context.texts.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  value
+                      ? 'Quem está na casa vê e marca os itens'
+                      : 'A lista fica só com você',
+                  style: context.texts.bodySmall
+                      ?.copyWith(color: colors.textMuted),
+                ),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
         ],
       ),
     );

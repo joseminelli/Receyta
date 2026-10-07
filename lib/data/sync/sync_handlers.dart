@@ -328,9 +328,12 @@ class ShoppingListSync implements SyncHandler {
 /// Cada item da lista (com as receitas de onde veio). Só aplica se a lista
 /// existe aqui.
 class ShoppingItemSync implements SyncHandler {
-  ShoppingItemSync(this.db, {this.spaceId});
+  ShoppingItemSync(this.db, {this.spaceId, this.myId});
 
   final AppDatabase db;
+
+  /// Quem está sincronizando (id da conta); só a casa registra autoria.
+  final String? myId;
 
   /// Casa que este tratador sincroniza; nulo = os itens das listas só da pessoa.
   final String? spaceId;
@@ -362,6 +365,9 @@ class ShoppingItemSync implements SyncHandler {
 
     final out = <PendingDoc>[];
     for (final i in items) {
+      final addedBy = spaceId == null ? null : (i.addedBy ?? myId);
+      final checkedBy =
+          (spaceId == null || !i.checked) ? null : (i.checkedBy ?? myId);
       final ingredientName =
           i.ingredientId == null ? null : names[i.ingredientId];
       final hasName = (ingredientName != null && ingredientName.isNotEmpty) ||
@@ -383,6 +389,8 @@ class ShoppingItemSync implements SyncHandler {
             checked: i.checked,
             note: i.note,
             position: i.position,
+            addedBy: addedBy,
+            checkedBy: checkedBy,
             sources: [
               for (final s in sources)
                 if (s.itemId == i.id)
@@ -395,7 +403,14 @@ class ShoppingItemSync implements SyncHandler {
             updatedAt: _at(i),
           )),
         ),
-        onSent: () => db.shoppingListDao.markItemSynced(i.id, _at(i)),
+        onSent: () => spaceId == null
+            ? db.shoppingListDao.markItemSynced(i.id, _at(i))
+            : db.shoppingListDao.markItemSyncedBy(
+                i.id,
+                _at(i),
+                addedBy: addedBy,
+                checkedBy: checkedBy,
+              ),
       ));
     }
     return out;
@@ -471,6 +486,8 @@ class ShoppingItemSync implements SyncHandler {
         position: item.position,
         updatedAt: item.updatedAt,
         syncedAt: item.updatedAt,
+        addedBy: spaceId == null ? null : item.addedBy,
+        checkedBy: spaceId == null ? null : item.checkedBy,
       );
       if (local == null) {
         await db.into(db.shoppingListItems).insert(row);
@@ -509,19 +526,24 @@ class ShoppingItemSync implements SyncHandler {
 /// "Sempre tenho" por ingrediente. Nunca é apagada na nuvem — desmarcar é só
 /// gravar `inPantry: false` —, então ignora itens apagados.
 class PantrySync implements SyncHandler {
-  PantrySync(this.db);
+  PantrySync(this.db, {this.active = true});
 
   final AppDatabase db;
+
+  /// Falso quando a despensa vai pra casa: este tratador (o da conta) não envia
+  /// nada, só continua aplicando o que chegar.
+  final bool active;
 
   @override
   String get kind => kSyncKindPantry;
 
   @override
   Future<bool> hasPending() async =>
-      (await db.ingredientDao.dirtyPantry()).isNotEmpty;
+      active && (await db.ingredientDao.dirtyPantry()).isNotEmpty;
 
   @override
   Future<List<PendingDoc>> pending() async {
+    if (!active) return const [];
     return [
       for (final i in await db.ingredientDao.dirtyPantry())
         (
@@ -579,8 +601,12 @@ class PantrySync implements SyncHandler {
 
 /// Os tratadores na ordem em que aplicam (quem depende de outro vem depois:
 /// itens só entram se a lista já existe).
-List<SyncHandler> defaultSyncHandlers(AppDatabase db) => [
-      PantrySync(db),
+List<SyncHandler> defaultSyncHandlers(
+  AppDatabase db, {
+  bool pantryToHouse = false,
+}) =>
+    [
+      PantrySync(db, active: !pantryToHouse),
       ShoppingListSync(db),
       ShoppingItemSync(db),
       MealPlanSync(db),
@@ -593,10 +619,13 @@ List<SyncHandler> defaultSyncHandlers(AppDatabase db) => [
 List<SyncHandler> sharedSyncHandlers(
   AppDatabase db,
   String spaceId, {
+  String? myId,
   SharedMealSync? meals,
+  bool pantry = false,
 }) =>
     [
       ShoppingListSync(db, spaceId: spaceId),
-      ShoppingItemSync(db, spaceId: spaceId),
+      ShoppingItemSync(db, spaceId: spaceId, myId: myId),
+      if (pantry) PantrySync(db),
       if (meals != null) meals,
     ];

@@ -12,8 +12,10 @@ import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/engine/shopping_text.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
+import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/shopping/screens/shopping_actions.dart';
+import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -531,7 +533,7 @@ class _ItemRow extends ConsumerWidget {
             const SizedBox(width: AppSpacing.sm),
             SizedBox(width: _quantityColumn, child: _buildQuantity(context)),
             const SizedBox(width: AppSpacing.xs),
-            Expanded(child: _buildName(context)),
+            Expanded(child: _buildName(context, ref)),
           ],
         ),
       ),
@@ -569,10 +571,27 @@ class _ItemRow extends ConsumerWidget {
     );
   }
 
-  Widget _buildName(BuildContext context) {
+  /// "Ana marcou" / "Beto adicionou": só nas listas da casa e só quando foi
+  /// outra pessoa (o que a própria pessoa fez não precisa de aviso).
+  String? _authorNote(WidgetRef ref) {
+    final myId = ref.watch(authUserProvider).valueOrNull?.id;
+    final names = ref.watch(memberNamesProvider);
+    String name(String id) => names[id] ?? 'Alguém da casa';
+    if (item.checked) {
+      final by = item.checkedBy;
+      if (by != null && by != myId) return '${name(by)} marcou';
+      return null;
+    }
+    final by = item.addedBy;
+    if (by != null && by != myId) return '${name(by)} adicionou';
+    return null;
+  }
+
+  Widget _buildName(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final done = item.checked;
     final origins = shoppingItemOrigins(item);
+    final author = _authorNote(ref);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -586,6 +605,31 @@ class _ItemRow extends ConsumerWidget {
                 : colors.onSaturated,
           ),
         ),
+        if (author != null) ...[
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.people_alt_outlined,
+                size: 13,
+                color: colors.lime.withValues(alpha: done ? 0.5 : 0.9),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.texts.bodySmall?.copyWith(
+                    color:
+                        colors.onSaturated.withValues(alpha: done ? 0.4 : 0.65),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         if (origins.isNotEmpty) ...[
           const SizedBox(height: 4),
           Wrap(

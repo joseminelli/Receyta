@@ -332,6 +332,12 @@ class ShoppingListItems extends Table {
   DateTimeColumn get updatedAt => dateTime().nullable()();
   DateTimeColumn get syncedAt => dateTime().nullable()();
 
+  /// Quem adicionou e quem marcou o item (id da conta). Só têm valor em lista
+  /// da casa: o sync preenche com a própria pessoa ao enviar e com quem veio
+  /// no item ao receber (v12). Marcar ou desmarcar aqui zera `checkedBy`.
+  TextColumn get addedBy => text().nullable()();
+  TextColumn get checkedBy => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

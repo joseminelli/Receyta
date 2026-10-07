@@ -238,6 +238,7 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
     await prefs.remove('${SharedSyncEngine.cursorPrefix}$spaceId');
     await prefs.remove('$cachePrefix$userId');
     await prefs.remove('space_calendar_$userId');
+    await prefs.remove('space_pantry_$userId');
   }
 
   Future<String?> _readCache(String userId) async {

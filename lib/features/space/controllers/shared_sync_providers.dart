@@ -8,6 +8,7 @@ import 'package:receyta/data/sync/shared_sync_engine.dart';
 import 'package:receyta/data/sync/sync_handlers.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/space/controllers/calendar_share.dart';
+import 'package:receyta/features/space/controllers/pantry_share.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 
 /// O motor de uma casa. Uma instância por casa: o id mora no motor.
@@ -17,6 +18,7 @@ final sharedSyncEngineProvider =
   final recipes = ref.watch(recipeRepositoryProvider);
   final user = ref.watch(authUserProvider).valueOrNull;
   final calendarOn = ref.watch(calendarSharedProvider).valueOrNull ?? false;
+  final pantryOn = ref.watch(pantrySharedProvider).valueOrNull ?? false;
   return SharedSyncEngine(
     remote: ref.watch(sharedRemoteProvider),
     db: db,
@@ -24,6 +26,8 @@ final sharedSyncEngineProvider =
     handlers: sharedSyncHandlers(
       db,
       spaceId,
+      myId: user?.id,
+      pantry: pantryOn,
       meals: user == null || !calendarOn
           ? null
           : SharedMealSync(

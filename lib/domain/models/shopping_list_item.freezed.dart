@@ -224,6 +224,10 @@ mixin _$ShoppingListItem {
   /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
   /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
   String get categorySlug => throw _privateConstructorUsedError;
+
+  /// Quem adicionou e quem marcou o item (id da conta); só em listas da casa.
+  String? get addedBy => throw _privateConstructorUsedError;
+  String? get checkedBy => throw _privateConstructorUsedError;
   List<ShoppingItemSource> get sources => throw _privateConstructorUsedError;
 
   /// Create a copy of ShoppingListItem
@@ -251,6 +255,8 @@ abstract class $ShoppingListItemCopyWith<$Res> {
       String? note,
       int position,
       String categorySlug,
+      String? addedBy,
+      String? checkedBy,
       List<ShoppingItemSource> sources});
 }
 
@@ -280,6 +286,8 @@ class _$ShoppingListItemCopyWithImpl<$Res, $Val extends ShoppingListItem>
     Object? note = freezed,
     Object? position = null,
     Object? categorySlug = null,
+    Object? addedBy = freezed,
+    Object? checkedBy = freezed,
     Object? sources = null,
   }) {
     return _then(_value.copyWith(
@@ -327,6 +335,14 @@ class _$ShoppingListItemCopyWithImpl<$Res, $Val extends ShoppingListItem>
           ? _value.categorySlug
           : categorySlug // ignore: cast_nullable_to_non_nullable
               as String,
+      addedBy: freezed == addedBy
+          ? _value.addedBy
+          : addedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      checkedBy: freezed == checkedBy
+          ? _value.checkedBy
+          : checkedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
       sources: null == sources
           ? _value.sources
           : sources // ignore: cast_nullable_to_non_nullable
@@ -355,6 +371,8 @@ abstract class _$$ShoppingListItemImplCopyWith<$Res>
       String? note,
       int position,
       String categorySlug,
+      String? addedBy,
+      String? checkedBy,
       List<ShoppingItemSource> sources});
 }
 
@@ -382,6 +400,8 @@ class __$$ShoppingListItemImplCopyWithImpl<$Res>
     Object? note = freezed,
     Object? position = null,
     Object? categorySlug = null,
+    Object? addedBy = freezed,
+    Object? checkedBy = freezed,
     Object? sources = null,
   }) {
     return _then(_$ShoppingListItemImpl(
@@ -429,6 +449,14 @@ class __$$ShoppingListItemImplCopyWithImpl<$Res>
           ? _value.categorySlug
           : categorySlug // ignore: cast_nullable_to_non_nullable
               as String,
+      addedBy: freezed == addedBy
+          ? _value.addedBy
+          : addedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      checkedBy: freezed == checkedBy
+          ? _value.checkedBy
+          : checkedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
       sources: null == sources
           ? _value._sources
           : sources // ignore: cast_nullable_to_non_nullable
@@ -452,6 +480,8 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
       this.note,
       this.position = 0,
       this.categorySlug = 'outros',
+      this.addedBy,
+      this.checkedBy,
       final List<ShoppingItemSource> sources = const <ShoppingItemSource>[]})
       : _sources = sources;
 
@@ -486,6 +516,12 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
   @override
   @JsonKey()
   final String categorySlug;
+
+  /// Quem adicionou e quem marcou o item (id da conta); só em listas da casa.
+  @override
+  final String? addedBy;
+  @override
+  final String? checkedBy;
   final List<ShoppingItemSource> _sources;
   @override
   @JsonKey()
@@ -497,7 +533,7 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
 
   @override
   String toString() {
-    return 'ShoppingListItem(id: $id, listId: $listId, ingredientId: $ingredientId, displayName: $displayName, manualName: $manualName, quantity: $quantity, unitId: $unitId, checked: $checked, note: $note, position: $position, categorySlug: $categorySlug, sources: $sources)';
+    return 'ShoppingListItem(id: $id, listId: $listId, ingredientId: $ingredientId, displayName: $displayName, manualName: $manualName, quantity: $quantity, unitId: $unitId, checked: $checked, note: $note, position: $position, categorySlug: $categorySlug, addedBy: $addedBy, checkedBy: $checkedBy, sources: $sources)';
   }
 
   @override
@@ -522,6 +558,9 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
                 other.position == position) &&
             (identical(other.categorySlug, categorySlug) ||
                 other.categorySlug == categorySlug) &&
+            (identical(other.addedBy, addedBy) || other.addedBy == addedBy) &&
+            (identical(other.checkedBy, checkedBy) ||
+                other.checkedBy == checkedBy) &&
             const DeepCollectionEquality().equals(other._sources, _sources));
   }
 
@@ -539,6 +578,8 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
       note,
       position,
       categorySlug,
+      addedBy,
+      checkedBy,
       const DeepCollectionEquality().hash(_sources));
 
   /// Create a copy of ShoppingListItem
@@ -564,6 +605,8 @@ abstract class _ShoppingListItem implements ShoppingListItem {
       final String? note,
       final int position,
       final String categorySlug,
+      final String? addedBy,
+      final String? checkedBy,
       final List<ShoppingItemSource> sources}) = _$ShoppingListItemImpl;
 
   @override
@@ -594,6 +637,12 @@ abstract class _ShoppingListItem implements ShoppingListItem {
   /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
   @override
   String get categorySlug;
+
+  /// Quem adicionou e quem marcou o item (id da conta); só em listas da casa.
+  @override
+  String? get addedBy;
+  @override
+  String? get checkedBy;
   @override
   List<ShoppingItemSource> get sources;
 

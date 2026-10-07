@@ -11,6 +11,7 @@ import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/meal_plan_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
+import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/engine/shared_meal_codec.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/recipe.dart';
@@ -126,6 +127,32 @@ class MealPlanRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  /// As receitas das refeições de OUTRAS pessoas da casa que ainda estão por
+  /// fazer em [entries], uma por receita, com quantas vezes aparecem — o que a
+  /// lista de compras da semana precisa pra incluí-las.
+  Future<List<ExternalRecipe>> externalRecipesFor(
+    List<MealPlanEntry> entries,
+  ) async {
+    final counts = <String, int>{};
+    final first = <String, MealPlanEntry>{};
+    for (final e in entries) {
+      if (!e.isFromOther || e.done) continue;
+      counts.update(e.recipeId, (n) => n + 1, ifAbsent: () => 1);
+      first.putIfAbsent(e.recipeId, () => e);
+    }
+    final out = <ExternalRecipe>[];
+    for (final entry in first.values) {
+      final recipe = await sharedRecipeOf(entry.id);
+      if (recipe == null || recipe.ingredients.isEmpty) continue;
+      out.add(ExternalRecipe(
+        id: entry.recipeId,
+        lines: recipe.ingredients,
+        count: counts[entry.recipeId] ?? 1,
+      ));
+    }
+    return out;
   }
 
   /// Agenda [recipeId] em [date] na refeição [mealType] (RF-04.2).

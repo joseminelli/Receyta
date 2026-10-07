@@ -53,6 +53,7 @@ Future<void> addRecipesToShoppingListFlow(
   Map<String, double>? factors,
   int? baseServings,
   int? initialServings,
+  List<ExternalRecipe> external = const [],
 }) async {
   final router = GoRouter.of(context);
   final lists = ref.read(shoppingListsProvider).valueOrNull ??
@@ -86,6 +87,7 @@ Future<void> addRecipesToShoppingListFlow(
       name: newListName,
       counts: counts,
       factors: scale,
+      external: external,
     );
     listId = created is Ok<ShoppingList> ? created.value.id : null;
     listName = created is Ok<ShoppingList> ? created.value.name : '';
@@ -97,6 +99,7 @@ Future<void> addRecipesToShoppingListFlow(
       choice.listId!,
       counts,
       factors: scale,
+      external: external,
     );
   }
 

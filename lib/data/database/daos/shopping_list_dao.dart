@@ -319,6 +319,23 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
         .write(ShoppingListItemsCompanion(syncedAt: Value(updatedAt)));
   }
 
+  /// Marca o item como enviado à casa e guarda quem o adicionou e quem o
+  /// marcou (o que foi enviado). Esses dois campos não contam como mudança.
+  Future<int> markItemSyncedBy(
+    String id,
+    DateTime? updatedAt, {
+    required String? addedBy,
+    required String? checkedBy,
+  }) {
+    return (update(shoppingListItems)..where((i) => i.id.equals(id))).write(
+      ShoppingListItemsCompanion(
+        syncedAt: Value(updatedAt),
+        addedBy: Value(addedBy),
+        checkedBy: Value(checkedBy),
+      ),
+    );
+  }
+
   /// Passa a lista (e os itens) pra uma casa, ou de volta pra só da pessoa
   /// ([spaceId] nulo). O que já tinha subido pro lugar antigo deixa aviso de
   /// exclusão lá, e tudo volta a "nunca sincronizado" pra subir pro novo.
@@ -449,19 +466,28 @@ class ShoppingListDao extends DatabaseAccessor<AppDatabase>
       ];
       if (ids.isEmpty) return ids;
       await (update(shoppingListItems)..where(where))
-          .write(const ShoppingListItemsCompanion(checked: Value(false)));
+          .write(const ShoppingListItemsCompanion(
+        checked: Value(false),
+        checkedBy: Value(null),
+      ));
       return ids;
     });
   }
 
   Future<int> setCheckedMany(List<String> itemIds, bool checked) {
     return (update(shoppingListItems)..where((i) => i.id.isIn(itemIds)))
-        .write(ShoppingListItemsCompanion(checked: Value(checked)));
+        .write(ShoppingListItemsCompanion(
+      checked: Value(checked),
+      checkedBy: const Value(null),
+    ));
   }
 
   Future<int> setChecked(String itemId, bool checked) {
     return (update(shoppingListItems)..where((i) => i.id.equals(itemId)))
-        .write(ShoppingListItemsCompanion(checked: Value(checked)));
+        .write(ShoppingListItemsCompanion(
+      checked: Value(checked),
+      checkedBy: const Value(null),
+    ));
   }
 
   Future<List<ShoppingItemSourceRow>> sourcesOf(List<String> itemIds) {

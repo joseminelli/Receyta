@@ -131,6 +131,14 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
         .get();
   }
 
+  /// Esquece o que já foi enviado da despensa: tudo volta a "pendente". Usado
+  /// quando a despensa muda de destino (conta ↔ casa), pra o destino novo
+  /// receber tudo.
+  Future<int> resetPantrySync() {
+    return (update(ingredients)..where((i) => i.pantryUpdatedAt.isNotNull()))
+        .write(const IngredientsCompanion(pantrySyncedAt: Value(null)));
+  }
+
   Future<int> markPantrySynced(String id, DateTime updatedAt) {
     return (update(ingredients)..where((i) => i.id.equals(id)))
         .write(IngredientsCompanion(pantrySyncedAt: Value(updatedAt)));

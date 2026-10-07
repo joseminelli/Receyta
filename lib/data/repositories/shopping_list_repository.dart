@@ -15,6 +15,29 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 
+/// Uma receita que NÃO está na biblioteca daqui (a de uma refeição planejada
+/// por outra pessoa da casa): só o resumo, com as linhas de ingredientes. Entra
+/// na lista de compras como os ingredientes soltos, sem "de qual receita veio".
+class ExternalRecipe {
+  const ExternalRecipe({
+    required this.id,
+    required this.lines,
+    this.count = 1,
+  });
+
+  final String id;
+
+  /// Os ingredientes como foram digitados ("2 ovos", "1 xícara de farinha").
+  final List<String> lines;
+
+  /// Quantas vezes a receita entra (feita duas vezes = ingredientes em dobro).
+  final int count;
+}
+
+/// Prefixo do `recipeId` das linhas de receitas externas dentro do agregador;
+/// essas origens não são gravadas (a receita não existe aqui).
+const _externalPrefix = 'ext:';
+
 /// Fonte de verdade das listas de compras (§RF-05). Orquestra o agregador
 /// (E1, `aggregateIngredients`, Dart puro) sobre os ingredientes das
 /// receitas selecionadas e grava o resultado via [ShoppingListDao].
@@ -45,13 +68,17 @@ class ShoppingListRepository {
     String? name,
     Map<String, int>? counts,
     Map<String, double>? factors,
+    List<ExternalRecipe> external = const [],
   }) async {
-    if (recipeIds.isEmpty) {
+    if (recipeIds.isEmpty && external.isEmpty) {
       return const Err(ValidationFailure('Escolha ao menos uma receita.'));
     }
     try {
-      final rows = await _recipeDao.ingredientsForRecipes(recipeIds);
-      if (rows.isEmpty) {
+      final rows = recipeIds.isEmpty
+          ? const <RecipeIngredientRow>[]
+          : await _recipeDao.ingredientsForRecipes(recipeIds);
+      final externalLines = await _externalLines(external);
+      if (rows.isEmpty && externalLines.isEmpty) {
         return const Err(
           ValidationFailure('Nenhuma receita selecionada tem ingrediente.'),
         );
@@ -64,7 +91,7 @@ class ShoppingListRepository {
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
       final needed = _outsidePantry(rows, catalogRows);
-      if (needed.isEmpty) {
+      if (needed.isEmpty && externalLines.isEmpty) {
         return const Err(
           ValidationFailure(
             'Tudo o que as receitas pedem já está na sua despensa.',
@@ -72,8 +99,10 @@ class ShoppingListRepository {
         );
       }
 
-      final aggregated = aggregateIngredients(
-          _repeatedLines(needed, namesById, counts, factors));
+      final aggregated = _withoutExternalSources(aggregateIngredients([
+        ..._repeatedLines(needed, namesById, counts, factors),
+        ...externalLines,
+      ]));
 
       final at = _clock().toUtc();
       final trimmed = name?.trim() ?? '';
@@ -100,8 +129,9 @@ class ShoppingListRepository {
     String listId,
     Map<String, int> counts, {
     Map<String, double>? factors,
+    List<ExternalRecipe> external = const [],
   }) async {
-    final plural = counts.length > 1;
+    final plural = counts.length + external.length > 1;
     try {
       final items = await _dao.itemsOf(listId);
       final sources = await _dao.sourcesOf([for (final i in items) i.id]);
@@ -110,7 +140,7 @@ class ShoppingListRepository {
         for (final e in counts.entries)
           if (!already.contains(e.key)) e.key: e.value,
       };
-      if (fresh.isEmpty) {
+      if (fresh.isEmpty && external.isEmpty) {
         return Err(ValidationFailure(
           plural
               ? 'Essas receitas já estão na lista.'
@@ -118,8 +148,11 @@ class ShoppingListRepository {
         ));
       }
 
-      final rows = await _recipeDao.ingredientsForRecipes(fresh.keys.toList());
-      if (rows.isEmpty) {
+      final rows = fresh.isEmpty
+          ? const <RecipeIngredientRow>[]
+          : await _recipeDao.ingredientsForRecipes(fresh.keys.toList());
+      final externalLines = await _externalLines(external);
+      if (rows.isEmpty && externalLines.isEmpty) {
         return Err(ValidationFailure(
           plural
               ? 'Essas receitas não têm ingredientes.'
@@ -134,15 +167,17 @@ class ShoppingListRepository {
       final catalogRows = await _ingredientDao.findByIds(ingredientIds);
       final namesById = {for (final c in catalogRows) c.id: c.displayName};
       final needed = _outsidePantry(rows, catalogRows);
-      if (needed.isEmpty) {
+      if (needed.isEmpty && externalLines.isEmpty) {
         return Err(ValidationFailure(
           plural
               ? 'Tudo o que essas receitas pedem já está na sua despensa.'
               : 'Tudo o que essa receita pede já está na sua despensa.',
         ));
       }
-      final aggregated = aggregateIngredients(
-          _repeatedLines(needed, namesById, fresh, factors));
+      final aggregated = _withoutExternalSources(aggregateIngredients([
+        ..._repeatedLines(needed, namesById, fresh, factors),
+        ...externalLines,
+      ]));
 
       await _dao.addAggregated(listId, aggregated);
       return const Ok(null);
@@ -150,6 +185,57 @@ class ShoppingListRepository {
       debugPrint('ShoppingListRepository.addRecipesToList: $e');
       return Err(DatabaseFailure('Falha ao adicionar à lista', cause: e));
     }
+  }
+
+  /// As linhas de receitas externas como ingredientes do catálogo daqui
+  /// (resolvidos pelo nome, como numa receita digitada), repetidas pelo número
+  /// de vezes e já sem o que está na despensa. As origens ficam marcadas com
+  /// [_externalPrefix] pra serem descartadas depois.
+  Future<List<RecipeIngredient>> _externalLines(
+    List<ExternalRecipe> external,
+  ) async {
+    final out = <RecipeIngredient>[];
+    for (final recipe in external) {
+      for (var i = 0; i < recipe.lines.length; i++) {
+        final parsed = parseIngredientLine(recipe.lines[i]);
+        if (parsed.name.trim().isEmpty) continue;
+        final ingredient = await _ingredientDao.getOrCreate(parsed.name);
+        if (ingredient.inPantry) continue;
+        for (var n = 0; n < recipe.count; n++) {
+          out.add(RecipeIngredient(
+            id: '$_externalPrefix${recipe.id}:$i:$n',
+            recipeId: '$_externalPrefix${recipe.id}',
+            rawText: recipe.lines[i],
+            position: i,
+            ingredientId: ingredient.id,
+            ingredientName: ingredient.displayName,
+            quantity: parsed.quantity,
+            unitId: parsed.unitCode,
+            qualifier: parsed.qualifier,
+          ));
+        }
+      }
+    }
+    return out;
+  }
+
+  /// Receitas externas não existem aqui: a origem delas não vai pro banco.
+  List<AggregatedIngredient> _withoutExternalSources(
+    List<AggregatedIngredient> items,
+  ) {
+    return [
+      for (final a in items)
+        AggregatedIngredient(
+          ingredientKey: a.ingredientKey,
+          displayName: a.displayName,
+          quantity: a.quantity,
+          unitCode: a.unitCode,
+          sources: [
+            for (final src in a.sources)
+              if (!src.recipeId.startsWith(_externalPrefix)) src,
+          ],
+        ),
+    ];
   }
 
   /// Tira as linhas de ingredientes marcados "sempre tenho" (G11): ficam fora
@@ -431,6 +517,8 @@ class ShoppingListRepository {
       checked: i.checked,
       note: i.note,
       position: i.position,
+      addedBy: i.addedBy,
+      checkedBy: i.checkedBy,
       sources: sourcesByItem[i.id] ?? const [],
     );
   }

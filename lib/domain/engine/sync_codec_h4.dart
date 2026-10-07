@@ -199,10 +199,16 @@ class SyncShoppingItem {
     this.note,
     this.position = 0,
     this.sources = const [],
+    this.addedBy,
+    this.checkedBy,
   });
 
   final String id;
   final String listId;
+
+  /// Quem adicionou e quem marcou (id da conta); só nas listas da casa.
+  final String? addedBy;
+  final String? checkedBy;
   final String? ingredientName;
   final String? manualName;
   final double? quantity;
@@ -225,6 +231,8 @@ Map<String, dynamic> shoppingItemToSyncJson(SyncShoppingItem i) => {
       'checked': i.checked,
       'note': i.note,
       'position': i.position,
+      'addedBy': i.addedBy,
+      'checkedBy': i.checkedBy,
       'sources': [
         for (final s in i.sources)
           {'recipeId': s.recipeId, 'quantity': s.quantity, 'unit': s.unit},
@@ -256,6 +264,8 @@ SyncShoppingItem? parseShoppingItemSync(Object? raw) {
     checked: raw['checked'] == true,
     note: _str(raw['note']),
     position: _int(raw['position']) ?? 0,
+    addedBy: _str(raw['addedBy']),
+    checkedBy: _str(raw['checkedBy']),
     sources: [
       for (final s in _list(raw['sources']))
         if (s is Map && _str(s['recipeId']) != null)

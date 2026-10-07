@@ -16,6 +16,7 @@ import 'package:receyta/data/sync/sync_dedupe.dart';
 import 'package:receyta/data/sync/sync_error.dart';
 import 'package:receyta/data/sync/sync_handler.dart';
 import 'package:receyta/data/sync/sync_handlers.dart';
+import 'package:receyta/features/space/controllers/pantry_share.dart';
 import 'package:receyta/data/sync/sync_remote.dart';
 import 'package:receyta/domain/engine/sync_codec.dart';
 
@@ -476,5 +477,9 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
     recipes: ref.watch(recipeRepositoryProvider),
     imageSync: ref.watch(recipeImageSyncProvider),
     images: ref.watch(recipeImageServiceProvider),
+    handlers: defaultSyncHandlers(
+      ref.watch(databaseProvider),
+      pantryToHouse: ref.watch(pantrySharedProvider).valueOrNull ?? false,
+    ),
   );
 });

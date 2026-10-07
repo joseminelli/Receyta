@@ -6390,6 +6390,18 @@ class $ShoppingListItemsTable extends ShoppingListItems
   late final GeneratedColumn<DateTime> syncedAt = GeneratedColumn<DateTime>(
       'synced_at', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _addedByMeta =
+      const VerificationMeta('addedBy');
+  @override
+  late final GeneratedColumn<String> addedBy = GeneratedColumn<String>(
+      'added_by', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _checkedByMeta =
+      const VerificationMeta('checkedBy');
+  @override
+  late final GeneratedColumn<String> checkedBy = GeneratedColumn<String>(
+      'checked_by', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -6402,7 +6414,9 @@ class $ShoppingListItemsTable extends ShoppingListItems
         note,
         position,
         updatedAt,
-        syncedAt
+        syncedAt,
+        addedBy,
+        checkedBy
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6466,6 +6480,14 @@ class $ShoppingListItemsTable extends ShoppingListItems
       context.handle(_syncedAtMeta,
           syncedAt.isAcceptableOrUnknown(data['synced_at']!, _syncedAtMeta));
     }
+    if (data.containsKey('added_by')) {
+      context.handle(_addedByMeta,
+          addedBy.isAcceptableOrUnknown(data['added_by']!, _addedByMeta));
+    }
+    if (data.containsKey('checked_by')) {
+      context.handle(_checkedByMeta,
+          checkedBy.isAcceptableOrUnknown(data['checked_by']!, _checkedByMeta));
+    }
     return context;
   }
 
@@ -6497,6 +6519,10 @@ class $ShoppingListItemsTable extends ShoppingListItems
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
       syncedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}synced_at']),
+      addedBy: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}added_by']),
+      checkedBy: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}checked_by']),
     );
   }
 
@@ -6523,6 +6549,12 @@ class ShoppingListItemRow extends DataClass
   /// versão já sincronizada com a conta (H4).
   final DateTime? updatedAt;
   final DateTime? syncedAt;
+
+  /// Quem adicionou e quem marcou o item (id da conta). Só têm valor em lista
+  /// da casa: o sync preenche com a própria pessoa ao enviar e com quem veio
+  /// no item ao receber (v12). Marcar ou desmarcar aqui zera `checkedBy`.
+  final String? addedBy;
+  final String? checkedBy;
   const ShoppingListItemRow(
       {required this.id,
       required this.listId,
@@ -6534,7 +6566,9 @@ class ShoppingListItemRow extends DataClass
       this.note,
       required this.position,
       this.updatedAt,
-      this.syncedAt});
+      this.syncedAt,
+      this.addedBy,
+      this.checkedBy});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -6563,6 +6597,12 @@ class ShoppingListItemRow extends DataClass
     if (!nullToAbsent || syncedAt != null) {
       map['synced_at'] = Variable<DateTime>(syncedAt);
     }
+    if (!nullToAbsent || addedBy != null) {
+      map['added_by'] = Variable<String>(addedBy);
+    }
+    if (!nullToAbsent || checkedBy != null) {
+      map['checked_by'] = Variable<String>(checkedBy);
+    }
     return map;
   }
 
@@ -6590,6 +6630,12 @@ class ShoppingListItemRow extends DataClass
       syncedAt: syncedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(syncedAt),
+      addedBy: addedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(addedBy),
+      checkedBy: checkedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(checkedBy),
     );
   }
 
@@ -6608,6 +6654,8 @@ class ShoppingListItemRow extends DataClass
       position: serializer.fromJson<int>(json['position']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
+      addedBy: serializer.fromJson<String?>(json['addedBy']),
+      checkedBy: serializer.fromJson<String?>(json['checkedBy']),
     );
   }
   @override
@@ -6625,6 +6673,8 @@ class ShoppingListItemRow extends DataClass
       'position': serializer.toJson<int>(position),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'syncedAt': serializer.toJson<DateTime?>(syncedAt),
+      'addedBy': serializer.toJson<String?>(addedBy),
+      'checkedBy': serializer.toJson<String?>(checkedBy),
     };
   }
 
@@ -6639,7 +6689,9 @@ class ShoppingListItemRow extends DataClass
           Value<String?> note = const Value.absent(),
           int? position,
           Value<DateTime?> updatedAt = const Value.absent(),
-          Value<DateTime?> syncedAt = const Value.absent()}) =>
+          Value<DateTime?> syncedAt = const Value.absent(),
+          Value<String?> addedBy = const Value.absent(),
+          Value<String?> checkedBy = const Value.absent()}) =>
       ShoppingListItemRow(
         id: id ?? this.id,
         listId: listId ?? this.listId,
@@ -6653,6 +6705,8 @@ class ShoppingListItemRow extends DataClass
         position: position ?? this.position,
         updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
         syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
+        addedBy: addedBy.present ? addedBy.value : this.addedBy,
+        checkedBy: checkedBy.present ? checkedBy.value : this.checkedBy,
       );
   ShoppingListItemRow copyWithCompanion(ShoppingListItemsCompanion data) {
     return ShoppingListItemRow(
@@ -6670,6 +6724,8 @@ class ShoppingListItemRow extends DataClass
       position: data.position.present ? data.position.value : this.position,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
+      addedBy: data.addedBy.present ? data.addedBy.value : this.addedBy,
+      checkedBy: data.checkedBy.present ? data.checkedBy.value : this.checkedBy,
     );
   }
 
@@ -6686,14 +6742,28 @@ class ShoppingListItemRow extends DataClass
           ..write('note: $note, ')
           ..write('position: $position, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('syncedAt: $syncedAt')
+          ..write('syncedAt: $syncedAt, ')
+          ..write('addedBy: $addedBy, ')
+          ..write('checkedBy: $checkedBy')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, listId, ingredientId, manualName,
-      quantity, unitId, checked, note, position, updatedAt, syncedAt);
+  int get hashCode => Object.hash(
+      id,
+      listId,
+      ingredientId,
+      manualName,
+      quantity,
+      unitId,
+      checked,
+      note,
+      position,
+      updatedAt,
+      syncedAt,
+      addedBy,
+      checkedBy);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -6708,7 +6778,9 @@ class ShoppingListItemRow extends DataClass
           other.note == this.note &&
           other.position == this.position &&
           other.updatedAt == this.updatedAt &&
-          other.syncedAt == this.syncedAt);
+          other.syncedAt == this.syncedAt &&
+          other.addedBy == this.addedBy &&
+          other.checkedBy == this.checkedBy);
 }
 
 class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
@@ -6723,6 +6795,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
   final Value<int> position;
   final Value<DateTime?> updatedAt;
   final Value<DateTime?> syncedAt;
+  final Value<String?> addedBy;
+  final Value<String?> checkedBy;
   final Value<int> rowid;
   const ShoppingListItemsCompanion({
     this.id = const Value.absent(),
@@ -6736,6 +6810,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     this.position = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
+    this.addedBy = const Value.absent(),
+    this.checkedBy = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ShoppingListItemsCompanion.insert({
@@ -6750,6 +6826,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     this.position = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
+    this.addedBy = const Value.absent(),
+    this.checkedBy = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         listId = Value(listId);
@@ -6765,6 +6843,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     Expression<int>? position,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? syncedAt,
+    Expression<String>? addedBy,
+    Expression<String>? checkedBy,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6779,6 +6859,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
       if (position != null) 'position': position,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncedAt != null) 'synced_at': syncedAt,
+      if (addedBy != null) 'added_by': addedBy,
+      if (checkedBy != null) 'checked_by': checkedBy,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6795,6 +6877,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
       Value<int>? position,
       Value<DateTime?>? updatedAt,
       Value<DateTime?>? syncedAt,
+      Value<String?>? addedBy,
+      Value<String?>? checkedBy,
       Value<int>? rowid}) {
     return ShoppingListItemsCompanion(
       id: id ?? this.id,
@@ -6808,6 +6892,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
       position: position ?? this.position,
       updatedAt: updatedAt ?? this.updatedAt,
       syncedAt: syncedAt ?? this.syncedAt,
+      addedBy: addedBy ?? this.addedBy,
+      checkedBy: checkedBy ?? this.checkedBy,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6848,6 +6934,12 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
     if (syncedAt.present) {
       map['synced_at'] = Variable<DateTime>(syncedAt.value);
     }
+    if (addedBy.present) {
+      map['added_by'] = Variable<String>(addedBy.value);
+    }
+    if (checkedBy.present) {
+      map['checked_by'] = Variable<String>(checkedBy.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6868,6 +6960,8 @@ class ShoppingListItemsCompanion extends UpdateCompanion<ShoppingListItemRow> {
           ..write('position: $position, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncedAt: $syncedAt, ')
+          ..write('addedBy: $addedBy, ')
+          ..write('checkedBy: $checkedBy, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -10483,6 +10577,8 @@ typedef $$ShoppingListItemsTableCreateCompanionBuilder
   Value<int> position,
   Value<DateTime?> updatedAt,
   Value<DateTime?> syncedAt,
+  Value<String?> addedBy,
+  Value<String?> checkedBy,
   Value<int> rowid,
 });
 typedef $$ShoppingListItemsTableUpdateCompanionBuilder
@@ -10498,6 +10594,8 @@ typedef $$ShoppingListItemsTableUpdateCompanionBuilder
   Value<int> position,
   Value<DateTime?> updatedAt,
   Value<DateTime?> syncedAt,
+  Value<String?> addedBy,
+  Value<String?> checkedBy,
   Value<int> rowid,
 });
 
@@ -10530,6 +10628,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             Value<int> position = const Value.absent(),
             Value<DateTime?> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String?> addedBy = const Value.absent(),
+            Value<String?> checkedBy = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListItemsCompanion(
@@ -10544,6 +10644,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             position: position,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
+            addedBy: addedBy,
+            checkedBy: checkedBy,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -10558,6 +10660,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             Value<int> position = const Value.absent(),
             Value<DateTime?> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
+            Value<String?> addedBy = const Value.absent(),
+            Value<String?> checkedBy = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ShoppingListItemsCompanion.insert(
@@ -10572,6 +10676,8 @@ class $$ShoppingListItemsTableTableManager extends RootTableManager<
             position: position,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
+            addedBy: addedBy,
+            checkedBy: checkedBy,
             rowid: rowid,
           ),
         ));
@@ -10617,6 +10723,16 @@ class $$ShoppingListItemsTableFilterComposer
 
   ColumnFilters<DateTime> get syncedAt => $state.composableBuilder(
       column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get addedBy => $state.composableBuilder(
+      column: $state.table.addedBy,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<String> get checkedBy => $state.composableBuilder(
+      column: $state.table.checkedBy,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -10714,6 +10830,16 @@ class $$ShoppingListItemsTableOrderingComposer
 
   ColumnOrderings<DateTime> get syncedAt => $state.composableBuilder(
       column: $state.table.syncedAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get addedBy => $state.composableBuilder(
+      column: $state.table.addedBy,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<String> get checkedBy => $state.composableBuilder(
+      column: $state.table.checkedBy,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

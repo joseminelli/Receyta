@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Vibrar quando o timer do modo cozinha acaba (plugin `vibration`). -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <!-- Timers do modo cozinha como notificação (ficam à vista com o app
          minimizado e avisam quando acabam): -->
@@ -95,6 +96,13 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="content" android:mimeType="application/octet-stream"/>
+            </intent-filter>
+            <!-- Convite pra uma casa: `receyta://join/<CÓDIGO>` (link e QR). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="receyta" android:host="join"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

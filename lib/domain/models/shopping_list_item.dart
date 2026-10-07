@@ -37,6 +37,10 @@ class ShoppingListItem with _$ShoppingListItem {
     /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
     /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
     @Default('outros') String categorySlug,
+
+    /// Quem adicionou e quem marcou o item (id da conta); só em listas da casa.
+    String? addedBy,
+    String? checkedBy,
     @Default(<ShoppingItemSource>[]) List<ShoppingItemSource> sources,
   }) = _ShoppingListItem;
 }

@@ -141,7 +141,8 @@ final router = GoRouter(
     GoRoute(
       path: '/space',
       name: 'space',
-      builder: (context, state) => const SpacePage(),
+      builder: (context, state) =>
+          SpacePage(inviteCode: state.uri.queryParameters['code']),
     ),
     GoRoute(
       path: '/about',

@@ -13,6 +13,7 @@ import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/suggest_week_sheet.dart';
+import 'package:receyta/data/repositories/meal_plan_repository.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -246,12 +247,19 @@ class MonthPage extends ConsumerWidget {
             month: month,
             byDay: byDay,
             onOpenDay: (day) => _openDay(context, day),
-            onShopping: (counts) => addRecipesToShoppingListFlow(
-              context,
-              ref,
-              counts,
-              newListName: 'Semana ${weekRangeLabel(monday)}',
-            ),
+            onShopping: (counts, others) async {
+              final external = await ref
+                  .read(mealPlanRepositoryProvider)
+                  .externalRecipesFor(others);
+              if (!context.mounted) return;
+              await addRecipesToShoppingListFlow(
+                context,
+                ref,
+                counts,
+                external: external,
+                newListName: 'Semana ${weekRangeLabel(monday)}',
+              );
+            },
           ),
       ],
     );
@@ -316,7 +324,11 @@ class _WeekRow extends StatelessWidget {
   final DateTime month;
   final Map<String, List<MealPlanEntry>> byDay;
   final ValueChanged<DateTime> onOpenDay;
-  final ValueChanged<Map<String, int>> onShopping;
+
+  /// Recebe as receitas da pessoa (id → vezes) e as refeições de outras
+  /// pessoas da casa da semana (cujas receitas não estão aqui).
+  final void Function(Map<String, int> counts, List<MealPlanEntry> others)
+      onShopping;
 
   @override
   Widget build(BuildContext context) {
@@ -325,6 +337,11 @@ class _WeekRow extends StatelessWidget {
       for (final d in days) ...?byDay[dayToParam(d)],
     ];
     final counts = pendingRecipeCounts(weekEntries, today());
+    final others = [
+      for (final e in weekEntries)
+        if (e.isFromOther && !e.done && !e.date.isBefore(today())) e,
+    ];
+    final nothing = counts.isEmpty && others.isEmpty;
     final colors = context.colors;
 
     return Row(
@@ -344,12 +361,12 @@ class _WeekRow extends StatelessWidget {
         SizedBox(
           width: _cartColumn,
           child: IconButton(
-            tooltip: counts.isEmpty
+            tooltip: nothing
                 ? 'Nada pendente nesta semana'
                 : 'Lista de compras da semana ${weekRangeLabel(monday)}',
             iconSize: 22,
             color: colors.ink,
-            onPressed: counts.isEmpty ? null : () => onShopping(counts),
+            onPressed: nothing ? null : () => onShopping(counts, others),
             icon: const Icon(Icons.add_shopping_cart_outlined),
           ),
         ),

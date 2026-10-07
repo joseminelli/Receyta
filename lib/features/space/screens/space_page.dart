@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:receyta/core/result.dart';
@@ -9,7 +10,10 @@ import 'package:receyta/data/space/space_remote.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/space/controllers/calendar_share.dart';
+import 'package:receyta/features/space/controllers/invite_link.dart';
+import 'package:receyta/features/space/controllers/pantry_share.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
+import 'package:receyta/features/space/screens/invite_scan_page.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -26,11 +30,46 @@ import 'package:receyta/widgets/tile_pattern.dart';
 /// quem mora com ela. Sem casa, apresenta o que dá pra dividir e oferece criar
 /// uma ou entrar com um código; com casa, mostra quem faz parte, o que está
 /// dividido, convida e deixa sair.
-class SpacePage extends ConsumerWidget {
-  const SpacePage({super.key});
+class SpacePage extends ConsumerStatefulWidget {
+  const SpacePage({super.key, this.inviteCode});
+
+  /// Código que chegou por um link ou QR de convite: abre o "entrar" já com ele.
+  final String? inviteCode;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SpacePage> createState() => _SpacePageState();
+}
+
+class _SpacePageState extends ConsumerState<SpacePage> {
+  @override
+  void initState() {
+    super.initState();
+    final code = widget.inviteCode;
+    if (code != null && code.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _openInvite(code));
+    }
+  }
+
+  Future<void> _openInvite(String code) async {
+    final user = ref.read(authUserProvider).valueOrNull;
+    if (user == null) {
+      showAppSnackBar(message: 'Entre na sua conta para aceitar o convite.');
+      return;
+    }
+    final space = await ref.read(spaceControllerProvider.future);
+    if (!mounted) return;
+    if (space != null) {
+      showAppSnackBar(
+        message:
+            'Você já faz parte de uma casa. Saia dela para entrar em outra.',
+      );
+      return;
+    }
+    await showJoinSheet(context, ref, initialCode: code);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final space = ref.watch(spaceControllerProvider);
     final user = ref.watch(authUserProvider).valueOrNull;
@@ -123,7 +162,9 @@ Future<void> _renameSpace(
       ),
     ],
   );
-  controller.dispose();
+  // O campo ainda está na tela durante a animação de fechar o diálogo:
+  // descartar o controlador agora quebra a árvore de widgets.
+  Future<void>.delayed(const Duration(milliseconds: 500), controller.dispose);
   if (name == null || name.isEmpty || name == current) return;
   final result = await ref.read(spaceControllerProvider.notifier).rename(name);
   result.when(ok: (_) {}, err: _report);
@@ -698,6 +739,12 @@ class _InSpace extends ConsumerWidget {
     final lists = ref.watch(shoppingListsProvider).valueOrNull ?? const [];
     final sharedLists = lists.where((s) => s.list.spaceId != null).length;
     final calendarOn = ref.watch(calendarSharedProvider).valueOrNull ?? false;
+    final pantryOn = ref.watch(pantrySharedProvider).valueOrNull ?? false;
+
+    Future<void> setPantry(bool value) async {
+      final result = await ref.read(pantrySharedProvider.notifier).set(value);
+      if (result is Err<void>) _report(result.failure);
+    }
 
     Future<void> setCalendar(bool value) async {
       final result = await ref.read(calendarSharedProvider.notifier).set(value);
@@ -765,6 +812,15 @@ class _InSpace extends ConsumerWidget {
                       'as deles no seu calendário.'
                   : 'Desligado. Ligue para ver o que a casa vai cozinhar.',
               trailing: Switch(value: calendarOn, onChanged: setCalendar),
+            ),
+            _InfoRow(
+              icon: Icons.kitchen_outlined,
+              title: 'Despensa',
+              text: pantryOn
+                  ? 'O que vocês sempre têm vale para todos, e não entra nas '
+                      'listas de ninguém.'
+                  : 'Desligada. Ligue para dividir o que vocês sempre têm em casa.',
+              trailing: Switch(value: pantryOn, onChanged: setPantry),
             ),
           ],
         ),
@@ -880,8 +936,9 @@ class _InviteSheet extends StatelessWidget {
   final String code;
 
   String get _message =>
-      'Entra na minha casa no Receyta! Abra o app, vá em Conta > Casa > '
-      '"Tenho um código" e digite: $code (vale por 48 horas).';
+      'Entra na minha casa no Receyta! Toque no link: ${inviteLink(code)}\n'
+      'Ou abra o app, vá em Conta > Casa > "Tenho um código" e digite $code '
+      '(vale por 48 horas).';
 
   @override
   Widget build(BuildContext context) {
@@ -889,6 +946,7 @@ class _InviteSheet extends StatelessWidget {
     return AppSheetFrame(
       title: 'Convite',
       subtitle: 'Vale por 48 horas e serve para uma pessoa.',
+      scrollable: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -899,11 +957,40 @@ class _InviteSheet extends StatelessWidget {
               color: colors.paperSoft,
               borderRadius: BorderRadius.circular(AppRadii.md),
             ),
-            child: Center(
-              child: SelectableText(
-                code,
-                style: AppTextStyles.display(44).copyWith(letterSpacing: 6),
-              ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                  ),
+                  child: QrImageView(
+                    data: inviteLink(code),
+                    size: 168,
+                    padding: EdgeInsets.zero,
+                    backgroundColor: Colors.white,
+                    eyeStyle: QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: colors.ink,
+                    ),
+                    dataModuleStyle: QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: colors.ink,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SelectableText(
+                  code,
+                  style: AppTextStyles.display(40).copyWith(letterSpacing: 6),
+                ),
+                Text(
+                  'Peça para escanear em "Tenho um código"',
+                  style: context.texts.bodySmall
+                      ?.copyWith(color: colors.textMuted),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: AppSpacing.md),
@@ -929,30 +1016,60 @@ class _InviteSheet extends StatelessWidget {
 }
 
 /// Pede o código de um convite e entra na casa.
-Future<void> showJoinSheet(BuildContext context, WidgetRef ref) {
+Future<void> showJoinSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  String? initialCode,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (_) => const _JoinSheet(),
+    builder: (_) => _JoinSheet(initialCode: initialCode),
   );
 }
 
 class _JoinSheet extends ConsumerStatefulWidget {
-  const _JoinSheet();
+  const _JoinSheet({this.initialCode});
+
+  final String? initialCode;
 
   @override
   ConsumerState<_JoinSheet> createState() => _JoinSheetState();
 }
 
 class _JoinSheetState extends ConsumerState<_JoinSheet> {
-  final _controller = TextEditingController();
+  late final _controller = TextEditingController(text: widget.initialCode);
   bool _busy = false;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  void _fill(String code) => _controller.value = TextEditingValue(
+        text: code,
+        selection: TextSelection.collapsed(offset: code.length),
+      );
+
+  Future<void> _paste() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = data?.text ?? '';
+    final code = inviteCodeFromLink(text) ?? normalizeInviteCode(text);
+    if (!mounted) return;
+    if (code.length < 4) {
+      showAppSnackBar(message: 'Não há um código de convite copiado.');
+      return;
+    }
+    _fill(code);
+  }
+
+  Future<void> _scan() async {
+    final code = await scanInviteCode(context);
+    if (code == null || !mounted) return;
+    _fill(code);
+    await _join();
   }
 
   Future<void> _join() async {
@@ -1002,6 +1119,30 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
               icon: Icons.login_rounded,
               loading: _busy,
               onPressed: _busy ? null : _join,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              children: [
+                Expanded(
+                  child: PillButton(
+                    label: 'Colar',
+                    icon: Icons.content_paste_rounded,
+                    variant: PillButtonVariant.secondary,
+                    dense: true,
+                    onPressed: _busy ? null : _paste,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: PillButton(
+                    label: 'Escanear QR',
+                    icon: Icons.qr_code_scanner_rounded,
+                    variant: PillButtonVariant.secondary,
+                    dense: true,
+                    onPressed: _busy ? null : _scan,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

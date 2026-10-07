@@ -5,6 +5,7 @@ import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/home_widget_service.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'package:receyta/features/folders/screens/recipe_drag.dart';
@@ -16,6 +17,7 @@ import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/settings/controllers/reminder_settings.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_lists_page.dart';
+import 'package:receyta/features/space/controllers/invite_link.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -111,7 +113,15 @@ class _HomeShellState extends ConsumerState<HomeShell>
   /// nome do arquivo.
   void _handleSharedMedia(List<SharedMediaFile> media) {
     if (media.isEmpty) return;
-    importSharedReceytaFileFlow(ref, media.first.path);
+    final first = media.first;
+    if (first.type == SharedMediaType.url) {
+      final code = inviteCodeFromLink(first.path);
+      if (code != null) {
+        GoRouter.of(context).push('/space?code=$code');
+        return;
+      }
+    }
+    importSharedReceytaFileFlow(ref, first.path);
   }
 
   /// Voltar pro app é um bom momento pra buscar o que mudou em outro aparelho.
