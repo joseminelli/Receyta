@@ -349,4 +349,44 @@ void main() {
       expect(r.name, 'farinha de trigo');
     });
   });
+
+  group('formatos vistos em receitas importadas', () {
+    test('"Colheres(sopa)" sem espaço antes do parêntese', () {
+      final r = parseIngredientLine('5 Colheres(sopa) de Óleo');
+      expect(r.quantity, 5);
+      expect(r.unitCode, 'colher_sopa');
+      expect(r.name, 'Óleo');
+    });
+
+    test('"colher(sopa) cheias de polvilho azedo"', () {
+      final r = parseIngredientLine('8 colher(sopa) cheias de polvilho azedo');
+      expect(r.unitCode, 'colher_sopa');
+      expect(r.qualifier, 'cheias');
+      expect(r.name, 'polvilho azedo');
+    });
+
+    test('"1 pacote de (50) g de queijo parmesão, ralado"', () {
+      final r =
+          parseIngredientLine('1 pacote de (50) g de queijo parmesão, ralado');
+      expect(r.quantity, 1);
+      expect(r.unitCode, 'pacote');
+      expect(r.qualifier, 'ralado');
+      expect(r.name, 'queijo parmesão');
+    });
+
+    test('"(50 g) de queijo" no começo do nome', () {
+      final r = parseIngredientLine('1 pacote (50 g) de queijo ralado');
+      expect(r.unitCode, 'pacote');
+      expect(r.name, 'queijo');
+    });
+
+    test(
+        'letra solta no lugar da quantidade: tira a letra, sem inventar número',
+        () {
+      final r = parseIngredientLine('A de xicara de pasta de gergelim');
+      expect(r.quantity, isNull);
+      expect(r.unitCode, 'xicara');
+      expect(r.name, 'pasta de gergelim');
+    });
+  });
 }

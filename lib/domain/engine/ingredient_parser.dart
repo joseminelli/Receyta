@@ -142,6 +142,17 @@ ParsedIngredientLine parseIngredientLine(
     }
   }
 
+  if (quantity == null) {
+    // "A de xícara de pasta": a quantidade foi mal lida como uma letra solta
+    // (importação por foto). Sem inventar número: tira a letra e deixa a
+    // quantidade em branco pra pessoa ajustar.
+    final stray = _strayLetterRegex.firstMatch(afterQuantity);
+    if (stray != null &&
+        _matchUnit(afterQuantity.substring(stray.end), units).$1 != null) {
+      afterQuantity = afterQuantity.substring(stray.end);
+    }
+  }
+
   var (unitCode, afterUnit) = _matchUnit(afterQuantity, units);
   if (unitCode == null) {
     // Fração fala "de" antes da unidade ("1/4 DE xícara") — diferente do
@@ -273,6 +284,8 @@ ParsedIngredientLine parseIngredientLine(
 
 final _wordStart = RegExp(r'\S+');
 
+final _strayLetterRegex = RegExp(r'^[aAyY]\s+de\s+');
+
 /// "1" vira "I", "l" ou (mais raro) "T" no OCR (C8) — em fonte sem serifa
 /// ficam parecidos ou idênticos, e às vezes a letra ainda cola direto na
 /// unidade ("Icolher") ou na fração ("T/4"). Só troca de volta quando o
@@ -351,7 +364,8 @@ String _fixOcrOneMisreadAsLetter(String text, List<SeedUnit> units) {
     if (!lowerRest.startsWith(key)) continue;
     final boundaryOk = lowerRest.length == key.length ||
         lowerRest[key.length] == ' ' ||
-        lowerRest[key.length] == ',';
+        lowerRest[key.length] == ',' ||
+        lowerRest[key.length] == '(';
     if (boundaryOk) {
       return (candidates[key], rest.substring(key.length).trimLeft());
     }
@@ -522,6 +536,14 @@ final _sizeWordRegex = RegExp(
   return (raw.toLowerCase(), text.trimLeft().substring(m.end));
 }
 
+/// "(50) g de queijo", "(50 g) de queijo": o tamanho da embalagem no começo
+/// do nome não é parte do ingrediente.
+final _leadingPackageSizeRegex = RegExp(
+  r'^\(\s*\d+(?:[.,]\d+)?\s*(?:(?:g|kg|mg|ml|l|lt|lts|litros?)\s*)?\)\s*'
+  r'(?:(?:g|kg|mg|ml|l|lt|lts|litros?)\b\s*)?(?:de\s+)?',
+  caseSensitive: false,
+);
+
 final _sizeParenRegex = RegExp(
   r'\(\s*\d+(?:[.,]\d+)?\s*(?:g|kg|mg|ml|l|lt|lts|litros?|un|unid\w*)\s*\)',
   caseSensitive: false,
@@ -553,6 +575,7 @@ const _brandWords = {
 String _cleanName(String name) {
   var out = name
       .replaceAll(RegExp(r'[®™©]'), '')
+      .replaceFirst(_leadingPackageSizeRegex, '')
       .replaceAll(_sizeParenRegex, ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
