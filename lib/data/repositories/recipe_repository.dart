@@ -248,6 +248,56 @@ class RecipeRepository {
     }
   }
 
+  /// Refaz a leitura de TODAS as linhas de ingrediente com o parser atual:
+  /// quantidade, unidade, observação e o vínculo com o catálogo. Existe porque
+  /// o parser melhora ("1 xícara (chá) de açúcar" já chegou a virar o
+  /// ingrediente "(chá) de Açúcar"), e o que foi lido antes fica como estava.
+  /// O texto digitado nunca muda. Ingredientes do catálogo que ficarem sem uso
+  /// por causa disso são apagados. Devolve quantas linhas mudaram.
+  Future<Result<int>> reanalyzeIngredients() async {
+    try {
+      final rows = await _dao.allIngredientLines();
+      final oldIds = <String>{};
+      var changed = 0;
+      for (final row in rows) {
+        final parsed = parseIngredientLine(row.rawText);
+        String? ingredientId;
+        if (parsed.name.isNotEmpty) {
+          ingredientId = (await _ingredientDao.getOrCreate(parsed.name)).id;
+        }
+        final same = row.ingredientId == ingredientId &&
+            row.quantity == parsed.quantity &&
+            row.unitId == parsed.unitCode &&
+            row.qualifier == parsed.qualifier;
+        if (same) continue;
+        if (row.ingredientId != null && row.ingredientId != ingredientId) {
+          oldIds.add(row.ingredientId!);
+        }
+        await _dao.resolveIngredient(
+          row.id,
+          ingredientId: ingredientId,
+          quantity: parsed.quantity,
+          unitId: parsed.unitCode,
+          qualifier: parsed.qualifier,
+        );
+        changed++;
+      }
+      for (final id in oldIds) {
+        try {
+          await _ingredientDao.deleteIngredient(id);
+        } catch (_) {
+          // ainda em uso por outra linha: fica
+        }
+      }
+      return Ok(changed);
+    } catch (e) {
+      return Err(
+        DatabaseFailure('Falha ao refazer a leitura dos ingredientes',
+            cause: e),
+      );
+    }
+  }
+
   /// Marca "aberta agora" — sobe pro topo da prateleira "Recentes" da home.
   Future<Result<void>> markOpened(String id) async {
     try {

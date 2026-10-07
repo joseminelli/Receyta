@@ -157,6 +157,11 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
         .get();
   }
 
+  /// Todas as linhas de ingrediente de todas as receitas (inclusive da
+  /// lixeira) — pra refazer a leitura delas depois de o parser melhorar.
+  Future<List<RecipeIngredientRow>> allIngredientLines() =>
+      select(recipeIngredients).get();
+
   /// Grava o resultado do parser (C1) + `getOrCreate` (C2) numa linha
   /// existente, sem tocar em `raw_text`/`group_label`/`position`.
   Future<void> resolveIngredient(

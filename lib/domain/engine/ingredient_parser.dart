@@ -112,14 +112,29 @@ ParsedIngredientLine parseIngredientLine(
     return ParsedIngredientLine(rawText: rawText, name: '');
   }
 
-  var (quantity, afterQuantity) = _extractQuantity(
-    _fixOcrOneMisreadAsLetter(trimmed, units),
+  // "(50) g de queijo": o número entre parênteses vira número solto.
+  final source = trimmed.replaceFirstMapped(
+    _parenNumberRegex,
+    (m) => '${m.group(1)} ',
   );
+
+  var (quantity, afterQuantity) = _extractQuantity(
+    _fixOcrOneMisreadAsLetter(source, units),
+  );
+  if (quantity == null) {
+    // "uma xícara", "duas colheres", "um dente": número por extenso, só quando
+    // vem uma unidade logo depois ("um pouco de sal" não vira "1 pouco").
+    final word = _extractWordQuantity(source, units);
+    if (word != null) {
+      quantity = word.$1;
+      afterQuantity = word.$2;
+    }
+  }
   var prefix = '';
   if (quantity == null) {
     // Não achou no início — tenta achar em qualquer ponto da linha (comum
     // em OCR, C8: "Farinha de trigo 1/4 xícara", quantidade no fim).
-    final elsewhere = _extractQuantityAnywhere(trimmed, units);
+    final elsewhere = _extractQuantityAnywhere(source, units);
     if (elsewhere != null) {
       quantity = elsewhere.quantity;
       prefix = elsewhere.before;
@@ -139,19 +154,49 @@ ParsedIngredientLine parseIngredientLine(
       afterUnit = retryAfter;
     }
   }
+
+  // Tudo o que pode vir colado na unidade, em qualquer ordem: "(chá)",
+  // "e meia", "cheia". Faz parte da quantidade, nunca do nome.
+  String? sizeQualifier;
+  if (unitCode != null) {
+    for (var i = 0; i < 4; i++) {
+      final before = afterUnit;
+
+      final paren = _matchUnitParen(unitCode!, afterUnit);
+      if (paren != null) {
+        unitCode = paren.unitCode;
+        afterUnit = paren.rest;
+      }
+
+      final extra = _extractTrailingFraction(afterUnit);
+      if (extra != null && quantity != null) {
+        quantity = quantity + extra.$1;
+        afterUnit = extra.$2;
+      }
+
+      final size = _extractSizeWord(afterUnit);
+      if (size != null) {
+        sizeQualifier ??= size.$1;
+        afterUnit = size.$2;
+      }
+
+      if (afterUnit == before) break;
+    }
+  }
+
   final afterConnector = _stripLeadingConnector(afterUnit);
   final (qualifier, afterQualifier) = _extractQualifier(
     afterConnector,
     normalizerTerms ?? kSeedNormalizerTerms,
   );
 
-  final rest = afterQualifier.trim();
-  final name = [prefix, rest].where((s) => s.isNotEmpty).join(' ');
+  final rest = _cleanName(afterQualifier.trim());
+  final name = _cleanName([prefix, rest].where((s) => s.isNotEmpty).join(' '));
   return ParsedIngredientLine(
     rawText: rawText,
     quantity: quantity,
     unitCode: unitCode,
-    qualifier: qualifier,
+    qualifier: qualifier ?? sizeQualifier,
     name: name.isEmpty ? trimmed : name,
   );
 }
@@ -356,4 +401,175 @@ String _stripLeadingConnector(String text) {
     }
   }
   return (null, text);
+}
+
+// ---------------------------------------------------------------------------
+// Pedaços que moram junto da unidade ou do nome
+// ---------------------------------------------------------------------------
+
+final _parenNumberRegex =
+    RegExp(r'^\(\s*(\d+(?:[.,]\d+)?(?:\s*/\s*\d+)?)\s*\)\s*');
+
+const _numberWords = {
+  'um': 1.0,
+  'uma': 1.0,
+  'dois': 2.0,
+  'duas': 2.0,
+  'tres': 3.0,
+  'quatro': 4.0,
+  'cinco': 5.0,
+  'seis': 6.0,
+  'sete': 7.0,
+  'oito': 8.0,
+  'nove': 9.0,
+  'dez': 10.0,
+};
+
+/// "uma xícara de leite" → (1, "xícara de leite"). Só vale se logo depois do
+/// número vem uma unidade conhecida.
+(double, String)? _extractWordQuantity(String text, List<SeedUnit> units) {
+  final m = RegExp(r'^(\S+)\s+(?=\S)').firstMatch(text);
+  if (m == null) return null;
+  final word = stripAccents(m.group(1)!.toLowerCase());
+  final value = _numberWords[word];
+  if (value == null) return null;
+  final rest = text.substring(m.end);
+  if (_matchUnit(rest, units).$1 == null) return null;
+  return (value, rest);
+}
+
+final _unitParenRegex = RegExp(r'^\(\s*(?:de\s+)?([^)\s]+)\s*\)\s*');
+
+/// "colher (sopa)", "xícara (chá)", "colher (café)": o que vem entre
+/// parênteses logo depois da unidade diz de que unidade se trata. Devolve a
+/// unidade certa e o resto sem o parêntese; nulo se não é desse tipo.
+({String unitCode, String rest})? _matchUnitParen(String unit, String text) {
+  final m = _unitParenRegex.firstMatch(text);
+  if (m == null) return null;
+  final word = stripAccents(m.group(1)!.toLowerCase());
+  final rest = text.substring(m.end);
+  final isSpoon =
+      unit == 'colher_sopa' || unit == 'colher_cha' || unit == 'colher_cafe';
+  final isCup =
+      unit == 'xicara' || unit == 'xicara_cha' || unit == 'xicara_cafe';
+  if (isSpoon) {
+    switch (word) {
+      case 'sopa':
+        return (unitCode: 'colher_sopa', rest: rest);
+      case 'cha':
+        return (unitCode: 'colher_cha', rest: rest);
+      case 'cafe':
+        return (unitCode: 'colher_cafe', rest: rest);
+      case 'sobremesa':
+        // Não há colher de sobremesa nas unidades: fica como a de sopa, o
+        // tamanho mais próximo, em vez de sujar o nome do ingrediente.
+        return (unitCode: 'colher_sopa', rest: rest);
+    }
+  }
+  if (isCup) {
+    switch (word) {
+      case 'cha':
+        return (unitCode: 'xicara', rest: rest);
+      case 'cafe':
+        return (unitCode: 'xicara_cafe', rest: rest);
+    }
+  }
+  if (unit == 'copo' && (word == 'americano' || word == 'requeijao')) {
+    return (unitCode: 'copo', rest: rest);
+  }
+  return null;
+}
+
+const _afterUnitFractionChars = {
+  '½': 0.5,
+  '¼': 0.25,
+  '¾': 0.75,
+  '⅓': 1 / 3,
+  '⅔': 2 / 3,
+};
+
+final _trailingFractionRegex = RegExp(
+  r'^e\s+(?:(mei[ao])|(\d+)\s*/\s*(\d+)|([½¼¾⅓⅔]))(?=\s|$|\()',
+  caseSensitive: false,
+);
+
+/// "2 xícaras e meia de farinha": o "e meia" (ou "e 1/2", "e ¼") depois da
+/// unidade soma à quantidade. Devolve o que somar e o resto da linha.
+(double, String)? _extractTrailingFraction(String text) {
+  final m = _trailingFractionRegex.firstMatch(text.trimLeft());
+  if (m == null) return null;
+  final rest = text.trimLeft().substring(m.end).trimLeft();
+  if (m.group(1) != null) return (0.5, rest);
+  if (m.group(2) != null) {
+    final num = int.parse(m.group(2)!);
+    final den = int.parse(m.group(3)!);
+    return den == 0 ? null : (num / den, rest);
+  }
+  return (_afterUnitFractionChars[m.group(4)!]!, rest);
+}
+
+final _sizeWordRegex = RegExp(
+  r'^(?:bem\s+)?(cheias?|rasas?|generosas?|lisas?|colmadas?)(?=\s|$|,)\s*',
+  caseSensitive: false,
+);
+
+/// "1 colher (sopa) bem cheia de manteiga": "bem cheia" descreve a medida, não
+/// o ingrediente. Vira o qualificador da linha.
+(String, String)? _extractSizeWord(String text) {
+  final m = _sizeWordRegex.firstMatch(text.trimLeft());
+  if (m == null) return null;
+  final raw = text.trimLeft().substring(0, m.end).trim();
+  return (raw.toLowerCase(), text.trimLeft().substring(m.end));
+}
+
+final _sizeParenRegex = RegExp(
+  r'\(\s*\d+(?:[.,]\d+)?\s*(?:g|kg|mg|ml|l|lt|lts|litros?|un|unid\w*)\s*\)',
+  caseSensitive: false,
+);
+
+/// Marcas muito comuns nas receitas brasileiras. Tiradas do nome pra "Leite
+/// Condensado Moça" e "Leite Condensado" serem o mesmo ingrediente.
+const _brandWords = {
+  'moca',
+  'nestle',
+  'ninho',
+  'forti',
+  'itambe',
+  'piracanjuba',
+  'maizena',
+  'fleischmann',
+  'qualy',
+  'hellmanns',
+  'knorr',
+  'catupiry',
+  'philadelphia',
+  'tirolez',
+  'quata',
+  'camil',
+};
+
+/// Limpa o nome de ingrediente: marcas registradas (®, ™), tamanho entre
+/// parênteses ("(395g)"), marcas conhecidas e um "de" sobrando no começo.
+String _cleanName(String name) {
+  var out = name
+      .replaceAll(RegExp(r'[®™©]'), '')
+      .replaceAll(_sizeParenRegex, ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (out.isEmpty) return out;
+
+  final tokens = out.split(' ');
+  final kept = [
+    for (final t in tokens)
+      if (!_brandWords.contains(
+        stripAccents(t.toLowerCase()).replaceAll(RegExp(r"[^a-z]"), ''),
+      ))
+        t,
+  ];
+  if (kept.isNotEmpty && kept.length != tokens.length) {
+    out = kept.join(' ');
+  }
+  out = _stripLeadingConnector(out).trim();
+  out = out.replaceAll(RegExp(r'^[\s,;:.\-]+|[\s,;:.\-]+$'), '').trim();
+  return out;
 }

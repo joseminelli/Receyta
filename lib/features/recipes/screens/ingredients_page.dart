@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/ingredient_repository.dart';
+import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/engine/fuzzy_match.dart';
 import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart'
@@ -14,7 +15,9 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
@@ -77,6 +80,36 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
     );
   }
 
+  /// Refaz a leitura de todas as receitas com o parser atual e limpa do
+  /// catálogo o que sobrar sem uso.
+  Future<void> _reanalyze() async {
+    final ok = await AppDialog.confirm(
+      context,
+      icon: Icons.auto_fix_high_outlined,
+      accent: context.colors.violet,
+      title: 'Refazer a leitura dos ingredientes?',
+      message: 'O app lê de novo cada linha de ingrediente das suas receitas e '
+          'corrige quantidades, medidas e nomes que ficaram errados (como '
+          '"(chá) de Açúcar"). O que você digitou não muda, e ingredientes que '
+          'ficarem sem uso saem da lista.',
+      confirmLabel: 'Refazer',
+    );
+    if (!ok || !mounted) return;
+    final result =
+        await ref.read(recipeRepositoryProvider).reanalyzeIngredients();
+    result.when(
+      ok: (changed) => showAppSnackBar(
+        message: changed == 0
+            ? 'Tudo já estava certo.'
+            : '$changed ${changed == 1 ? 'linha ajustada' : 'linhas ajustadas'}.',
+      ),
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
   Future<void> _delete(Ingredient ingredient) async {
     final ok = await AppDialog.confirm(
       context,
@@ -102,6 +135,17 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
           ? null
           : '$count ${count == 1 ? 'ingrediente' : 'ingredientes'}',
       color: TileColor.lime,
+      trailing: ActionMenuButton(
+        tooltip: 'Mais ações',
+        items: [
+          ActionMenuItem(
+            icon: Icons.auto_fix_high_outlined,
+            label: 'Refazer a leitura',
+            hint: 'Corrige nomes e medidas',
+            onTap: _reanalyze,
+          ),
+        ],
+      ),
       body: items.when(
         loading: () => const Center(child: BrandLoader()),
         error: (_, __) => _buildError(context),

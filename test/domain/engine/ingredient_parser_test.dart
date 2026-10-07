@@ -257,4 +257,96 @@ void main() {
     expect(
         () => parseIngredientLine('IB de xícara de azeite'), returnsNormally);
   });
+
+  group('medidas entre parênteses, "e meia" e restos de embalagem', () {
+    test('"xícara (chá)" e "colher (sopa)" são só a unidade', () {
+      final a = parseIngredientLine('1 xícara (chá) de açúcar');
+      expect(a.quantity, 1);
+      expect(a.unitCode, 'xicara');
+      expect(a.name, 'açúcar');
+
+      final b = parseIngredientLine('2 colheres (sopa) de manteiga');
+      expect(b.quantity, 2);
+      expect(b.unitCode, 'colher_sopa');
+      expect(b.name, 'manteiga');
+
+      final c = parseIngredientLine('1 colher (café) de canela');
+      expect(c.unitCode, 'colher_cafe');
+      expect(c.name, 'canela');
+    });
+
+    test('"colher (chá) rasa" e "(sopa) bem cheia" não sujam o nome', () {
+      final a = parseIngredientLine('1 colher (chá) rasa de sal');
+      expect(a.unitCode, 'colher_cha');
+      expect(a.qualifier, 'rasa');
+      expect(a.name, 'sal');
+
+      final b = parseIngredientLine('1 colher (sopa) bem cheia de manteiga');
+      expect(b.unitCode, 'colher_sopa');
+      expect(b.qualifier, 'bem cheia');
+      expect(b.name, 'manteiga');
+    });
+
+    test('colher (sobremesa) cai na de sopa, sem entrar no nome', () {
+      final r = parseIngredientLine('1 colher (sobremesa) de fermento químico');
+      expect(r.unitCode, 'colher_sopa');
+      expect(r.name, 'fermento químico');
+    });
+
+    test('"2 xícaras e meia" soma 2,5', () {
+      final r = parseIngredientLine('2 xícaras e meia de farinha');
+      expect(r.quantity, 2.5);
+      expect(r.unitCode, 'xicara');
+      expect(r.name, 'farinha');
+    });
+
+    test('"1 xícara (chá) e meia" e "e 1/4" somam, na ordem que vier', () {
+      final a = parseIngredientLine('1 xícara (chá) e meia de açúcar');
+      expect(a.quantity, 1.5);
+      expect(a.unitCode, 'xicara');
+      expect(a.name, 'açúcar');
+
+      final b = parseIngredientLine('2 xícaras e 1/4 de leite');
+      expect(b.quantity, 2.25);
+      expect(b.name, 'leite');
+    });
+
+    test('número por extenso, só quando vem uma unidade', () {
+      final a = parseIngredientLine('uma xícara e meia de leite');
+      expect(a.quantity, 1.5);
+      expect(a.name, 'leite');
+
+      final b = parseIngredientLine('duas colheres (sopa) de óleo');
+      expect(b.quantity, 2);
+      expect(b.unitCode, 'colher_sopa');
+
+      final c = parseIngredientLine('um pouco de sal');
+      expect(c.quantity, isNull);
+    });
+
+    test('número entre parênteses vira número solto', () {
+      final r = parseIngredientLine('(50) g de queijo parmesão');
+      expect(r.quantity, 50);
+      expect(r.unitCode, 'g');
+      expect(r.name, 'queijo parmesão');
+    });
+
+    test('tamanho da embalagem, ® e marca não viram outro ingrediente', () {
+      final a = parseIngredientLine('1 lata de leite condensado (395g)');
+      expect(a.unitCode, 'lata');
+      expect(a.name, 'leite condensado');
+
+      final b = parseIngredientLine('1 lata de leite condensado Moça®');
+      expect(b.name, 'leite condensado');
+
+      final c = parseIngredientLine('1 caixa de creme de leite Nestlé®');
+      expect(c.name, 'creme de leite');
+    });
+
+    test('a linha de antes continua igual', () {
+      final r = parseIngredientLine('2 xícaras de farinha de trigo');
+      expect(r.quantity, 2);
+      expect(r.name, 'farinha de trigo');
+    });
+  });
 }
