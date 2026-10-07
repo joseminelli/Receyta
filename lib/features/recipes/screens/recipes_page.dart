@@ -149,12 +149,20 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
         onCreate: openNew,
         onRefresh: refresh,
         body: list.isEmpty
-            ? SliverFillRemaining(
-                hasScrollBody: false,
-                child: filtering
-                    ? _NoMatch(onClear: clearFilter)
-                    : _EmptyState(onCreate: openNew),
-              )
+            ? (filtering
+                ? SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _NoMatch(onClear: clearFilter),
+                  )
+                : SliverMainAxisGroup(
+                    slivers: [
+                      const SliverToBoxAdapter(child: FoldersStrip()),
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _EmptyState(onCreate: openNew),
+                      ),
+                    ],
+                  ))
             : _RecipeList(
                 recipes: filtering ? list : _shelf(recent?.valueOrNull, list),
                 showViewAll: !filtering,

@@ -14,6 +14,7 @@ import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/planner/screens/add_meal_sheet.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart';
 import 'package:receyta/features/planner/screens/shared_meal_sheet.dart';
+import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -246,6 +247,7 @@ class _DayPageState extends ConsumerState<DayPage> {
     DateTime day,
     List<MealPlanEntry> entries,
   ) {
+    final myName = ref.read(spaceControllerProvider.notifier).displayName();
     // Duas refeições do mesmo dia com a mesma receita dividiriam a tag do
     // Hero (o Flutter recusa); só a primeira ocorrência do dia voa.
     final heroOwners = <String, String>{};
@@ -277,6 +279,7 @@ class _DayPageState extends ConsumerState<DayPage> {
             onDrop: (entry) => _moveTo(entry, day, meal: meal),
             buildTile: (entry) => _EntryTile(
               entry: entry,
+              authorLabel: entry.sharedBy ?? myName,
               useHero: heroOwners[entry.recipeId] == entry.id,
               onOpen: () => entry.isFromOther
                   ? showSharedMealSheet(context, ref, entry)
@@ -665,6 +668,7 @@ class _MealSection extends StatelessWidget {
 class _EntryTile extends StatelessWidget {
   const _EntryTile({
     required this.entry,
+    required this.authorLabel,
     required this.useHero,
     required this.onOpen,
     required this.onToggleDone,
@@ -673,6 +677,7 @@ class _EntryTile extends StatelessWidget {
   });
 
   final MealPlanEntry entry;
+  final String authorLabel;
 
   /// Só um card por receita na tela leva o `Hero` (tags não podem repetir).
   final bool useHero;
@@ -842,7 +847,7 @@ class _EntryTile extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    entry.sharedBy ?? 'Casa',
+                                    authorLabel,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: context.texts.labelSmall?.copyWith(

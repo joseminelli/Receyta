@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'package:receyta/core/tile_style.dart';
@@ -60,6 +61,48 @@ class ShoppingListPage extends ConsumerWidget {
     );
   }
 
+  Future<void> _toggleShared(
+    BuildContext context,
+    WidgetRef ref,
+    ShoppingList list,
+  ) async {
+    final controller = ref.read(spaceControllerProvider.notifier);
+    if (list.spaceId == null) {
+      if (ref.read(currentSpaceIdProvider) == null) {
+        showAppSnackBar(message: 'Crie uma casa para compartilhar listas.');
+        context.push('/space');
+        return;
+      }
+      final result = await controller.setListShared(list.id, true);
+      result.when(
+        ok: (_) => showAppSnackBar(message: 'Lista compartilhada com a casa.'),
+        err: (f) => showAppSnackBar(
+          message: f.message,
+          variant: AppSnackBarVariant.error,
+        ),
+      );
+      return;
+    }
+    final ok = await AppDialog.confirm(
+      context,
+      icon: Icons.group_off_outlined,
+      accent: context.colors.danger,
+      title: 'Deixar de compartilhar?',
+      message: 'Quem está na casa deixa de ver esta lista. Ela continua com '
+          'você.',
+      confirmLabel: 'Deixar de compartilhar',
+    );
+    if (!ok) return;
+    final result = await controller.setListShared(list.id, false);
+    result.when(
+      ok: (_) {},
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
@@ -87,6 +130,19 @@ class ShoppingListPage extends ConsumerWidget {
                   hint: 'Como texto',
                   onTap: () => _share(ref),
                 ),
+                if (ref.watch(authUserProvider).valueOrNull != null)
+                  ActionMenuItem(
+                    icon: list.spaceId == null
+                        ? Icons.group_add_outlined
+                        : Icons.group_off_outlined,
+                    label: list.spaceId == null
+                        ? 'Compartilhar com a casa'
+                        : 'Deixar de compartilhar',
+                    hint: list.spaceId == null
+                        ? 'Quem está na casa vê e marca os itens'
+                        : 'Quem está na casa deixa de ver esta lista',
+                    onTap: () => _toggleShared(context, ref, list),
+                  ),
               ],
             ),
       body: listAsync.when(
