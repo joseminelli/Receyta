@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/stretch_indicator.dart';
 
 /// Um período na faixa: o texto grande ([label]) e um complemento pequeno
 /// ([caption]), como "Out" / "2026" ou "12–18" / "out". [id] é estável e dá o
@@ -216,17 +217,16 @@ class SlidingSegmented extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          AnimatedAlign(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            alignment: n == 1
-                ? Alignment.center
-                : Alignment(-1 + 2 * selected / (n - 1), 0),
-            child: FractionallySizedBox(
-              widthFactor: 1 / n,
-              heightFactor: 1,
-              child: Container(
-                margin: const EdgeInsets.all(3),
+          Positioned.fill(
+            child: StretchIndicator(
+              index: selected,
+              slotRect: (i, size) => Rect.fromLTWH(
+                i * size.width / n + 3,
+                3,
+                size.width / n - 6,
+                size.height - 6,
+              ),
+              child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: colors.ink,
                   borderRadius: BorderRadius.circular(AppRadii.pill),

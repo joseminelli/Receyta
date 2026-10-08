@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/stretch_indicator.dart';
 
 /// Uma aba: ícone e nome.
 class UnderlineTab {
@@ -92,21 +93,22 @@ class UnderlineTabs extends StatelessWidget {
           ],
         ),
         Positioned.fill(
-          child: AnimatedAlign(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            alignment: n == 1
-                ? Alignment.bottomCenter
-                : Alignment(-1 + 2 * selected / (n - 1), 1),
-            child: FractionallySizedBox(
-              widthFactor: 1 / n,
-              child: Container(
-                height: 4,
-                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: colors.ink,
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                ),
+          child: StretchIndicator(
+            index: selected,
+            slotRect: (i, size) {
+              const inset = AppSpacing.md;
+              final slot = size.width / n;
+              return Rect.fromLTWH(
+                i * slot + inset,
+                size.height - 4,
+                slot - inset * 2,
+                4,
+              );
+            },
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.ink,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
             ),
           ),

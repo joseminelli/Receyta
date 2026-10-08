@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/stretch_indicator.dart';
 
 /// Um destino da [PillNavBar]. `color` é a cor da seção (§9.2) — o `motif` fica
 /// só de referência pra quem consome via [TileMotif], a navbar em si não
@@ -69,7 +70,7 @@ class _PillNavBarState extends State<PillNavBar>
     _slotKeys = List.generate(widget.items.length, (_) => GlobalKey());
     _slide = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 240),
+      duration: kStretchDuration,
     )..addListener(_onSlideTick);
     WidgetsBinding.instance.addPostFrameCallback((_) => _snapToCurrent());
   }
@@ -137,8 +138,7 @@ class _PillNavBarState extends State<PillNavBar>
     final from = _previousRect;
     final to = _targetRect;
     if (from == null || to == null) return;
-    final t = Curves.easeOutCubic.transform(_slide.value);
-    setState(() => _indicatorRect = Rect.lerp(from, to, t));
+    setState(() => _indicatorRect = stretchRect(from, to, _slide.value));
   }
 
   @override
