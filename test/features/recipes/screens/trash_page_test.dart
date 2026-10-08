@@ -84,11 +84,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sopa'), findsOneWidget);
-    // Cada linha mostra a contagem regressiva num distintivo. Apagada há 5
-    // dias e uns milissegundos: faltam 24 dias e uma fração, e o distintivo
-    // mostra só os dias inteiros.
-    expect(find.text('dias restantes'), findsNWidgets(2));
-    expect(find.text('24'), findsNWidgets(2));
+    // Cada cartão diz quanto falta pra sumir. Apagada há 5 dias e uns
+    // milissegundos: faltam 24 dias e uma fração, e só os dias inteiros
+    // aparecem.
+    expect(find.text('Some em 24 dias'), findsNWidgets(2));
 
     // As linhas seguem a ordem da lista: Sopa primeiro, Bolo depois.
     await tester.tap(find.byTooltip('Restaurar').first);
@@ -103,5 +102,22 @@ void main() {
     await tester.pumpAndSettle();
     await settleDb(tester);
     expect(await stateOf(tester, b.value.id), 'sumiu');
+  });
+
+  testWidgets('na reta final avisa "próxima faxina" em vermelho',
+      (tester) async {
+    await tester.pumpWidget(host());
+    trash.add([
+      Recipe(
+        id: 'velha',
+        name: 'Velha',
+        createdAt: DateTime.utc(2026),
+        updatedAt: DateTime.utc(2026),
+        deletedAt: DateTime.now().toUtc().subtract(const Duration(days: 31)),
+      ),
+    ]);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Some na próxima faxina'), findsOneWidget);
   });
 }

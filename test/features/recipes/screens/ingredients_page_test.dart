@@ -72,6 +72,18 @@ void main() {
     );
   }
 
+  /// Abre o menu "⋯" da linha [row] e escolhe a opção [label].
+  Future<void> pickFromMenu(
+    WidgetTester tester,
+    String label, {
+    int row = 0,
+  }) async {
+    await tester.tap(find.byTooltip('Opções do ingrediente').at(row));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(label));
+    await tester.pumpAndSettle();
+  }
+
   void usePhone(WidgetTester tester) {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -79,7 +91,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
-  testWidgets('mostra a etiqueta "Sempre tenho" e a contagem da despensa',
+  testWidgets('quem está na despensa leva o ícone; o filtro mostra a conta',
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(
@@ -87,7 +99,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Sempre tenho'), findsOneWidget);
+    expect(find.byIcon(Icons.kitchen), findsOneWidget);
     expect(find.text('Na despensa (1)'), findsOneWidget);
     expect(find.text('Farinha'), findsOneWidget);
   });
@@ -130,18 +142,15 @@ void main() {
     expect(find.textContaining('Nada na despensa ainda'), findsOneWidget);
   });
 
-  testWidgets('o botão da despensa liga e desliga o ingrediente',
-      (tester) async {
+  testWidgets('a despensa liga e desliga pelo menu', (tester) async {
     usePhone(tester);
     await tester.pumpWidget(
       host([_row('1', 'Sal', pantry: true), _row('2', 'Farinha')]),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Sempre tenho (despensa)'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Tirar da despensa'));
-    await tester.pumpAndSettle();
+    await pickFromMenu(tester, 'Sempre tenho (despensa)', row: 1);
+    await pickFromMenu(tester, 'Tirar da despensa', row: 0);
 
     expect(repo.pantryCalls, [
       (id: '2', value: true),
@@ -156,8 +165,7 @@ void main() {
     await tester.pumpWidget(host([_row('2', 'Farinha')]));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Definir preço'));
-    await tester.pumpAndSettle();
+    await pickFromMenu(tester, 'Definir preço');
     final fields = find.byType(TextField);
     await tester.enterText(fields.at(0), '4,50');
     await tester.enterText(fields.at(1), '500');
@@ -175,8 +183,7 @@ void main() {
     await tester.pumpWidget(host([_row('2', 'Farinha')]));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Definir preço'));
-    await tester.pumpAndSettle();
+    await pickFromMenu(tester, 'Definir preço');
     expect(find.text('Quilograma (kg)'), findsOneWidget);
 
     await tester.tap(find.text('Quilograma (kg)'));
@@ -207,8 +214,7 @@ void main() {
     usePhone(tester);
     await tester.pumpWidget(host([_row('2', 'Farinha')]));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Definir preço'));
-    await tester.pumpAndSettle();
+    await pickFromMenu(tester, 'Definir preço');
     await tester.tap(find.text('Quilograma (kg)'));
     await tester.pumpAndSettle();
 
@@ -239,14 +245,72 @@ void main() {
     expect(find.text('Buscar unidade'), findsNothing);
   });
 
+  testWidgets('o cartão é enxuto: inicial, nome e "N receitas · preço"',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([
+      _row('1', 'Farinha', count: 3, price: const IngredientPrice(600, 'kg')),
+      _row('2', 'Sal', count: 0),
+    ]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('F'), findsOneWidget);
+    expect(find.text('3 receitas'), findsOneWidget);
+    expect(find.text('R\$ 6,00/kg'), findsOneWidget);
+    expect(find.text('Não usado'), findsOneWidget);
+    expect(find.text('Sem preço'), findsOneWidget);
+    // Nada de botões soltos: tudo mora no menu.
+    expect(find.text('Definir preço'), findsNothing);
+    expect(find.byTooltip('Sempre tenho (despensa)'), findsNothing);
+  });
+
+  testWidgets('a lixeira marca só quem pode ser apagado', (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([
+      _row('1', 'Farinha', count: 3),
+      _row('2', 'Sal', count: 0),
+      _row('3', 'Açúcar', count: 0, pantry: true),
+    ]));
+    await tester.pumpAndSettle();
+
+    // Dois sem uso (Sal e Açúcar) -> duas lixeiras; só um na despensa.
+    expect(find.byIcon(Icons.delete_outline), findsNWidgets(2));
+    expect(find.byIcon(Icons.kitchen), findsOneWidget);
+    expect(find.bySemanticsLabel('Pode ser apagado'), findsNWidgets(2));
+  });
+
+  testWidgets('todas as opções ficam no menu; apagar só sem uso',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([
+      _row('1', 'Farinha', count: 3),
+      _row('2', 'Sal', count: 0),
+    ]));
+    await tester.pumpAndSettle();
+
+    // Em uso: preço, despensa e mesclar — sem apagar.
+    await tester.tap(find.byTooltip('Opções do ingrediente').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Definir preço'), findsOneWidget);
+    expect(find.text('Sempre tenho (despensa)'), findsOneWidget);
+    expect(find.text('Mesclar com...'), findsOneWidget);
+    expect(find.text('Apagar'), findsNothing);
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pumpAndSettle();
+
+    // Sem uso: também "Apagar".
+    await tester.tap(find.byTooltip('Opções do ingrediente').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Apagar'), findsOneWidget);
+  });
+
   testWidgets('a folha de preço avisa que ele fica só no aparelho',
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(host([_row('2', 'Farinha')]));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Definir preço'));
-    await tester.pumpAndSettle();
+    await pickFromMenu(tester, 'Definir preço');
 
     expect(find.textContaining('só neste aparelho'), findsOneWidget);
     expect(find.textContaining('nuvem'), findsOneWidget);
@@ -257,8 +321,7 @@ void main() {
     await tester.pumpWidget(host([_row('2', 'Farinha')]));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Definir preço'));
-    await tester.pumpAndSettle();
+    await pickFromMenu(tester, 'Definir preço');
     await tester.enterText(find.byType(TextField).first, '0');
     await tester.tap(find.text('Salvar preço'));
     await tester.pumpAndSettle();
@@ -276,10 +339,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('R\$ 6,00/kg'), findsOneWidget);
-    expect(find.text('Definir preço'), findsNothing);
+    expect(find.text('Sem preço'), findsNothing);
 
-    await tester.tap(find.text('R\$ 6,00/kg'));
-    await tester.pumpAndSettle();
+    await pickFromMenu(tester, 'Editar preço');
     await tester.tap(find.text('Remover preço'));
     await tester.pumpAndSettle();
 

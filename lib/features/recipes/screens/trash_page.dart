@@ -9,11 +9,12 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
-import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
+import 'package:receyta/widgets/recipe_cover.dart';
 import 'package:receyta/widgets/state_badge.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 
 /// Lixeira de 30 dias (RF-01.6): nada é apagado de verdade antes do prazo. Aqui
 /// dá pra restaurar ou antecipar a exclusão definitiva.
@@ -202,10 +203,10 @@ class _EmptyTrashButton extends StatelessWidget {
   }
 }
 
-/// Linha da lixeira: cartão `paperSoft` arredondado com um distintivo
-/// numérico grande (Bricolage, como o `HeroNumber`/`MetricStat` do resto do
-/// app) pra contagem regressiva, em vez do `ListTile` chapado com subtítulo
-/// de texto. Fica vermelho quando a receita some na próxima faxina.
+/// Cartão da lixeira: a capa da receita (foto ou azulejo), o nome e quanto
+/// falta pra sumir — em vermelho quando é na próxima faxina. Restaurar é a
+/// ação principal (botão escuro); excluir de vez é só um ícone vermelho, sem
+/// preenchimento, pra não competir nem ser tocado sem querer.
 class _TrashRow extends StatelessWidget {
   const _TrashRow({
     required this.recipe,
@@ -219,10 +220,18 @@ class _TrashRow extends StatelessWidget {
   final VoidCallback onRestore;
   final VoidCallback onDeleteForever;
 
+  static const _coverSize = 60.0;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final urgent = daysLeft == 0;
+    final tile = resolveTileAppearance(
+      colors,
+      color: recipe.tileColor,
+      motif: recipe.tileMotif,
+      seedId: recipe.id,
+    );
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
@@ -232,18 +241,18 @@ class _TrashRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: urgent ? colors.danger : colors.ink,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              '$daysLeft',
-              style: AppTextStyles.display(18).copyWith(
-                color: urgent ? colors.onSaturated : colors.lime,
+          Opacity(
+            opacity: 0.8,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadii.sm),
+              child: SizedBox(
+                width: _coverSize,
+                height: _coverSize,
+                child: RecipeCover(
+                  recipe: recipe,
+                  tile: tile,
+                  cacheWidth: 160,
+                ),
               ),
             ),
           ),
@@ -256,31 +265,35 @@ class _TrashRow extends StatelessWidget {
                 Text(
                   recipe.name,
                   style: context.texts.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600),
-                  maxLines: 1,
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  urgent ? 'Some na próxima faxina' : 'dias restantes',
+                  urgent
+                      ? 'Some na próxima faxina'
+                      : daysLeft == 1
+                          ? 'Some em 1 dia'
+                          : 'Some em $daysLeft dias',
                   style: context.texts.labelMedium?.copyWith(
                     color: urgent ? colors.danger : colors.textMuted,
+                    fontWeight: urgent ? FontWeight.w700 : null,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: AppSpacing.xs),
           CircleIconButton(
             icon: Icons.restore_from_trash_outlined,
             onTap: onRestore,
             tooltip: 'Restaurar',
           ),
-          const SizedBox(width: AppSpacing.xs),
-          CircleIconButton(
-            icon: Icons.delete_forever_outlined,
-            background: colors.danger,
-            onTap: onDeleteForever,
+          IconButton(
             tooltip: 'Excluir de vez',
+            onPressed: onDeleteForever,
+            icon: Icon(Icons.delete_forever_outlined, color: colors.danger),
           ),
         ],
       ),
