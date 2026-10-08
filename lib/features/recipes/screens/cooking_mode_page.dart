@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/ingredient_format.dart';
 import 'package:receyta/domain/engine/serving_scale.dart';
@@ -123,9 +124,10 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             tileColor: recipe.tileColor,
             tileMotif: recipe.tileMotif,
             index: i,
-            text: ref.watch(appSettingsProvider.select((s) => s.showEquivalents))
-                ? annotateTemperatures(steps[i].text)
-                : steps[i].text,
+            text:
+                ref.watch(appSettingsProvider.select((s) => s.showEquivalents))
+                    ? annotateTemperatures(steps[i].text)
+                    : steps[i].text,
             durations: _durationsByText.putIfAbsent(
               steps[i].text,
               () => findStepDurations(steps[i].text),
@@ -155,18 +157,21 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   }
 
   Widget _buildBody(BuildContext context, RecipeDetail detail) {
+    final wide = isWideLayout(context);
     return SafeArea(
       child: Column(
         children: [
           _TopBar(name: detail.recipe.name),
           const _WakeTip(),
           Expanded(
-            child: CustomScrollView(
-              slivers: [
-                _buildIntroSliver(context, detail),
-                if (detail.steps.isNotEmpty) _buildStepsSliver(detail),
-              ],
-            ),
+            child: wide
+                ? _buildTwoPanes(context, detail)
+                : CustomScrollView(
+                    slivers: [
+                      _buildIntroSliver(context, detail),
+                      if (detail.steps.isNotEmpty) _buildStepsSliver(detail),
+                    ],
+                  ),
           ),
           _TimersDock(recipeId: widget.recipeId),
         ],
@@ -174,13 +179,71 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     );
   }
 
-  Widget _buildIntroSliver(BuildContext context, RecipeDetail detail) {
+  /// Tela larga (tablet, celular deitado): ingredientes e timer fixos à
+  /// esquerda, passos à direita — cada lado rola sozinho, então dá pra
+  /// conferir um ingrediente sem perder o passo em que você está.
+  Widget _buildTwoPanes(BuildContext context, RecipeDetail detail) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: sidePaneWidth(context),
+          child: CustomScrollView(
+            slivers: [
+              _buildIntroSliver(context, detail, twoPanes: true),
+            ],
+          ),
+        ),
+        Expanded(
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.sm,
+                  AppSpacing.xs,
+                  AppSpacing.screen,
+                  AppSpacing.md,
+                ),
+                sliver:
+                    SliverToBoxAdapter(child: _preparoHeader(context, detail)),
+              ),
+              if (detail.steps.isNotEmpty)
+                _buildStepsSliver(detail, twoPanes: true),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _preparoHeader(BuildContext context, RecipeDetail detail) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionLabel('Preparo'),
+        if (detail.steps.isEmpty) ...[
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'Esta receita não tem passos.',
+            style: context.texts.bodyLarge
+                ?.copyWith(color: context.colors.textBody),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildIntroSliver(
+    BuildContext context,
+    RecipeDetail detail, {
+    bool twoPanes = false,
+  }) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(
+      padding: EdgeInsets.fromLTRB(
         AppSpacing.screen,
         AppSpacing.xs,
-        AppSpacing.screen,
-        0,
+        twoPanes ? AppSpacing.sm : AppSpacing.screen,
+        twoPanes ? AppSpacing.md : 0,
       ),
       sliver: SliverToBoxAdapter(
         child: Column(
@@ -199,8 +262,9 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             _IngredientsCard(
               ingredients: detail.ingredients,
               openListenable: _ingredientsOpen,
-              showEquivalents:
-                  ref.watch(appSettingsProvider.select((s) => s.showEquivalents)),
+              alwaysOpen: twoPanes,
+              showEquivalents: ref
+                  .watch(appSettingsProvider.select((s) => s.showEquivalents)),
               factor: servingFactor(
                 base: detail.recipe.servings,
                 chosen: ref.watch(selectedServingsProvider(widget.recipeId)),
@@ -219,25 +283,21 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
                 servings: ref.read(selectedServingsProvider(widget.recipeId)),
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            _SectionLabel('Preparo'),
-            const SizedBox(height: AppSpacing.md),
-            if (detail.steps.isEmpty)
-              Text(
-                'Esta receita não tem passos.',
-                style: context.texts.bodyLarge
-                    ?.copyWith(color: context.colors.textBody),
-              ),
+            if (!twoPanes) ...[
+              const SizedBox(height: AppSpacing.xl),
+              _preparoHeader(context, detail),
+              const SizedBox(height: AppSpacing.md),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStepsSliver(RecipeDetail detail) {
+  Widget _buildStepsSliver(RecipeDetail detail, {bool twoPanes = false}) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
+      padding: EdgeInsets.fromLTRB(
+        twoPanes ? AppSpacing.sm : AppSpacing.screen,
         0,
         AppSpacing.screen,
         AppSpacing.xxl,
@@ -358,6 +418,7 @@ class _IngredientsCard extends StatelessWidget {
   const _IngredientsCard({
     required this.ingredients,
     required this.openListenable,
+    this.alwaysOpen = false,
     this.showEquivalents = true,
     this.factor = 1,
     this.baseServings,
@@ -368,6 +429,9 @@ class _IngredientsCard extends StatelessWidget {
 
   final List<RecipeIngredient> ingredients;
   final ValueNotifier<bool> openListenable;
+
+  /// Painel fixo do layout largo: sempre aberto, sem recolher.
+  final bool alwaysOpen;
 
   /// Acrescenta "· ≈ 240 g" ao lado da medida quando há equivalência.
   final bool showEquivalents;
@@ -477,70 +541,74 @@ class _IngredientsCard extends StatelessWidget {
     final colors = context.colors;
     return ValueListenableBuilder<bool>(
       valueListenable: openListenable,
-      builder: (context, open, _) => Container(
-        decoration: BoxDecoration(
-          color: colors.inkSoft,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            InkWell(
-              onTap: () => openListenable.value = !open,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Text(
-                      'INGREDIENTES',
-                      style: context.texts.labelSmall
-                          ?.copyWith(color: colors.lime),
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      '${ingredients.length}',
-                      style: context.texts.labelSmall?.copyWith(
-                        color: colors.onSaturated.withValues(alpha: 0.5),
-                      ),
-                    ),
-                    const Spacer(),
-                    Icon(
-                      open ? Icons.expand_less : Icons.expand_more,
-                      color: colors.onSaturated.withValues(alpha: 0.7),
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (open)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.md,
-                  0,
-                  AppSpacing.md,
-                  AppSpacing.md,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (ingredients.isEmpty)
+      builder: (context, isOpen, _) {
+        final open = alwaysOpen || isOpen;
+        return Container(
+          decoration: BoxDecoration(
+            color: colors.inkSoft,
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              InkWell(
+                onTap: alwaysOpen ? null : () => openListenable.value = !open,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Row(
+                    children: [
                       Text(
-                        'Nenhum ingrediente cadastrado.',
-                        style: context.texts.bodyMedium
-                            ?.copyWith(color: colors.textBody),
-                      )
-                    else ...[
-                      _servingsBar(context),
-                      ..._rows(context),
+                        'INGREDIENTES',
+                        style: context.texts.labelSmall
+                            ?.copyWith(color: colors.lime),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '${ingredients.length}',
+                        style: context.texts.labelSmall?.copyWith(
+                          color: colors.onSaturated.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (!alwaysOpen)
+                        Icon(
+                          open ? Icons.expand_less : Icons.expand_more,
+                          color: colors.onSaturated.withValues(alpha: 0.7),
+                          size: 20,
+                        ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-          ],
-        ),
-      ),
+              if (open)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (ingredients.isEmpty)
+                        Text(
+                          'Nenhum ingrediente cadastrado.',
+                          style: context.texts.bodyMedium
+                              ?.copyWith(color: colors.textBody),
+                        )
+                      else ...[
+                        _servingsBar(context),
+                        ..._rows(context),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

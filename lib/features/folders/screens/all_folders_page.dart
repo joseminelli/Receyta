@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/domain/models/folder.dart';
@@ -114,8 +115,8 @@ class AllFoldersPage extends ConsumerWidget {
     return SliverPadding(
       padding: const EdgeInsets.all(AppSpacing.screen),
       sliver: SliverGrid(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: kGridTileMaxExtent,
           crossAxisSpacing: AppSpacing.sm,
           mainAxisSpacing: AppSpacing.sm,
           childAspectRatio: 0.78,

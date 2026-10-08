@@ -142,6 +142,20 @@ void main() {
     await _flushOpenedTimer(tester);
   });
 
+  testWidgets('tela larga: capa fica ao lado do conteúdo', (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(_host(detail: _detail()));
+    await tester.pumpAndSettle();
+
+    final name = tester.getTopLeft(find.text('Frango ao curry'));
+    final ingredients = tester.getTopLeft(find.text('Ingredientes'));
+    expect(name.dx, lessThan(ingredients.dx));
+    await _flushOpenedTimer(tester);
+  });
+
   testWidgets('sem passos, não mostra "Modo cozinha"', (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host(

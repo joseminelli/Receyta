@@ -90,7 +90,11 @@ Future<void> _open(
   WidgetTester tester,
   RecipeDetail? detail, {
   DateTime Function()? clock,
+  Size size = const Size(400, 900),
 }) async {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(_host(detail, clock: clock));
   await tester.pumpAndSettle();
   await tester.tap(find.text('ir'));
@@ -141,6 +145,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('500g de frango'), findsNothing);
+  });
+
+  testWidgets('tela larga: ingredientes e passos lado a lado, sem recolher',
+      (tester) async {
+    await _open(tester, _detail(), size: const Size(1000, 600));
+
+    final ingredient = tester.getTopLeft(find.text('500g de frango'));
+    final step = tester.getTopLeft(find.text('Tempere o frango'));
+    expect(ingredient.dx, lessThan(step.dx));
+    expect(find.text('Preparo'), findsOneWidget);
+
+    await tester.tap(find.text('INGREDIENTES'));
+    await tester.pumpAndSettle();
+    expect(find.text('500g de frango'), findsOneWidget);
   });
 
   testWidgets('tocar num passo risca o texto (marca como feito)',

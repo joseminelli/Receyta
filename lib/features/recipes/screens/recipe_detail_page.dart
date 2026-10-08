@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/core/unit_label.dart';
@@ -255,59 +256,78 @@ class _Detail extends StatelessWidget {
         i.quantity == null ? null : parseIngredientLine(i.rawText),
     ];
 
+    final wide = isWideLayout(context);
+    final tags = loadedDetail?.tags ?? const <Tag>[];
+
+    final content = Stack(
+      children: [
+        CustomScrollView(
+          slivers: [
+            if (!wide)
+              SliverToBoxAdapter(child: _Hero(recipe: recipe, tags: tags)),
+            _buildIntroSliver(context, recipe, hasIngredients, wide: wide),
+            if (loadedDetail == null)
+              _buildBodyLoadingSliver()
+            else ...[
+              // Ingredientes e passos entram em slivers lazy próprios (em
+              // vez de dentro do Column acima): receitas longas deixam de
+              // montar todas as linhas de uma vez, só as visíveis (+
+              // cache) chegam a ser construídas.
+              if (hasIngredients)
+                _buildIngredientsSliver(loadedDetail, parsedIngredients),
+              _buildPreparoHeaderSliver(context, hasSteps),
+              if (hasSteps) _buildStepsSliver(loadedDetail),
+              _buildNotesSliver(context, recipe, hasSteps),
+            ],
+          ],
+        ),
+        if (hasSteps)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _CookBar(recipeId: recipe.id),
+          ),
+      ],
+    );
+
     return Scaffold(
       backgroundColor: context.colors.paper,
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child:
-                    _Hero(recipe: recipe, tags: loadedDetail?.tags ?? const []),
-              ),
-              _buildIntroSliver(context, recipe, hasIngredients),
-              if (loadedDetail == null)
-                _buildBodyLoadingSliver()
-              else ...[
-                // Ingredientes e passos entram em slivers lazy próprios (em
-                // vez de dentro do Column acima): receitas longas deixam de
-                // montar todas as linhas de uma vez, só as visíveis (+
-                // cache) chegam a ser construídas.
-                if (hasIngredients)
-                  _buildIngredientsSliver(loadedDetail, parsedIngredients),
-                _buildPreparoHeaderSliver(context, hasSteps),
-                if (hasSteps) _buildStepsSliver(loadedDetail),
-                _buildNotesSliver(context, recipe, hasSteps),
+      body: wide
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: sidePaneWidth(context),
+                  child: _Hero(recipe: recipe, tags: tags, fill: true),
+                ),
+                Expanded(child: content),
               ],
-            ],
-          ),
-          if (hasSteps)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _CookBar(recipeId: recipe.id),
-            ),
-        ],
-      ),
+            )
+          : content,
     );
   }
 
   Widget _buildIntroSliver(
     BuildContext context,
     Recipe recipe,
-    bool hasIngredients,
-  ) {
+    bool hasIngredients, {
+    bool wide = false,
+  }) {
     final colors = context.colors;
     return SliverToBoxAdapter(
       child: Container(
         decoration: BoxDecoration(
           color: colors.paper,
-          border: Border(top: BorderSide(color: colors.paperSoft, width: 1.5)),
+          border: wide
+              ? null
+              : Border(top: BorderSide(color: colors.paperSoft, width: 1.5)),
         ),
         padding: EdgeInsets.fromLTRB(
           AppSpacing.screen,
-          AppSpacing.xl,
+          wide
+              ? MediaQuery.paddingOf(context).top + AppSpacing.lg
+              : AppSpacing.xl,
           AppSpacing.screen,
           0,
         ),
@@ -432,10 +452,13 @@ class _Detail extends StatelessWidget {
 }
 
 class _Hero extends ConsumerWidget {
-  const _Hero({required this.recipe, this.tags = const []});
+  const _Hero({required this.recipe, this.tags = const [], this.fill = false});
 
   final Recipe recipe;
   final List<Tag> tags;
+
+  /// Layout largo: a capa vira a coluna lateral, ocupa a altura toda.
+  final bool fill;
 
   int? get _totalMinutes {
     final total = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
@@ -576,9 +599,9 @@ class _Hero extends ConsumerWidget {
     // sem sombra física recalculada). `AnnotatedRegion`: hora/bateria em branco
     // enquanto o hero cobre o topo; ao rolar, o sheet claro assume e volta ao
     // escuro.
-    final heroRadius = const BorderRadius.vertical(
-      bottom: Radius.circular(AppRadii.lg),
-    );
+    final heroRadius = fill
+        ? const BorderRadius.horizontal(right: Radius.circular(AppRadii.lg))
+        : const BorderRadius.vertical(bottom: Radius.circular(AppRadii.lg));
     return AnnotatedRegion(
       value: SystemBars.onDark,
       child: DecoratedBox(
@@ -597,7 +620,7 @@ class _Hero extends ConsumerWidget {
           child: ColoredBox(
             color: tile.background,
             child: SizedBox(
-              height: 300,
+              height: fill ? double.infinity : 300,
               child: Stack(
                 children: [
                   Positioned.fill(
