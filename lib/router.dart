@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/bootstrap.dart';
 import 'package:receyta/domain/engine/recipe_import.dart';
+import 'package:receyta/domain/engine/smart_collections.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/folders/screens/all_folders_page.dart';
 import 'package:receyta/features/folders/screens/folder_page.dart';
@@ -17,6 +18,7 @@ import 'package:receyta/features/recipes/screens/ingredients_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_form_page.dart';
 import 'package:receyta/features/recipes/screens/search_page.dart';
+import 'package:receyta/features/recipes/screens/smart_collection_page.dart';
 import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/features/settings/screens/about_page.dart';
@@ -114,6 +116,16 @@ final router = GoRouter(
       path: '/folders',
       name: 'folders',
       builder: (context, state) => const AllFoldersPage(),
+    ),
+    GoRoute(
+      path: '/collection/:id',
+      name: 'collection',
+      builder: (context, state) {
+        final collection = SmartCollection.fromName(state.pathParameters['id']);
+        return collection == null
+            ? const AllFoldersPage()
+            : SmartCollectionPage(collection: collection);
+      },
     ),
     GoRoute(
       path: '/shopping/:id',

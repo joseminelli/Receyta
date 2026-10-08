@@ -3,7 +3,6 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
@@ -12,9 +11,8 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
+import 'package:receyta/widgets/folder_shape.dart';
 import 'package:receyta/widgets/recipe_card.dart';
-import 'package:receyta/widgets/tile_appearance.dart';
-import 'package:receyta/widgets/tile_pattern.dart';
 
 /// O que está sendo arrastado — uma receita ou uma pasta. Vira o payload do
 /// `Draggable` e o que os alvos inspecionam.
@@ -219,55 +217,21 @@ class _FolderGhost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    final tile = resolveTileAppearance(
-      colors,
-      color: folder.tileColor,
-      motif: folder.tileMotif,
-      fallbackColor: TileColor.violet,
-    );
     return DecoratedBox(
-      decoration: _ghostShadow(context),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        child: SizedBox(
-          width: 148,
-          height: 88,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              TilePattern(
-                motif: tile.motif,
-                background: tile.background,
-                patternColor: tile.patternColor,
-                patternColorAlt: tile.patternColorAlt,
-              ),
-              _buildContent(context, tile.onColor),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContent(BuildContext context, Color onColor) {
-    return Padding(
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Icon(Icons.folder_outlined, size: 18, color: onColor),
-          Text(
-            folder.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.texts.labelLarge?.copyWith(
-              color: onColor,
-              fontWeight: FontWeight.w600,
-            ),
+      decoration: ShapeDecoration(
+        shape: const FolderBorder(),
+        shadows: [
+          BoxShadow(
+            color: context.colors.ink.withValues(alpha: 0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
+      ),
+      child: SizedBox(
+        width: 148,
+        height: 148 / kFolderAspectRatio,
+        child: FolderShapeCard(folder: folder, compact: true),
       ),
     );
   }
@@ -281,13 +245,11 @@ class FolderDropZone extends ConsumerWidget {
     required this.folderId,
     required this.folderName,
     required this.child,
-    this.borderRadius = const BorderRadius.all(Radius.circular(AppRadii.md)),
   });
 
   final String folderId;
   final String folderName;
   final Widget child;
-  final BorderRadius borderRadius;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -326,11 +288,12 @@ class FolderDropZone extends ConsumerWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
-        decoration: BoxDecoration(
-          borderRadius: borderRadius,
-          border: Border.all(
-            color: active ? colors.lime : colors.lime.withValues(alpha: 0),
-            width: 3,
+        decoration: ShapeDecoration(
+          shape: FolderBorder(
+            side: BorderSide(
+              color: active ? colors.lime : colors.lime.withValues(alpha: 0),
+              width: 3,
+            ),
           ),
         ),
         child: child,

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receyta/domain/engine/smart_collections.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/recipes/controllers/smart_collections_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/featured_recipe_card.dart';
 import 'package:receyta/widgets/recipe_card.dart';
@@ -22,6 +24,7 @@ Widget _host(
   List<Tag> tags = const [],
   bool hasFavorites = false,
   List<Recipe>? recent,
+  Map<SmartCollection, List<Recipe>> smartCollections = const {},
 }) {
   final router = GoRouter(
     routes: [
@@ -48,6 +51,7 @@ Widget _host(
       hasFavoritesProvider.overrideWith((ref) => Stream.value(hasFavorites)),
       rootFoldersProvider
           .overrideWith((ref) => Stream.value(const <FolderWithCounts>[])),
+      smartCollectionsProvider.overrideWith((ref) => smartCollections),
       tagsWithCountsProvider.overrideWith(
         (ref) => Stream.value([for (final t in tags) (tag: t, count: 1)]),
       ),
@@ -143,6 +147,61 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Favoritos'), findsNothing);
     expect(find.text('Todas'), findsNothing);
+  });
+
+  testWidgets('faixa "Coleções" lista as regras com receita e abre a coleção',
+      (tester) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, __) => const Scaffold(body: RecipesPage()),
+        ),
+        GoRoute(
+          path: '/collection/:id',
+          builder: (_, s) => Text('ROTA COLEÇÃO ${s.pathParameters['id']}'),
+        ),
+      ],
+    );
+    final recipes = [_recipe('a', 'Sopa'), _recipe('b', 'Bolo')];
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        recipesStreamProvider.overrideWith((ref) => Stream.value(recipes)),
+        recentRecipesProvider.overrideWith((ref) => Stream.value(recipes)),
+        allRecipesProvider.overrideWith((ref) => Stream.value(recipes)),
+        inUseTagsProvider.overrideWith((ref) => Stream.value(const <Tag>[])),
+        hasFavoritesProvider.overrideWith((ref) => Stream.value(false)),
+        rootFoldersProvider
+            .overrideWith((ref) => Stream.value(const <FolderWithCounts>[])),
+        smartCollectionsProvider.overrideWith((ref) => {
+              SmartCollection.neverCooked: recipes,
+              SmartCollection.quick: [recipes.first],
+            }),
+      ],
+      child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coleções'), findsOneWidget);
+    expect(find.text('Rápidas'), findsNothing, reason: 'já vem recolhida');
+
+    await tester.tap(find.text('Coleções'));
+    await tester.pumpAndSettle();
+    expect(find.text('Rápidas'), findsOneWidget);
+    expect(find.text('1 receita'), findsOneWidget);
+    expect(find.text('Nunca cozinhei'), findsOneWidget);
+    expect(find.text('2 receitas'), findsOneWidget);
+    expect(find.text('Favoritas'), findsNothing);
+
+    await tester.tap(find.text('Nunca cozinhei'));
+    await tester.pumpAndSettle();
+    expect(find.text('ROTA COLEÇÃO neverCooked'), findsOneWidget);
+  });
+
+  testWidgets('sem nenhuma coleção, a faixa não aparece', (tester) async {
+    await tester.pumpWidget(_host([_recipe('a', 'Sopa')]));
+    await tester.pumpAndSettle();
+    expect(find.text('Coleções'), findsNothing);
   });
 
   testWidgets('tocar no destaque abre o detalhe daquela receita',

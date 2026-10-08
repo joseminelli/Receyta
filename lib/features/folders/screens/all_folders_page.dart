@@ -11,6 +11,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/folder_grid_tile.dart';
+import 'package:receyta/widgets/folder_shape.dart';
 import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
@@ -119,7 +120,7 @@ class AllFoldersPage extends ConsumerWidget {
           maxCrossAxisExtent: kGridTileMaxExtent,
           crossAxisSpacing: AppSpacing.sm,
           mainAxisSpacing: AppSpacing.sm,
-          childAspectRatio: 0.78,
+          childAspectRatio: kFolderAspectRatio,
         ),
         delegate: SliverChildBuilderDelegate(
           (context, i) => FolderGridTile(

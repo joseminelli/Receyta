@@ -13,6 +13,7 @@ import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/folder_shape.dart';
 import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/section_header.dart';
@@ -444,6 +445,9 @@ class _Header extends StatelessWidget {
   }
 }
 
+const _miniWidth = 140.0;
+const _miniHeight = _miniWidth / kFolderAspectRatio;
+
 class _Subfolders extends StatelessWidget {
   const _Subfolders({required this.items});
 
@@ -462,7 +466,7 @@ class _Subfolders extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           SizedBox(
-            height: 132,
+            height: _miniHeight + 8,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding:
@@ -472,7 +476,8 @@ class _Subfolders extends StatelessWidget {
               itemBuilder: (context, i) {
                 final it = items[i];
                 return SizedBox(
-                  width: 132,
+                  width: _miniWidth,
+                  height: _miniHeight,
                   child: DraggableFolder(
                     folder: it.folder,
                     child: FolderDropZone(
@@ -508,50 +513,11 @@ class _MiniFolder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    final accent = resolveTileAppearance(
-      colors,
-      color: folder.tileColor,
-      motif: folder.tileMotif,
-      fallbackColor: TileColor.violet,
-    ).background;
-    return Material(
-      color: colors.paperSoft,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(Icons.folder_outlined, size: 20, color: accent),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    folder.name,
-                    style: context.texts.bodyLarge
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    count == 0
-                        ? 'Vazia'
-                        : '$count ${count == 1 ? 'receita' : 'receitas'}',
-                    style: context.texts.labelLarge
-                        ?.copyWith(color: colors.textMuted),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    return FolderShapeCard(
+      folder: folder,
+      recipes: count,
+      onTap: onTap,
+      outlined: true,
     );
   }
 }
