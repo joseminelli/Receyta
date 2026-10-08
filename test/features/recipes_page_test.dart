@@ -149,7 +149,7 @@ void main() {
     expect(find.text('Todas'), findsNothing);
   });
 
-  testWidgets('faixa "Coleções" lista as regras com receita e abre a coleção',
+  testWidgets('botão "Coleções" na linha das pastas abre a lista de coleções',
       (tester) async {
     final router = GoRouter(
       routes: [
@@ -158,8 +158,8 @@ void main() {
           builder: (_, __) => const Scaffold(body: RecipesPage()),
         ),
         GoRoute(
-          path: '/collection/:id',
-          builder: (_, s) => Text('ROTA COLEÇÃO ${s.pathParameters['id']}'),
+          path: '/collections',
+          builder: (_, __) => const Text('ROTA COLEÇÕES'),
         ),
       ],
     );
@@ -173,6 +173,8 @@ void main() {
         hasFavoritesProvider.overrideWith((ref) => Stream.value(false)),
         rootFoldersProvider
             .overrideWith((ref) => Stream.value(const <FolderWithCounts>[])),
+        recentFoldersProvider
+            .overrideWith((ref) => Stream.value(const <FolderWithCounts>[])),
         smartCollectionsProvider.overrideWith((ref) => {
               SmartCollection.neverCooked: recipes,
               SmartCollection.quick: [recipes.first],
@@ -183,22 +185,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Coleções'), findsOneWidget);
-    expect(find.text('Rápidas'), findsNothing, reason: 'já vem recolhida');
+    expect(find.text('Rápidas'), findsNothing,
+        reason: 'a home não gasta linha com as coleções');
 
     await tester.tap(find.text('Coleções'));
     await tester.pumpAndSettle();
-    expect(find.text('Rápidas'), findsOneWidget);
-    expect(find.text('1 receita'), findsOneWidget);
-    expect(find.text('Nunca cozinhei'), findsOneWidget);
-    expect(find.text('2 receitas'), findsOneWidget);
-    expect(find.text('Favoritas'), findsNothing);
-
-    await tester.tap(find.text('Nunca cozinhei'));
-    await tester.pumpAndSettle();
-    expect(find.text('ROTA COLEÇÃO neverCooked'), findsOneWidget);
+    expect(find.text('ROTA COLEÇÕES'), findsOneWidget);
   });
 
-  testWidgets('sem nenhuma coleção, a faixa não aparece', (tester) async {
+  testWidgets('sem nenhuma coleção, o botão não aparece', (tester) async {
     await tester.pumpWidget(_host([_recipe('a', 'Sopa')]));
     await tester.pumpAndSettle();
     expect(find.text('Coleções'), findsNothing);

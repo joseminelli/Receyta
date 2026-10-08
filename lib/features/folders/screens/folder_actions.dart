@@ -170,8 +170,10 @@ Future<void> showFolderMenu(
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    isScrollControlled: true,
     builder: (sheet) => AppSheetFrame(
       title: folder.name,
+      scrollable: true,
       child: AppSheetOptions(
         children: [
           AppSheetOption(

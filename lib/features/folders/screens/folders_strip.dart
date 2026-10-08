@@ -6,6 +6,7 @@ import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/screens/folder_actions.dart';
 import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/features/folders/screens/recipe_drag.dart';
+import 'package:receyta/features/recipes/controllers/smart_collections_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/pill_button.dart';
@@ -25,18 +26,51 @@ class FoldersStrip extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final folders = ref.watch(recentFoldersProvider).valueOrNull ??
         const <FolderWithCounts>[];
-    if (folders.isEmpty) return const SizedBox.shrink();
+    final hasCollections = ref.watch(smartCollectionsProvider).isNotEmpty;
+    if (folders.isEmpty && !hasCollections) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(context),
-        _buildList(context, ref, folders),
+        _buildHeader(
+          context,
+          hasFolders: folders.isNotEmpty,
+          hasCollections: hasCollections,
+        ),
+        if (folders.isNotEmpty) _buildList(context, ref, folders),
       ],
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  /// O atalho das coleções mora na linha das pastas, pra não gastar uma
+  /// linha própria na home. Sem pasta nenhuma, sobra só ele, à direita.
+  Widget _buildHeader(
+    BuildContext context, {
+    required bool hasFolders,
+    required bool hasCollections,
+  }) {
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasCollections)
+          PillButton(
+            label: 'Coleções',
+            icon: Icons.bolt_rounded,
+            variant: PillButtonVariant.secondary,
+            dense: true,
+            onPressed: () => context.push('/collections'),
+          ),
+        if (hasFolders) ...[
+          const SizedBox(width: AppSpacing.xs),
+          PillButton(
+            label: 'Ver todas',
+            variant: PillButtonVariant.ghost,
+            dense: true,
+            onPressed: () => context.push('/folders'),
+          ),
+        ],
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -44,15 +78,9 @@ class FoldersStrip extends ConsumerWidget {
         AppSpacing.screen,
         AppSpacing.sm,
       ),
-      child: SectionHeader(
-        title: 'Pastas',
-        action: PillButton(
-          label: 'Ver todas',
-          variant: PillButtonVariant.ghost,
-          dense: true,
-          onPressed: () => context.push('/folders'),
-        ),
-      ),
+      child: hasFolders
+          ? SectionHeader(title: 'Pastas', action: actions)
+          : Align(alignment: Alignment.centerRight, child: actions),
     );
   }
 

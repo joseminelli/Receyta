@@ -19,6 +19,7 @@ import 'package:receyta/features/recipes/screens/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_form_page.dart';
 import 'package:receyta/features/recipes/screens/search_page.dart';
 import 'package:receyta/features/recipes/screens/smart_collection_page.dart';
+import 'package:receyta/features/recipes/screens/smart_collections_page.dart';
 import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/features/settings/screens/about_page.dart';
@@ -116,6 +117,11 @@ final router = GoRouter(
       path: '/folders',
       name: 'folders',
       builder: (context, state) => const AllFoldersPage(),
+    ),
+    GoRoute(
+      path: '/collections',
+      name: 'collections',
+      builder: (context, state) => const SmartCollectionsPage(),
     ),
     GoRoute(
       path: '/collection/:id',

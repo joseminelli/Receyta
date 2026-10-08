@@ -335,8 +335,10 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     return showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (sheet) => AppSheetFrame(
         title: list.name,
+        scrollable: true,
         child: AppSheetOptions(
           children: [
             AppSheetOption(

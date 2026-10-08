@@ -6,7 +6,7 @@ import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/domain/engine/smart_collections.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/recipes/controllers/smart_collections_view_model.dart';
-import 'package:receyta/features/recipes/screens/smart_collections_strip.dart';
+import 'package:receyta/features/recipes/screens/smart_collection_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/header_scaffold.dart';

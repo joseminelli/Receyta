@@ -8,8 +8,6 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/folders/screens/folder_actions.dart';
 import 'package:receyta/features/folders/screens/folders_strip.dart';
-import 'package:receyta/features/recipes/controllers/smart_collections_view_model.dart';
-import 'package:receyta/features/recipes/screens/smart_collections_strip.dart';
 import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/features/recipes/screens/ingredients_page.dart';
@@ -346,11 +344,7 @@ class _RecipeList extends ConsumerWidget {
     return SliverMainAxisGroup(
       slivers: [
         const SliverToBoxAdapter(child: FoldersStrip()),
-        const SliverToBoxAdapter(child: SmartCollectionsStrip()),
-        _buildSectionHeader(
-          context,
-          tight: ref.watch(smartCollectionsProvider).isNotEmpty,
-        ),
+        _buildSectionHeader(context),
         _buildFeatured(
           context,
           featured,
@@ -365,13 +359,11 @@ class _RecipeList extends ConsumerWidget {
     );
   }
 
-  /// [tight]: a faixa de coleções logo acima já deixa o respiro, então o
-  /// "Recentes" chega mais perto dela.
-  Widget _buildSectionHeader(BuildContext context, {bool tight = false}) {
+  Widget _buildSectionHeader(BuildContext context) {
     return SliverPadding(
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
-        tight ? AppSpacing.sm : AppSpacing.lg,
+        AppSpacing.lg,
         AppSpacing.screen,
         AppSpacing.md,
       ),
