@@ -253,6 +253,7 @@ void main() {
     expect(find.text('Preços da receita'), findsOneWidget);
     expect(find.text('Definir preço'), findsOneWidget);
     expect(find.textContaining('Valor estimado.'), findsOneWidget);
+    expect(find.textContaining('só neste aparelho'), findsOneWidget);
     await _flushOpenedTimer(tester);
   });
 

@@ -239,6 +239,19 @@ void main() {
     expect(find.text('Buscar unidade'), findsNothing);
   });
 
+  testWidgets('a folha de preço avisa que ele fica só no aparelho',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([_row('2', 'Farinha')]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Definir preço'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('só neste aparelho'), findsOneWidget);
+    expect(find.textContaining('nuvem'), findsOneWidget);
+  });
+
   testWidgets('valor inválido mostra o erro e não grava', (tester) async {
     usePhone(tester);
     await tester.pumpWidget(host([_row('2', 'Farinha')]));

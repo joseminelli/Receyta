@@ -6,7 +6,7 @@ import 'package:receyta/core/day.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
-import 'package:receyta/features/recipes/screens/recipe_prices_sheet.dart';
+import 'package:receyta/features/recipes/screens/cost_notes.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';

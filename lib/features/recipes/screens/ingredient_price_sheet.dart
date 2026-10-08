@@ -7,6 +7,7 @@ import 'package:receyta/data/repositories/ingredient_repository.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/ingredient.dart';
+import 'package:receyta/features/recipes/screens/cost_notes.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart'
     show ChoicePill;
 import 'package:receyta/theme/app_theme.dart';
@@ -239,6 +240,8 @@ class _PriceSheetState extends ConsumerState<_PriceSheet> {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
+            const SizedBox(height: AppSpacing.sm),
+            const PriceLocalNote(),
             const SizedBox(height: AppSpacing.md),
             PillButton(label: 'Salvar preço', onPressed: _save),
             if (hasPrice) ...[

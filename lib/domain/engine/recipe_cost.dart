@@ -14,6 +14,11 @@ const kCostDisclaimer = 'Valor estimado. Usa os preços que você informou e '
     'converte medidas por tabelas aproximadas (como xícara em gramas). Preço '
     'de mercado, marca, rendimento e desperdício variam.';
 
+/// Onde os preços moram: só no aparelho. Não sincronizam com a conta e não
+/// entram no backup `.receyta`. (Se isso mudar, mudar este texto junto.)
+const kPriceLocalNotice = 'Os preços ficam só neste aparelho: não vão para a '
+    'nuvem nem para o backup. Em outro aparelho, é preciso informar de novo.';
+
 enum CostGap {
   /// O ingrediente não tem preço (ou a linha nem ligou a um ingrediente).
   noPrice,

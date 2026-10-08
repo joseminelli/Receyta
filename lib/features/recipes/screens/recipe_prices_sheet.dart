@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
+import 'package:receyta/features/recipes/screens/cost_notes.dart';
 import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -114,29 +115,6 @@ class _Row extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Nota discreta de que o custo é uma estimativa, com ícone de informação.
-class CostDisclaimer extends StatelessWidget {
-  const CostDisclaimer({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.info_outline, size: 18, color: colors.textMuted),
-        const SizedBox(width: AppSpacing.xs),
-        Expanded(
-          child: Text(
-            kCostDisclaimer,
-            style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
-          ),
-        ),
-      ],
     );
   }
 }

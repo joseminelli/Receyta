@@ -63,6 +63,7 @@ void main() {
 
     expect(find.text('ESTIMATIVA MÍNIMA'), findsOneWidget);
     expect(find.textContaining('Valor estimado.'), findsOneWidget);
+    expect(find.textContaining('só neste aparelho'), findsOneWidget);
     expect(find.text('R\$ 123,40'), findsOneWidget);
     expect(find.text('Receita mais cara'), findsOneWidget);
     expect(find.text('planejada 2 vezes'), findsOneWidget);
