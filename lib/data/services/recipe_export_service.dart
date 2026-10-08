@@ -13,6 +13,7 @@ import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/data/services/recipe_link_remote.dart';
 import 'package:receyta/domain/engine/recipe_export.dart';
 import 'package:receyta/domain/engine/recipe_link.dart';
 import 'package:receyta/domain/engine/recipe_pdf.dart';
@@ -31,12 +32,15 @@ class RecipeExportService {
     this._folderRepository,
     this._ingredientDao, {
     RecipeImageService? images,
-  }) : _images = images;
+    RecipeLinkRemote? links,
+  })  : _images = images,
+        _links = links;
 
   final RecipeRepository _recipeRepository;
   final FolderRepository _folderRepository;
   final IngredientDao _ingredientDao;
   final RecipeImageService? _images;
+  final RecipeLinkRemote? _links;
 
   /// Foto de cada receita em base64 (id → JPEG) e o nome do arquivo de cada
   /// uma. Foto ilegível ou ausente no disco é só pulada — nunca derruba o
@@ -98,10 +102,17 @@ class RecipeExportService {
     if (detailResult is Err<RecipeDetail>) return Err(detailResult.failure);
     final detail = (detailResult as Ok<RecipeDetail>).value;
 
-    final link = recipeLink(detail);
-    if (link == null) {
+    final fragment = recipeFragment(detail);
+    if (fragment == null) {
       return const Err(ProcessingFailure(
         'Receita grande demais para virar link. Compartilhe como arquivo.',
+      ));
+    }
+    final link = await _shortLink(fragment) ?? longRecipeLink(fragment);
+    if (link == null) {
+      return const Err(ProcessingFailure(
+        'Para compartilhar esta receita como link, entre na sua conta e '
+        'conecte-se à internet. Ou compartilhe como arquivo.',
       ));
     }
     try {
@@ -110,6 +121,18 @@ class RecipeExportService {
       return const Ok(null);
     } catch (e) {
       return Err(ProcessingFailure('Falha ao compartilhar a receita', cause: e));
+    }
+  }
+
+  /// O link curto, ou nulo quando não dá (sem conta, sem internet, limite
+  /// diário): aí quem chama cai no link longo, que não depende do servidor.
+  Future<String?> _shortLink(String fragment) async {
+    final links = _links;
+    if (links == null || !links.canCreate) return null;
+    try {
+      return shortRecipeLink(await links.create(fragment));
+    } catch (_) {
+      return null;
     }
   }
 
@@ -237,5 +260,6 @@ final recipeExportServiceProvider = Provider<RecipeExportService>((ref) {
     ref.watch(folderRepositoryProvider),
     db.ingredientDao,
     images: ref.watch(recipeImageServiceProvider),
+    links: ref.watch(recipeLinkRemoteProvider),
   );
 });

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/home_widget_service.dart';
+import 'package:receyta/data/services/recipe_link_remote.dart';
+import 'package:receyta/messenger.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +22,7 @@ import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_lists_page.dart';
 import 'package:receyta/features/space/controllers/invite_link.dart';
 import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -121,6 +124,11 @@ class _HomeShellState extends ConsumerState<HomeShell>
         GoRouter.of(context).push('/space?code=$code');
         return;
       }
+      final token = recipeTokenFromLink(first.path);
+      if (token != null) {
+        _openRecipeLink(token);
+        return;
+      }
       final recipe = recipeFromLink(first.path);
       if (recipe != null) {
         GoRouter.of(context).push('/recipe/new', extra: recipe);
@@ -128,6 +136,28 @@ class _HomeShellState extends ConsumerState<HomeShell>
       }
     }
     importSharedReceytaFileFlow(ref, first.path);
+  }
+
+  Future<void> _openRecipeLink(String token) async {
+    String? fragment;
+    var offline = false;
+    try {
+      fragment = await ref.read(recipeLinkRemoteProvider).fetch(token);
+    } catch (_) {
+      offline = true;
+    }
+    if (!mounted) return;
+    final recipe = fragment == null ? null : recipeFromFragment(fragment);
+    if (recipe == null) {
+      showAppSnackBar(
+        message: offline
+            ? 'Sem conexão. Tente abrir o link de novo quando a internet voltar.'
+            : 'Esse link de receita expirou ou não existe mais.',
+        variant: AppSnackBarVariant.error,
+      );
+      return;
+    }
+    GoRouter.of(context).push('/recipe/new', extra: recipe);
   }
 
   /// Voltar pro app é um bom momento pra buscar o que mudou em outro aparelho.

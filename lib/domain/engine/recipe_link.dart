@@ -1,7 +1,8 @@
-/// O link de receita: `https://receyta.whisklinestudio.com/r#<dados>`. A
-/// receita inteira (sem foto) vai no trecho depois do `#`: JSON compacto,
-/// gzip e base64url. O trecho nunca chega ao servidor; o site decodifica no
-/// navegador e o app, no import.
+/// Links de receita. O texto da receita (sem foto) é JSON compacto, gzip e
+/// base64url. Ele pode ir inteiro no link longo,
+/// `https://receyta.whisklinestudio.com/r#<texto>` (o trecho depois do `#` não
+/// chega ao servidor), ou ficar guardado no servidor e o link levar só o
+/// token, `https://receyta.whisklinestudio.com/r/<token>`.
 library;
 
 import 'dart:convert';
@@ -11,10 +12,11 @@ import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 
 const recipeLinkHost = 'receyta.whisklinestudio.com';
-const _maxFragmentChars = 6000;
+const _maxLongLinkChars = 6000;
+const _maxStoredChars = 12000;
 
-/// Nulo quando a receita não cabe num link; aí o caminho é o arquivo.
-String? recipeLink(RecipeDetail detail) {
+/// O texto da receita, ou nulo se passa do que o servidor aceita.
+String? recipeFragment(RecipeDetail detail) {
   final r = detail.recipe;
   final map = <String, Object>{
     'v': 1,
@@ -33,18 +35,39 @@ String? recipeLink(RecipeDetail detail) {
   };
   final bytes = gzip.encode(utf8.encode(jsonEncode(map)));
   final fragment = base64Url.encode(bytes).replaceAll('=', '');
-  if (fragment.length > _maxFragmentChars) return null;
-  return 'https://$recipeLinkHost/r#$fragment';
+  return fragment.length > _maxStoredChars ? null : fragment;
 }
 
-/// A receita dentro de um link de receita, ou nulo se [text] não é um.
+/// O link longo, ou nulo se [fragment] é grande demais pra um link.
+String? longRecipeLink(String fragment) => fragment.length > _maxLongLinkChars
+    ? null
+    : 'https://$recipeLinkHost/r#$fragment';
+
+String shortRecipeLink(String token) => 'https://$recipeLinkHost/r/$token';
+
+/// O token dentro de um link curto, ou nulo se [text] não é um.
+String? recipeTokenFromLink(String text) {
+  final match = RegExp(
+    'https://${RegExp.escape(recipeLinkHost)}/r/([0-9a-f]{10})(?![0-9A-Za-z])',
+    caseSensitive: false,
+  ).firstMatch(text.trim());
+  return match?.group(1)?.toLowerCase();
+}
+
+/// A receita dentro de um link longo, ou nulo se [text] não é um.
 ImportedRecipe? recipeFromLink(String text) {
   final match = RegExp(
     'https://${RegExp.escape(recipeLinkHost)}/r#([A-Za-z0-9_-]+)',
     caseSensitive: false,
   ).firstMatch(text.trim());
   final fragment = match?.group(1);
-  if (fragment == null || fragment.length > _maxFragmentChars) return null;
+  if (fragment == null || fragment.length > _maxLongLinkChars) return null;
+  return recipeFromFragment(fragment);
+}
+
+/// A receita dentro do texto guardado, ou nulo se ele está estragado.
+ImportedRecipe? recipeFromFragment(String fragment) {
+  if (fragment.length > _maxStoredChars) return null;
   try {
     final json = utf8.decode(
       gzip.decode(base64Url.decode(base64Url.normalize(fragment))),
