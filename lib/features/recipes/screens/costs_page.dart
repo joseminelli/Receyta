@@ -15,6 +15,7 @@ import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/widgets/period_strip.dart';
+import 'package:receyta/widgets/underline_tabs.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
@@ -105,26 +106,20 @@ class _CostsPageState extends ConsumerState<CostsPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.screen,
-              AppSpacing.md,
-              AppSpacing.screen,
-              0,
-            ),
-            child: Row(
-              children: [
-                ChoicePill(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+            child: UnderlineTabs(
+              tabs: const [
+                UnderlineTab(
                   label: 'Planejado',
-                  selected: _mode == _Mode.planned,
-                  onTap: () => setState(() => _mode = _Mode.planned),
+                  icon: Icons.calendar_today_outlined,
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                ChoicePill(
-                  label: 'Receitas mais caras',
-                  selected: _mode == _Mode.library,
-                  onTap: () => setState(() => _mode = _Mode.library),
+                UnderlineTab(
+                  label: 'Mais caras',
+                  icon: Icons.trending_up_rounded,
                 ),
               ],
+              selected: _mode.index,
+              onChanged: (i) => setState(() => _mode = _Mode.values[i]),
             ),
           ),
           Expanded(

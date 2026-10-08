@@ -183,7 +183,7 @@ void main() {
     expect(find.text('MAIS CARA'), findsNothing);
   });
 
-  testWidgets('"Receitas mais caras" lista a biblioteca, mesmo sem planejar',
+  testWidgets('"Mais caras" lista a biblioteca, mesmo sem planejar',
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(_host(
@@ -196,7 +196,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nada planejado nesse período'), findsOneWidget);
 
-    await tester.tap(find.text('Receitas mais caras'));
+    await tester.tap(find.text('Mais caras'));
     await tester.pumpAndSettle();
 
     expect(find.text('2 receitas com preço completo'), findsOneWidget);
@@ -218,7 +218,7 @@ void main() {
     await tester.pumpWidget(_host((_) => _nothing));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Receitas mais caras'));
+    await tester.tap(find.text('Mais caras'));
     await tester.pumpAndSettle();
     expect(find.text('Nenhuma receita com preço completo'), findsOneWidget);
 
