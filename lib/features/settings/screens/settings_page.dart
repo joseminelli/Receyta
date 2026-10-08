@@ -480,6 +480,13 @@ class SettingsPage extends ConsumerWidget {
                             value: settings.highContrast,
                             onChanged: settingsNotifier.setHighContrast,
                           ),
+                          _SwitchRow(
+                            icon: Icons.straighten,
+                            title: 'Equivalências de medidas',
+                            subtitle: 'Mostra g ↔ xícara e °C ↔ °F ao lado',
+                            value: settings.showEquivalents,
+                            onChanged: settingsNotifier.setShowEquivalents,
+                          ),
                         ],
                       ),
                       _AccordionItem(

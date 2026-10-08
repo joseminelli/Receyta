@@ -7,6 +7,7 @@ import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/ingredient_format.dart';
 import 'package:receyta/domain/engine/serving_scale.dart';
 import 'package:receyta/domain/engine/step_duration.dart';
+import 'package:receyta/domain/engine/unit_conversion.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
@@ -18,6 +19,7 @@ import 'package:receyta/features/recipes/screens/cook_log_sheet.dart';
 import 'package:receyta/features/recipes/screens/global_timers_bar.dart'
     show TimerAlertToggles;
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
+import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -121,7 +123,9 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             tileColor: recipe.tileColor,
             tileMotif: recipe.tileMotif,
             index: i,
-            text: steps[i].text,
+            text: ref.watch(appSettingsProvider.select((s) => s.showEquivalents))
+                ? annotateTemperatures(steps[i].text)
+                : steps[i].text,
             durations: _durationsByText.putIfAbsent(
               steps[i].text,
               () => findStepDurations(steps[i].text),
@@ -195,6 +199,8 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
             _IngredientsCard(
               ingredients: detail.ingredients,
               openListenable: _ingredientsOpen,
+              showEquivalents:
+                  ref.watch(appSettingsProvider.select((s) => s.showEquivalents)),
               factor: servingFactor(
                 base: detail.recipe.servings,
                 chosen: ref.watch(selectedServingsProvider(widget.recipeId)),
@@ -352,6 +358,7 @@ class _IngredientsCard extends StatelessWidget {
   const _IngredientsCard({
     required this.ingredients,
     required this.openListenable,
+    this.showEquivalents = true,
     this.factor = 1,
     this.baseServings,
     this.servings,
@@ -361,6 +368,9 @@ class _IngredientsCard extends StatelessWidget {
 
   final List<RecipeIngredient> ingredients;
   final ValueNotifier<bool> openListenable;
+
+  /// Acrescenta "· ≈ 240 g" ao lado da medida quando há equivalência.
+  final bool showEquivalents;
 
   /// Escala de porções escolhida aqui (1 = como a receita foi escrita).
   final double factor;
@@ -424,6 +434,13 @@ class _IngredientsCard extends StatelessWidget {
     );
   }
 
+  String _line(RecipeIngredient i) {
+    final text =
+        factor == 1 ? i.rawText : formatIngredientLine(i, factor: factor);
+    final eq = showEquivalents ? ingredientEquivalent(i, factor: factor) : null;
+    return eq == null ? text : '$text  ·  $eq';
+  }
+
   /// Linhas + subtítulos de grupo (§RF-01.4), no tom escuro do modo cozinha.
   List<Widget> _rows(BuildContext context) {
     final colors = context.colors;
@@ -444,7 +461,7 @@ class _IngredientsCard extends StatelessWidget {
       out.add(Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.xs),
         child: Text(
-          factor == 1 ? i.rawText : formatIngredientLine(i, factor: factor),
+          _line(i),
           style: context.texts.bodyLarge?.copyWith(
             color: colors.onSaturated,
             height: 1.35,

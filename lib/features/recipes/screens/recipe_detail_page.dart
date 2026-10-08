@@ -8,6 +8,7 @@ import 'package:receyta/core/unit_label.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
+import 'package:receyta/domain/engine/unit_conversion.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
@@ -16,6 +17,7 @@ import 'package:receyta/features/folders/screens/folder_actions.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/features/recipes/screens/cook_log_sheet.dart';
 import 'package:receyta/features/recipes/screens/recipe_status_cards.dart';
+import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -711,7 +713,7 @@ class _Hero extends ConsumerWidget {
 /// negrito no meio da frase — sem coluna nem alinhamento forçado, lê como
 /// texto normal. Sem quantidade reconhecida (linha que o parser não deu
 /// conta), cai pro `rawText` cru — nunca esconde o que o usuário digitou.
-class _IngredientRow extends StatelessWidget {
+class _IngredientRow extends ConsumerWidget {
   const _IngredientRow(this.ingredient, this.parsed);
 
   final RecipeIngredient ingredient;
@@ -721,7 +723,7 @@ class _IngredientRow extends StatelessWidget {
   final ParsedIngredientLine? parsed;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final qty = ingredient.quantity;
 
@@ -736,6 +738,14 @@ class _IngredientRow extends StatelessWidget {
     final unit = unitLabel(ingredient.unitId, qty);
     final base = context.texts.bodyLarge?.copyWith(color: colors.ink);
     final quantityStyle = AppTextStyles.metric.copyWith(color: colors.ink);
+    final equivalent =
+        ref.watch(appSettingsProvider.select((s) => s.showEquivalents))
+            ? equivalentMeasure(
+                quantity: qty,
+                unitId: ingredient.unitId,
+                name: ingredient.ingredientName ?? parsed.name,
+              )
+            : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -761,6 +771,11 @@ class _IngredientRow extends StatelessWidget {
             if (parsed.qualifier != null)
               TextSpan(
                 text: ', ${parsed.qualifier}',
+                style: base?.copyWith(color: colors.textMuted),
+              ),
+            if (equivalent != null)
+              TextSpan(
+                text: '  ·  $equivalent',
                 style: base?.copyWith(color: colors.textMuted),
               ),
           ],
@@ -1021,14 +1036,18 @@ class _Label extends StatelessWidget {
   }
 }
 
-class _Step extends StatelessWidget {
+class _Step extends ConsumerWidget {
   const _Step({required this.index, required this.text});
 
   final int index;
   final String text;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final shown =
+        ref.watch(appSettingsProvider.select((s) => s.showEquivalents))
+            ? annotateTemperatures(text)
+            : text;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Row(
@@ -1046,7 +1065,7 @@ class _Step extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Text(text, style: context.texts.bodyLarge),
+              child: Text(shown, style: context.texts.bodyLarge),
             ),
           ),
         ],

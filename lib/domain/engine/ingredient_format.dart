@@ -6,6 +6,7 @@ library;
 import 'package:receyta/data/database/seed_data.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
 import 'package:receyta/domain/engine/serving_scale.dart';
+import 'package:receyta/domain/engine/unit_conversion.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 
 /// Unidade por extenso (singular/plural) a partir do código salvo — nunca
@@ -36,6 +37,19 @@ String formatIngredientLine(RecipeIngredient ingredient, {double factor = 1}) {
   buffer.write(' $name');
   if (parsed.qualifier != null) buffer.write(', ${parsed.qualifier}');
   return buffer.toString();
+}
+
+/// "≈ 240 g" pra linha de ingrediente, na mesma quantidade (já escalada por
+/// [factor]) que `formatIngredientLine` mostra. `null` sem equivalência.
+String? ingredientEquivalent(RecipeIngredient ingredient, {double factor = 1}) {
+  final base = ingredient.quantity;
+  if (base == null) return null;
+  return equivalentMeasure(
+    quantity: factor == 1 ? base : niceQuantity(base * factor),
+    unitId: ingredient.unitId,
+    name: ingredient.ingredientName ??
+        parseIngredientLine(ingredient.rawText).name,
+  );
 }
 
 String _formatQuantity(double q) {
