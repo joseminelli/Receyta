@@ -951,8 +951,9 @@ class _InviteSheet extends StatelessWidget {
   final String code;
 
   String get _message =>
-      'Entra na minha casa no Receyta! Abra o app, vá em Conta > Casa > '
-      '"Tenho um código" e digite $code (vale por 48 horas).';
+      'Entra na minha casa no Receyta! Toque no link: ${inviteLink(code)}\n'
+      'Ou abra o app, vá em Conta > Casa > "Tenho um código" e digite $code '
+      '(vale por 48 horas).';
 
   @override
   Widget build(BuildContext context) {
