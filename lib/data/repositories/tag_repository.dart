@@ -31,6 +31,9 @@ class TagRepository {
             ],
           );
 
+  /// Nomes das tags de cada receita ativa (`recipeId` → nomes).
+  Future<Map<String, List<String>>> namesByRecipe() => _dao.namesByRecipe();
+
   /// Quantas receitas usam a tag (pra confirmar a remoção).
   Future<int> usageCount(String tagId) => _dao.usageCount(tagId);
 

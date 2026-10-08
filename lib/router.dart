@@ -17,6 +17,7 @@ import 'package:receyta/features/recipes/screens/history_page.dart';
 import 'package:receyta/features/recipes/screens/ingredients_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_detail_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_form_page.dart';
+import 'package:receyta/features/recipes/screens/retrospective_page.dart';
 import 'package:receyta/features/recipes/screens/search_page.dart';
 import 'package:receyta/features/recipes/screens/smart_collection_page.dart';
 import 'package:receyta/features/recipes/screens/smart_collections_page.dart';
@@ -117,6 +118,11 @@ final router = GoRouter(
       path: '/folders',
       name: 'folders',
       builder: (context, state) => const AllFoldersPage(),
+    ),
+    GoRoute(
+      path: '/retrospective',
+      name: 'retrospective',
+      builder: (context, state) => const RetrospectivePage(),
     ),
     GoRoute(
       path: '/collections',

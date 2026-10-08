@@ -51,6 +51,24 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
     return query.map((row) => row.readTable(tags)).watch();
   }
 
+  /// Nome das tags de cada receita ativa, numa leitura só (a retrospectiva
+  /// soma por tag sem abrir uma consulta por receita).
+  Future<Map<String, List<String>>> namesByRecipe() async {
+    final rows = await (select(recipeTags).join([
+      innerJoin(tags, tags.id.equalsExp(recipeTags.tagId)),
+      innerJoin(recipes, recipes.id.equalsExp(recipeTags.recipeId)),
+    ])
+          ..where(recipes.deletedAt.isNull()))
+        .get();
+    final out = <String, List<String>>{};
+    for (final row in rows) {
+      out
+          .putIfAbsent(row.readTable(recipeTags).recipeId, () => [])
+          .add(row.readTable(tags).name);
+    }
+    return out;
+  }
+
   /// Quantas receitas carregam a tag — pra confirmar a remoção.
   Future<int> usageCount(String tagId) async {
     final rows =

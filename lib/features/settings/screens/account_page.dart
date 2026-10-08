@@ -354,6 +354,12 @@ class _Shortcuts extends StatelessWidget {
       '/space'
     ),
     (Icons.history, 'Histórico', 'Tudo o que você já cozinhou', '/history'),
+    (
+      Icons.auto_graph,
+      'Retrospectiva',
+      'Seu mês e seu ano na cozinha',
+      '/retrospective'
+    ),
     (Icons.sell_outlined, 'Tags', 'Organize e renomeie', '/tags'),
     (
       Icons.kitchen_outlined,
