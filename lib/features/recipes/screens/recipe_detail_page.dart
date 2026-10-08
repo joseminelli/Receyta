@@ -477,6 +477,15 @@ class _Hero extends ConsumerWidget {
         child: AppSheetOptions(
           children: [
             AppSheetOption(
+              icon: Icons.link,
+              title: 'Link',
+              subtitle: 'Abre direto no Receyta (sem a foto)',
+              onTap: () {
+                Navigator.of(sheet).pop();
+                _shareAs(context, ref, (s) => s.shareLink(recipe.id));
+              },
+            ),
+            AppSheetOption(
               icon: Icons.description_outlined,
               title: 'Arquivo .receyta',
               subtitle: 'Pra importar em outro Receyta',

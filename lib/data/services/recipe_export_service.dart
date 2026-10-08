@@ -14,6 +14,7 @@ import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/domain/engine/recipe_export.dart';
+import 'package:receyta/domain/engine/recipe_link.dart';
 import 'package:receyta/domain/engine/recipe_pdf.dart';
 import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
@@ -90,6 +91,26 @@ class RecipeExportService {
 
     return _writeAndShare(payload,
         fileName: _fileName(recipeName), text: recipeName);
+  }
+
+  Future<Result<void>> shareLink(String recipeId) async {
+    final detailResult = await _recipeRepository.getDetail(recipeId);
+    if (detailResult is Err<RecipeDetail>) return Err(detailResult.failure);
+    final detail = (detailResult as Ok<RecipeDetail>).value;
+
+    final link = recipeLink(detail);
+    if (link == null) {
+      return const Err(ProcessingFailure(
+        'Receita grande demais para virar link. Compartilhe como arquivo.',
+      ));
+    }
+    try {
+      await Share.share('${detail.recipe.name}\n$link',
+          subject: detail.recipe.name);
+      return const Ok(null);
+    } catch (e) {
+      return Err(ProcessingFailure('Falha ao compartilhar a receita', cause: e));
+    }
   }
 
   /// PDF de uma receita (D6, RF-06.6) — layout próprio via `buildRecipePdf`,

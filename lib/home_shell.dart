@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
+import 'package:receyta/domain/engine/recipe_link.dart';
 import 'package:receyta/features/folders/screens/recipe_drag.dart';
 import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/features/onboarding/screens/tutorial_overlay.dart';
@@ -118,6 +119,11 @@ class _HomeShellState extends ConsumerState<HomeShell>
       final code = inviteCodeFromLink(first.path);
       if (code != null) {
         GoRouter.of(context).push('/space?code=$code');
+        return;
+      }
+      final recipe = recipeFromLink(first.path);
+      if (recipe != null) {
+        GoRouter.of(context).push('/recipe/new', extra: recipe);
         return;
       }
     }
