@@ -14,6 +14,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
+import 'package:receyta/widgets/period_strip.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
@@ -33,24 +34,67 @@ class CostsPage extends ConsumerStatefulWidget {
 
 class _CostsPageState extends ConsumerState<CostsPage> {
   late CostPeriod _period = CostPeriod.weekOf(widget._clock());
+
+  /// Um dia dentro do período olhado. Trocar Semana/Mês procura o período do
+  /// novo tipo que contém este dia — assim alternar de um pro outro e voltar
+  /// cai no mesmo lugar, em vez de ir derivando.
+  late DateTime _anchor = widget._clock();
   _Mode _mode = _Mode.planned;
+
+  static const _weeksShown = 26;
+  static const _monthsShown = 24;
 
   void _setKind(CostKind kind) {
     if (kind == _period.kind) return;
     setState(() {
-      final today = widget._clock();
       _period = kind == CostKind.week
-          ? CostPeriod.weekOf(_period.start)
-          : (_period.start.month == today.month &&
-                  _period.start.year == today.year
-              ? CostPeriod.monthOf(today)
-              : CostPeriod.monthOf(_period.start));
+          ? CostPeriod.weekOf(_anchor)
+          : CostPeriod.monthOf(_anchor);
     });
   }
 
-  String get _label {
-    if (_period.kind == CostKind.week) return weekRangeLabel(_period.start);
-    return '${monthLong(_period.start)} ${_period.start.year}';
+  /// Escolher um período na faixa: hoje, se ele cai ali; senão o dia âncora
+  /// atual, se ele já cai ali; senão o primeiro dia do período.
+  void _select(CostPeriod p) {
+    final today = widget._clock();
+    bool inside(DateTime day) {
+      final d = dayOf(day);
+      return !d.isBefore(p.start) && d.isBefore(p.end);
+    }
+
+    setState(() {
+      _period = p;
+      if (inside(today)) {
+        _anchor = today;
+      } else if (!inside(_anchor)) {
+        _anchor = p.start;
+      }
+    });
+  }
+
+  /// Os períodos da faixa: do mais antigo ao atual.
+  List<CostPeriod> get _periods {
+    final current = _period.containing(widget._clock());
+    final count = _period.kind == CostKind.week ? _weeksShown : _monthsShown;
+    return [for (var i = count - 1; i >= 0; i--) current.shift(-i)];
+  }
+
+  PeriodChoice _choiceFor(CostPeriod p) {
+    final id = dayToParam(p.start);
+    if (p.kind == CostKind.week) {
+      final last = addDays(p.start, 6);
+      return PeriodChoice(
+        id: id,
+        label: '${p.start.day}–${last.day}',
+        caption: monthShort(last),
+      );
+    }
+    final short = monthShort(p.start);
+    return PeriodChoice(
+      id: id,
+      label: short[0].toUpperCase() + short.substring(1),
+      caption: '${p.start.year}',
+    );
   }
 
   @override
@@ -92,17 +136,24 @@ class _CostsPageState extends ConsumerState<CostsPage> {
     );
   }
 
+  Widget _buildStrip() {
+    final periods = _periods;
+    final selected = periods.indexOf(_period);
+    return PeriodStrip(
+      kinds: const ['Semana', 'Mês'],
+      kindIndex: _period.kind.index,
+      onKind: (i) => _setKind(CostKind.values[i]),
+      choices: [for (final p in periods) _choiceFor(p)],
+      selected: selected < 0 ? periods.length - 1 : selected,
+      onSelect: (i) => _select(periods[i]),
+    );
+  }
+
   Widget _buildPlanned() {
     final plan = ref.watch(planCostProvider(_period));
     return Column(
       children: [
-        _PeriodBar(
-          kind: _period.kind,
-          label: _label,
-          onKind: _setKind,
-          onPrev: () => setState(() => _period = _period.shift(-1)),
-          onNext: () => setState(() => _period = _period.shift(1)),
-        ),
+        _buildStrip(),
         Expanded(
           child: plan.when(
             loading: () => const Center(child: BrandLoader()),
@@ -119,76 +170,6 @@ class _CostsPageState extends ConsumerState<CostsPage> {
 }
 
 enum _Mode { planned, library }
-
-/// Em cima, Semana/Mês; embaixo, o período por extenso entre as setas.
-class _PeriodBar extends StatelessWidget {
-  const _PeriodBar({
-    required this.kind,
-    required this.label,
-    required this.onKind,
-    required this.onPrev,
-    required this.onNext,
-  });
-
-  final CostKind kind;
-  final String label;
-  final ValueChanged<CostKind> onKind;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.md,
-        AppSpacing.screen,
-        0,
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              for (final k in CostKind.values) ...[
-                PillButton(
-                  label: k == CostKind.week ? 'Semana' : 'Mês',
-                  variant: k == kind
-                      ? PillButtonVariant.primary
-                      : PillButtonVariant.secondary,
-                  dense: true,
-                  onPressed: () => onKind(k),
-                ),
-                const SizedBox(width: AppSpacing.xs),
-              ],
-            ],
-          ),
-          Row(
-            children: [
-              IconButton(
-                tooltip: 'Período anterior',
-                onPressed: onPrev,
-                icon: Icon(Icons.chevron_left_rounded, color: colors.ink),
-              ),
-              Expanded(
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.display(24),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Próximo período',
-                onPressed: onNext,
-                icon: Icon(Icons.chevron_right_rounded, color: colors.ink),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 enum _View { recipes, ingredients }
 

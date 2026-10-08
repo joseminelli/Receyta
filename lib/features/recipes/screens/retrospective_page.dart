@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/core/day.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/services/retro_export_service.dart';
 import 'package:receyta/domain/engine/retrospective.dart';
@@ -14,6 +15,7 @@ import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
+import 'package:receyta/widgets/period_strip.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
@@ -34,19 +36,52 @@ class RetrospectivePage extends ConsumerStatefulWidget {
 class _RetrospectivePageState extends ConsumerState<RetrospectivePage> {
   late RetroPeriod _period = RetroPeriod.monthOf(widget._clock());
 
-  bool get _canGoForward => _period.shift(1).start.isBefore(widget._clock());
+  /// Um dia dentro do período olhado: trocar Mês/Ano procura o período do novo
+  /// tipo que contém este dia, então alternar e voltar cai no mesmo lugar.
+  late DateTime _anchor = widget._clock();
+
+  static const _monthsShown = 24;
+  static const _yearsShown = 6;
+
+  /// Os períodos da faixa: do mais antigo ao atual.
+  List<RetroPeriod> get _periods {
+    final current = _period.containing(widget._clock());
+    final count = _period.kind == RetroKind.month ? _monthsShown : _yearsShown;
+    return [for (var i = count - 1; i >= 0; i--) current.shift(-i)];
+  }
+
+  PeriodChoice _choiceFor(RetroPeriod p) {
+    if (p.kind == RetroKind.year) {
+      return PeriodChoice(id: '${p.start.year}', label: '${p.start.year}');
+    }
+    final month = p.start.month.toString().padLeft(2, '0');
+    final short = monthShort(p.start);
+    return PeriodChoice(
+      id: '${p.start.year}-$month',
+      label: short[0].toUpperCase() + short.substring(1),
+      caption: '${p.start.year}',
+    );
+  }
 
   void _setKind(RetroKind kind) {
     if (kind == _period.kind) return;
-    final now = widget._clock();
     setState(() {
-      if (kind == RetroKind.year) {
-        _period = RetroPeriod.yearOf(_period.start);
-      } else {
-        // Ano de volta pra mês: o mês atual se for este ano, senão dezembro.
-        _period = _period.start.year == now.year
-            ? RetroPeriod.monthOf(now)
-            : RetroPeriod.monthOf(DateTime(_period.start.year, 12));
+      _period = kind == RetroKind.year
+          ? RetroPeriod.yearOf(_anchor)
+          : RetroPeriod.monthOf(_anchor);
+    });
+  }
+
+  /// Escolher um período na faixa: hoje, se ele cai ali; senão o dia âncora
+  /// atual, se ele já cai ali; senão o primeiro dia do período.
+  void _select(RetroPeriod p) {
+    final today = widget._clock();
+    setState(() {
+      _period = p;
+      if (p.contains(today)) {
+        _anchor = today;
+      } else if (!p.contains(_anchor)) {
+        _anchor = p.start;
       }
     });
   }
@@ -59,6 +94,19 @@ class _RetrospectivePageState extends ConsumerState<RetrospectivePage> {
         message: f.message,
         variant: AppSnackBarVariant.error,
       ),
+    );
+  }
+
+  Widget _buildStrip() {
+    final periods = _periods;
+    final selected = periods.indexOf(_period);
+    return PeriodStrip(
+      kinds: const ['Mês', 'Ano'],
+      kindIndex: _period.kind.index,
+      onKind: (i) => _setKind(RetroKind.values[i]),
+      choices: [for (final p in periods) _choiceFor(p)],
+      selected: selected < 0 ? periods.length - 1 : selected,
+      onSelect: (i) => _select(periods[i]),
     );
   }
 
@@ -78,15 +126,7 @@ class _RetrospectivePageState extends ConsumerState<RetrospectivePage> {
       ),
       body: Column(
         children: [
-          _PeriodBar(
-            period: _period,
-            canGoForward: _canGoForward,
-            onKind: _setKind,
-            onPrev: () => setState(() => _period = _period.shift(-1)),
-            onNext: _canGoForward
-                ? () => setState(() => _period = _period.shift(1))
-                : null,
-          ),
+          _buildStrip(),
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
@@ -108,65 +148,6 @@ class _RetrospectivePageState extends ConsumerState<RetrospectivePage> {
                       : _Content(retro: r, onShare: () => _share(r)),
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Seletor Mês/Ano e as setas pra navegar entre períodos.
-class _PeriodBar extends StatelessWidget {
-  const _PeriodBar({
-    required this.period,
-    required this.canGoForward,
-    required this.onKind,
-    required this.onPrev,
-    required this.onNext,
-  });
-
-  final RetroPeriod period;
-  final bool canGoForward;
-  final ValueChanged<RetroKind> onKind;
-  final VoidCallback onPrev;
-  final VoidCallback? onNext;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.md,
-        AppSpacing.screen,
-        AppSpacing.xs,
-      ),
-      child: Row(
-        children: [
-          for (final kind in RetroKind.values) ...[
-            PillButton(
-              label: kind == RetroKind.month ? 'Mês' : 'Ano',
-              variant: kind == period.kind
-                  ? PillButtonVariant.primary
-                  : PillButtonVariant.secondary,
-              dense: true,
-              onPressed: () => onKind(kind),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-          ],
-          const Spacer(),
-          IconButton(
-            tooltip: 'Período anterior',
-            onPressed: onPrev,
-            icon: Icon(Icons.chevron_left_rounded, color: colors.ink),
-          ),
-          IconButton(
-            tooltip: 'Próximo período',
-            onPressed: onNext,
-            icon: Icon(
-              Icons.chevron_right_rounded,
-              color: canGoForward ? colors.ink : colors.textMuted,
             ),
           ),
         ],

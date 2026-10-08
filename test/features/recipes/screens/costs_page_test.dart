@@ -277,7 +277,7 @@ void main() {
     expect(find.text('ROTA ING'), findsOneWidget);
   });
 
-  testWidgets('o período aparece por extenso e as setas navegam',
+  testWidgets('a faixa de períodos: semana/mês e pular direto pra um período',
       (tester) async {
     final asked = <CostPeriod>[];
     await tester.pumpWidget(_host((p) {
@@ -286,18 +286,63 @@ void main() {
     }));
     await tester.pumpAndSettle();
     expect(asked.last.kind, CostKind.week);
-    expect(find.text('12 – 18 out'), findsOneWidget);
+    expect(asked.last.start, DateTime.utc(2026, 10, 12));
+    expect(find.byKey(const Key('period-chip-2026-10-12')), findsOneWidget);
+
+    // Um toque na semana anterior pula pra ela.
+    await tester.tap(find.byKey(const Key('period-chip-2026-10-05')));
+    await tester.pumpAndSettle();
+    expect(asked.last.start, DateTime.utc(2026, 10, 5));
 
     await tester.tap(find.text('Mês'));
     await tester.pumpAndSettle();
     expect(asked.last.kind, CostKind.month);
     expect(asked.last.start, DateTime.utc(2026, 10));
-    expect(find.text('Outubro 2026'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Período anterior'));
+    await tester.tap(find.byKey(const Key('period-chip-2026-09-01')));
     await tester.pumpAndSettle();
     expect(asked.last.start, DateTime.utc(2026, 9));
-    expect(find.text('Setembro 2026'), findsOneWidget);
+  });
+
+  testWidgets('alternar Semana/Mês várias vezes não faz o período derivar',
+      (tester) async {
+    final asked = <CostPeriod>[];
+    await tester.pumpWidget(_host((p) {
+      asked.add(p);
+      return _nothing;
+    }));
+    await tester.pumpAndSettle();
+    expect(asked.last.start, DateTime.utc(2026, 10, 12));
+
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('Mês'));
+      await tester.pumpAndSettle();
+      expect(asked.last.start, DateTime.utc(2026, 10));
+
+      await tester.tap(find.text('Semana'));
+      await tester.pumpAndSettle();
+      expect(asked.last.start, DateTime.utc(2026, 10, 12));
+    }
+  });
+
+  testWidgets('alternar a partir de uma semana antiga volta pra ela',
+      (tester) async {
+    final asked = <CostPeriod>[];
+    await tester.pumpWidget(_host((p) {
+      asked.add(p);
+      return _nothing;
+    }));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('period-chip-2026-10-05')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mês'));
+    await tester.pumpAndSettle();
+    expect(asked.last.start, DateTime.utc(2026, 10));
+
+    await tester.tap(find.text('Semana'));
+    await tester.pumpAndSettle();
+    expect(asked.last.start, DateTime.utc(2026, 10, 5));
   });
 
   testWidgets('tocar numa receita abre a receita', (tester) async {

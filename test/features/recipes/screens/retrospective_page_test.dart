@@ -81,25 +81,63 @@ void main() {
     expect(find.text('Compartilhar imagem'), findsNothing);
   });
 
-  testWidgets('setas navegam, e o futuro fica travado', (tester) async {
-    final seen = <RetroPeriod>[];
-    await tester.pumpWidget(_host(build: (p) {
-      seen.add(p);
-      return _empty(p);
-    }));
+  testWidgets('a faixa de períodos pula direto pra outro mês', (tester) async {
+    await tester.pumpWidget(_host(build: _empty));
     await tester.pumpAndSettle();
+    expect(find.text('Nada cozinhado em outubro'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Período anterior'));
+    await tester.tap(find.byKey(const Key('period-chip-2026-09')));
     await tester.pumpAndSettle();
     expect(find.text('Nada cozinhado em setembro'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Próximo período'));
+    await tester.tap(find.byKey(const Key('period-chip-2026-10')));
     await tester.pumpAndSettle();
     expect(find.text('Nada cozinhado em outubro'), findsOneWidget);
+  });
 
-    await tester.tap(find.byTooltip('Próximo período'));
+  testWidgets('alternar Mês/Ano várias vezes não faz o período derivar',
+      (tester) async {
+    await tester.pumpWidget(_host(build: _empty));
     await tester.pumpAndSettle();
-    expect(find.text('Nada cozinhado em outubro'), findsOneWidget);
+
+    for (var i = 0; i < 3; i++) {
+      await tester.tap(find.text('Ano'));
+      await tester.pumpAndSettle();
+      expect(find.text('Nada cozinhado em 2026'), findsOneWidget);
+
+      await tester.tap(find.text('Mês'));
+      await tester.pumpAndSettle();
+      expect(find.text('Nada cozinhado em outubro'), findsOneWidget);
+    }
+  });
+
+  testWidgets('de um mês antigo, Ano e de volta cai no mesmo mês',
+      (tester) async {
+    await tester.pumpWidget(_host(build: _empty));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('period-chip-2026-03')));
+    await tester.pumpAndSettle();
+    expect(find.text('Nada cozinhado em março'), findsOneWidget);
+
+    await tester.tap(find.text('Ano'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mês'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nada cozinhado em março'), findsOneWidget);
+  });
+
+  testWidgets('no ano, a faixa mostra os anos', (tester) async {
+    await tester.pumpWidget(_host(build: _empty));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ano'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('period-chip-2026')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('period-chip-2025')));
+    await tester.pumpAndSettle();
+    expect(find.text('Nada cozinhado em 2025'), findsOneWidget);
   });
 
   testWidgets('trocar para Ano mostra o ano', (tester) async {
