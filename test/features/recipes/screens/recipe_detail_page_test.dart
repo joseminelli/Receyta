@@ -208,7 +208,7 @@ void main() {
           id: 'frango',
           displayName: 'Frango',
           normalizedKey: 'frango',
-          price: IngredientPrice(1200, PriceBasis.kg),
+          price: IngredientPrice(1200, 'kg'),
         ),
       ],
     ));
@@ -237,7 +237,7 @@ void main() {
           id: 'frango',
           displayName: 'Frango',
           normalizedKey: 'frango',
-          price: IngredientPrice(1200, PriceBasis.kg),
+          price: IngredientPrice(1200, 'kg'),
         ),
       ],
     ));

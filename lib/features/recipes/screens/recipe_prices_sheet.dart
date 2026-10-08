@@ -52,6 +52,7 @@ class _RecipePricesSheet extends ConsumerWidget {
                   : () => showIngredientPriceSheet(
                         context,
                         catalog[line.line.ingredientId]!,
+                        suggestedUnit: suggestedPriceUnit(line.line.unitId),
                       ),
             ),
           if (lines.isEmpty)

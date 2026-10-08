@@ -105,56 +105,91 @@ LineCost _costOfLine(
     return LineCost(line: line, gap: CostGap.cannotConvert);
   }
 
-  final amount = _amountInBasis(
+  final packs = _packsConsumed(
     quantity * factor,
     unit,
-    price.basis,
+    price,
     ingredient!.displayName,
   );
-  if (amount == null) {
+  if (packs == null) {
     return LineCost(line: line, gap: CostGap.cannotConvert);
   }
-  return LineCost(line: line, cents: (price.cents * amount).round());
+  return LineCost(line: line, cents: (price.cents * packs).round());
 }
 
-/// A quantidade expressa na unidade do preço (kg, litro ou unidade), ou
-/// `null` quando não converte.
-double? _amountInBasis(
+/// Unidades em que dá pra informar um preço: tudo que não é "a gosto".
+bool isPriceUnit(String code) {
+  final unit = _unitByCode[code];
+  return unit != null && unit.kind != 'subjective';
+}
+
+/// A unidade que já vem escolhida ao informar o preço de uma linha: a da
+/// própria contagem ("dente", "maço"), "kg" pra peso, "l" pra volume e
+/// "unidade" quando a linha não traz unidade ("3 ovos").
+String suggestedPriceUnit(String? unitId) {
+  final unit = unitId == null ? null : _unitByCode[unitId];
+  if (unit == null) return 'unidade';
+  return switch (unit.kind) {
+    'mass' => 'kg',
+    'volume' => 'l',
+    'count' => unit.code,
+    _ => 'unidade',
+  };
+}
+
+/// Quantas vezes o preço informado ("R$ 4,50 por 500 g") cabe na quantidade
+/// da linha, ou `null` quando as unidades não conversam.
+double? _packsConsumed(
   double quantity,
-  SeedUnit? unit,
-  PriceBasis basis,
+  SeedUnit? lineUnit,
+  IngredientPrice price,
   String ingredientName,
 ) {
-  switch (basis) {
-    case PriceBasis.unit:
-      // Sem unidade ("3 ovos") ou "unidade". "Dente", "fatia"... não são
-      // a unidade do preço.
-      return (unit == null || unit.code == 'unidade') ? quantity : null;
+  final priceUnit = _unitByCode[price.unitCode];
+  if (priceUnit == null || price.quantity <= 0) return null;
 
-    case PriceBasis.kg:
-      if (unit == null) return null;
-      if (unit.kind == 'mass') {
-        return quantity * (unit.factorToBase ?? 1) / 1000;
-      }
-      if (unit.kind == 'volume') {
-        final density = densityFor(ingredientName);
-        if (density == null) return null;
-        return quantity * (unit.factorToBase ?? 1) * density / 1000;
-      }
-      return null;
+  switch (priceUnit.kind) {
+    case 'count':
+      // Contagem só casa com a mesma contagem: "dente" com "dente",
+      // "maço" com "maço"; sem unidade na linha ("3 ovos") vale "unidade".
+      final same = lineUnit == null
+          ? priceUnit.code == 'unidade'
+          : lineUnit.code == priceUnit.code;
+      return same ? quantity / price.quantity : null;
 
-    case PriceBasis.liter:
-      if (unit == null) return null;
-      if (unit.kind == 'volume') {
-        return quantity * (unit.factorToBase ?? 1) / 1000;
-      }
-      if (unit.kind == 'mass') {
-        final density = densityFor(ingredientName);
-        if (density == null) return null;
-        return quantity * (unit.factorToBase ?? 1) / density / 1000;
-      }
-      return null;
+    case 'mass':
+      final grams = _toGrams(quantity, lineUnit, ingredientName);
+      if (grams == null) return null;
+      return grams / (price.quantity * (priceUnit.factorToBase ?? 1));
+
+    case 'volume':
+      final ml = _toMl(quantity, lineUnit, ingredientName);
+      if (ml == null) return null;
+      return ml / (price.quantity * (priceUnit.factorToBase ?? 1));
   }
+  return null;
+}
+
+double? _toGrams(double quantity, SeedUnit? unit, String name) {
+  if (unit == null) return null;
+  if (unit.kind == 'mass') return quantity * (unit.factorToBase ?? 1);
+  if (unit.kind == 'volume') {
+    final density = densityFor(name);
+    if (density == null) return null;
+    return quantity * (unit.factorToBase ?? 1) * density;
+  }
+  return null;
+}
+
+double? _toMl(double quantity, SeedUnit? unit, String name) {
+  if (unit == null) return null;
+  if (unit.kind == 'volume') return quantity * (unit.factorToBase ?? 1);
+  if (unit.kind == 'mass') {
+    final density = densityFor(name);
+    if (density == null) return null;
+    return quantity * (unit.factorToBase ?? 1) / density;
+  }
+  return null;
 }
 
 /// Uma receita do planejamento, pronta pra somar.

@@ -30,14 +30,28 @@ RecipeIngredient _line(
 
 void main() {
   final catalog = {
-    'farinha': _ing('farinha', 'Farinha de trigo',
-        const IngredientPrice(600, PriceBasis.kg)),
-    'ovo': _ing('ovo', 'Ovo', const IngredientPrice(100, PriceBasis.unit)),
-    'leite':
-        _ing('leite', 'Leite', const IngredientPrice(500, PriceBasis.liter)),
-    'sal': _ing('sal', 'Sal', const IngredientPrice(300, PriceBasis.kg)),
-    'alho': _ing('alho', 'Alho', const IngredientPrice(4000, PriceBasis.kg)),
+    'farinha':
+        _ing('farinha', 'Farinha de trigo', const IngredientPrice(600, 'kg')),
+    'ovo': _ing('ovo', 'Ovo', const IngredientPrice(100, 'unidade')),
+    'leite': _ing('leite', 'Leite', const IngredientPrice(500, 'l')),
+    'sal': _ing('sal', 'Sal', const IngredientPrice(300, 'kg')),
+    'alho': _ing('alho', 'Alho', const IngredientPrice(4000, 'kg')),
     'caldo': _ing('caldo', 'Caldo'),
+    'milho': _ing(
+      'milho',
+      'Milho',
+      const IngredientPrice(450, 'g', 500),
+    ),
+    'cheiro': _ing(
+      'cheiro',
+      'Cheiro-verde',
+      const IngredientPrice(300, 'maco'),
+    ),
+    'alho2': _ing(
+      'alho2',
+      'Alho (cabeça)',
+      const IngredientPrice(60, 'dente'),
+    ),
   };
 
   group('costOfRecipe', () {
@@ -86,6 +100,57 @@ void main() {
             .totalCents,
         120,
       );
+    });
+
+    test('preço de embalagem: "R\$ 4,50 por 500 g"', () {
+      final c = costOfRecipe(
+        [_line('milho', qty: 250, unit: 'g', name: 'Milho')],
+        catalog,
+      );
+      expect(c.totalCents, 225);
+      final kg = costOfRecipe(
+        [_line('milho', qty: 1, unit: 'kg', name: 'Milho')],
+        catalog,
+      );
+      expect(kg.totalCents, 900);
+    });
+
+    test('preço por contagem casa com a mesma contagem da receita', () {
+      expect(
+        costOfRecipe(
+                [_line('cheiro', qty: 2, unit: 'maco', name: 'Cheiro-verde')],
+                catalog)
+            .totalCents,
+        600,
+      );
+      expect(
+        costOfRecipe(
+                [_line('alho2', qty: 3, unit: 'dente', name: 'Alho (cabeça)')],
+                catalog)
+            .totalCents,
+        180,
+      );
+      // maço na receita, dente no preço: não converte.
+      final c = costOfRecipe(
+        [_line('alho2', qty: 1, unit: 'maco', name: 'Alho (cabeça)')],
+        catalog,
+      );
+      expect(c.gaps.single.gap, CostGap.cannotConvert);
+    });
+
+    test('suggestedPriceUnit', () {
+      expect(suggestedPriceUnit('g'), 'kg');
+      expect(suggestedPriceUnit('xicara'), 'l');
+      expect(suggestedPriceUnit('dente'), 'dente');
+      expect(suggestedPriceUnit(null), 'unidade');
+      expect(suggestedPriceUnit('a_gosto'), 'unidade');
+    });
+
+    test('isPriceUnit', () {
+      expect(isPriceUnit('kg'), isTrue);
+      expect(isPriceUnit('maco'), isTrue);
+      expect(isPriceUnit('a_gosto'), isFalse);
+      expect(isPriceUnit('nada'), isFalse);
     });
 
     test('o fator das porções escala a conta', () {

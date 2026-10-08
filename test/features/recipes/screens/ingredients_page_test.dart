@@ -149,7 +149,8 @@ void main() {
     ]);
   });
 
-  testWidgets('"Definir preço" abre a folha e grava o valor digitado',
+  testWidgets(
+      '"Definir preço" abre a folha e grava valor, quantidade e unidade',
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(host([_row('2', 'Farinha')]));
@@ -157,14 +158,14 @@ void main() {
 
     await tester.tap(find.text('Definir preço'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, '8,50');
-    await tester.tap(find.text('por litro'));
-    await tester.pumpAndSettle();
+    final fields = find.byType(TextField);
+    await tester.enterText(fields.at(0), '4,50');
+    await tester.enterText(fields.at(1), '500');
     await tester.tap(find.text('Salvar preço'));
     await tester.pumpAndSettle();
 
     expect(repo.priceCalls, [
-      (id: '2', price: const IngredientPrice(850, PriceBasis.liter)),
+      (id: '2', price: const IngredientPrice(450, 'kg', 500)),
     ]);
   });
 
@@ -175,7 +176,7 @@ void main() {
 
     await tester.tap(find.text('Definir preço'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).last, '0');
+    await tester.enterText(find.byType(TextField).first, '0');
     await tester.tap(find.text('Salvar preço'));
     await tester.pumpAndSettle();
 
@@ -187,7 +188,7 @@ void main() {
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(host([
-      _row('2', 'Farinha', price: const IngredientPrice(600, PriceBasis.kg)),
+      _row('2', 'Farinha', price: const IngredientPrice(600, 'kg')),
     ]));
     await tester.pumpAndSettle();
 

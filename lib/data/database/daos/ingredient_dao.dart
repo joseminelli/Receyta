@@ -150,12 +150,18 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Grava (ou, com [cents] nulo, apaga) o preço do ingrediente.
-  Future<int> setPrice(String id, {int? cents, String? basis}) {
+  Future<int> setPrice(
+    String id, {
+    int? cents,
+    String? basis,
+    double quantity = 1,
+  }) {
     final has = cents != null && basis != null;
     return (update(ingredients)..where((i) => i.id.equals(id))).write(
       IngredientsCompanion(
         priceCents: Value(has ? cents : null),
         priceBasis: Value(has ? basis : null),
+        priceQty: Value(has ? quantity : null),
       ),
     );
   }
@@ -212,6 +218,7 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
             IngredientsCompanion(
               priceCents: Value(source.priceCents),
               priceBasis: Value(source.priceBasis),
+              priceQty: Value(source.priceQty),
             ),
           );
         }

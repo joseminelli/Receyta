@@ -1779,6 +1779,12 @@ class $IngredientsTable extends Ingredients
   late final GeneratedColumn<String> priceBasis = GeneratedColumn<String>(
       'price_basis', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _priceQtyMeta =
+      const VerificationMeta('priceQty');
+  @override
+  late final GeneratedColumn<double> priceQty = GeneratedColumn<double>(
+      'price_qty', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1790,7 +1796,8 @@ class $IngredientsTable extends Ingredients
         pantryUpdatedAt,
         pantrySyncedAt,
         priceCents,
-        priceBasis
+        priceBasis,
+        priceQty
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1863,6 +1870,10 @@ class $IngredientsTable extends Ingredients
           priceBasis.isAcceptableOrUnknown(
               data['price_basis']!, _priceBasisMeta));
     }
+    if (data.containsKey('price_qty')) {
+      context.handle(_priceQtyMeta,
+          priceQty.isAcceptableOrUnknown(data['price_qty']!, _priceQtyMeta));
+    }
     return context;
   }
 
@@ -1892,6 +1903,8 @@ class $IngredientsTable extends Ingredients
           .read(DriftSqlType.int, data['${effectivePrefix}price_cents']),
       priceBasis: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}price_basis']),
+      priceQty: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}price_qty']),
     );
   }
 
@@ -1918,10 +1931,13 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
   final DateTime? pantryUpdatedAt;
   final DateTime? pantrySyncedAt;
 
-  /// Preço informado pela pessoa, em centavos, por [priceBasis] (`kg`, `l` ou
-  /// `un`). Nulo = não informado. Só local: não sincroniza.
+  /// Preço informado pela pessoa: [priceCents] centavos por [priceQty] da
+  /// unidade [priceBasis] (código de `units`: `kg`, `g`, `l`, `ml`, `unidade`,
+  /// `dente`, `maco`...). "R$ 4,50 por 500 g" = 450 / 500 / `g`. Nulo = não
+  /// informado; [priceQty] nulo vale 1. Só local: não sincroniza.
   final int? priceCents;
   final String? priceBasis;
+  final double? priceQty;
   const IngredientRow(
       {required this.id,
       required this.displayName,
@@ -1932,7 +1948,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       this.pantryUpdatedAt,
       this.pantrySyncedAt,
       this.priceCents,
-      this.priceBasis});
+      this.priceBasis,
+      this.priceQty});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1955,6 +1972,9 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
     }
     if (!nullToAbsent || priceBasis != null) {
       map['price_basis'] = Variable<String>(priceBasis);
+    }
+    if (!nullToAbsent || priceQty != null) {
+      map['price_qty'] = Variable<double>(priceQty);
     }
     return map;
   }
@@ -1981,6 +2001,9 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       priceBasis: priceBasis == null && nullToAbsent
           ? const Value.absent()
           : Value(priceBasis),
+      priceQty: priceQty == null && nullToAbsent
+          ? const Value.absent()
+          : Value(priceQty),
     );
   }
 
@@ -1998,6 +2021,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       pantrySyncedAt: serializer.fromJson<DateTime?>(json['pantrySyncedAt']),
       priceCents: serializer.fromJson<int?>(json['priceCents']),
       priceBasis: serializer.fromJson<String?>(json['priceBasis']),
+      priceQty: serializer.fromJson<double?>(json['priceQty']),
     );
   }
   @override
@@ -2014,6 +2038,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       'pantrySyncedAt': serializer.toJson<DateTime?>(pantrySyncedAt),
       'priceCents': serializer.toJson<int?>(priceCents),
       'priceBasis': serializer.toJson<String?>(priceBasis),
+      'priceQty': serializer.toJson<double?>(priceQty),
     };
   }
 
@@ -2027,7 +2052,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           Value<DateTime?> pantryUpdatedAt = const Value.absent(),
           Value<DateTime?> pantrySyncedAt = const Value.absent(),
           Value<int?> priceCents = const Value.absent(),
-          Value<String?> priceBasis = const Value.absent()}) =>
+          Value<String?> priceBasis = const Value.absent(),
+          Value<double?> priceQty = const Value.absent()}) =>
       IngredientRow(
         id: id ?? this.id,
         displayName: displayName ?? this.displayName,
@@ -2042,6 +2068,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
             pantrySyncedAt.present ? pantrySyncedAt.value : this.pantrySyncedAt,
         priceCents: priceCents.present ? priceCents.value : this.priceCents,
         priceBasis: priceBasis.present ? priceBasis.value : this.priceBasis,
+        priceQty: priceQty.present ? priceQty.value : this.priceQty,
       );
   IngredientRow copyWithCompanion(IngredientsCompanion data) {
     return IngredientRow(
@@ -2066,6 +2093,7 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           data.priceCents.present ? data.priceCents.value : this.priceCents,
       priceBasis:
           data.priceBasis.present ? data.priceBasis.value : this.priceBasis,
+      priceQty: data.priceQty.present ? data.priceQty.value : this.priceQty,
     );
   }
 
@@ -2081,7 +2109,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           ..write('pantryUpdatedAt: $pantryUpdatedAt, ')
           ..write('pantrySyncedAt: $pantrySyncedAt, ')
           ..write('priceCents: $priceCents, ')
-          ..write('priceBasis: $priceBasis')
+          ..write('priceBasis: $priceBasis, ')
+          ..write('priceQty: $priceQty')
           ..write(')'))
         .toString();
   }
@@ -2097,7 +2126,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
       pantryUpdatedAt,
       pantrySyncedAt,
       priceCents,
-      priceBasis);
+      priceBasis,
+      priceQty);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2111,7 +2141,8 @@ class IngredientRow extends DataClass implements Insertable<IngredientRow> {
           other.pantryUpdatedAt == this.pantryUpdatedAt &&
           other.pantrySyncedAt == this.pantrySyncedAt &&
           other.priceCents == this.priceCents &&
-          other.priceBasis == this.priceBasis);
+          other.priceBasis == this.priceBasis &&
+          other.priceQty == this.priceQty);
 }
 
 class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
@@ -2125,6 +2156,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
   final Value<DateTime?> pantrySyncedAt;
   final Value<int?> priceCents;
   final Value<String?> priceBasis;
+  final Value<double?> priceQty;
   final Value<int> rowid;
   const IngredientsCompanion({
     this.id = const Value.absent(),
@@ -2137,6 +2169,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     this.pantrySyncedAt = const Value.absent(),
     this.priceCents = const Value.absent(),
     this.priceBasis = const Value.absent(),
+    this.priceQty = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   IngredientsCompanion.insert({
@@ -2150,6 +2183,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     this.pantrySyncedAt = const Value.absent(),
     this.priceCents = const Value.absent(),
     this.priceBasis = const Value.absent(),
+    this.priceQty = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         displayName = Value(displayName),
@@ -2165,6 +2199,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     Expression<DateTime>? pantrySyncedAt,
     Expression<int>? priceCents,
     Expression<String>? priceBasis,
+    Expression<double>? priceQty,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2178,6 +2213,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       if (pantrySyncedAt != null) 'pantry_synced_at': pantrySyncedAt,
       if (priceCents != null) 'price_cents': priceCents,
       if (priceBasis != null) 'price_basis': priceBasis,
+      if (priceQty != null) 'price_qty': priceQty,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2193,6 +2229,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       Value<DateTime?>? pantrySyncedAt,
       Value<int?>? priceCents,
       Value<String?>? priceBasis,
+      Value<double?>? priceQty,
       Value<int>? rowid}) {
     return IngredientsCompanion(
       id: id ?? this.id,
@@ -2205,6 +2242,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
       pantrySyncedAt: pantrySyncedAt ?? this.pantrySyncedAt,
       priceCents: priceCents ?? this.priceCents,
       priceBasis: priceBasis ?? this.priceBasis,
+      priceQty: priceQty ?? this.priceQty,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2242,6 +2280,9 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
     if (priceBasis.present) {
       map['price_basis'] = Variable<String>(priceBasis.value);
     }
+    if (priceQty.present) {
+      map['price_qty'] = Variable<double>(priceQty.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2261,6 +2302,7 @@ class IngredientsCompanion extends UpdateCompanion<IngredientRow> {
           ..write('pantrySyncedAt: $pantrySyncedAt, ')
           ..write('priceCents: $priceCents, ')
           ..write('priceBasis: $priceBasis, ')
+          ..write('priceQty: $priceQty, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8564,6 +8606,7 @@ typedef $$IngredientsTableCreateCompanionBuilder = IngredientsCompanion
   Value<DateTime?> pantrySyncedAt,
   Value<int?> priceCents,
   Value<String?> priceBasis,
+  Value<double?> priceQty,
   Value<int> rowid,
 });
 typedef $$IngredientsTableUpdateCompanionBuilder = IngredientsCompanion
@@ -8578,6 +8621,7 @@ typedef $$IngredientsTableUpdateCompanionBuilder = IngredientsCompanion
   Value<DateTime?> pantrySyncedAt,
   Value<int?> priceCents,
   Value<String?> priceBasis,
+  Value<double?> priceQty,
   Value<int> rowid,
 });
 
@@ -8608,6 +8652,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             Value<DateTime?> pantrySyncedAt = const Value.absent(),
             Value<int?> priceCents = const Value.absent(),
             Value<String?> priceBasis = const Value.absent(),
+            Value<double?> priceQty = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IngredientsCompanion(
@@ -8621,6 +8666,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             pantrySyncedAt: pantrySyncedAt,
             priceCents: priceCents,
             priceBasis: priceBasis,
+            priceQty: priceQty,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -8634,6 +8680,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             Value<DateTime?> pantrySyncedAt = const Value.absent(),
             Value<int?> priceCents = const Value.absent(),
             Value<String?> priceBasis = const Value.absent(),
+            Value<double?> priceQty = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               IngredientsCompanion.insert(
@@ -8647,6 +8694,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
             pantrySyncedAt: pantrySyncedAt,
             priceCents: priceCents,
             priceBasis: priceBasis,
+            priceQty: priceQty,
             rowid: rowid,
           ),
         ));
@@ -8697,6 +8745,11 @@ class $$IngredientsTableFilterComposer
 
   ColumnFilters<String> get priceBasis => $state.composableBuilder(
       column: $state.table.priceBasis,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<double> get priceQty => $state.composableBuilder(
+      column: $state.table.priceQty,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -8809,6 +8862,11 @@ class $$IngredientsTableOrderingComposer
 
   ColumnOrderings<String> get priceBasis => $state.composableBuilder(
       column: $state.table.priceBasis,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<double> get priceQty => $state.composableBuilder(
+      column: $state.table.priceQty,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

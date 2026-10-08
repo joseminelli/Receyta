@@ -143,7 +143,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   /// Timestamps como texto ISO-8601 UTC, não epoch-int: legível no arquivo e
   /// sem ambiguidade de fuso quando o sync chegar.
@@ -273,6 +273,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 13) {
             await _addColumnIfMissing(m, ingredients, ingredients.priceCents);
             await _addColumnIfMissing(m, ingredients, ingredients.priceBasis);
+          }
+          if (from < 14) {
+            await _addColumnIfMissing(m, ingredients, ingredients.priceQty);
           }
         },
         beforeOpen: (details) async {

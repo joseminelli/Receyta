@@ -25,7 +25,7 @@ mixin _$Ingredient {
   /// "Sempre tenho" (G11): fica fora das listas de compras geradas.
   bool get inPantry => throw _privateConstructorUsedError;
 
-  /// Preço que a pessoa informou, por [priceBasis]. Nulo = sem preço.
+  /// Preço que a pessoa informou. Nulo = sem preço.
   IngredientPrice? get price => throw _privateConstructorUsedError;
 
   /// Create a copy of Ingredient
@@ -208,7 +208,7 @@ class _$IngredientImpl implements _Ingredient {
   @JsonKey()
   final bool inPantry;
 
-  /// Preço que a pessoa informou, por [priceBasis]. Nulo = sem preço.
+  /// Preço que a pessoa informou. Nulo = sem preço.
   @override
   final IngredientPrice? price;
 
@@ -274,7 +274,7 @@ abstract class _Ingredient implements Ingredient {
   @override
   bool get inPantry;
 
-  /// Preço que a pessoa informou, por [priceBasis]. Nulo = sem preço.
+  /// Preço que a pessoa informou. Nulo = sem preço.
   @override
   IngredientPrice? get price;
 

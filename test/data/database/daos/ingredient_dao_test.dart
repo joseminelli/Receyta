@@ -228,28 +228,33 @@ void main() {
       final tomate = await db.ingredientDao.getOrCreate('Tomate');
       expect(tomate.priceCents, isNull);
 
-      await db.ingredientDao.setPrice(tomate.id, cents: 790, basis: 'kg');
+      await db.ingredientDao
+          .setPrice(tomate.id, cents: 790, basis: 'g', quantity: 500);
       var row = (await db.ingredientDao.watchAll().first).single;
       expect(row.priceCents, 790);
-      expect(row.priceBasis, 'kg');
+      expect(row.priceBasis, 'g');
+      expect(row.priceQty, 500);
 
       await db.ingredientDao.setPrice(tomate.id);
       row = (await db.ingredientDao.watchAll().first).single;
       expect(row.priceCents, isNull);
       expect(row.priceBasis, isNull);
+      expect(row.priceQty, isNull);
     });
 
     test('mesclar leva o preço da origem se o destino não tem', () async {
       final a = await db.ingredientDao.getOrCreate('Tomate');
       final b = await db.ingredientDao.getOrCreate('Tomate cereja');
-      await db.ingredientDao.setPrice(a.id, cents: 500, basis: 'kg');
+      await db.ingredientDao
+          .setPrice(a.id, cents: 500, basis: 'g', quantity: 250);
 
       await db.ingredientDao.merge(a.id, b.id);
 
       final kept = (await db.ingredientDao.watchAll().first).single;
       expect(kept.id, b.id);
       expect(kept.priceCents, 500);
-      expect(kept.priceBasis, 'kg');
+      expect(kept.priceBasis, 'g');
+      expect(kept.priceQty, 250);
     });
 
     test('mesclar mantém o preço do destino quando ele já tem', () async {

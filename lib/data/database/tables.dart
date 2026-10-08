@@ -126,10 +126,13 @@ class Ingredients extends Table {
   DateTimeColumn get pantryUpdatedAt => dateTime().nullable()();
   DateTimeColumn get pantrySyncedAt => dateTime().nullable()();
 
-  /// Preço informado pela pessoa, em centavos, por [priceBasis] (`kg`, `l` ou
-  /// `un`). Nulo = não informado. Só local: não sincroniza.
+  /// Preço informado pela pessoa: [priceCents] centavos por [priceQty] da
+  /// unidade [priceBasis] (código de `units`: `kg`, `g`, `l`, `ml`, `unidade`,
+  /// `dente`, `maco`...). "R$ 4,50 por 500 g" = 450 / 500 / `g`. Nulo = não
+  /// informado; [priceQty] nulo vale 1. Só local: não sincroniza.
   IntColumn get priceCents => integer().nullable()();
   TextColumn get priceBasis => text().nullable()();
+  RealColumn get priceQty => real().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};

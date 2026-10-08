@@ -4,6 +4,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/ingredient_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
+import 'package:receyta/domain/engine/recipe_cost.dart' show isPriceUnit;
 import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/domain/engine/ingredient_normalizer.dart';
 
@@ -67,15 +68,31 @@ class IngredientRepository {
     }
   }
 
-  /// Informa o preço do ingrediente; [price] nulo apaga. Preço zero ou
-  /// negativo não vale.
+  /// Informa o preço do ingrediente; [price] nulo apaga. Valor, quantidade e
+  /// unidade precisam fazer sentido (maiores que zero, unidade conhecida).
   Future<Result<void>> setPrice(String id, IngredientPrice? price) async {
-    if (price != null && price.cents <= 0) {
-      return const Err(
-          ValidationFailure('O preço precisa ser maior que zero.'));
+    if (price != null) {
+      if (price.cents <= 0) {
+        return const Err(
+          ValidationFailure('O preço precisa ser maior que zero.'),
+        );
+      }
+      if (price.quantity <= 0) {
+        return const Err(
+          ValidationFailure('A quantidade precisa ser maior que zero.'),
+        );
+      }
+      if (!isPriceUnit(price.unitCode)) {
+        return const Err(ValidationFailure('Escolha uma unidade válida.'));
+      }
     }
     try {
-      await _dao.setPrice(id, cents: price?.cents, basis: price?.basis.code);
+      await _dao.setPrice(
+        id,
+        cents: price?.cents,
+        basis: price?.unitCode,
+        quantity: price?.quantity ?? 1,
+      );
       return const Ok(null);
     } catch (e) {
       return Err(DatabaseFailure('Falha ao gravar o preço', cause: e));
@@ -117,11 +134,13 @@ class IngredientRepository {
       );
 
   IngredientPrice? _priceOf(IngredientRow r) {
-    final basis = PriceBasis.fromCode(r.priceBasis);
     final cents = r.priceCents;
-    return (basis == null || cents == null)
-        ? null
-        : IngredientPrice(cents, basis);
+    var code = r.priceBasis;
+    if (cents == null || code == null) return null;
+    // A v13 gravava "un" pra "por unidade".
+    if (code == 'un') code = 'unidade';
+    if (!isPriceUnit(code)) return null;
+    return IngredientPrice(cents, code, r.priceQty ?? 1);
   }
 }
 
