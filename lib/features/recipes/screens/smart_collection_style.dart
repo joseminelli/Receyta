@@ -14,6 +14,15 @@ extension SmartCollectionStyle on SmartCollection {
         SmartCollection.favorites => Icons.favorite_rounded,
       };
 
+  /// Textura própria de cada coleção, pra os azulejos não ficarem iguais.
+  TileMotif get motif => switch (this) {
+        SmartCollection.quick => TileMotif.diagonal,
+        SmartCollection.neverCooked => TileMotif.ponto,
+        SmartCollection.mostCooked => TileMotif.arco,
+        SmartCollection.forgotten => TileMotif.onda,
+        SmartCollection.favorites => TileMotif.meiaLua,
+      };
+
   TileColor get color => switch (this) {
         SmartCollection.quick => TileColor.lime,
         SmartCollection.neverCooked => TileColor.violet,
