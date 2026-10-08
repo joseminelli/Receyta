@@ -46,6 +46,8 @@ class _ActionMenuButtonState extends State<ActionMenuButton> {
     final origin = box.localToGlobal(Offset.zero);
     final anchor = origin & box.size;
     final screen = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
+    final opensUp = _opensUp(anchor, screen, padding);
 
     setState(() => _open = true);
     final picked = await showGeneralDialog<ActionMenuItem>(
@@ -57,7 +59,11 @@ class _ActionMenuButtonState extends State<ActionMenuButton> {
       pageBuilder: (dialogContext, animation, _) => Stack(
         children: [
           CustomSingleChildLayout(
-            delegate: _BelowCenteredDelegate(anchor),
+            delegate: _AnchoredDelegate(
+              anchor,
+              safeTop: padding.top,
+              safeBottom: padding.bottom,
+            ),
             child: _MenuCard(
               items: widget.items,
               animation: animation,
@@ -77,7 +83,7 @@ class _ActionMenuButtonState extends State<ActionMenuButton> {
           child: ScaleTransition(
             alignment: Alignment(
               (anchor.center.dx / screen.width) * 2 - 1,
-              -1,
+              opensUp ? 1 : -1,
             ),
             scale: Tween(begin: 0.6, end: 1.0).animate(curved),
             child: child,
@@ -90,40 +96,52 @@ class _ActionMenuButtonState extends State<ActionMenuButton> {
     picked?.onTap();
   }
 
+  /// Estimativa de se o cartão vai abrir pra cima (botão perto do fim da
+  /// tela): só serve pra animação nascer do lado certo; quem posiciona de
+  /// verdade é o [_AnchoredDelegate], com a altura real.
+  bool _opensUp(Rect anchor, Size screen, EdgeInsets padding) {
+    final estimate = widget.items.length * 52.0 + 8;
+    final below = anchor.bottom + 8 + estimate;
+    return below > screen.height - padding.bottom - 12 &&
+        anchor.top - 8 - estimate >= padding.top + 12;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Semantics(
-      button: true,
-      label: widget.tooltip,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => setState(() => _pressed = true),
-        onTapCancel: () => setState(() => _pressed = false),
-        onTapUp: (_) => setState(() => _pressed = false),
-        onTap: _toggle,
-        child: AnimatedScale(
-          scale: _pressed ? 0.88 : 1,
-          duration: const Duration(milliseconds: 110),
-          curve: Curves.easeOut,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: _open ? colors.lime : colors.ink,
-              shape: BoxShape.circle,
-            ),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              transitionBuilder: (child, anim) => RotationTransition(
-                turns: Tween(begin: 0.75, end: 1.0).animate(anim),
-                child: FadeTransition(opacity: anim, child: child),
+    return Tooltip(
+      message: widget.tooltip,
+      child: Semantics(
+        button: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapCancel: () => setState(() => _pressed = false),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTap: _toggle,
+          child: AnimatedScale(
+            scale: _pressed ? 0.88 : 1,
+            duration: const Duration(milliseconds: 110),
+            curve: Curves.easeOut,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: _open ? colors.lime : colors.ink,
+                shape: BoxShape.circle,
               ),
-              child: Icon(
-                _open ? Icons.close : Icons.more_horiz,
-                key: ValueKey(_open),
-                size: 20,
-                color: _open ? colors.ink : colors.onSaturated,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                transitionBuilder: (child, anim) => RotationTransition(
+                  turns: Tween(begin: 0.75, end: 1.0).animate(anim),
+                  child: FadeTransition(opacity: anim, child: child),
+                ),
+                child: Icon(
+                  _open ? Icons.close : Icons.more_horiz,
+                  key: ValueKey(_open),
+                  size: 20,
+                  color: _open ? colors.ink : colors.onSaturated,
+                ),
               ),
             ),
           ),
@@ -133,11 +151,21 @@ class _ActionMenuButtonState extends State<ActionMenuButton> {
   }
 }
 
-/// Centraliza o cartão sob o botão, sem deixar sair da tela.
-class _BelowCenteredDelegate extends SingleChildLayoutDelegate {
-  _BelowCenteredDelegate(this.anchor);
+/// Centraliza o cartão no botão, sem deixar sair da tela: abre embaixo dele e,
+/// se não couber (botão no fim da tela), abre em cima.
+class _AnchoredDelegate extends SingleChildLayoutDelegate {
+  _AnchoredDelegate(
+    this.anchor, {
+    required this.safeTop,
+    required this.safeBottom,
+  });
 
   final Rect anchor;
+  final double safeTop;
+  final double safeBottom;
+
+  static const _margin = 12.0;
+  static const _gap = 8.0;
 
   @override
   BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
@@ -145,14 +173,29 @@ class _BelowCenteredDelegate extends SingleChildLayoutDelegate {
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    const margin = 12.0;
     final left = (anchor.center.dx - childSize.width / 2)
-        .clamp(margin, size.width - childSize.width - margin);
-    return Offset(left, anchor.bottom + 8);
+        .clamp(_margin, size.width - childSize.width - _margin);
+
+    final bottomLimit = size.height - safeBottom - _margin;
+    final below = anchor.bottom + _gap;
+    if (below + childSize.height <= bottomLimit) return Offset(left, below);
+
+    final above = anchor.top - _gap - childSize.height;
+    if (above >= safeTop + _margin) return Offset(left, above);
+
+    // Não cabe nem em cima nem embaixo: encosta no limite de baixo.
+    return Offset(
+      left,
+      (bottomLimit - childSize.height)
+          .clamp(safeTop + _margin, double.infinity),
+    );
   }
 
   @override
-  bool shouldRelayout(_BelowCenteredDelegate old) => old.anchor != anchor;
+  bool shouldRelayout(_AnchoredDelegate old) =>
+      old.anchor != anchor ||
+      old.safeTop != safeTop ||
+      old.safeBottom != safeBottom;
 }
 
 class _MenuCard extends StatelessWidget {
