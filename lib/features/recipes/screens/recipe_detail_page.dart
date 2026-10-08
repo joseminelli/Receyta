@@ -525,6 +525,14 @@ class _CostRow extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (complete) ...[
+                      Text(
+                        'CUSTO ESTIMADO',
+                        style: context.texts.labelSmall
+                            ?.copyWith(color: colors.textMuted),
+                      ),
+                      const SizedBox(height: 2),
+                    ],
                     if (complete)
                       Text(
                         '≈ $title',

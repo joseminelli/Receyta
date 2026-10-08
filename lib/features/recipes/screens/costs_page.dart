@@ -6,6 +6,7 @@ import 'package:receyta/core/day.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
+import 'package:receyta/features/recipes/screens/recipe_prices_sheet.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -185,7 +186,9 @@ class _Content extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                plan.missingNames.isEmpty ? 'TOTAL PLANEJADO' : 'PELO MENOS',
+                plan.missingNames.isEmpty
+                    ? 'TOTAL ESTIMADO'
+                    : 'ESTIMATIVA MÍNIMA',
                 style: context.texts.labelSmall
                     ?.copyWith(color: colors.onSaturated),
               ),
@@ -232,6 +235,8 @@ class _Content extends StatelessWidget {
               onTap: () => context.push('/recipe/${r.recipeId}'),
             ),
         ],
+        const SizedBox(height: AppSpacing.md),
+        const CostDisclaimer(),
         if (plan.unrankedCount > 0) ...[
           const SizedBox(height: AppSpacing.md),
           _RankingNote(count: plan.unrankedCount),

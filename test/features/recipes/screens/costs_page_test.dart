@@ -61,7 +61,8 @@ void main() {
     await tester.pumpWidget(_host((_) => _full));
     await tester.pumpAndSettle();
 
-    expect(find.text('PELO MENOS'), findsOneWidget);
+    expect(find.text('ESTIMATIVA MÍNIMA'), findsOneWidget);
+    expect(find.textContaining('Valor estimado.'), findsOneWidget);
     expect(find.text('R\$ 123,40'), findsOneWidget);
     expect(find.text('Receita mais cara'), findsOneWidget);
     expect(find.text('planejada 2 vezes'), findsOneWidget);
@@ -134,7 +135,7 @@ void main() {
         )));
     await tester.pumpAndSettle();
 
-    expect(find.text('TOTAL PLANEJADO'), findsOneWidget);
+    expect(find.text('TOTAL ESTIMADO'), findsOneWidget);
     expect(find.textContaining('Ficaram fora'), findsNothing);
   });
 

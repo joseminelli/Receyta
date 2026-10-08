@@ -55,6 +55,8 @@ class _RecipePricesSheet extends ConsumerWidget {
                         suggestedUnit: suggestedPriceUnit(line.line.unitId),
                       ),
             ),
+          const SizedBox(height: AppSpacing.sm),
+          const CostDisclaimer(),
           if (lines.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
@@ -112,6 +114,29 @@ class _Row extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Nota discreta de que o custo é uma estimativa, com ícone de informação.
+class CostDisclaimer extends StatelessWidget {
+  const CostDisclaimer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.info_outline, size: 18, color: colors.textMuted),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            kCostDisclaimer,
+            style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
+          ),
+        ),
+      ],
     );
   }
 }

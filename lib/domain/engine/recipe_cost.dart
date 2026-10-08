@@ -9,6 +9,11 @@ import 'package:receyta/domain/engine/unit_conversion.dart';
 import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 
+/// Aviso que acompanha qualquer valor de custo: é uma estimativa.
+const kCostDisclaimer = 'Valor estimado. Usa os preços que você informou e '
+    'converte medidas por tabelas aproximadas (como xícara em gramas). Preço '
+    'de mercado, marca, rendimento e desperdício variam.';
+
 enum CostGap {
   /// O ingrediente não tem preço (ou a linha nem ligou a um ingrediente).
   noPrice,

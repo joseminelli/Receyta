@@ -215,6 +215,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 500 g × R\$ 12,00/kg = R\$ 6,00; 4 porções = R\$ 1,50.
+    expect(find.text('CUSTO ESTIMADO'), findsOneWidget);
     expect(find.text('≈ R\$ 6,00'), findsOneWidget);
     expect(find.text('R\$ 1,50 por porção'), findsOneWidget);
     await _flushOpenedTimer(tester);
@@ -251,6 +252,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Preços da receita'), findsOneWidget);
     expect(find.text('Definir preço'), findsOneWidget);
+    expect(find.textContaining('Valor estimado.'), findsOneWidget);
     await _flushOpenedTimer(tester);
   });
 
