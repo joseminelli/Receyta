@@ -467,4 +467,26 @@ void main() {
     expect(after.servings, isNull);
     expect(after.notes, isNull);
   });
+
+  test('ingredientsByRecipe traz as linhas de várias receitas de uma vez',
+      () async {
+    final a = unwrap(await repo.saveDetail(
+      name: 'Bolo',
+      ingredientLines: ['2 xícaras de fubá', '3 ovos'],
+    ));
+    final b = unwrap(await repo.saveDetail(
+      name: 'Omelete',
+      ingredientLines: ['2 ovos'],
+    ));
+    unwrap(await repo.saveDetail(name: 'Vazia'));
+
+    final byRecipe = await repo.ingredientsByRecipe([a.id, b.id]);
+
+    expect(byRecipe.keys.toSet(), {a.id, b.id});
+    expect(
+        byRecipe[a.id]!.map((i) => i.rawText), ['2 xícaras de fubá', '3 ovos']);
+    expect(byRecipe[b.id]!.single.rawText, '2 ovos');
+    expect(byRecipe[a.id]!.every((i) => i.ingredientName != null), isTrue);
+    expect(await repo.ingredientsByRecipe(const []), isEmpty);
+  });
 }

@@ -252,6 +252,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Preços da receita'), findsOneWidget);
     expect(find.text('Definir preço'), findsOneWidget);
+    // As notas ficam atrás do botão, não por extenso na folha.
+    expect(find.textContaining('Valor estimado.'), findsNothing);
+    await tester.tap(find.text('Estimativa · como é calculado'));
+    await tester.pumpAndSettle();
+    expect(find.text('Como é calculado'), findsOneWidget);
     expect(find.textContaining('Valor estimado.'), findsOneWidget);
     expect(find.textContaining('só neste aparelho'), findsOneWidget);
     await _flushOpenedTimer(tester);

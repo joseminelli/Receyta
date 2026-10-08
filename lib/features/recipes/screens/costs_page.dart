@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
+import 'package:receyta/features/planner/screens/meal_slot_picker.dart'
+    show ChoicePill;
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
 import 'package:receyta/features/recipes/screens/cost_notes.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -15,9 +17,10 @@ import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
-/// Quanto custam as refeições planejadas na semana ou no mês, e o que mais
-/// pesou: a receita mais cara e os ingredientes que mais consumiram dinheiro.
-/// Só conta o que tem preço informado — o que ficou de fora é apontado.
+/// Quanto custam as refeições planejadas na semana ou no mês. Uma leitura só,
+/// de cima pra baixo: o total (com o que falta pra ele ficar completo), depois
+/// "onde foi o dinheiro" — por receita ou por ingrediente, escolhendo no
+/// seletor — e, no fim, um link pro "como é calculado".
 class CostsPage extends ConsumerStatefulWidget {
   const CostsPage({super.key, DateTime Function()? clock})
       : _clock = clock ?? DateTime.now;
@@ -30,6 +33,7 @@ class CostsPage extends ConsumerStatefulWidget {
 
 class _CostsPageState extends ConsumerState<CostsPage> {
   late CostPeriod _period = CostPeriod.weekOf(widget._clock());
+  _Mode _mode = _Mode.planned;
 
   void _setKind(CostKind kind) {
     if (kind == _period.kind) return;
@@ -51,45 +55,83 @@ class _CostsPageState extends ConsumerState<CostsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final plan = ref.watch(planCostProvider(_period));
-
     return HeaderScaffold(
       title: 'Custos',
-      subtitle: _label,
       color: TileColor.lime,
       body: Column(
         children: [
-          _PeriodBar(
-            kind: _period.kind,
-            onKind: _setKind,
-            onPrev: () => setState(() => _period = _period.shift(-1)),
-            onNext: () => setState(() => _period = _period.shift(1)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.md,
+              AppSpacing.screen,
+              0,
+            ),
+            child: Row(
+              children: [
+                ChoicePill(
+                  label: 'Planejado',
+                  selected: _mode == _Mode.planned,
+                  onTap: () => setState(() => _mode = _Mode.planned),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                ChoicePill(
+                  label: 'Receitas mais caras',
+                  selected: _mode == _Mode.library,
+                  onTap: () => setState(() => _mode = _Mode.library),
+                ),
+              ],
+            ),
           ),
           Expanded(
-            child: plan.when(
-              loading: () => const Center(child: BrandLoader()),
-              error: (_, __) => const _Message(
-                icon: Icons.priority_high_rounded,
-                title: 'Não deu para calcular os custos',
-              ),
-              data: (p) => _Content(plan: p, period: _period),
-            ),
+            child:
+                _mode == _Mode.planned ? _buildPlanned() : const _LibraryView(),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildPlanned() {
+    final plan = ref.watch(planCostProvider(_period));
+    return Column(
+      children: [
+        _PeriodBar(
+          kind: _period.kind,
+          label: _label,
+          onKind: _setKind,
+          onPrev: () => setState(() => _period = _period.shift(-1)),
+          onNext: () => setState(() => _period = _period.shift(1)),
+        ),
+        Expanded(
+          child: plan.when(
+            loading: () => const Center(child: BrandLoader()),
+            error: (_, __) => const _Message(
+              icon: Icons.priority_high_rounded,
+              title: 'Não deu para calcular os custos',
+            ),
+            data: (p) => _Content(plan: p, key: ValueKey(_period)),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
+enum _Mode { planned, library }
+
+/// Em cima, Semana/Mês; embaixo, o período por extenso entre as setas.
 class _PeriodBar extends StatelessWidget {
   const _PeriodBar({
     required this.kind,
+    required this.label,
     required this.onKind,
     required this.onPrev,
     required this.onNext,
   });
 
   final CostKind kind;
+  final String label;
   final ValueChanged<CostKind> onKind;
   final VoidCallback onPrev;
   final VoidCallback onNext;
@@ -102,31 +144,45 @@ class _PeriodBar extends StatelessWidget {
         AppSpacing.screen,
         AppSpacing.md,
         AppSpacing.screen,
-        AppSpacing.xs,
+        0,
       ),
-      child: Row(
+      child: Column(
         children: [
-          for (final k in CostKind.values) ...[
-            PillButton(
-              label: k == CostKind.week ? 'Semana' : 'Mês',
-              variant: k == kind
-                  ? PillButtonVariant.primary
-                  : PillButtonVariant.secondary,
-              dense: true,
-              onPressed: () => onKind(k),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-          ],
-          const Spacer(),
-          IconButton(
-            tooltip: 'Período anterior',
-            onPressed: onPrev,
-            icon: Icon(Icons.chevron_left_rounded, color: colors.ink),
+          Row(
+            children: [
+              for (final k in CostKind.values) ...[
+                PillButton(
+                  label: k == CostKind.week ? 'Semana' : 'Mês',
+                  variant: k == kind
+                      ? PillButtonVariant.primary
+                      : PillButtonVariant.secondary,
+                  dense: true,
+                  onPressed: () => onKind(k),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+              ],
+            ],
           ),
-          IconButton(
-            tooltip: 'Próximo período',
-            onPressed: onNext,
-            icon: Icon(Icons.chevron_right_rounded, color: colors.ink),
+          Row(
+            children: [
+              IconButton(
+                tooltip: 'Período anterior',
+                onPressed: onPrev,
+                icon: Icon(Icons.chevron_left_rounded, color: colors.ink),
+              ),
+              Expanded(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.display(24),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Próximo período',
+                onPressed: onNext,
+                icon: Icon(Icons.chevron_right_rounded, color: colors.ink),
+              ),
+            ],
           ),
         ],
       ),
@@ -134,14 +190,23 @@ class _PeriodBar extends StatelessWidget {
   }
 }
 
-class _Content extends StatelessWidget {
-  const _Content({required this.plan, required this.period});
+enum _View { recipes, ingredients }
+
+class _Content extends StatefulWidget {
+  const _Content({super.key, required this.plan});
 
   final PlanCost plan;
-  final CostPeriod period;
+
+  @override
+  State<_Content> createState() => _ContentState();
+}
+
+class _ContentState extends State<_Content> {
+  _View _view = _View.recipes;
 
   @override
   Widget build(BuildContext context) {
+    final plan = widget.plan;
     if (plan.recipes.isEmpty) {
       return const _Message(
         icon: Icons.event_busy_outlined,
@@ -162,12 +227,6 @@ class _Content extends StatelessWidget {
       );
     }
 
-    final colors = context.colors;
-    final ranked = plan.rankable;
-    final topRecipes = ranked.take(5).toList();
-    final topIngredients = plan.ingredients.take(5).toList();
-    final maxIngredient = topIngredients.first.cents;
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -176,213 +235,214 @@ class _Content extends StatelessWidget {
         AppSpacing.xxl,
       ),
       children: [
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: colors.ink,
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                plan.missingNames.isEmpty
-                    ? 'TOTAL ESTIMADO'
-                    : 'ESTIMATIVA MÍNIMA',
-                style: context.texts.labelSmall
-                    ?.copyWith(color: colors.onSaturated),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  formatMoney(plan.totalCents),
-                  style: AppTextStyles.display(60)
-                      .copyWith(color: colors.lime, height: 1),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '${plan.recipes.fold<int>(0, (n, r) => n + r.times)} '
-                'refeições com receita',
-                style: context.texts.bodyMedium
-                    ?.copyWith(color: colors.onSaturated),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        if (ranked.isNotEmpty) ...[
-          _SectionTitle('Receita mais cara'),
-          _Highlight(spend: ranked.first),
-          const SizedBox(height: AppSpacing.md),
-        ],
-        _SectionTitle('Ingredientes que mais pesaram'),
-        for (final i in topIngredients)
-          _BarRow(
-            label: i.name,
-            cents: i.cents,
-            fraction: i.cents / maxIngredient,
-          ),
-        if (topRecipes.length > 1) ...[
-          const SizedBox(height: AppSpacing.md),
-          _SectionTitle('Por receita'),
-          for (final r in topRecipes)
-            _ListRow(
-              label: r.times > 1 ? '${r.name} ×${r.times}' : r.name,
-              value: formatMoney(r.cents),
-              onTap: () => context.push('/recipe/${r.recipeId}'),
+        _TotalCard(plan: plan),
+        const SizedBox(height: AppSpacing.lg),
+        Text('Onde foi o dinheiro', style: context.texts.displaySmall),
+        const SizedBox(height: AppSpacing.xs),
+        Row(
+          children: [
+            ChoicePill(
+              label: 'Por receita',
+              selected: _view == _View.recipes,
+              onTap: () => setState(() => _view = _View.recipes),
             ),
-        ],
-        const SizedBox(height: AppSpacing.md),
-        const CostDisclaimer(),
-        if (plan.unrankedCount > 0) ...[
-          const SizedBox(height: AppSpacing.md),
-          _RankingNote(count: plan.unrankedCount),
-        ],
-        if (plan.missingNames.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.sm),
-          _MissingNote(names: plan.missingNames),
-        ],
+            const SizedBox(width: AppSpacing.xs),
+            ChoicePill(
+              label: 'Por ingrediente',
+              selected: _view == _View.ingredients,
+              onTap: () => setState(() => _view = _View.ingredients),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (_view == _View.recipes)
+          _RecipesList(plan: plan)
+        else
+          _IngredientsList(plan: plan),
+        const SizedBox(height: AppSpacing.lg),
+        const HowItWorksLink(),
       ],
     );
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
+/// O número que importa, grande, e embaixo — se faltar preço — o que fazer
+/// pra ele ficar completo.
+class _TotalCard extends StatelessWidget {
+  const _TotalCard({required this.plan});
 
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Text(text, style: context.texts.displaySmall),
-    );
-  }
-}
-
-/// A receita mais cara, no azulejo coral do app.
-class _Highlight extends StatelessWidget {
-  const _Highlight({required this.spend});
-
-  final RecipeSpend spend;
+  final PlanCost plan;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.coral,
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/recipe/${spend.recipeId}'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      spend.name,
-                      style: AppTextStyles.display(28)
-                          .copyWith(color: colors.onSaturated, height: 1.05),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (spend.times > 1)
-                      Text(
-                        'planejada ${spend.times} vezes',
-                        style: context.texts.bodyMedium
-                            ?.copyWith(color: colors.onSaturated),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                formatMoney(spend.cents),
-                style: AppTextStyles.display(30)
-                    .copyWith(color: colors.onSaturated),
-              ),
-            ],
-          ),
-        ),
+    final meals = plan.recipes.fold<int>(0, (n, r) => n + r.times);
+    final missing = plan.missingNames.length;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.ink,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
       ),
-    );
-  }
-}
-
-/// Uma linha com barra proporcional ao maior valor da lista.
-class _BarRow extends StatelessWidget {
-  const _BarRow({
-    required this.label,
-    required this.cents,
-    required this.fraction,
-  });
-
-  final String label;
-  final int cents;
-  final double fraction;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      clipBehavior: Clip.antiAlias,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: context.texts.bodyLarge,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Text(
-                formatMoney(cents),
-                style: context.texts.bodyLarge
-                    ?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: Stack(
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(height: 8, color: colors.paperSoft),
-                FractionallySizedBox(
-                  widthFactor: fraction.clamp(0.04, 1.0),
-                  child: Container(height: 8, color: colors.ink),
+                Text(
+                  missing == 0 ? 'TOTAL ESTIMADO' : 'ESTIMATIVA MÍNIMA',
+                  style: context.texts.labelSmall
+                      ?.copyWith(color: colors.onSaturated),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    formatMoney(plan.totalCents),
+                    style: AppTextStyles.display(60)
+                        .copyWith(color: colors.lime, height: 1),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  meals == 1
+                      ? '1 refeição planejada'
+                      : '$meals refeições planejadas',
+                  style: context.texts.bodyMedium
+                      ?.copyWith(color: colors.onSaturated),
                 ),
               ],
             ),
           ),
+          if (missing > 0)
+            InkWell(
+              onTap: () => context.push('/ingredients'),
+              child: Container(
+                color: colors.inkSoft,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.edit_note_rounded, color: colors.lime),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        missing == 1
+                            ? 'Falta o preço de 1 ingrediente'
+                            : 'Faltam os preços de $missing ingredientes',
+                        style: context.texts.bodyMedium?.copyWith(
+                          color: colors.onSaturated,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Informar',
+                      style: context.texts.labelLarge
+                          ?.copyWith(color: colors.lime),
+                    ),
+                    Icon(Icons.chevron_right, color: colors.lime),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _ListRow extends StatelessWidget {
-  const _ListRow({
+/// Ranking das receitas de preço completo (a primeira leva a etiqueta "Mais
+/// cara"); as incompletas ficam num grupo à parte, sem valor.
+class _RecipesList extends StatelessWidget {
+  const _RecipesList({required this.plan});
+
+  final PlanCost plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final ranked = plan.rankable.take(8).toList();
+    final max = ranked.isEmpty ? 1 : ranked.first.cents;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, r) in ranked.indexed)
+          _RankRow(
+            position: i + 1,
+            label: r.times > 1 ? '${r.name} ×${r.times}' : r.name,
+            cents: r.cents,
+            fraction: max == 0 ? 0 : r.cents / max,
+            badge: i == 0 && ranked.length > 1 ? 'MAIS CARA' : null,
+            onTap: () => context.push('/recipe/${r.recipeId}'),
+          ),
+        if (ranked.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: Text(
+              'Nenhuma receita planejada tem o preço de todos os ingredientes '
+              'ainda.',
+              style:
+                  context.texts.bodyMedium?.copyWith(color: colors.textMuted),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _IngredientsList extends StatelessWidget {
+  const _IngredientsList({required this.plan});
+
+  final PlanCost plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = plan.ingredients.take(8).toList();
+    final max = top.first.cents;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, ing) in top.indexed)
+          _RankRow(
+            position: i + 1,
+            label: ing.name,
+            cents: ing.cents,
+            fraction: ing.cents / max,
+          ),
+      ],
+    );
+  }
+}
+
+/// Uma linha do ranking: posição, nome, valor e uma barra proporcional ao
+/// primeiro colocado.
+class _RankRow extends StatelessWidget {
+  const _RankRow({
+    required this.position,
     required this.label,
-    required this.value,
-    required this.onTap,
+    required this.cents,
+    required this.fraction,
+    this.badge,
+    this.subtitle,
+    this.onTap,
   });
 
+  final int position;
   final String label;
-  final String value;
-  final VoidCallback onTap;
+  final int cents;
+  final double fraction;
+  final String? badge;
+  final String? subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -390,93 +450,158 @@ class _ListRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.sm),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 44),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
-            Expanded(
+            Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              decoration:
+                  BoxDecoration(color: colors.ink, shape: BoxShape.circle),
               child: Text(
-                label,
-                style: context.texts.bodyLarge,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                '$position',
+                style: context.texts.labelLarge?.copyWith(
+                  color: colors.lime,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-            Text(
-              value,
-              style: context.texts.bodyLarge?.copyWith(color: colors.textMuted),
-            ),
-            Icon(Icons.chevron_right, color: colors.textMuted, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Explica por que há receitas fora do ranking de "mais cara".
-class _RankingNote extends StatelessWidget {
-  const _RankingNote({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.leaderboard_outlined, size: 20, color: colors.textMuted),
-        const SizedBox(width: AppSpacing.xs),
-        Expanded(
-          child: Text(
-            count == 1
-                ? '1 receita ficou fora do ranking: só entram as que têm o '
-                    'preço de todos os ingredientes.'
-                : '$count receitas ficaram fora do ranking: só entram as que '
-                    'têm o preço de todos os ingredientes.',
-            style: context.texts.bodyMedium?.copyWith(color: colors.textMuted),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MissingNote extends StatelessWidget {
-  const _MissingNote({required this.names});
-
-  final List<String> names;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final shown = names.take(4).join(', ');
-    final extra = names.length > 4 ? ' e mais ${names.length - 4}' : '';
-    return InkWell(
-      onTap: () => context.push('/ingredients'),
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: colors.paperSoft,
-          borderRadius: BorderRadius.circular(AppRadii.md),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.info_outline, color: colors.textMuted),
             const SizedBox(width: AppSpacing.sm),
             Expanded(
-              child: Text(
-                'Ficaram fora da conta, sem preço ou sem como converter: '
-                '$shown$extra.',
-                style: context.texts.bodyMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          label,
+                          style: context.texts.bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: AppSpacing.xs),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.paper,
+                            borderRadius: BorderRadius.circular(AppRadii.pill),
+                            border: Border.all(color: colors.ink),
+                          ),
+                          child: Text(
+                            badge!,
+                            style: context.texts.labelSmall?.copyWith(
+                              color: colors.ink,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: context.texts.labelMedium
+                          ?.copyWith(color: colors.textMuted),
+                    ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    child: Stack(
+                      children: [
+                        Container(height: 8, color: colors.paperSoft),
+                        FractionallySizedBox(
+                          widthFactor: fraction.clamp(0.04, 1.0),
+                          child: Container(height: 8, color: colors.ink),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            Icon(Icons.chevron_right, color: colors.textMuted),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              formatMoney(cents),
+              style: context.texts.bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "Receitas mais caras": toda a biblioteca, não só o planejado. Só entram as
+/// receitas com o preço de todos os ingredientes.
+class _LibraryView extends ConsumerWidget {
+  const _LibraryView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(libraryCostsProvider);
+    return items.when(
+      loading: () => const Center(child: BrandLoader()),
+      error: (_, __) => const _Message(
+        icon: Icons.priority_high_rounded,
+        title: 'Não deu para calcular os custos',
+      ),
+      data: (list) {
+        if (list.isEmpty) {
+          return _Message(
+            icon: Icons.payments_outlined,
+            title: 'Nenhuma receita com preço completo',
+            body: 'Informe o preço de todos os ingredientes de uma receita e '
+                'ela aparece aqui, da mais cara à mais barata.',
+            action: PillButton(
+              label: 'Informar preços',
+              onPressed: () => context.push('/ingredients'),
+            ),
+          );
+        }
+        final max = list.first.cents;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.screen,
+            AppSpacing.md,
+            AppSpacing.screen,
+            AppSpacing.xxl,
+          ),
+          children: [
+            Text(
+              list.length == 1
+                  ? '1 receita com preço completo'
+                  : '${list.length} receitas com preço completo',
+              style: context.texts.displaySmall,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            for (final (i, item) in list.indexed)
+              _RankRow(
+                position: i + 1,
+                label: item.recipe.name,
+                subtitle: item.perServing == null
+                    ? null
+                    : '${formatMoney(item.perServing!)} por porção',
+                cents: item.cents,
+                fraction: max == 0 ? 0 : item.cents / max,
+                badge: i == 0 && list.length > 1 ? 'MAIS CARA' : null,
+                onTap: () => context.push('/recipe/${item.recipe.id}'),
+              ),
+            const SizedBox(height: AppSpacing.lg),
+            const HowItWorksLink(),
+          ],
+        );
+      },
     );
   }
 }

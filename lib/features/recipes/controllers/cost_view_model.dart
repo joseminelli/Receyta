@@ -6,8 +6,10 @@ import 'package:receyta/data/repositories/meal_plan_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/domain/models/ingredient.dart';
+import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 
 /// Catálogo por id — a conta de custo procura o preço aqui. Reage a qualquer
 /// preço informado ou removido.
@@ -97,4 +99,42 @@ final planCostProvider = FutureProvider.autoDispose
     ));
   }
   return costOfPlan(planned, catalog);
+});
+
+/// Uma receita da biblioteca com o custo completo calculado.
+class LibraryRecipeCost {
+  const LibraryRecipeCost({
+    required this.recipe,
+    required this.cents,
+    this.perServing,
+  });
+
+  final Recipe recipe;
+  final int cents;
+  final int? perServing;
+}
+
+/// Toda receita da biblioteca que tem o preço de TODOS os ingredientes, da
+/// mais cara pra mais barata — independe do que está planejado. As de preço
+/// incompleto ficam de fora (o valor delas seria só uma parte do custo).
+final libraryCostsProvider =
+    FutureProvider.autoDispose<List<LibraryRecipeCost>>((ref) async {
+  final recipes = await ref.watch(allRecipesProvider.future);
+  final catalog = ref.watch(ingredientCatalogProvider);
+  final lines = await ref
+      .read(recipeRepositoryProvider)
+      .ingredientsByRecipe([for (final r in recipes) r.id]);
+
+  final out = <LibraryRecipeCost>[];
+  for (final r in recipes) {
+    final cost = costOfRecipe(lines[r.id] ?? const [], catalog);
+    if (!cost.complete) continue;
+    out.add(LibraryRecipeCost(
+      recipe: r,
+      cents: cost.totalCents,
+      perServing: cost.perServing(r.servings),
+    ));
+  }
+  out.sort((a, b) => b.cents.compareTo(a.cents));
+  return out;
 });

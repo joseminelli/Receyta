@@ -57,7 +57,7 @@ class _RecipePricesSheet extends ConsumerWidget {
                       ),
             ),
           const SizedBox(height: AppSpacing.sm),
-          const CostDisclaimer(),
+          const HowItWorksLink(),
           if (lines.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),

@@ -447,6 +447,27 @@ class RecipeRepository {
     );
   }
 
+  /// Os ingredientes de várias receitas de uma vez (`recipeId` → linhas, na
+  /// ordem de cada receita), com o nome do catálogo — duas consultas no
+  /// total, não uma por receita. Receita sem ingrediente fica sem entrada.
+  Future<Map<String, List<RecipeIngredient>>> ingredientsByRecipe(
+    List<String> recipeIds,
+  ) async {
+    final rows = await _dao.ingredientsForRecipes(recipeIds);
+    final catalogRows = await _ingredientDao.findByIds([
+      for (final r in rows)
+        if (r.ingredientId != null) r.ingredientId!,
+    ]);
+    final namesById = {for (final c in catalogRows) c.id: c.displayName};
+    final out = <String, List<RecipeIngredient>>{};
+    for (final r in rows) {
+      out
+          .putIfAbsent(r.recipeId, () => [])
+          .add(_ingredientToDomain(r, namesById));
+    }
+    return out;
+  }
+
   Tag _tagToDomain(TagRow r) => Tag(id: r.id, name: r.name);
 
   Recipe _toDomain(RecipeRow r) => recipeFromRow(r);

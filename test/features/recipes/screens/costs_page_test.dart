@@ -3,13 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
+import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
 import 'package:receyta/features/recipes/screens/costs_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 
 final _now = DateTime(2026, 10, 15);
 
-Widget _host(PlanCost Function(CostPeriod) build) {
+Widget _host(
+  PlanCost Function(CostPeriod) build, {
+  List<LibraryRecipeCost> library = const [],
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(path: '/', builder: (_, __) => CostsPage(clock: () => _now)),
@@ -23,6 +27,7 @@ Widget _host(PlanCost Function(CostPeriod) build) {
   return ProviderScope(
     overrides: [
       planCostProvider.overrideWith((ref, period) async => build(period)),
+      libraryCostsProvider.overrideWith((ref) async => library),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -41,6 +46,18 @@ const _full = PlanCost(
   missingNames: ['Manjericão'],
 );
 
+LibraryRecipeCost _lib(String id, String name, int cents, {int? perServing}) =>
+    LibraryRecipeCost(
+      recipe: Recipe(
+        id: id,
+        name: name,
+        createdAt: DateTime.utc(2026),
+        updatedAt: DateTime.utc(2026),
+      ),
+      cents: cents,
+      perServing: perServing,
+    );
+
 const _nothing = PlanCost(
   totalCents: 0,
   recipes: [],
@@ -55,24 +72,60 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  testWidgets('mostra total, receita mais cara, pesos e o que ficou de fora',
+  testWidgets('total no alto, o que falta e o ranking por receita',
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(_host((_) => _full));
     await tester.pumpAndSettle();
 
     expect(find.text('ESTIMATIVA MÍNIMA'), findsOneWidget);
-    expect(find.textContaining('Valor estimado.'), findsOneWidget);
-    expect(find.textContaining('só neste aparelho'), findsOneWidget);
     expect(find.text('R\$ 123,40'), findsOneWidget);
-    expect(find.text('Receita mais cara'), findsOneWidget);
-    expect(find.text('planejada 2 vezes'), findsOneWidget);
-    expect(find.text('Queijo'), findsOneWidget);
-    expect(find.text('R\$ 60,00'), findsOneWidget);
-    expect(find.textContaining('Manjericão'), findsOneWidget);
+    expect(find.text('2 refeições planejadas'), findsOneWidget);
+    expect(find.text('Falta o preço de 1 ingrediente'), findsOneWidget);
+
+    expect(find.text('Onde foi o dinheiro'), findsOneWidget);
+    expect(find.text('Lasanha ×2'), findsOneWidget);
+    expect(find.text('MAIS CARA'), findsOneWidget);
+    expect(find.text('R\$ 80,00'), findsOneWidget);
+    expect(find.text('Salada'), findsOneWidget);
+    // Os avisos longos ficam atrás de "como é calculado".
+    expect(find.textContaining('Valor estimado.'), findsNothing);
   });
 
-  testWidgets('receita incompleta fica fora do ranking e a tela explica',
+  testWidgets('"como é calculado" abre as duas notas', (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(_host((_) => _full));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Estimativa · como é calculado'));
+    await tester.tap(find.text('Estimativa · como é calculado'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Como é calculado'), findsOneWidget);
+    expect(find.textContaining('Valor estimado.'), findsOneWidget);
+    expect(find.textContaining('só neste aparelho'), findsOneWidget);
+
+    await tester.tap(find.text('Entendi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Como é calculado'), findsNothing);
+  });
+
+  testWidgets('trocar para "Por ingrediente" mostra o outro ranking',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(_host((_) => _full));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Por ingrediente'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Queijo'), findsOneWidget);
+    expect(find.text('R\$ 60,00'), findsOneWidget);
+    expect(find.text('Tomate'), findsOneWidget);
+    expect(find.text('Lasanha ×2'), findsNothing);
+  });
+
+  testWidgets('receita incompleta some do ranking, sem grupo à parte',
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(_host((_) => const PlanCost(
@@ -92,14 +145,16 @@ void main() {
         )));
     await tester.pumpAndSettle();
 
-    expect(find.text('Receita mais cara'), findsOneWidget);
     expect(find.text('Festa'), findsNothing);
-    expect(find.text('Salada'), findsWidgets);
-    expect(
-        find.textContaining('1 receita ficou fora do ranking'), findsOneWidget);
+    expect(find.text('SEM PREÇO COMPLETO'), findsNothing);
+    expect(find.text('faltam preços'), findsNothing);
+    expect(find.text('Salada'), findsOneWidget);
+    // Sozinha no ranking, a Salada não ganha a etiqueta de "mais cara".
+    expect(find.text('MAIS CARA'), findsNothing);
+    expect(find.text('R\$ 10,00'), findsOneWidget);
   });
 
-  testWidgets('sem nenhuma receita completa não há "mais cara"',
+  testWidgets('nenhuma planejada completa: o ranking explica e não lista',
       (tester) async {
     usePhone(tester);
     await tester.pumpWidget(_host((_) => const PlanCost(
@@ -118,13 +173,61 @@ void main() {
         )));
     await tester.pumpAndSettle();
 
-    expect(find.text('Receita mais cara'), findsNothing);
-    expect(find.text('Ingredientes que mais pesaram'), findsOneWidget);
     expect(
-        find.textContaining('1 receita ficou fora do ranking'), findsOneWidget);
+      find.text(
+        'Nenhuma receita planejada tem o preço de todos os ingredientes ainda.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Bolo'), findsNothing);
+    expect(find.text('MAIS CARA'), findsNothing);
   });
 
-  testWidgets('sem nada faltando o rótulo é "total planejado"', (tester) async {
+  testWidgets('"Receitas mais caras" lista a biblioteca, mesmo sem planejar',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(_host(
+      (_) => _nothing,
+      library: [
+        _lib('r1', 'Lasanha', 8000, perServing: 2000),
+        _lib('r2', 'Salada', 1500),
+      ],
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Nada planejado nesse período'), findsOneWidget);
+
+    await tester.tap(find.text('Receitas mais caras'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 receitas com preço completo'), findsOneWidget);
+    expect(find.text('Lasanha'), findsOneWidget);
+    expect(find.text('MAIS CARA'), findsOneWidget);
+    expect(find.text('R\$ 80,00'), findsOneWidget);
+    expect(find.text('R\$ 20,00 por porção'), findsOneWidget);
+    expect(find.text('Salada'), findsOneWidget);
+    // O seletor de período é do planejado, não daqui.
+    expect(find.byTooltip('Período anterior'), findsNothing);
+
+    await tester.tap(find.text('Salada'));
+    await tester.pumpAndSettle();
+    expect(find.text('ROTA RECEITA r2'), findsOneWidget);
+  });
+
+  testWidgets('sem nenhuma receita completa na biblioteca, convida a informar',
+      (tester) async {
+    await tester.pumpWidget(_host((_) => _nothing));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Receitas mais caras'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nenhuma receita com preço completo'), findsOneWidget);
+
+    await tester.tap(find.text('Informar preços'));
+    await tester.pumpAndSettle();
+    expect(find.text('ROTA ING'), findsOneWidget);
+  });
+
+  testWidgets('sem nada faltando o rótulo é "total estimado"', (tester) async {
     usePhone(tester);
     await tester.pumpWidget(_host((_) => const PlanCost(
           totalCents: 500,
@@ -137,7 +240,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('TOTAL ESTIMADO'), findsOneWidget);
-    expect(find.textContaining('Ficaram fora'), findsNothing);
+    expect(find.textContaining('Falta'), findsNothing);
+    expect(find.text('1 refeição planejada'), findsOneWidget);
+  });
+
+  testWidgets('"Informar" leva pra tela de ingredientes', (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(_host((_) => _full));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Informar'));
+    await tester.pumpAndSettle();
+    expect(find.text('ROTA ING'), findsOneWidget);
   });
 
   testWidgets('nada planejado avisa', (tester) async {
@@ -163,7 +277,7 @@ void main() {
     expect(find.text('ROTA ING'), findsOneWidget);
   });
 
-  testWidgets('trocar para Mês e navegar muda o período pedido',
+  testWidgets('o período aparece por extenso e as setas navegam',
       (tester) async {
     final asked = <CostPeriod>[];
     await tester.pumpWidget(_host((p) {
@@ -172,15 +286,18 @@ void main() {
     }));
     await tester.pumpAndSettle();
     expect(asked.last.kind, CostKind.week);
+    expect(find.text('12 – 18 out'), findsOneWidget);
 
     await tester.tap(find.text('Mês'));
     await tester.pumpAndSettle();
     expect(asked.last.kind, CostKind.month);
     expect(asked.last.start, DateTime.utc(2026, 10));
+    expect(find.text('Outubro 2026'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Período anterior'));
     await tester.pumpAndSettle();
     expect(asked.last.start, DateTime.utc(2026, 9));
+    expect(find.text('Setembro 2026'), findsOneWidget);
   });
 
   testWidgets('tocar numa receita abre a receita', (tester) async {
