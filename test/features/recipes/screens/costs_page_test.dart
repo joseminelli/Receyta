@@ -70,6 +70,58 @@ void main() {
     expect(find.textContaining('Manjericão'), findsOneWidget);
   });
 
+  testWidgets('receita incompleta fica fora do ranking e a tela explica',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(_host((_) => const PlanCost(
+          totalCents: 9000,
+          recipes: [
+            RecipeSpend(
+              recipeId: 'festa',
+              name: 'Festa',
+              cents: 8000,
+              times: 1,
+              complete: false,
+            ),
+            RecipeSpend(recipeId: 'r2', name: 'Salada', cents: 1000, times: 1),
+          ],
+          ingredients: [IngredientSpend(name: 'Queijo', cents: 8000)],
+          missingNames: ['Caldo'],
+        )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Receita mais cara'), findsOneWidget);
+    expect(find.text('Festa'), findsNothing);
+    expect(find.text('Salada'), findsWidgets);
+    expect(
+        find.textContaining('1 receita ficou fora do ranking'), findsOneWidget);
+  });
+
+  testWidgets('sem nenhuma receita completa não há "mais cara"',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(_host((_) => const PlanCost(
+          totalCents: 300,
+          recipes: [
+            RecipeSpend(
+              recipeId: 'r1',
+              name: 'Bolo',
+              cents: 300,
+              times: 1,
+              complete: false,
+            ),
+          ],
+          ingredients: [IngredientSpend(name: 'Ovo', cents: 300)],
+          missingNames: ['Farinha'],
+        )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Receita mais cara'), findsNothing);
+    expect(find.text('Ingredientes que mais pesaram'), findsOneWidget);
+    expect(
+        find.textContaining('1 receita ficou fora do ranking'), findsOneWidget);
+  });
+
   testWidgets('sem nada faltando o rótulo é "total planejado"', (tester) async {
     usePhone(tester);
     await tester.pumpWidget(_host((_) => const PlanCost(

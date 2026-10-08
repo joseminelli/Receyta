@@ -215,6 +215,7 @@ class RecipeSpend {
     required this.name,
     required this.cents,
     required this.times,
+    this.complete = true,
   });
 
   final String recipeId;
@@ -223,6 +224,11 @@ class RecipeSpend {
 
   /// Quantas vezes ela aparece no período.
   final int times;
+
+  /// Todos os ingredientes dela têm preço. Só receita completa entra no
+  /// ranking de "mais cara": com preço faltando, o valor é só parte do custo
+  /// e não dá pra comparar.
+  final bool complete;
 }
 
 class IngredientSpend {
@@ -242,8 +248,18 @@ class PlanCost {
 
   final int totalCents;
 
-  /// Da que mais pesou pra que menos pesou.
+  /// Da que mais pesou pra que menos pesou (todas as planejadas, completas
+  /// ou não).
   final List<RecipeSpend> recipes;
+
+  /// As que podem ser comparadas: só as de preço completo.
+  List<RecipeSpend> get rankable => [
+        for (final r in recipes)
+          if (r.complete) r,
+      ];
+
+  /// Quantas receitas ficaram fora do ranking por falta de preço.
+  int get unrankedCount => recipes.length - rankable.length;
   final List<IngredientSpend> ingredients;
 
   /// Ingredientes que ficaram fora da conta (sem preço ou sem conversão).
@@ -258,7 +274,8 @@ PlanCost costOfPlan(
   Iterable<PlannedRecipe> planned,
   Map<String, Ingredient> catalog,
 ) {
-  final byRecipe = <String, ({String name, int cents, int times})>{};
+  final byRecipe =
+      <String, ({String name, int cents, int times, bool complete})>{};
   final byIngredient = <String, int>{};
   final missing = <String>{};
   var total = 0;
@@ -272,6 +289,7 @@ PlanCost costOfPlan(
       name: p.name,
       cents: (prev?.cents ?? 0) + cost.totalCents,
       times: (prev?.times ?? 0) + 1,
+      complete: (prev?.complete ?? true) && cost.complete,
     );
 
     for (final l in cost.lines) {
@@ -291,6 +309,7 @@ PlanCost costOfPlan(
         name: e.value.name,
         cents: e.value.cents,
         times: e.value.times,
+        complete: e.value.complete,
       ),
   ]..sort((a, b) => b.cents.compareTo(a.cents));
   final ingredients = [

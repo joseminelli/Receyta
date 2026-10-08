@@ -162,7 +162,8 @@ class _Content extends StatelessWidget {
     }
 
     final colors = context.colors;
-    final topRecipes = plan.recipes.take(5).toList();
+    final ranked = plan.rankable;
+    final topRecipes = ranked.take(5).toList();
     final topIngredients = plan.ingredients.take(5).toList();
     final maxIngredient = topIngredients.first.cents;
 
@@ -209,9 +210,11 @@ class _Content extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-        _SectionTitle('Receita mais cara'),
-        _Highlight(spend: plan.recipes.first),
-        const SizedBox(height: AppSpacing.md),
+        if (ranked.isNotEmpty) ...[
+          _SectionTitle('Receita mais cara'),
+          _Highlight(spend: ranked.first),
+          const SizedBox(height: AppSpacing.md),
+        ],
         _SectionTitle('Ingredientes que mais pesaram'),
         for (final i in topIngredients)
           _BarRow(
@@ -229,8 +232,12 @@ class _Content extends StatelessWidget {
               onTap: () => context.push('/recipe/${r.recipeId}'),
             ),
         ],
-        if (plan.missingNames.isNotEmpty) ...[
+        if (plan.unrankedCount > 0) ...[
           const SizedBox(height: AppSpacing.md),
+          _RankingNote(count: plan.unrankedCount),
+        ],
+        if (plan.missingNames.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
           _MissingNote(names: plan.missingNames),
         ],
       ],
@@ -398,6 +405,35 @@ class _ListRow extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Explica por que há receitas fora do ranking de "mais cara".
+class _RankingNote extends StatelessWidget {
+  const _RankingNote({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.leaderboard_outlined, size: 20, color: colors.textMuted),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            count == 1
+                ? '1 receita ficou fora do ranking: só entram as que têm o '
+                    'preço de todos os ingredientes.'
+                : '$count receitas ficaram fora do ranking: só entram as que '
+                    'têm o preço de todos os ingredientes.',
+            style: context.texts.bodyMedium?.copyWith(color: colors.textMuted),
+          ),
+        ),
+      ],
     );
   }
 }

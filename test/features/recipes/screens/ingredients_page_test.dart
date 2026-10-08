@@ -169,6 +169,76 @@ void main() {
     ]);
   });
 
+  testWidgets('a unidade vem por extenso, agrupada, e dá pra trocar',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([_row('2', 'Farinha')]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Definir preço'));
+    await tester.pumpAndSettle();
+    expect(find.text('Quilograma (kg)'), findsOneWidget);
+
+    await tester.tap(find.text('Quilograma (kg)'));
+    await tester.pumpAndSettle();
+    expect(find.text('PESO'), findsOneWidget);
+    expect(find.text('VOLUME'), findsOneWidget);
+    expect(find.text('CONTAGEM'), findsOneWidget);
+    expect(find.text('Gramas (g)'), findsOneWidget);
+    expect(find.text('Litro (L)'), findsOneWidget);
+    expect(find.text('Mililitro (ml)'), findsOneWidget);
+    expect(find.text('Unidade (un)'), findsOneWidget);
+
+    await tester.tap(find.text('Litro (L)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Litro (L)'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField).first, '5');
+    await tester.tap(find.text('Salvar preço'));
+    await tester.pumpAndSettle();
+
+    expect(repo.priceCalls, [
+      (id: '2', price: const IngredientPrice(500, 'l')),
+    ]);
+  });
+
+  testWidgets('seletor de unidade: busca, filtro e voltar sem mudar',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([_row('2', 'Farinha')]));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Definir preço'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Quilograma (kg)'));
+    await tester.pumpAndSettle();
+
+    // Busca ignora acento e caixa.
+    await tester.enterText(find.byType(TextField).last, 'MACO');
+    await tester.pumpAndSettle();
+    expect(find.text('Maço'), findsOneWidget);
+    expect(find.text('Litro (L)'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).last, 'zzz');
+    await tester.pumpAndSettle();
+    expect(find.text('Nenhuma unidade encontrada'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Limpar busca'));
+    await tester.pumpAndSettle();
+
+    // Filtro por tipo.
+    await tester.tap(find.widgetWithText(InkWell, 'Volume').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Litro (L)'), findsOneWidget);
+    expect(find.text('Gramas (g)'), findsNothing);
+    expect(find.text('Dente'), findsNothing);
+
+    // Voltar fecha o seletor sem trocar a unidade.
+    await tester.tap(find.byTooltip('Voltar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Quilograma (kg)'), findsOneWidget);
+    expect(find.text('Buscar unidade'), findsNothing);
+  });
+
   testWidgets('valor inválido mostra o erro e não grava', (tester) async {
     usePhone(tester);
     await tester.pumpWidget(host([_row('2', 'Farinha')]));

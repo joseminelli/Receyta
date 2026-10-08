@@ -249,6 +249,31 @@ void main() {
       expect(plan.missingNames, ['Caldo']);
     });
 
+    test('receita com preço faltando não entra no ranking de mais cara', () {
+      // "Festa" tem o maior valor parcial, mas falta o preço do caldo.
+      final festa = PlannedRecipe(
+        recipeId: 'festa',
+        name: 'Festa',
+        lines: [
+          _line('farinha', qty: 2, unit: 'kg', name: 'Farinha de trigo'),
+          _line('caldo', qty: 1, name: 'Caldo'),
+        ],
+      );
+      final omelete = PlannedRecipe(
+        recipeId: 'omelete',
+        name: 'Omelete',
+        lines: [_line('ovo', qty: 2, name: 'Ovo')],
+      );
+      final plan = costOfPlan([festa, omelete], catalog);
+
+      expect(plan.recipes.first.recipeId, 'festa');
+      expect(plan.recipes.first.complete, isFalse);
+      expect(plan.rankable.map((r) => r.recipeId), ['omelete']);
+      expect(plan.unrankedCount, 1);
+      // O que ela gastou nos ingredientes COM preço ainda conta no total.
+      expect(plan.totalCents, 1200 + 200);
+    });
+
     test('planejamento sem preço nenhum fica vazio', () {
       final plan = costOfPlan(
         [
