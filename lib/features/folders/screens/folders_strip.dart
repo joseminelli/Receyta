@@ -26,8 +26,8 @@ class FoldersStrip extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final folders = ref.watch(recentFoldersProvider).valueOrNull ??
         const <FolderWithCounts>[];
-    final hasCollections = ref.watch(smartCollectionsProvider).isNotEmpty;
-    if (folders.isEmpty && !hasCollections) return const SizedBox.shrink();
+    final collections = ref.watch(smartCollectionsProvider);
+    if (folders.isEmpty && collections.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -35,7 +35,7 @@ class FoldersStrip extends ConsumerWidget {
         _buildHeader(
           context,
           hasFolders: folders.isNotEmpty,
-          hasCollections: hasCollections,
+          collectionCount: collections.length,
         ),
         if (folders.isNotEmpty) _buildList(context, ref, folders),
       ],
@@ -47,18 +47,16 @@ class FoldersStrip extends ConsumerWidget {
   Widget _buildHeader(
     BuildContext context, {
     required bool hasFolders,
-    required bool hasCollections,
+    required int collectionCount,
   }) {
+    final hasCollections = collectionCount > 0;
     final actions = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (hasCollections)
-          PillButton(
-            label: 'Coleções',
-            icon: Icons.bolt_rounded,
-            variant: PillButtonVariant.secondary,
-            dense: true,
-            onPressed: () => context.push('/collections'),
+          _CollectionsButton(
+            count: collectionCount,
+            onTap: () => context.push('/collections'),
           ),
         if (hasFolders) ...[
           const SizedBox(width: AppSpacing.xs),
@@ -161,6 +159,69 @@ class _NewTile extends StatelessWidget {
                     context.texts.labelLarge?.copyWith(color: colors.textMuted),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Atalho das coleções: pílula escura com o raio numa bolinha lima e, no fim,
+/// quantas coleções têm receita hoje. Do tamanho do botão que ocupava o lugar.
+class _CollectionsButton extends StatelessWidget {
+  const _CollectionsButton({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Semantics(
+      button: true,
+      label: 'Coleções, $count',
+      child: Material(
+        color: colors.ink,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: AppSpacing.minTapTarget,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 0, 12, 0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: colors.lime,
+                      shape: BoxShape.circle,
+                    ),
+                    child:
+                        Icon(Icons.bolt_rounded, size: 18, color: colors.ink),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Coleções',
+                    style: context.texts.labelLarge
+                        ?.copyWith(color: colors.onSaturated),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '$count',
+                    style: context.texts.labelLarge?.copyWith(
+                      color: colors.lime,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
