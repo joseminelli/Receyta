@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_stat_*,@drawable/ic_notification_*,@drawable/timer_*,@drawable/ic_timer_*,@drawable/widget_*,@layout/timer_card_*,@layout/widget_today,@mipmap/launcher_icon"
+    tools:keep="@drawable/ic_stat_*,@drawable/ic_notification_*,@drawable/timer_*,@drawable/ic_timer_*,@drawable/widget_*,@drawable/ic_shortcut_*,@layout/timer_card_*,@layout/widget_today,@mipmap/launcher_icon"
     tools:shrinkMode="strict" />

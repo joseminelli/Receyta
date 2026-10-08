@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'package:receyta/data/services/recipe_ocr_service.dart';
 import 'package:receyta/domain/engine/recipe_import.dart';
+import 'package:receyta/features/recipes/screens/duplicate_import_check.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -38,7 +39,7 @@ Future<void> importRecipeFromPhotoFlow(
   if (!context.mounted) return;
 
   result.when(
-    ok: (recipes) => _reviewRecipesOneByOne(context, recipes),
+    ok: (recipes) => _reviewRecipesOneByOne(context, ref, recipes),
     err: (f) => showAppSnackBar(
       message: f.message,
       variant: AppSnackBarVariant.error,
@@ -53,6 +54,7 @@ Future<void> importRecipeFromPhotoFlow(
 /// só as marcadas passam pelo formulário, uma de cada vez.
 Future<void> _reviewRecipesOneByOne(
   BuildContext context,
+  WidgetRef ref,
   List<ImportedRecipe> recipes,
 ) async {
   final toReview = recipes.length == 1
@@ -60,6 +62,8 @@ Future<void> _reviewRecipesOneByOne(
       : await _pickRecipesToInclude(context, recipes);
   if (toReview == null || toReview.isEmpty) return;
   for (final recipe in toReview) {
+    if (!context.mounted) return;
+    if (!await confirmNotDuplicate(context, ref, recipe)) continue;
     if (!context.mounted) return;
     await context.push('/recipe/new', extra: recipe);
   }

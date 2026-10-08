@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
+import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/features/recipes/controllers/similar_recipes.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
@@ -61,6 +63,7 @@ Widget _host({
   RecipeDetail? detail,
   List<ShoppingList> shoppingLists = const [],
   List<MealPlanEntry> upcoming = const [],
+  List<Recipe> similar = const [],
 }) {
   final router = GoRouter(
     initialLocation: '/recipe/r1',
@@ -91,6 +94,16 @@ Widget _host({
       ),
       recipeUpcomingPlanProvider.overrideWith(
         (ref, key) => Stream.value(upcoming),
+      ),
+      similarRecipesProvider.overrideWith(
+        (ref, id) async => [
+          for (final r in similar)
+            PlannerSuggestion(
+              recipe: r,
+              score: 0.5,
+              sharedIngredientNames: const ['Frango', 'Alho'],
+            ),
+        ],
       ),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
@@ -153,6 +166,28 @@ void main() {
     final name = tester.getTopLeft(find.text('Frango ao curry'));
     final ingredients = tester.getTopLeft(find.text('Ingredientes'));
     expect(name.dx, lessThan(ingredients.dx));
+    await _flushOpenedTimer(tester);
+  });
+
+  testWidgets('"Parecidas" mostra as receitas e o que têm em comum',
+      (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host(
+      detail: _detail(),
+      similar: [
+        Recipe(
+          id: 'r2',
+          name: 'Frango xadrez',
+          createdAt: DateTime.utc(2026),
+          updatedAt: DateTime.utc(2026),
+        ),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Parecidas'), 300);
+    expect(find.text('Frango xadrez'), findsOneWidget);
+    expect(find.text('com frango e alho'), findsOneWidget);
     await _flushOpenedTimer(tester);
   });
 

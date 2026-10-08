@@ -130,6 +130,37 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     return out;
   }
 
+  /// Como [activeIngredientSets], mas com a `normalized_key` do ingrediente
+  /// em vez do id — é o que dá pra comparar com um rascunho de import, que
+  /// ainda não tem ingredientes no catálogo.
+  Future<Map<String, Set<String>>> activeIngredientKeySets() async {
+    final rows = await customSelect(
+      'SELECT ri.recipe_id AS rid, i.normalized_key AS k '
+      'FROM recipe_ingredients ri '
+      'JOIN recipes r ON r.id = ri.recipe_id '
+      'JOIN ingredients i ON i.id = ri.ingredient_id '
+      'WHERE r.deleted_at IS NULL',
+      readsFrom: {recipeIngredients, recipes},
+    ).get();
+    final out = <String, Set<String>>{};
+    for (final row in rows) {
+      out
+          .putIfAbsent(row.read<String>('rid'), () => <String>{})
+          .add(row.read<String>('k'));
+    }
+    return out;
+  }
+
+  /// Id, nome e link de origem de toda receita ativa.
+  Future<List<({String id, String name, String? sourceUrl})>>
+      activeIdentities() async {
+    final rows =
+        await (select(recipes)..where((r) => r.deletedAt.isNull())).get();
+    return [
+      for (final r in rows) (id: r.id, name: r.name, sourceUrl: r.sourceUrl),
+    ];
+  }
+
   Future<List<RecipeIngredientRow>> ingredientsOf(String recipeId) {
     return (select(recipeIngredients)
           ..where((i) => i.recipeId.equals(recipeId))

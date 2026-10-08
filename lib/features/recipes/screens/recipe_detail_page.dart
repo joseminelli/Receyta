@@ -10,7 +10,10 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
 import 'package:receyta/domain/engine/unit_conversion.dart';
+import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/features/recipes/controllers/similar_recipes.dart';
+import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/tag.dart';
@@ -278,6 +281,9 @@ class _Detail extends StatelessWidget {
               _buildPreparoHeaderSliver(context, hasSteps),
               if (hasSteps) _buildStepsSliver(loadedDetail),
               _buildNotesSliver(context, recipe, hasSteps),
+              SliverToBoxAdapter(
+                child: _SimilarRecipes(recipeId: recipe.id, hasSteps: hasSteps),
+              ),
             ],
           ],
         ),
@@ -433,7 +439,7 @@ class _Detail extends StatelessWidget {
           AppSpacing.screen,
           0,
           AppSpacing.screen,
-          hasSteps ? 120 : AppSpacing.xxl,
+          0,
         ),
         child: hasNotes
             ? Column(
@@ -446,6 +452,96 @@ class _Detail extends StatelessWidget {
                 ],
               )
             : const SizedBox.shrink(),
+      ),
+    );
+  }
+}
+
+/// "Parecidas": outras receitas suas com ingredientes em comum. Sem sugestão
+/// (ou ainda carregando) só sobra o respiro de baixo, que também afasta o
+/// conteúdo da barra fixa "Modo cozinha".
+class _SimilarRecipes extends ConsumerWidget {
+  const _SimilarRecipes({required this.recipeId, required this.hasSteps});
+
+  final String recipeId;
+  final bool hasSteps;
+
+  static const _tileWidth = 170.0;
+
+  String _reason(PlannerSuggestion s) {
+    final names = [
+      for (final n in s.sharedIngredientNames.take(2)) n.toLowerCase()
+    ];
+    return switch (names.length) {
+      0 => '',
+      1 => 'com ${names[0]}',
+      _ => 'com ${names[0]} e ${names[1]}',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items =
+        ref.watch(similarRecipesProvider(recipeId)).valueOrNull ?? const [];
+    final colors = context.colors;
+    return ColoredBox(
+      color: colors.paper,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: hasSteps ? 120 : AppSpacing.xxl),
+        child: items.isEmpty
+            ? const SizedBox.shrink()
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: AppSpacing.xl),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: _Label('Parecidas'),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screen,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final s in items) ...[
+                          SizedBox(
+                            width: _tileWidth,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                RecipeCard(
+                                  recipe: s.recipe,
+                                  onTap: () => context.push(
+                                    '/recipe/${s.recipe.id}',
+                                    extra: s.recipe,
+                                  ),
+                                ),
+                                if (_reason(s).isNotEmpty) ...[
+                                  const SizedBox(height: AppSpacing.xs),
+                                  Text(
+                                    _reason(s),
+                                    style: context.texts.labelMedium
+                                        ?.copyWith(color: colors.textMuted),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

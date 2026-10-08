@@ -64,6 +64,35 @@ class PlannerSuggestionService {
       now: day,
       limit: limit,
     );
+    return _hydrate(raw);
+  }
+
+  /// Outras receitas suas que dividem ingredientes com [recipeId] (a seção
+  /// "Parecidas" do detalhe). Exige pelo menos [minShared] em comum, pra não
+  /// sugerir só porque as duas levam o mesmo ingrediente corriqueiro.
+  Future<List<PlannerSuggestion>> similarTo(
+    String recipeId, {
+    int limit = 4,
+    int minShared = 2,
+  }) async {
+    final catalog = await _recipeDao.activeIngredientSets();
+    final target = catalog[recipeId];
+    if (target == null || target.length < minShared) return const [];
+
+    final raw = suggestRecipes(
+      catalog: catalog,
+      target: target,
+      excludeRecipeIds: {recipeId},
+      now: DateTime.now(),
+      limit: catalog.length,
+    );
+    return _hydrate([
+      for (final s in raw)
+        if (s.sharedIngredientIds.length >= minShared) s,
+    ].take(limit).toList());
+  }
+
+  Future<List<PlannerSuggestion>> _hydrate(List<RecipeSuggestion> raw) async {
     if (raw.isEmpty) return const [];
 
     final recipes = {

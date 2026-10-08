@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/services/recipe_import_service.dart';
 import 'package:receyta/domain/engine/recipe_import.dart';
+import 'package:receyta/features/recipes/screens/duplicate_import_check.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/app_dialog.dart';
@@ -52,16 +53,23 @@ Future<void> importRecipeFromUrlFlow(
   if (!context.mounted) return;
 
   final recipe = result.valueOrNull;
-  final draft = recipe == null ? null : await _withPhoto(ref, recipe);
+  if (recipe == null) {
+    result.when(
+      ok: (_) {},
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+    return;
+  }
+
+  if (!await confirmNotDuplicate(context, ref, recipe)) return;
   if (!context.mounted) return;
 
-  result.when(
-    ok: (_) => context.push('/recipe/new', extra: draft),
-    err: (f) => showAppSnackBar(
-      message: f.message,
-      variant: AppSnackBarVariant.error,
-    ),
-  );
+  final draft = await _withPhoto(ref, recipe);
+  if (!context.mounted) return;
+  context.push('/recipe/new', extra: draft);
 }
 
 /// Baixa e guarda a foto da página, se houver. Qualquer falha devolve a

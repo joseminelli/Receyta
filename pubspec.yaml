@@ -61,6 +61,9 @@ dependencies:
   # Utilities for keeping screen on (mode cozinha)
   wakelock_plus: ^1.2.0
 
+  # Atalhos ao segurar o ícone do app (Nova receita, Compras, Cozinhar a última)
+  quick_actions: ^1.0.8
+
   # Animation helpers
   flutter_animate: ^4.5.0
 

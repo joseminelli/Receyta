@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:receyta/data/services/auto_backup_service.dart';
+import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/home_widget_service.dart';
+import 'package:receyta/data/services/launcher_shortcuts.dart';
 import 'package:receyta/data/services/recipe_link_remote.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
@@ -88,12 +90,36 @@ class _HomeShellState extends ConsumerState<HomeShell>
         ref.read(homeWidgetSyncProvider).start();
         ref.read(autoBackupProvider.notifier).runIfDue();
         ref.read(syncCoordinatorProvider.notifier).start();
+        ref.read(launcherShortcutsProvider).start(_onShortcut);
       },
     );
     WidgetsBinding.instance.addObserver(this);
     _mediaSub = ReceiveSharingIntent.instance
         .getMediaStream()
         .listen(_handleSharedMedia, onError: (_) {});
+  }
+
+  /// Atalho do ícone do app: volta pra home e abre o destino por cima, então
+  /// "voltar" sempre cai numa tela conhecida.
+  Future<void> _onShortcut(LauncherShortcut shortcut) async {
+    if (!mounted) return;
+    final router = GoRouter.of(context);
+    router.go('/');
+    switch (shortcut) {
+      case LauncherShortcut.newRecipe:
+        router.push('/recipe/new');
+      case LauncherShortcut.shopping:
+        _select(2);
+      case LauncherShortcut.cookLast:
+        final recent =
+            await ref.read(recipeRepositoryProvider).watchRecent(limit: 1).first;
+        if (!mounted) return;
+        if (recent.isEmpty) {
+          showAppSnackBar(message: 'Você ainda não abriu nenhuma receita.');
+          return;
+        }
+        router.push('/recipe/${recent.first.id}/cook');
+    }
   }
 
   Future<void> _checkInitialShare() async {
