@@ -25,6 +25,9 @@ mixin _$Ingredient {
   /// "Sempre tenho" (G11): fica fora das listas de compras geradas.
   bool get inPantry => throw _privateConstructorUsedError;
 
+  /// Preço que a pessoa informou, por [priceBasis]. Nulo = sem preço.
+  IngredientPrice? get price => throw _privateConstructorUsedError;
+
   /// Create a copy of Ingredient
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -44,7 +47,8 @@ abstract class $IngredientCopyWith<$Res> {
       String normalizedKey,
       String? categoryId,
       int usageCount,
-      bool inPantry});
+      bool inPantry,
+      IngredientPrice? price});
 }
 
 /// @nodoc
@@ -68,6 +72,7 @@ class _$IngredientCopyWithImpl<$Res, $Val extends Ingredient>
     Object? categoryId = freezed,
     Object? usageCount = null,
     Object? inPantry = null,
+    Object? price = freezed,
   }) {
     return _then(_value.copyWith(
       id: null == id
@@ -94,6 +99,10 @@ class _$IngredientCopyWithImpl<$Res, $Val extends Ingredient>
           ? _value.inPantry
           : inPantry // ignore: cast_nullable_to_non_nullable
               as bool,
+      price: freezed == price
+          ? _value.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as IngredientPrice?,
     ) as $Val);
   }
 }
@@ -112,7 +121,8 @@ abstract class _$$IngredientImplCopyWith<$Res>
       String normalizedKey,
       String? categoryId,
       int usageCount,
-      bool inPantry});
+      bool inPantry,
+      IngredientPrice? price});
 }
 
 /// @nodoc
@@ -134,6 +144,7 @@ class __$$IngredientImplCopyWithImpl<$Res>
     Object? categoryId = freezed,
     Object? usageCount = null,
     Object? inPantry = null,
+    Object? price = freezed,
   }) {
     return _then(_$IngredientImpl(
       id: null == id
@@ -160,6 +171,10 @@ class __$$IngredientImplCopyWithImpl<$Res>
           ? _value.inPantry
           : inPantry // ignore: cast_nullable_to_non_nullable
               as bool,
+      price: freezed == price
+          ? _value.price
+          : price // ignore: cast_nullable_to_non_nullable
+              as IngredientPrice?,
     ));
   }
 }
@@ -173,7 +188,8 @@ class _$IngredientImpl implements _Ingredient {
       required this.normalizedKey,
       this.categoryId,
       this.usageCount = 0,
-      this.inPantry = false});
+      this.inPantry = false,
+      this.price});
 
   @override
   final String id;
@@ -192,9 +208,13 @@ class _$IngredientImpl implements _Ingredient {
   @JsonKey()
   final bool inPantry;
 
+  /// Preço que a pessoa informou, por [priceBasis]. Nulo = sem preço.
+  @override
+  final IngredientPrice? price;
+
   @override
   String toString() {
-    return 'Ingredient(id: $id, displayName: $displayName, normalizedKey: $normalizedKey, categoryId: $categoryId, usageCount: $usageCount, inPantry: $inPantry)';
+    return 'Ingredient(id: $id, displayName: $displayName, normalizedKey: $normalizedKey, categoryId: $categoryId, usageCount: $usageCount, inPantry: $inPantry, price: $price)';
   }
 
   @override
@@ -212,12 +232,13 @@ class _$IngredientImpl implements _Ingredient {
             (identical(other.usageCount, usageCount) ||
                 other.usageCount == usageCount) &&
             (identical(other.inPantry, inPantry) ||
-                other.inPantry == inPantry));
+                other.inPantry == inPantry) &&
+            (identical(other.price, price) || other.price == price));
   }
 
   @override
   int get hashCode => Object.hash(runtimeType, id, displayName, normalizedKey,
-      categoryId, usageCount, inPantry);
+      categoryId, usageCount, inPantry, price);
 
   /// Create a copy of Ingredient
   /// with the given fields replaced by the non-null parameter values.
@@ -235,7 +256,8 @@ abstract class _Ingredient implements Ingredient {
       required final String normalizedKey,
       final String? categoryId,
       final int usageCount,
-      final bool inPantry}) = _$IngredientImpl;
+      final bool inPantry,
+      final IngredientPrice? price}) = _$IngredientImpl;
 
   @override
   String get id;
@@ -251,6 +273,10 @@ abstract class _Ingredient implements Ingredient {
   /// "Sempre tenho" (G11): fica fora das listas de compras geradas.
   @override
   bool get inPantry;
+
+  /// Preço que a pessoa informou, por [priceBasis]. Nulo = sem preço.
+  @override
+  IngredientPrice? get price;
 
   /// Create a copy of Ingredient
   /// with the given fields replaced by the non-null parameter values.

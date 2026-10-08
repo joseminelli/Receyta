@@ -67,6 +67,21 @@ class IngredientRepository {
     }
   }
 
+  /// Informa o preço do ingrediente; [price] nulo apaga. Preço zero ou
+  /// negativo não vale.
+  Future<Result<void>> setPrice(String id, IngredientPrice? price) async {
+    if (price != null && price.cents <= 0) {
+      return const Err(
+          ValidationFailure('O preço precisa ser maior que zero.'));
+    }
+    try {
+      await _dao.setPrice(id, cents: price?.cents, basis: price?.basis.code);
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao gravar o preço', cause: e));
+    }
+  }
+
   /// Apaga um ingrediente (C6). Só funciona se ele não estiver em nenhuma
   /// receita — o banco recusa a exclusão nesse caso e devolve `Err`; a UI só
   /// mostra o botão de apagar quando já sabe que o uso é 0.
@@ -98,7 +113,16 @@ class IngredientRepository {
         categoryId: r.categoryId,
         usageCount: r.usageCount,
         inPantry: r.inPantry,
+        price: _priceOf(r),
       );
+
+  IngredientPrice? _priceOf(IngredientRow r) {
+    final basis = PriceBasis.fromCode(r.priceBasis);
+    final cents = r.priceCents;
+    return (basis == null || cents == null)
+        ? null
+        : IngredientPrice(cents, basis);
+  }
 }
 
 final ingredientRepositoryProvider = Provider<IngredientRepository>((ref) {

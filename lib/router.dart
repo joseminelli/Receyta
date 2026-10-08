@@ -13,6 +13,7 @@ import 'package:receyta/features/onboarding/screens/welcome_page.dart';
 import 'package:receyta/core/day.dart';
 import 'package:receyta/features/planner/screens/day_page.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
+import 'package:receyta/features/recipes/screens/costs_page.dart';
 import 'package:receyta/features/recipes/screens/history_page.dart';
 import 'package:receyta/features/recipes/screens/ingredients_page.dart';
 import 'package:receyta/features/recipes/screens/recipe_detail_page.dart';
@@ -118,6 +119,11 @@ final router = GoRouter(
       path: '/folders',
       name: 'folders',
       builder: (context, state) => const AllFoldersPage(),
+    ),
+    GoRoute(
+      path: '/costs',
+      name: 'costs',
+      builder: (context, state) => const CostsPage(),
     ),
     GoRoute(
       path: '/retrospective',

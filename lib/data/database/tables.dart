@@ -126,6 +126,11 @@ class Ingredients extends Table {
   DateTimeColumn get pantryUpdatedAt => dateTime().nullable()();
   DateTimeColumn get pantrySyncedAt => dateTime().nullable()();
 
+  /// Preço informado pela pessoa, em centavos, por [priceBasis] (`kg`, `l` ou
+  /// `un`). Nulo = não informado. Só local: não sincroniza.
+  IntColumn get priceCents => integer().nullable()();
+  TextColumn get priceBasis => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }

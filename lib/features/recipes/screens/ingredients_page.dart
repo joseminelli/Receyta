@@ -11,6 +11,7 @@ import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart'
     show ChoicePill;
 import 'package:receyta/features/recipes/screens/ingredient_picker.dart';
+import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -108,6 +109,10 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
         variant: AppSnackBarVariant.error,
       ),
     );
+  }
+
+  Future<void> _editPrice(Ingredient ingredient) async {
+    await showIngredientPriceSheet(context, ingredient);
   }
 
   Future<void> _delete(Ingredient ingredient) async {
@@ -322,6 +327,7 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
           onMergeDuplicate: dup == null ? null : () => _merge(ingredient, dup),
           onPickMerge: () => _pickAndMerge(ingredient),
           onTogglePantry: () => _togglePantry(ingredient),
+          onEditPrice: () => _editPrice(ingredient),
           onDelete: count == 0 ? () => _delete(ingredient) : null,
         );
       },
@@ -354,6 +360,7 @@ class _IngredientRow extends StatelessWidget {
     required this.onMergeDuplicate,
     required this.onPickMerge,
     required this.onTogglePantry,
+    required this.onEditPrice,
     required this.onDelete,
   });
 
@@ -363,6 +370,7 @@ class _IngredientRow extends StatelessWidget {
   final VoidCallback? onMergeDuplicate;
   final VoidCallback onPickMerge;
   final VoidCallback onTogglePantry;
+  final VoidCallback onEditPrice;
 
   /// Nulo quando o ingrediente está em uso — `RecipeIngredients.ingredientId`
   /// é `onDelete: restrict`, então apagar falharia; some o botão em vez de
@@ -410,6 +418,19 @@ class _IngredientRow extends StatelessWidget {
                     ),
                     if (ingredient.inPantry)
                       _Pill(label: 'Sempre tenho', color: colors.ink),
+                    InkWell(
+                      onTap: onEditPrice,
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      child: ingredient.price == null
+                          ? _Pill(
+                              label: 'Definir preço',
+                              color: colors.textMuted,
+                            )
+                          : _Pill(
+                              label: priceTag(ingredient.price!),
+                              color: colors.ink,
+                            ),
+                    ),
                     if (duplicateOf != null)
                       InkWell(
                         onTap: onMergeDuplicate,

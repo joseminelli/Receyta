@@ -360,6 +360,12 @@ class _Shortcuts extends StatelessWidget {
       'Seu mês e seu ano na cozinha',
       '/retrospective'
     ),
+    (
+      Icons.payments_outlined,
+      'Custos',
+      'Quanto custa a semana e o que pesou',
+      '/costs'
+    ),
     (Icons.sell_outlined, 'Tags', 'Organize e renomeie', '/tags'),
     (
       Icons.kitchen_outlined,

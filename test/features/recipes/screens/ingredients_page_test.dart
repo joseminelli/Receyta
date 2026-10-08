@@ -15,6 +15,13 @@ class _SpyRepo extends IngredientRepository {
   _SpyRepo(super.dao);
 
   final pantryCalls = <({String id, bool value})>[];
+  final priceCalls = <({String id, IngredientPrice? price})>[];
+
+  @override
+  Future<Result<void>> setPrice(String id, IngredientPrice? price) async {
+    priceCalls.add((id: id, price: price));
+    return const Ok(null);
+  }
 
   @override
   Future<Result<void>> setInPantry(String id, bool value) async {
@@ -24,13 +31,14 @@ class _SpyRepo extends IngredientRepository {
 }
 
 IngredientWithCount _row(String id, String name,
-        {int count = 1, bool pantry = false}) =>
+        {int count = 1, bool pantry = false, IngredientPrice? price}) =>
     (
       ingredient: Ingredient(
         id: id,
         displayName: name,
         normalizedKey: name.toLowerCase(),
         inPantry: pantry,
+        price: price,
       ),
       count: count,
     );
@@ -139,5 +147,58 @@ void main() {
       (id: '2', value: true),
       (id: '1', value: false),
     ]);
+  });
+
+  testWidgets('"Definir preço" abre a folha e grava o valor digitado',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([_row('2', 'Farinha')]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Definir preço'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '8,50');
+    await tester.tap(find.text('por litro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Salvar preço'));
+    await tester.pumpAndSettle();
+
+    expect(repo.priceCalls, [
+      (id: '2', price: const IngredientPrice(850, PriceBasis.liter)),
+    ]);
+  });
+
+  testWidgets('valor inválido mostra o erro e não grava', (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([_row('2', 'Farinha')]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Definir preço'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '0');
+    await tester.tap(find.text('Salvar preço'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('maior que zero'), findsOneWidget);
+    expect(repo.priceCalls, isEmpty);
+  });
+
+  testWidgets('ingrediente com preço mostra a etiqueta e permite remover',
+      (tester) async {
+    usePhone(tester);
+    await tester.pumpWidget(host([
+      _row('2', 'Farinha', price: const IngredientPrice(600, PriceBasis.kg)),
+    ]));
+    await tester.pumpAndSettle();
+
+    expect(find.text('R\$ 6,00/kg'), findsOneWidget);
+    expect(find.text('Definir preço'), findsNothing);
+
+    await tester.tap(find.text('R\$ 6,00/kg'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Remover preço'));
+    await tester.pumpAndSettle();
+
+    expect(repo.priceCalls, [(id: '2', price: null)]);
   });
 }

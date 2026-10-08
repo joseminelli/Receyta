@@ -1,0 +1,223 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:receyta/domain/engine/recipe_cost.dart';
+import 'package:receyta/domain/models/ingredient.dart';
+import 'package:receyta/domain/models/recipe_ingredient.dart';
+
+Ingredient _ing(String id, String name, [IngredientPrice? price]) => Ingredient(
+      id: id,
+      displayName: name,
+      normalizedKey: name.toLowerCase(),
+      price: price,
+    );
+
+RecipeIngredient _line(
+  String ingredientId, {
+  double? qty,
+  String? unit,
+  String name = '',
+  String raw = '',
+}) =>
+    RecipeIngredient(
+      id: 'l-$ingredientId-${qty ?? 0}-$unit',
+      recipeId: 'r',
+      rawText: raw.isEmpty ? name : raw,
+      position: 0,
+      ingredientId: ingredientId,
+      ingredientName: name.isEmpty ? null : name,
+      quantity: qty,
+      unitId: unit,
+    );
+
+void main() {
+  final catalog = {
+    'farinha': _ing('farinha', 'Farinha de trigo',
+        const IngredientPrice(600, PriceBasis.kg)),
+    'ovo': _ing('ovo', 'Ovo', const IngredientPrice(100, PriceBasis.unit)),
+    'leite':
+        _ing('leite', 'Leite', const IngredientPrice(500, PriceBasis.liter)),
+    'sal': _ing('sal', 'Sal', const IngredientPrice(300, PriceBasis.kg)),
+    'alho': _ing('alho', 'Alho', const IngredientPrice(4000, PriceBasis.kg)),
+    'caldo': _ing('caldo', 'Caldo'),
+  };
+
+  group('costOfRecipe', () {
+    test('massa × preço por kg', () {
+      final c = costOfRecipe(
+        [_line('farinha', qty: 500, unit: 'g', name: 'Farinha de trigo')],
+        catalog,
+      );
+      expect(c.totalCents, 300);
+      expect(c.complete, isTrue);
+    });
+
+    test('volume vira massa pela densidade quando o preço é por kg', () {
+      // 2 xícaras de farinha = 480 ml × 0,5 g/ml = 240 g → R$ 1,44
+      final c = costOfRecipe(
+        [_line('farinha', qty: 2, unit: 'xicara', name: 'Farinha de trigo')],
+        catalog,
+      );
+      expect(c.totalCents, 144);
+    });
+
+    test('preço por unidade vale pra "3 ovos" (sem unidade) e "unidade"', () {
+      expect(
+        costOfRecipe([_line('ovo', qty: 3, name: 'Ovo')], catalog).totalCents,
+        300,
+      );
+      expect(
+        costOfRecipe(
+                [_line('ovo', qty: 2, unit: 'unidade', name: 'Ovo')], catalog)
+            .totalCents,
+        200,
+      );
+    });
+
+    test('preço por litro: volume direto, e massa via densidade', () {
+      expect(
+        costOfRecipe([_line('leite', qty: 1, unit: 'xicara', name: 'Leite')],
+                catalog)
+            .totalCents,
+        120, // 240 ml × R$ 5,00/L
+      );
+      // 245 g de leite ÷ 1,0208 g/ml ≈ 240 ml
+      expect(
+        costOfRecipe(
+                [_line('leite', qty: 245, unit: 'g', name: 'Leite')], catalog)
+            .totalCents,
+        120,
+      );
+    });
+
+    test('o fator das porções escala a conta', () {
+      final c = costOfRecipe(
+        [_line('farinha', qty: 500, unit: 'g', name: 'Farinha de trigo')],
+        catalog,
+        factor: 2,
+      );
+      expect(c.totalCents, 600);
+    });
+
+    test('"a gosto" não entra nem conta como lacuna', () {
+      final c = costOfRecipe(
+        [
+          _line('farinha', qty: 500, unit: 'g', name: 'Farinha de trigo'),
+          _line('sal', qty: 1, unit: 'a_gosto', name: 'Sal'),
+        ],
+        catalog,
+      );
+      expect(c.totalCents, 300);
+      expect(c.gaps, isEmpty);
+      expect(c.complete, isTrue);
+    });
+
+    test('sem preço e sem conversão viram lacunas, fora da soma', () {
+      final c = costOfRecipe(
+        [
+          _line('farinha', qty: 500, unit: 'g', name: 'Farinha de trigo'),
+          _line('caldo', qty: 1, unit: 'xicara', name: 'Caldo'),
+          _line('alho', qty: 2, unit: 'dente', name: 'Alho'),
+        ],
+        catalog,
+      );
+      expect(c.totalCents, 300);
+      expect(c.complete, isFalse);
+      expect(
+        {for (final g in c.gaps) g.name: g.gap},
+        {'Caldo': CostGap.noPrice, 'Alho': CostGap.cannotConvert},
+      );
+    });
+
+    test('linha sem ingrediente ligado conta como sem preço', () {
+      final c = costOfRecipe(
+        [
+          const RecipeIngredient(
+            id: 'x',
+            recipeId: 'r',
+            rawText: 'um pouco de nada',
+            position: 0,
+            quantity: 1,
+          ),
+        ],
+        catalog,
+      );
+      expect(c.isEmpty, isTrue);
+      expect(c.gaps.single.gap, CostGap.noPrice);
+    });
+
+    test('custo por porção', () {
+      final c = costOfRecipe(
+        [_line('farinha', qty: 500, unit: 'g', name: 'Farinha de trigo')],
+        catalog,
+      );
+      expect(c.perServing(4), 75);
+      expect(c.perServing(null), isNull);
+      expect(c.perServing(0), isNull);
+    });
+  });
+
+  group('costOfPlan', () {
+    test('soma, agrupa por receita e ordena do mais caro', () {
+      final bolo = PlannedRecipe(
+        recipeId: 'bolo',
+        name: 'Bolo',
+        lines: [
+          _line('farinha', qty: 500, unit: 'g', name: 'Farinha de trigo'),
+          _line('ovo', qty: 3, name: 'Ovo'),
+        ],
+      );
+      final omelete = PlannedRecipe(
+        recipeId: 'omelete',
+        name: 'Omelete',
+        lines: [
+          _line('ovo', qty: 2, name: 'Ovo'),
+          _line('caldo', qty: 1, name: 'Caldo'),
+        ],
+      );
+      final plan = costOfPlan([bolo, omelete, bolo], catalog);
+
+      expect(plan.totalCents, (300 + 300) * 2 + 200);
+      expect(plan.recipes.first.recipeId, 'bolo');
+      expect(plan.recipes.first.times, 2);
+      expect(plan.recipes.first.cents, 1200);
+      expect(plan.ingredients.first.name, 'Ovo');
+      expect(plan.ingredients.first.cents, 3 * 100 * 2 + 200);
+      expect(plan.missingNames, ['Caldo']);
+    });
+
+    test('planejamento sem preço nenhum fica vazio', () {
+      final plan = costOfPlan(
+        [
+          PlannedRecipe(
+            recipeId: 'a',
+            name: 'A',
+            lines: [_line('caldo', qty: 1, name: 'Caldo')],
+          ),
+        ],
+        catalog,
+      );
+      expect(plan.isEmpty, isTrue);
+      expect(plan.missingNames, ['Caldo']);
+    });
+  });
+
+  group('dinheiro', () {
+    test('formatMoney', () {
+      expect(formatMoney(0), 'R\$ 0,00');
+      expect(formatMoney(5), 'R\$ 0,05');
+      expect(formatMoney(2340), 'R\$ 23,40');
+      expect(formatMoney(123456), 'R\$ 1.234,56');
+    });
+
+    test('parseMoneyToCents', () {
+      expect(parseMoneyToCents('8,50'), 850);
+      expect(parseMoneyToCents('8.50'), 850);
+      expect(parseMoneyToCents('R\$ 8,50'), 850);
+      expect(parseMoneyToCents('1.250,90'), 125090);
+      expect(parseMoneyToCents('1.250'), 125000);
+      expect(parseMoneyToCents('12'), 1200);
+      expect(parseMoneyToCents('0'), isNull);
+      expect(parseMoneyToCents('abc'), isNull);
+      expect(parseMoneyToCents(''), isNull);
+    });
+  });
+}

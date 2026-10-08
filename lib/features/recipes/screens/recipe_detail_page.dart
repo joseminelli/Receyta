@@ -9,10 +9,13 @@ import 'package:receyta/core/unit_label.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/ingredient_parser.dart';
+import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/domain/engine/unit_conversion.dart';
 import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
 import 'package:receyta/features/recipes/controllers/similar_recipes.dart';
+import 'package:receyta/features/recipes/screens/recipe_prices_sheet.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
@@ -356,6 +359,8 @@ class _Detail extends StatelessWidget {
                 action: _CountPill(detail!.ingredients.length, 'item', 'itens'),
               ),
               const SizedBox(height: AppSpacing.sm),
+              _CostRow(recipeId: recipe.id, servings: recipe.servings),
+              const SizedBox(height: AppSpacing.sm),
             ],
           ],
         ),
@@ -452,6 +457,115 @@ class _Detail extends StatelessWidget {
                 ],
               )
             : const SizedBox.shrink(),
+      ),
+    );
+  }
+}
+
+/// Custo da receita logo abaixo do título "Ingredientes". Só mostra o valor
+/// quando TODOS os ingredientes têm preço — um total parcial enganaria. Antes
+/// disso o cartão convida a completar, com uma barra de quantos já têm preço.
+/// Tocar abre os preços da receita.
+class _CostRow extends ConsumerWidget {
+  const _CostRow({required this.recipeId, required this.servings});
+
+  final String recipeId;
+  final int? servings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cost = ref.watch(recipeCostProvider(recipeId));
+    if (cost == null || cost.countedLines == 0) return const SizedBox.shrink();
+    final colors = context.colors;
+
+    final complete = cost.complete;
+    final perServing = cost.perServing(servings);
+    final missing = cost.countedLines - cost.pricedLines;
+
+    final String title;
+    final String subtitle;
+    if (complete) {
+      title = formatMoney(cost.totalCents);
+      subtitle = perServing == null
+          ? 'custo estimado'
+          : '${formatMoney(perServing)} por porção';
+    } else if (cost.pricedLines == 0) {
+      title = 'Quanto custa esta receita?';
+      subtitle = 'Informe o preço dos ingredientes';
+    } else {
+      title = 'Falta pouco para saber o custo';
+      subtitle = missing == 1
+          ? 'Falta o preço de 1 ingrediente'
+          : 'Faltam os preços de $missing ingredientes';
+    }
+
+    return Material(
+      color: colors.paperSoft,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => showRecipePricesSheet(context, recipeId),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration:
+                    BoxDecoration(color: colors.ink, shape: BoxShape.circle),
+                child: Icon(
+                  complete ? Icons.payments_rounded : Icons.payments_outlined,
+                  size: 22,
+                  color: colors.lime,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (complete)
+                      Text(
+                        '≈ $title',
+                        style: AppTextStyles.display(28)
+                            .copyWith(color: colors.ink, height: 1),
+                      )
+                    else
+                      Text(
+                        title,
+                        style: context.texts.bodyLarge
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: context.texts.labelLarge
+                          ?.copyWith(color: colors.textMuted),
+                    ),
+                    if (!complete && cost.pricedLines > 0) ...[
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppRadii.pill),
+                        child: Stack(
+                          children: [
+                            Container(height: 6, color: colors.paper),
+                            FractionallySizedBox(
+                              widthFactor: cost.pricedLines / cost.countedLines,
+                              child: Container(height: 6, color: colors.ink),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(Icons.chevron_right, color: colors.textMuted),
+            ],
+          ),
+        ),
       ),
     );
   }

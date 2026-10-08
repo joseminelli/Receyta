@@ -149,6 +149,17 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
         .write(IngredientsCompanion(inPantry: Value(value)));
   }
 
+  /// Grava (ou, com [cents] nulo, apaga) o preço do ingrediente.
+  Future<int> setPrice(String id, {int? cents, String? basis}) {
+    final has = cents != null && basis != null;
+    return (update(ingredients)..where((i) => i.id.equals(id))).write(
+      IngredientsCompanion(
+        priceCents: Value(has ? cents : null),
+        priceBasis: Value(has ? basis : null),
+      ),
+    );
+  }
+
   Future<void> merge(String sourceId, String targetId) {
     if (sourceId == targetId) return Future.value();
     return transaction(() async {
@@ -189,6 +200,21 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
       if (source.inPantry) {
         await (update(ingredients)..where((i) => i.id.equals(targetId)))
             .write(const IngredientsCompanion(inPantry: Value(true)));
+      }
+
+      if (source.priceCents != null && source.priceBasis != null) {
+        final target = await (select(ingredients)
+              ..where((i) => i.id.equals(targetId)))
+            .getSingleOrNull();
+        if (target != null && target.priceCents == null) {
+          await (update(ingredients)..where((i) => i.id.equals(targetId)))
+              .write(
+            IngredientsCompanion(
+              priceCents: Value(source.priceCents),
+              priceBasis: Value(source.priceBasis),
+            ),
+          );
+        }
       }
 
       await (delete(ingredients)..where((i) => i.id.equals(sourceId))).go();

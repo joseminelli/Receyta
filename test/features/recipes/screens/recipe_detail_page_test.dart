@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/domain/models/planner_suggestion.dart';
 import 'package:receyta/domain/models/recipe.dart';
@@ -64,6 +65,7 @@ Widget _host({
   List<ShoppingList> shoppingLists = const [],
   List<MealPlanEntry> upcoming = const [],
   List<Recipe> similar = const [],
+  List<Ingredient> catalog = const [],
 }) {
   final router = GoRouter(
     initialLocation: '/recipe/r1',
@@ -95,6 +97,7 @@ Widget _host({
       recipeUpcomingPlanProvider.overrideWith(
         (ref, key) => Stream.value(upcoming),
       ),
+      allIngredientsProvider.overrideWith((ref) => Stream.value(catalog)),
       similarRecipesProvider.overrideWith(
         (ref, id) async => [
           for (final r in similar)
@@ -188,6 +191,75 @@ void main() {
     await tester.scrollUntilVisible(find.text('Parecidas'), 300);
     expect(find.text('Frango xadrez'), findsOneWidget);
     expect(find.text('com frango e alho'), findsOneWidget);
+    await _flushOpenedTimer(tester);
+  });
+
+  testWidgets('custo completo: mostra o total e o valor por porção',
+      (tester) async {
+    _usePhoneSize(tester);
+    final base = _detail();
+    final priced = base.copyWith(
+      ingredients: [base.ingredients.first.copyWith(ingredientId: 'frango')],
+    );
+    await tester.pumpWidget(_host(
+      detail: priced,
+      catalog: const [
+        Ingredient(
+          id: 'frango',
+          displayName: 'Frango',
+          normalizedKey: 'frango',
+          price: IngredientPrice(1200, PriceBasis.kg),
+        ),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    // 500 g × R\$ 12,00/kg = R\$ 6,00; 4 porções = R\$ 1,50.
+    expect(find.text('≈ R\$ 6,00'), findsOneWidget);
+    expect(find.text('R\$ 1,50 por porção'), findsOneWidget);
+    await _flushOpenedTimer(tester);
+  });
+
+  testWidgets('custo incompleto: não mostra valor, só o que falta',
+      (tester) async {
+    _usePhoneSize(tester);
+    final base = _detail();
+    final partial = base.copyWith(
+      ingredients: [
+        base.ingredients.first.copyWith(ingredientId: 'frango'),
+        base.ingredients.last,
+      ],
+    );
+    await tester.pumpWidget(_host(
+      detail: partial,
+      catalog: const [
+        Ingredient(
+          id: 'frango',
+          displayName: 'Frango',
+          normalizedKey: 'frango',
+          price: IngredientPrice(1200, PriceBasis.kg),
+        ),
+      ],
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('≈ R\$'), findsNothing);
+    expect(find.text('Falta pouco para saber o custo'), findsOneWidget);
+    expect(find.text('Falta o preço de 1 ingrediente'), findsOneWidget);
+
+    await tester.tap(find.text('Falta pouco para saber o custo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Preços da receita'), findsOneWidget);
+    expect(find.text('Definir preço'), findsOneWidget);
+    await _flushOpenedTimer(tester);
+  });
+
+  testWidgets('sem nenhum preço, o cartão convida a informar', (tester) async {
+    _usePhoneSize(tester);
+    await tester.pumpWidget(_host(detail: _detail()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Quanto custa esta receita?'), findsOneWidget);
     await _flushOpenedTimer(tester);
   });
 

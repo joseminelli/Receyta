@@ -25,11 +25,11 @@ void main() {
     await db.validateDatabaseSchema(validateDropped: false);
   });
 
-  test('schema do código bate com o snapshot v12 versionado', () async {
-    final connection = await verifier.startAt(12);
+  test('schema do código bate com o snapshot v13 versionado', () async {
+    final connection = await verifier.startAt(13);
     final db = AppDatabase.forTesting(connection);
     addTearDown(db.close);
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
   });
 
   test('migração v1→v2: dados preservados, ingredient_id vira nulável',
@@ -54,7 +54,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final kept = await db.customSelect(
@@ -96,7 +96,7 @@ void main() {
     await at2.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final recipe = await db
@@ -137,7 +137,7 @@ void main() {
     await at3.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
     // O backfill de `last_opened_at` roda em `ensureReady()` (não na
     // migração em si — ver o comentário em `app_database.dart`), então o
@@ -176,7 +176,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final recipe =
@@ -208,7 +208,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final row = await db
@@ -236,7 +236,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final row = await db
@@ -264,7 +264,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final recipe = await db
@@ -308,7 +308,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
     await db.ensureReady();
 
@@ -336,7 +336,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final list = await db.select(db.shoppingLists).getSingle();
@@ -357,7 +357,7 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     expect((await db.select(db.shoppingLists).getSingle()).spaceId, 'casa-1');
@@ -380,12 +380,33 @@ void main() {
     await oldDb.close();
 
     final db = AppDatabase.forTesting(schema.newConnection());
-    await verifier.migrateAndValidate(db, 12);
+    await verifier.migrateAndValidate(db, 13);
     addTearDown(db.close);
 
     final item = await db.select(db.shoppingListItems).getSingle();
     expect(item.manualName, 'Leite');
     expect(item.addedBy, isNull);
     expect(item.checkedBy, isNull);
+  });
+
+  test('migração v12→v13: ingredientes preservados, sem preço', () async {
+    final schema = await verifier.schemaAt(12);
+
+    final oldDb = AppDatabase.forTesting(schema.newConnection());
+    await oldDb.customStatement(
+      "INSERT INTO ingredients (id, display_name, normalized_key, usage_count, "
+      "in_pantry) VALUES ('i1', 'Farinha', 'farinha', 0, 1)",
+    );
+    await oldDb.close();
+
+    final db = AppDatabase.forTesting(schema.newConnection());
+    await verifier.migrateAndValidate(db, 13);
+    addTearDown(db.close);
+
+    final row = await db.select(db.ingredients).getSingle();
+    expect(row.displayName, 'Farinha');
+    expect(row.inPantry, isTrue);
+    expect(row.priceCents, isNull);
+    expect(row.priceBasis, isNull);
   });
 }
