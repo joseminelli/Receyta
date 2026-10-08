@@ -56,7 +56,10 @@ class RecipeOcrService {
       final recipes = parseOcrLinesMulti(recognized.text.split('\n'));
       if (recipes.isEmpty) {
         return const Err(
-          ValidationFailure('Não consegui ler texto nessa foto.'),
+          ValidationFailure(
+            'Não consegui ler texto nessa foto. Letra de mão (cursiva) não é '
+            'reconhecida: use texto impresso.',
+          ),
         );
       }
       return Ok(recipes);

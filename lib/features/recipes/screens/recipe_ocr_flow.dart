@@ -65,6 +65,12 @@ Future<void> _reviewRecipesOneByOne(
     if (!context.mounted) return;
     if (!await confirmNotDuplicate(context, ref, recipe)) continue;
     if (!context.mounted) return;
+    if (recipe.ingredientLines.isEmpty && recipe.stepLines.isEmpty) {
+      showAppSnackBar(
+        message: 'Li muito pouco desta foto. Se a receita é escrita à mão, '
+            'o app não consegue ler letra de mão.',
+      );
+    }
     await context.push('/recipe/new', extra: recipe);
   }
 }
@@ -206,26 +212,62 @@ class _OcrLoadingDialog extends StatelessWidget {
   }
 }
 
+/// Quanto o OCR do aparelho entende: texto impresso (livro, revista, print),
+/// não letra de mão.
+const kOcrHandwritingNotice = 'Funciona melhor com texto impresso: livros, '
+    'revistas, prints e telas. Letra de mão (cursiva) normalmente não é '
+    'reconhecida.';
+
+/// Aviso discreto, com ícone, de que letra de mão não é lida.
+class OcrHandwritingNote extends StatelessWidget {
+  const OcrHandwritingNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.draw_outlined, size: 18, color: colors.textMuted),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            kOcrHandwritingNotice,
+            style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 Future<ImageSource?> _pickImageSource(BuildContext context) {
   return showModalBottomSheet<ImageSource>(
     context: context,
     builder: (sheet) => AppSheetFrame(
       title: 'Importar de foto',
       subtitle: 'Lê o texto da receita. A imagem não fica salva.',
-      child: AppSheetOptions(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppSheetOption(
-            icon: Icons.photo_camera_outlined,
-            title: 'Tirar foto',
-            subtitle: 'Fotografe a receita agora',
-            onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
+          AppSheetOptions(
+            children: [
+              AppSheetOption(
+                icon: Icons.photo_camera_outlined,
+                title: 'Tirar foto',
+                subtitle: 'Fotografe a receita agora',
+                onTap: () => Navigator.of(sheet).pop(ImageSource.camera),
+              ),
+              AppSheetOption(
+                icon: Icons.photo_library_outlined,
+                title: 'Escolher da galeria',
+                subtitle: 'Um print ou foto que você já tem',
+                onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
+              ),
+            ],
           ),
-          AppSheetOption(
-            icon: Icons.photo_library_outlined,
-            title: 'Escolher da galeria',
-            subtitle: 'Um print ou foto que você já tem',
-            onTap: () => Navigator.of(sheet).pop(ImageSource.gallery),
-          ),
+          const SizedBox(height: AppSpacing.sm),
+          const OcrHandwritingNote(),
         ],
       ),
     ),
