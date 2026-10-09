@@ -25,13 +25,9 @@ class RecipeImportService {
     }
 
     try {
-      final response = await _client.get(
-        uri,
-        headers: const {
-          'User-Agent':
-              'Mozilla/5.0 (compatible; ReceytaApp/1.0; +https://receyta.app)',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await _client
+          .get(uri, headers: _pageHeaders)
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         return Err(NetworkFailure(
@@ -39,10 +35,7 @@ class RecipeImportService {
         ));
       }
 
-      // `response.body` usa o charset do `Content-Type`; quando o site não
-      // declara um (comum), cai pro padrão antigo `latin1` mesmo a página
-      // sendo UTF-8 de verdade — decodifica sempre como UTF-8 explicitamente.
-      final html = utf8.decode(response.bodyBytes, allowMalformed: true);
+      final html = _decodeHtml(response.bodyBytes);
       final recipe = extractRecipeFromHtml(html, sourceUrl: url);
       if (recipe == null) {
         return const Err(ValidationFailure(
@@ -85,6 +78,27 @@ class RecipeImportService {
 }
 
 const _maxImageBytes = 8 * 1024 * 1024;
+
+/// Cabeçalhos de navegador de verdade: sites atrás de Cloudflare e afins
+/// recusam User-Agent que se anuncia como robô.
+const _pageHeaders = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+};
+
+/// UTF-8 estrito primeiro; se a página não for UTF-8 de verdade (sites
+/// antigos em ISO-8859-1), cai pra `latin1` em vez de trocar os acentos por
+/// lixo. `response.body` não serve: sem charset declarado ele assume latin1
+/// mesmo em página UTF-8.
+String _decodeHtml(Uint8List bytes) {
+  try {
+    return utf8.decode(bytes);
+  } on FormatException {
+    return latin1.decode(bytes);
+  }
+}
 
 final recipeImportServiceProvider =
     Provider<RecipeImportService>((ref) => RecipeImportService());

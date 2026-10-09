@@ -7,6 +7,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:html/dom.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../core/tag_name.dart';
@@ -69,12 +70,8 @@ ImportedRecipe? extractRecipeFromHtml(String html, {String? sourceUrl}) {
   for (final script in scripts) {
     final text = script.text.trim();
     if (text.isEmpty) continue;
-    Object? json;
-    try {
-      json = jsonDecode(text);
-    } catch (_) {
-      continue;
-    }
+    final json = _decodeLenient(text);
+    if (json == null) continue;
     final node = _findRecipeNode(json);
     if (node != null) {
       final ogImage = document
@@ -83,18 +80,76 @@ ImportedRecipe? extractRecipeFromHtml(String html, {String? sourceUrl}) {
       return _parseRecipeNode(node, sourceUrl, ogImage);
     }
   }
-  return null;
+
+  final micro = _microdataRecipe(document);
+  if (micro == null) return null;
+  final ogImage = document
+      .querySelector('meta[property="og:image"]')
+      ?.attributes['content'];
+  return _parseRecipeNode(micro, sourceUrl, ogImage);
+}
+
+/// JSON-LD de CMS costuma vir com quebra de linha ou tab crus dentro das
+/// strings, o que o JSON rejeita; na segunda tentativa troca por espaço.
+Object? _decodeLenient(String text) {
+  try {
+    return jsonDecode(text);
+  } catch (_) {
+    try {
+      return jsonDecode(text.replaceAll(RegExp(r'[\u0000-\u001F]'), ' '));
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/// Receita marcada como microdata (`itemtype=".../Recipe"`), usada por sites
+/// que nunca migraram pra JSON-LD. Devolve no mesmo formato do JSON-LD pra
+/// reaproveitar o `_parseRecipeNode`.
+Map<String, dynamic>? _microdataRecipe(Document document) {
+  final root = document.querySelector('[itemtype*="schema.org/Recipe"]');
+  if (root == null) return null;
+
+  String clean(String s) => s.replaceAll(RegExp(r'\s+'), ' ').trim();
+  String? valueOf(Element e) =>
+      e.attributes['content'] ?? e.attributes['datetime'] ?? e.text;
+  String? one(String prop) {
+    final e = root.querySelector('[itemprop="$prop"]');
+    final v = e == null ? null : valueOf(e);
+    return v == null || clean(v).isEmpty ? null : clean(v);
+  }
+
+  List<String> many(String prop) => [
+        for (final e in root.querySelectorAll('[itemprop="$prop"]'))
+          if (e.querySelectorAll('li').isNotEmpty)
+            for (final li in e.querySelectorAll('li')) clean(li.text)
+          else
+            clean(valueOf(e) ?? ''),
+      ].where((s) => s.isNotEmpty).toList();
+
+  final name = one('name');
+  if (name == null) return null;
+  final img = root.querySelector('[itemprop="image"]');
+  return {
+    'name': name,
+    'description': one('description'),
+    'prepTime': one('prepTime'),
+    'cookTime': one('cookTime'),
+    'recipeYield': one('recipeYield') ?? one('yield'),
+    'recipeIngredient': [...many('recipeIngredient'), ...many('ingredients')],
+    'recipeInstructions': many('recipeInstructions'),
+    'image': img?.attributes['src'] ??
+        img?.attributes['content'] ??
+        img?.attributes['href'],
+  };
 }
 
 Map<String, dynamic>? _findRecipeNode(Object? json) {
   if (json is Map<String, dynamic>) {
     if (_isRecipeType(json['@type'])) return json;
-    final graph = json['@graph'];
-    if (graph is List) {
-      for (final node in graph) {
-        final found = _findRecipeNode(node);
-        if (found != null) return found;
-      }
+    for (final key in const ['@graph', 'mainEntity']) {
+      final found = _findRecipeNode(json[key]);
+      if (found != null) return found;
     }
     return null;
   }
@@ -107,9 +162,10 @@ Map<String, dynamic>? _findRecipeNode(Object? json) {
   return null;
 }
 
+/// Aceita `Recipe`, `recipe` e `https://schema.org/Recipe`.
 bool _isRecipeType(Object? type) {
-  if (type is String) return type == 'Recipe';
-  if (type is List) return type.contains('Recipe');
+  if (type is String) return type.split('/').last.toLowerCase() == 'recipe';
+  if (type is List) return type.any(_isRecipeType);
   return false;
 }
 
@@ -128,13 +184,35 @@ ImportedRecipe _parseRecipeNode(
     prepMinutes: _parseIsoDurationMinutes(node['prepTime']),
     cookMinutes: _parseIsoDurationMinutes(node['cookTime']),
     servings: _parseServings(node['recipeYield'] ?? node['yield']),
-    ingredientLines:
-        _stringList(node['recipeIngredient'] ?? node['ingredients']),
+    ingredientLines: _rejoinSplitIngredients(
+      _stringList(node['recipeIngredient'] ?? node['ingredients']),
+    ),
     stepLines: _extractSteps(node['recipeInstructions']),
     sourceUrl: sourceUrl,
     imageUrl:
         _absoluteHttpUrl(_firstImageUrl(node['image']) ?? ogImage, sourceUrl),
   );
+}
+
+final _bareQuantity = RegExp(r'^\d+(?:[.,/]\d+)?(?:\s+\d+/\d+)?$|^[½⅓⅔¼¾⅛]$');
+
+/// Alguns sites (ex.: superkoch.com.br) quebram cada `<li>` na quebra de
+/// linha e mandam `"700"`, `"g de frango"` como dois ingredientes. Só junta
+/// em pares quando o padrão é inequívoco: lista de tamanho par, com ao menos
+/// duas linhas que são só um número, todas em posição par. Uma lista normal
+/// nunca tem uma linha que é só "700".
+List<String> _rejoinSplitIngredients(List<String> lines) {
+  if (lines.length < 4 || lines.length.isOdd) return lines;
+  var bare = 0;
+  for (var i = 0; i < lines.length; i++) {
+    if (!_bareQuantity.hasMatch(lines[i])) continue;
+    if (i.isOdd) return lines;
+    bare++;
+  }
+  if (bare < 2) return lines;
+  return [
+    for (var i = 0; i < lines.length; i += 2) '${lines[i]} ${lines[i + 1]}',
+  ];
 }
 
 /// `image` pode ser texto, `ImageObject` (`url`/`contentUrl`) ou lista de
@@ -236,7 +314,8 @@ List<String> _extractSteps(Object? value) {
         out.add(t);
       }
     } else if (node is Map<String, dynamic>) {
-      if (node['@type'] == 'HowToSection') {
+      if (node['@type'] == 'HowToSection' ||
+          (node['text'] == null && node['itemListElement'] != null)) {
         walk(node['itemListElement'], splitSentences: splitSentences);
       } else {
         final text = node['text'] ?? node['name'];
