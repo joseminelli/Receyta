@@ -389,4 +389,36 @@ void main() {
       expect(r.name, 'pasta de gergelim');
     });
   });
+
+  group('unidade por extenso', () {
+    test('"500 gramas de maionese": gramas é a unidade, não o nome', () {
+      final r = parseIngredientLine('500 gramas de maionese');
+      expect(r.quantity, 500);
+      expect(r.unitCode, 'g');
+      expect(r.name, 'maionese');
+    });
+
+    test('abreviações e plurais comuns', () {
+      for (final (text, unit, name) in [
+        ('1 grama de sal', 'g', 'sal'),
+        ('200 gr de manteiga', 'g', 'manteiga'),
+        ('1 quilo de açúcar', 'kg', 'açúcar'),
+        ('2 quilos de batata', 'kg', 'batata'),
+        ('1,5 kg de frango', 'kg', 'frango'),
+        ('1 litro de leite', 'l', 'leite'),
+        ('2 litros de água', 'l', 'água'),
+        ('250 mililitros de creme de leite', 'ml', 'creme de leite'),
+        ('500 Gramas de Maionese', 'g', 'Maionese'),
+      ]) {
+        final r = parseIngredientLine(text);
+        expect(r.unitCode, unit, reason: text);
+        expect(r.name, name, reason: text);
+      }
+    });
+
+    test('palavra que só começa igual não vira unidade', () {
+      final r = parseIngredientLine('2 gratinados de queijo');
+      expect(r.unitCode, isNull);
+    });
+  });
 }

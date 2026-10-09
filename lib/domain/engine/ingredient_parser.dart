@@ -33,9 +33,32 @@ class ParsedIngredientLine {
 
 const _connectors = {'de', 'da', 'do'};
 
+/// Outras formas de escrever uma unidade (sem acento, minúsculas): o seed só
+/// tem o símbolo ("g", "kg", "L"), mas quem digita escreve "500 gramas de
+/// maionese". Sem isto, "gramas" virava parte do nome do ingrediente.
 const _unitSynonyms = {
   'colher': 'colher_sopa',
   'colheres': 'colher_sopa',
+  'grama': 'g',
+  'gramas': 'g',
+  'gr': 'g',
+  'grs': 'g',
+  'quilo': 'kg',
+  'quilos': 'kg',
+  'kilo': 'kg',
+  'kilos': 'kg',
+  'quilograma': 'kg',
+  'quilogramas': 'kg',
+  'kilograma': 'kg',
+  'kilogramas': 'kg',
+  'miligrama': 'mg',
+  'miligramas': 'mg',
+  'litro': 'l',
+  'litros': 'l',
+  'lt': 'l',
+  'lts': 'l',
+  'mililitro': 'ml',
+  'mililitros': 'ml',
 };
 
 const _fractionChars = {

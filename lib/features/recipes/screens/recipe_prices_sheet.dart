@@ -56,6 +56,14 @@ class _RecipePricesSheet extends ConsumerWidget {
                         suggestedUnit: suggestedPriceUnit(line.line.unitId),
                       ),
             ),
+          if (cost != null && cost.lines.any((l) => !l.counted)) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Itens sem quantidade ou "a gosto" (como sal e cheiro-verde) '
+              'ficam fora da conta.',
+              style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           const HowItWorksLink(),
           if (lines.isEmpty)

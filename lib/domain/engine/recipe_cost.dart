@@ -11,8 +11,9 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 
 /// Aviso que acompanha qualquer valor de custo: é uma estimativa.
 const kCostDisclaimer = 'Valor estimado. Usa os preços que você informou e '
-    'converte medidas por tabelas aproximadas (como xícara em gramas). Preço '
-    'de mercado, marca, rendimento e desperdício variam.';
+    'converte medidas por tabelas aproximadas (como xícara em gramas). Itens '
+    'sem quantidade ("sal", "a gosto") ficam fora da conta. Preço de mercado, '
+    'marca, rendimento e desperdício variam.';
 
 /// Onde os preços moram: só no aparelho. Não sincronizam com a conta e não
 /// entram no backup `.receyta`. (Se isso mudar, mudar este texto junto.)
@@ -100,7 +101,10 @@ LineCost _costOfLine(
   double factor,
 ) {
   final unit = line.unitId == null ? null : _unitByCode[line.unitId];
-  if (unit?.kind == 'subjective') {
+  // "A gosto", "pitada" e linhas sem quantidade nenhuma ("sal", "cheiro
+  // verde", "sal e cheiro verde") são tempero: custo desprezível e sem como
+  // calcular. Ficam fora da conta em vez de travar o custo da receita.
+  if (unit?.kind == 'subjective' || line.quantity == null) {
     return LineCost(line: line, counted: false);
   }
 
@@ -110,8 +114,8 @@ LineCost _costOfLine(
   if (price == null) {
     return LineCost(line: line, gap: CostGap.noPrice);
   }
-  final quantity = line.quantity;
-  if (quantity == null || quantity <= 0) {
+  final quantity = line.quantity!;
+  if (quantity <= 0) {
     return LineCost(line: line, gap: CostGap.cannotConvert);
   }
 

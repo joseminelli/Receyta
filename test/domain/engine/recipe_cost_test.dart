@@ -175,6 +175,32 @@ void main() {
       expect(c.complete, isTrue);
     });
 
+    test('linha sem quantidade ("sal e cheiro verde") não trava o custo', () {
+      final c = costOfRecipe(
+        [
+          _line('farinha', qty: 500, unit: 'g', name: 'Farinha de trigo'),
+          _line('sal', name: 'Sal e cheiro verde'),
+          _line('caldo', name: 'Pimenta'),
+        ],
+        catalog,
+      );
+      expect(c.totalCents, 300);
+      expect(c.gaps, isEmpty);
+      expect(c.complete, isTrue);
+      expect(c.countedLines, 1);
+      expect(c.lines.where((l) => !l.counted).length, 2);
+    });
+
+    test('receita só de linhas sem quantidade não tem custo a mostrar', () {
+      final c = costOfRecipe(
+        [_line('sal', name: 'Sal'), _line('caldo', name: 'Cheiro verde')],
+        catalog,
+      );
+      expect(c.countedLines, 0);
+      expect(c.complete, isFalse);
+      expect(c.isEmpty, isTrue);
+    });
+
     test('sem preço e sem conversão viram lacunas, fora da soma', () {
       final c = costOfRecipe(
         [
