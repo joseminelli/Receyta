@@ -55,8 +55,9 @@ class AboutPage extends ConsumerWidget {
                   'Tudo fica guardado no seu aparelho. Só se você entrar com '
                   'o Google as receitas, as pastas, as listas e as fotos '
                   'passam a ser copiadas para a sua conta, para aparecerem em '
-                  'outros aparelhos. Não vendemos nem compartilhamos o que '
-                  'você guarda.',
+                  'outros aparelhos. Os preços dos ingredientes ficam só no '
+                  'aparelho. Não vendemos nem compartilhamos o que você '
+                  'guarda.',
                   style: context.texts.bodyMedium
                       ?.copyWith(color: colors.textMuted),
                 ),
@@ -192,7 +193,7 @@ const List<_Feature> _features = [
   (
     Icons.menu_book_outlined,
     'Receitas e pastas',
-    'Crie, importe de um link e organize com pastas e tags.',
+    'Crie, importe de um link ou de uma foto e organize com pastas e tags.',
   ),
   (
     Icons.timer_outlined,
@@ -201,7 +202,7 @@ const List<_Feature> _features = [
   ),
   (
     Icons.calendar_month_outlined,
-    'Calendário de refeições',
+    'Agenda de refeições',
     'Planeje a semana e receba um lembrete para não esquecer.',
   ),
   (
@@ -213,6 +214,17 @@ const List<_Feature> _features = [
     Icons.kitchen_outlined,
     'Despensa',
     'Marque o que você já tem e veja o que dá pra fazer agora.',
+  ),
+  (
+    Icons.payments_outlined,
+    'Custo estimado',
+    'Informe o preço dos ingredientes e veja quanto custa cada receita e a '
+        'semana.',
+  ),
+  (
+    Icons.auto_graph,
+    'Retrospectiva e coleções',
+    'Seu mês e seu ano na cozinha, e listas que se montam sozinhas.',
   ),
   (
     Icons.cloud_sync_outlined,
@@ -279,14 +291,15 @@ const List<_Qa> _faq = [
   ),
   (
     'Como trago receitas de outros lugares?',
-    'Na aba de receitas, use "Importar" para colar o link de uma receita, '
-        'ou abra um arquivo de backup do Receyta.',
+    'Na aba de receitas, toque no + e escolha importar de um link ou de '
+        'uma foto, ou abra um arquivo de backup do Receyta.',
   ),
   (
     'Troquei de celular. Como levo minhas receitas?',
     'Entre com a mesma conta do Google no aparelho novo: receitas, pastas, '
-        'listas e fotos voltam sozinhas. Sem conta, faça um backup nos '
-        'ajustes e abra o arquivo no aparelho novo.',
+        'listas e fotos voltam sozinhas (os preços dos ingredientes ficam só '
+        'no aparelho e precisam ser informados de novo). Sem conta, faça um '
+        'backup nos ajustes e abra o arquivo no aparelho novo.',
   ),
   (
     'Apaguei uma receita sem querer. E agora?',

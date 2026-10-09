@@ -366,7 +366,12 @@ class _Shortcuts extends StatelessWidget {
       'Quanto custa a semana e o que pesou',
       '/costs'
     ),
-    (Icons.sell_outlined, 'Tags', 'Organize e renomeie', '/tags'),
+    (
+      Icons.sell_outlined,
+      'Tags',
+      'Veja o uso e apague as que não usa',
+      '/tags'
+    ),
     (
       Icons.kitchen_outlined,
       'Despensa',
@@ -376,7 +381,7 @@ class _Shortcuts extends StatelessWidget {
     (
       Icons.egg_alt_outlined,
       'Ingredientes',
-      'Mescle duplicados, apague os sem uso',
+      'Preços, despensa, mesclar duplicados',
       '/ingredients'
     ),
     (

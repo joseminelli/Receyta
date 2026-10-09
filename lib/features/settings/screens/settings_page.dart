@@ -80,7 +80,8 @@ class SettingsPage extends ConsumerWidget {
         if (loggedIn)
           'Apaga receitas, pastas, tags, ingredientes e fotos só neste '
               'aparelho. A sua conta continua com uma cópia, e ela volta '
-              'quando o app sincronizar. Para apagar também da conta, use '
+              'quando o app sincronizar (menos os preços dos ingredientes, '
+              'que ficam só aqui). Para apagar também da conta, use '
               '"Apagar tudo, inclusive da conta".'
         else if (neverBackedUp)
           'Você ainda não fez um backup. Apaga receitas, pastas, tags e '

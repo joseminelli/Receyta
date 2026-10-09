@@ -37,19 +37,19 @@ const kTutorialSteps = [
   TutorialStep(
     target: TutorialTarget.search,
     title: 'Buscar',
-    body: 'Procure por nome, tag ou ingrediente.',
+    body: 'Procure por nome, notas ou tag.',
   ),
   TutorialStep(
     target: TutorialTarget.firstRecipe,
     title: 'Sua receita',
     body: 'Toque pra ver ingredientes e passos. No ⋯ você muda a cor, move '
-        'de pasta e favorita; o "Modo cozinha" tem timers e ajusta as '
-        'porções.',
+        'de pasta e compartilha; o coração favorita e o "Modo cozinha" tem '
+        'timers e ajusta as porções.',
   ),
   TutorialStep(
     target: TutorialTarget.navBar,
-    title: 'Semana, Compras e Conta',
-    body: 'Semana planeja o que cozinhar, Compras gera a lista a partir das '
+    title: 'Agenda, Compras e Conta',
+    body: 'A Agenda planeja o que cozinhar, Compras gera a lista a partir das '
         'receitas e Conta guarda os ajustes.',
   ),
   TutorialStep(
