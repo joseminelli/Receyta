@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/ingredient_repository.dart';
@@ -19,7 +20,6 @@ import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
-import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/underline_tabs.dart';
 
 /// Gerenciar ingredientes (C6): lista o catálogo com contagem de uso, aponta
@@ -160,17 +160,17 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
   }
 
   Widget _buildError(BuildContext context) {
-    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: Icons.priority_high_rounded,
-              background: colors.danger,
-              foreground: colors.onSaturated,
+            AnimatedMascot(
+              kind: MascotKind.pote,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Pote, triste',
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -185,17 +185,17 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: Icons.egg_outlined,
-              background: colors.violet,
-              foreground: colors.onSaturated,
+            AnimatedMascot(
+              kind: MascotKind.pote,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Pote, triste',
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(

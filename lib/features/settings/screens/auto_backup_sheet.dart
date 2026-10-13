@@ -4,6 +4,8 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
+import 'package:receyta/features/mascot/widgets/mascot_moment.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -51,11 +53,16 @@ class _AutoBackupSheet extends ConsumerWidget {
   Future<void> _backupNow(WidgetRef ref) async {
     final result = await ref.read(autoBackupProvider.notifier).backupNow();
     result.when(
-      ok: (file) => showAppSnackBar(
-        message: file == null
-            ? 'Nada pra guardar ainda: crie uma receita primeiro'
-            : 'Cópia feita',
-      ),
+      ok: (file) {
+        showAppSnackBar(
+          message: file == null
+              ? 'Nada pra guardar ainda: crie uma receita primeiro'
+              : 'Cópia feita',
+        );
+        if (file != null) {
+          showMascotMoment(kind: MascotKind.pote, mood: MascotMood.waving);
+        }
+      },
       err: (f) => showAppSnackBar(
         message: f.message,
         variant: AppSnackBarVariant.error,

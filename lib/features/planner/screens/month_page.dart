@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/core/day.dart';
@@ -544,24 +545,38 @@ class _UpcomingSection extends ConsumerWidget {
         color: colors.paperSoft,
         borderRadius: BorderRadius.circular(AppRadii.md),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text(
-            'Nada planejado pros próximos dias.',
-            style: context.texts.bodyLarge,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nada planejado pros próximos dias.',
+                  style: context.texts.bodyLarge,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Toque num dia do calendário ou comece por hoje.',
+                  style: context.texts.bodyMedium
+                      ?.copyWith(color: colors.textMuted),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                PillButton(
+                  label: 'Planejar hoje',
+                  icon: Icons.add,
+                  dense: true,
+                  onPressed: () => _openDay(context, today()),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Toque num dia do calendário ou comece por hoje.',
-            style: context.texts.bodyMedium?.copyWith(color: colors.textMuted),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          PillButton(
-            label: 'Planejar hoje',
-            icon: Icons.add,
-            dense: true,
-            onPressed: () => _openDay(context, today()),
+          const SizedBox(width: AppSpacing.sm),
+          const AnimatedMascot(
+            kind: MascotKind.cloche,
+            mood: MascotMood.sad,
+            width: 84,
+            semanticLabel: 'Cloche, triste',
           ),
         ],
       ),

@@ -14,7 +14,8 @@ const waveSeconds = 2.4;
 /// `hand*` de 0 (luva fechada) a 1 (mão aberta), `wrist*` balança a mão e
 /// `burst` de 0 a 1 é o progresso do confete (0 = sem confete). `lid` de 0 a 1
 /// ergue a peça de cima (tampa do Pote, botão do Cloche). `dx` desloca o corpo
-/// para o lado.
+/// para o lado e `sad` de 0 a 1 carrega o rosto triste (pálpebras caídas e
+/// boca para baixo).
 class MascotPose {
   final double dx;
   final double dy;
@@ -33,6 +34,7 @@ class MascotPose {
   final double mouth;
   final double burst;
   final double lid;
+  final double sad;
   final Offset look;
 
   const MascotPose({
@@ -53,6 +55,7 @@ class MascotPose {
     this.mouth = 0,
     this.burst = 0,
     this.lid = 0,
+    this.sad = 0,
     this.look = Offset.zero,
   });
 
@@ -91,6 +94,7 @@ class MascotPose {
       mouth: mouth ?? this.mouth,
       burst: burst,
       lid: lid,
+      sad: sad,
       look: look ?? this.look,
     );
   }
@@ -115,6 +119,7 @@ class MascotPose {
       mouth: l(a.mouth, b.mouth),
       burst: b.burst,
       lid: l(a.lid, b.lid),
+      sad: l(a.sad, b.sad),
       look: Offset.lerp(a.look, b.look, t)!,
     );
   }
@@ -221,5 +226,45 @@ MascotPose celebratePose(double seconds) {
     burst: ((t - 0.3) / 1.15).clamp(0.0, 1.0),
     lid: lift,
     look: Offset(0, -0.6 * lift),
+  );
+}
+
+/// Triste: encolhido, olhar baixo e de lado, cabeça pendida, braços e pernas
+/// encostados e um suspiro lento a cada 5 s.
+MascotPose sadPose(double seconds) {
+  final sigh = math.sin(seconds * 2 * math.pi / 5.2);
+  final glance = math.sin(seconds * 0.5);
+  final blinkClock = seconds % 6.0;
+  final blink =
+      blinkClock < 0.3 ? math.sin(blinkClock / 0.3 * math.pi) : 0.0;
+  return MascotPose(
+    dy: 5 + sigh * 1.5,
+    scaleX: 1.02 + sigh * 0.006,
+    scaleY: 0.96 + sigh * 0.012,
+    armLeft: -0.02,
+    armRight: -0.02,
+    legLeft: -0.03,
+    legRight: -0.03,
+    blink: blink,
+    tilt: 0.045 + math.sin(seconds * 0.8) * 0.01,
+    sad: 1,
+    look: Offset(glance * 0.3, 0.7),
+  );
+}
+
+/// Apresentando: um braço estendido para o lado, mão aberta, saltinhos e olhar
+/// voltado para o que está sendo mostrado.
+MascotPose presentingPose(double seconds) {
+  final base = idlePose(seconds);
+  final hop = math.sin(seconds * 5).abs();
+  return base.copyWith(
+    dy: base.dy - 3 * hop,
+    armLeft: 1.55 + math.sin(seconds * 4) * 0.12,
+    handLeft: 1,
+    wristLeft: math.sin(seconds * 6) * 0.2,
+    armRight: 0.15,
+    tilt: 0.05 + math.sin(seconds * 2) * 0.02,
+    mouth: 0.3,
+    look: Offset(-0.5 + math.sin(seconds * 1.5) * 0.2, 0.1),
   );
 }

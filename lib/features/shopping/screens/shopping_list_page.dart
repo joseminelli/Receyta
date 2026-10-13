@@ -17,8 +17,8 @@ import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
-import 'package:receyta/features/mascot/controllers/mascot_mood_provider.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
+import 'package:receyta/features/mascot/widgets/mascot_moment.dart';
 import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_prefs.dart';
@@ -134,7 +134,7 @@ class ShoppingListPage extends ConsumerWidget {
 
     ref.listen(shoppingListItemsProvider(listId), (previous, next) {
       if (!_allChecked(previous?.valueOrNull) && _allChecked(next.valueOrNull)) {
-        ref.read(mascotMoodProvider.notifier).celebrate();
+        showMascotMoment(kind: MascotKind.pote);
       }
     });
 
@@ -222,17 +222,9 @@ class ShoppingListPage extends ConsumerWidget {
       data: (items) => Column(
         children: [
           Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned.fill(
-                  child: items.isEmpty
-                      ? const _EmptyListHint()
-                      : _buildGroups(context, items),
-                ),
-                if (items.isNotEmpty) const _CelebrationOverlay(),
-              ],
-            ),
+            child: items.isEmpty
+                ? const _EmptyListHint()
+                : _buildGroups(context, items),
           ),
           _ListFooter(listId: list.id, items: items),
         ],
@@ -1285,28 +1277,6 @@ class _CheckDotState extends State<_CheckDot>
   }
 }
 
-/// Pote que aparece no canto só durante a comemoração de lista concluída.
-class _CelebrationOverlay extends ConsumerWidget {
-  const _CelebrationOverlay();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final celebrating = ref.watch(
-      mascotMoodProvider.select((m) => m == MascotMood.celebrating),
-    );
-    if (!celebrating) return const SizedBox.shrink();
-    return const IgnorePointer(
-      child: Align(
-        alignment: Alignment.bottomRight,
-        child: Padding(
-          padding: EdgeInsets.all(AppSpacing.md),
-          child: AnimatedMascot(kind: MascotKind.pote, width: 96),
-        ),
-      ),
-    );
-  }
-}
-
 /// Estado da lista sem itens: diz o que fazer e mostra exemplos do que o
 /// campo de baixo entende (quantidade e unidade saem do texto).
 class _EmptyListHint extends StatelessWidget {
@@ -1324,7 +1294,12 @@ class _EmptyListHint extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const AnimatedMascot(kind: MascotKind.pote, width: 120),
+            const AnimatedMascot(
+              kind: MascotKind.pote,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Pote, triste',
+            ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               'Sua lista está vazia',

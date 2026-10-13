@@ -176,12 +176,12 @@ class PotePainter extends MascotPainter {
     ]) {
       canvas.drawCircle(p, 2.4, freckles);
     }
-    _paintEye(canvas, _eyeLeft, pose);
-    _paintEye(canvas, _eyeRight, pose);
+    _paintEye(canvas, _eyeLeft, pose, -1);
+    _paintEye(canvas, _eyeRight, pose, 1);
     _paintSmile(canvas, pose);
   }
 
-  void _paintEye(Canvas canvas, Offset center, MascotPose pose) {
+  void _paintEye(Canvas canvas, Offset center, MascotPose pose, int side) {
     canvas.save();
     canvas.translate(center.dx, center.dy);
     canvas.scale(1, 1 - pose.blink * 0.9);
@@ -198,11 +198,46 @@ class PotePainter extends MascotPainter {
       4.6,
       fill(colors.onSaturated),
     );
+    if (pose.sad > 0.02) _paintEyelid(canvas, pose.sad, side);
     canvas.restore();
     canvas.restore();
   }
 
+  /// Pálpebra caída: cobre mais o canto de fora, o que dá o ar de tristeza.
+  void _paintEyelid(Canvas canvas, double sad, int side) {
+    final outer = side * 24.0;
+    final inside = -side * 24.0;
+    final lid = Path()
+      ..moveTo(outer, -34)
+      ..lineTo(inside, -34)
+      ..lineTo(inside, -17 + 3 * sad)
+      ..lineTo(outer, -17 + 16 * sad)
+      ..close();
+    canvas.drawPath(lid, fill(_tone(PoteTone.lime)));
+    canvas.drawLine(
+      Offset(outer, -17 + 16 * sad),
+      Offset(inside, -17 + 3 * sad),
+      Paint()
+        ..color = colors.ink
+        ..strokeWidth = 3.2,
+    );
+  }
+
   void _paintSmile(Canvas canvas, MascotPose pose) {
+    if (pose.sad >= 0.3) {
+      final frown = Path()
+        ..moveTo(138, 271)
+        ..quadraticBezierTo(160, 254, 183, 271);
+      canvas.drawPath(
+        frown,
+        Paint()
+          ..color = colors.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.4
+          ..strokeCap = StrokeCap.round,
+      );
+      return;
+    }
     if (pose.mouth >= 0.2) {
       paintMouth(canvas, const Offset(160, 263), 56, pose);
       return;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
@@ -13,7 +14,6 @@ import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/recipe_cover.dart';
-import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 
 /// Lixeira de 30 dias (RF-01.6): nada é apagado de verdade antes do prazo. Aqui
@@ -93,17 +93,17 @@ class TrashPage extends ConsumerWidget {
   }
 
   Widget _buildError(BuildContext context) {
-    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: Icons.priority_high_rounded,
-              background: colors.danger,
-              foreground: colors.onSaturated,
+            AnimatedMascot(
+              kind: MascotKind.cloche,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Cloche, triste',
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -118,17 +118,16 @@ class TrashPage extends ConsumerWidget {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    final colors = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: Icons.delete_outline,
-              background: colors.ink,
-              foreground: colors.lime,
+            AnimatedMascot(
+              kind: MascotKind.cloche,
+              mood: MascotMood.idle,
+              width: 120,
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(

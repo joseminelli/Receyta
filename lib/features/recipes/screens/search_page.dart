@@ -82,7 +82,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     data: (list) => list.isEmpty
                         ? _Message(
                             'Nada encontrado para "$query".',
-                            showMascot: true,
+                            mascotMood: MascotMood.sad,
                           )
                         : _GridBody(
                             recipes: list,
@@ -235,7 +235,7 @@ class _Browse extends ConsumerWidget {
     if (tags.isEmpty && all.isEmpty) {
       return const _Message(
         'Busque uma receita pelo nome,\npelas notas ou por uma tag.',
-        showMascot: true,
+        mascotMood: MascotMood.idle,
       );
     }
 
@@ -399,10 +399,10 @@ class _GridBody extends StatelessWidget {
 }
 
 class _Message extends StatelessWidget {
-  const _Message(this.text, {this.showMascot = false});
+  const _Message(this.text, {this.mascotMood});
 
   final String text;
-  final bool showMascot;
+  final MascotMood? mascotMood;
 
   @override
   Widget build(BuildContext context) {
@@ -412,8 +412,13 @@ class _Message extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (showMascot) ...[
-              const AnimatedMascot(kind: MascotKind.pote, width: 110),
+            if (mascotMood != null) ...[
+              AnimatedMascot(
+                kind: MascotKind.pote,
+                mood: mascotMood!,
+                width: 110,
+                semanticLabel: mascotMood == MascotMood.sad ? 'Pote, triste' : null,
+              ),
               const SizedBox(height: AppSpacing.md),
             ],
             Text(

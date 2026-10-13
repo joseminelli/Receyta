@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
@@ -27,7 +28,6 @@ import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/expanding_create_menu.dart';
 import 'package:receyta/widgets/receytas_wordmark.dart';
 import 'package:receyta/widgets/section_header.dart';
-import 'package:receyta/widgets/state_badge.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/app_sheet.dart';
@@ -763,17 +763,17 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          StateBadge(
-            icon: Icons.priority_high_rounded,
-            background: colors.danger,
-            foreground: colors.onSaturated,
-          ),
+          AnimatedMascot(
+              kind: MascotKind.cloche,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Cloche, triste',
+            ),
           const SizedBox(height: AppSpacing.lg),
           Text(
             'Não deu para carregar as receitas',
@@ -793,17 +793,17 @@ class _NoMatch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          StateBadge(
-            icon: Icons.search_off_rounded,
-            background: colors.ink,
-            foreground: colors.lime,
-          ),
+          AnimatedMascot(
+              kind: MascotKind.cloche,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Cloche, triste',
+            ),
           const SizedBox(height: AppSpacing.lg),
           Text(
             'Nada nesse filtro',
@@ -829,18 +829,18 @@ class _EmptyState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          StateBadge(
-            icon: Icons.restaurant_menu_rounded,
-            background: colors.coral,
-            foreground: colors.onSaturated,
-          ),
+          AnimatedMascot(
+              kind: MascotKind.cloche,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Cloche, triste',
+            ),
           const SizedBox(height: AppSpacing.lg),
           Text(
             'Nenhuma receita ainda',

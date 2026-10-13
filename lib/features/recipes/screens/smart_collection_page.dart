@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/domain/engine/smart_collections.dart';
 import 'package:receyta/domain/models/recipe.dart';
@@ -11,7 +12,6 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/widgets/recipe_card.dart';
-import 'package:receyta/widgets/state_badge.dart';
 
 /// As receitas de uma coleção inteligente, em grade. A lista se atualiza
 /// sozinha: favoritar, cozinhar ou editar muda o que cai aqui.
@@ -43,7 +43,6 @@ class SmartCollectionPage extends ConsumerWidget {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    final colors = context.colors;
     return SliverFillRemaining(
       hasScrollBody: false,
       child: Padding(
@@ -51,10 +50,11 @@ class SmartCollectionPage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: collection.icon,
-              background: colors.ink,
-              foreground: colors.lime,
+            AnimatedMascot(
+              kind: MascotKind.cloche,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Cloche, triste',
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
@@ -13,7 +14,6 @@ import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/folder_grid_tile.dart';
 import 'package:receyta/widgets/folder_shape.dart';
 import 'package:receyta/widgets/pull_to_refresh.dart';
-import 'package:receyta/widgets/state_badge.dart';
 
 /// Todas as pastas de raiz, em grade — o "Ver todas" da faixa de pastas da
 /// home, que só mostra as 7 mais recentes (§ "recentes"). Ordem alfabética,
@@ -61,7 +61,6 @@ class AllFoldersPage extends ConsumerWidget {
   }
 
   Widget _buildError(BuildContext context) {
-    final colors = context.colors;
     return SliverFillRemaining(
       hasScrollBody: false,
       child: Padding(
@@ -69,10 +68,11 @@ class AllFoldersPage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: Icons.priority_high_rounded,
-              background: colors.danger,
-              foreground: colors.onSaturated,
+            AnimatedMascot(
+              kind: MascotKind.pote,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Pote, triste',
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -87,7 +87,6 @@ class AllFoldersPage extends ConsumerWidget {
   }
 
   Widget _buildEmpty(BuildContext context) {
-    final colors = context.colors;
     return SliverFillRemaining(
       hasScrollBody: false,
       child: Padding(
@@ -95,10 +94,11 @@ class AllFoldersPage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            StateBadge(
-              icon: Icons.folder_outlined,
-              background: colors.violet,
-              foreground: colors.onSaturated,
+            AnimatedMascot(
+              kind: MascotKind.pote,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Pote, triste',
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(

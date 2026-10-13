@@ -4,16 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../painters/mascot_pose.dart';
 
-enum MascotMood { idle, thinking, waving, celebrating }
+enum MascotMood { idle, thinking, waving, presenting, celebrating, sad }
 
-/// Humor dos mascotes na tela. `waving` e `celebrating` duram o tempo da
-/// animação e voltam sozinhos para `idle`; `thinking` fica até alguém chamar
-/// [stopThinking].
-class MascotMoodNotifier extends Notifier<MascotMood> {
+/// Humor de um grupo de mascotes, identificado por um escopo (o nome da tela).
+/// Mascotes de telas diferentes não se influenciam. `waving` e `celebrating`
+/// duram o tempo da animação e voltam sozinhos para `idle`; `thinking` fica
+/// até alguém chamar [stopThinking].
+class MascotMoodNotifier extends FamilyNotifier<MascotMood, String> {
   Timer? _timer;
 
   @override
-  MascotMood build() {
+  MascotMood build(String arg) {
     ref.onDispose(() => _timer?.cancel());
     return MascotMood.idle;
   }
@@ -43,4 +44,6 @@ class MascotMoodNotifier extends Notifier<MascotMood> {
 }
 
 final mascotMoodProvider =
-    NotifierProvider<MascotMoodNotifier, MascotMood>(MascotMoodNotifier.new);
+    NotifierProvider.family<MascotMoodNotifier, MascotMood, String>(
+  MascotMoodNotifier.new,
+);

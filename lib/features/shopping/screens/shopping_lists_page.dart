@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/widgets/money_text.dart';
@@ -107,7 +108,12 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.shopping_bag_outlined, size: 56, color: colors.lime),
+            const AnimatedMascot(
+              kind: MascotKind.pote,
+              mood: MascotMood.sad,
+              width: 120,
+              semanticLabel: 'Pote, triste',
+            ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               'Nenhuma lista ainda',

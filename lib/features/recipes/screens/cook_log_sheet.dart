@@ -7,6 +7,8 @@ import 'package:receyta/data/repositories/meal_plan_repository.dart';
 import 'package:receyta/domain/engine/cook_log_format.dart';
 import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/features/recipes/controllers/cook_log_view_model.dart';
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
+import 'package:receyta/features/mascot/widgets/mascot_moment.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -28,17 +30,21 @@ Future<void> logCookedNow(WidgetRef ref, String recipeId) async {
       actionLabel: 'Desfazer',
       onAction: () => plan.setDone(entryId, false),
     );
+    showMascotMoment(kind: MascotKind.cloche);
     return;
   }
 
   final repo = ref.read(cookLogRepositoryProvider);
   final result = await repo.add(recipeId);
   result.when(
-    ok: (id) => showAppSnackBar(
-      message: 'Registrado: você cozinhou hoje',
-      actionLabel: 'Desfazer',
-      onAction: () => repo.remove(id),
-    ),
+    ok: (id) {
+      showAppSnackBar(
+        message: 'Registrado: você cozinhou hoje',
+        actionLabel: 'Desfazer',
+        onAction: () => repo.remove(id),
+      );
+      showMascotMoment(kind: MascotKind.cloche);
+    },
     err: (f) => showAppSnackBar(
       message: f.message,
       variant: AppSnackBarVariant.error,
@@ -117,6 +123,7 @@ class _CookLogSheetState extends ConsumerState<_CookLogSheet> {
         setState(() {
           _date = DateTime(now.year, now.month, now.day);
         });
+        showMascotMoment(kind: MascotKind.cloche);
       },
       err: (f) => showAppSnackBar(
         message: f.message,

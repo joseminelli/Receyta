@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -77,12 +78,32 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay> {
         : target.inflate(8);
 
     final below = target != null && target.center.dy < size.height / 2;
-    final card = _Card(
-      data: data,
-      step: step,
-      isLast: isLast,
-      onNext: controller.next,
-      onSkip: controller.finish,
+    final card = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.12), end: Offset.zero)
+              .animate(animation),
+          child: child,
+        ),
+      ),
+      layoutBuilder: (current, previous) => Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [...previous, if (current != null) current],
+      ),
+      child: KeyedSubtree(
+        key: ValueKey(step),
+        child: _Card(
+          data: data,
+          step: step,
+          isLast: isLast,
+          onNext: controller.next,
+          onSkip: controller.finish,
+        ),
+      ),
     );
 
     return Stack(
@@ -170,7 +191,7 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
+    final card = Material(
       color: colors.paper,
       elevation: 8,
       borderRadius: BorderRadius.circular(AppRadii.md),
@@ -203,6 +224,50 @@ class _Card extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        card,
+        Positioned(
+          top: -60,
+          right: AppSpacing.md,
+          child: _TutorialMascot(step: step, isLast: isLast),
+        ),
+      ],
+    );
+  }
+}
+
+/// Guia do tour: os dois mascotes se alternam a cada passo (Cloche nos pares,
+/// Pote nos ímpares). Entra quicando por trás do cartão e reage ao passo: acena
+/// no primeiro, apresenta nos do meio e comemora no último.
+class _TutorialMascot extends StatelessWidget {
+  const _TutorialMascot({required this.step, required this.isLast});
+
+  final int step;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final kind = step.isEven ? MascotKind.cloche : MascotKind.pote;
+    final greeting = step == 0
+        ? MascotMood.waving
+        : isLast
+            ? MascotMood.celebrating
+            : MascotMood.presenting;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.elasticOut,
+      builder: (context, t, child) =>
+          Transform.translate(offset: Offset(0, (1 - t) * 46), child: child),
+      child: AnimatedMascot(
+        kind: kind,
+        width: kind == MascotKind.cloche ? 68 : 48,
+        greeting: greeting,
+        tappable: false,
       ),
     );
   }

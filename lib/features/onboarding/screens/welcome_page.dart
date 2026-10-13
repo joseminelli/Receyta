@@ -30,12 +30,13 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
   int _page = 0;
 
   static const _last = 2;
+  static const _mascotScope = 'welcome';
 
   @override
   void initState() {
     super.initState();
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) ref.read(mascotMoodProvider.notifier).wave();
+      if (mounted) ref.read(mascotMoodProvider(_mascotScope).notifier).wave();
     });
   }
 
@@ -103,7 +104,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
               controller: _controller,
               onPageChanged: (i) {
                 setState(() => _page = i);
-                ref.read(mascotMoodProvider.notifier).celebrate();
+                ref.read(mascotMoodProvider(_mascotScope).notifier).celebrate();
               },
               children: [
                 for (var i = 0; i < slides.length; i++)
@@ -297,26 +298,28 @@ class _SlideMascot extends StatelessWidget {
       left: onRight ? null : AppSpacing.md,
       right: onRight ? AppSpacing.md : null,
       bottom: 6,
-      child: IgnorePointer(
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 900),
-          curve: Curves.elasticOut,
-          builder: (context, enter, child) => AnimatedBuilder(
-            animation: controller,
-            builder: (context, _) {
-              final delta = index - _page();
-              return Transform.translate(
-                offset: Offset(delta * 140, (1 - enter) * 120),
-                child: Transform.rotate(
-                  angle: delta * 0.4,
-                  alignment: Alignment.bottomCenter,
-                  child: child,
-                ),
-              );
-            },
-          ),
-          child: AnimatedMascot(kind: kind, width: onRight ? 104 : 132),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.elasticOut,
+        builder: (context, enter, child) => AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) {
+            final delta = index - _page();
+            return Transform.translate(
+              offset: Offset(delta * 140, (1 - enter) * 120),
+              child: Transform.rotate(
+                angle: delta * 0.4,
+                alignment: Alignment.bottomCenter,
+                child: child,
+              ),
+            );
+          },
+        ),
+        child: AnimatedMascot(
+          kind: kind,
+          scope: 'welcome',
+          width: onRight ? 104 : 132,
         ),
       ),
     );
