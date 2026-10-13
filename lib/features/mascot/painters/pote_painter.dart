@@ -182,12 +182,12 @@ class PotePainter extends MascotPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
     final main = Path()
-      ..moveTo(133.3, 261.7)
-      ..cubicTo(143, 261.5, 150.5, 262.5, 157, 266.2)
-      ..cubicTo(165, 270.5, 178, 269.5, 186.7, 262.5);
+      ..moveTo(133.5, 261.9)
+      ..quadraticBezierTo(140, 265, 146.4, 261)
+      ..quadraticBezierTo(168, 277, 186.7, 262.8);
     final hook = Path()
-      ..moveTo(149.2, 251.7)
-      ..quadraticBezierTo(150.2, 258.5, 145.5, 261.5);
+      ..moveTo(148.9, 251.3)
+      ..quadraticBezierTo(148.8, 259, 146.4, 261);
     canvas.drawPath(main, line);
     canvas.drawPath(hook, line);
   }
