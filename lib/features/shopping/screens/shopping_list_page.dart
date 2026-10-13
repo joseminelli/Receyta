@@ -19,6 +19,7 @@ import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
 import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
+import 'package:receyta/features/shopping/controllers/shopping_view_prefs.dart';
 import 'package:receyta/features/shopping/screens/shopping_actions.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/messenger.dart';
@@ -121,6 +122,9 @@ class ShoppingListPage extends ConsumerWidget {
     final colors = context.colors;
     final listAsync = ref.watch(shoppingListProvider(listId));
     final list = listAsync.valueOrNull;
+    final showPrices =
+        ref.watch(shoppingViewPrefsProvider.select((p) => p.itemPrices));
+    final hasPrices = !ref.watch(shoppingCostProvider(listId)).isEmpty;
 
     return HeaderScaffold(
       title: list?.name ?? 'Compras',
@@ -143,6 +147,19 @@ class ShoppingListPage extends ConsumerWidget {
                     label: 'Desmarcar todos',
                     hint: 'Volta todos os itens pra pendente',
                     onTap: () => uncheckAllShoppingItems(ref, list.id),
+                  ),
+                if (hasPrices)
+                  ActionMenuItem(
+                    icon: showPrices
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    label: showPrices
+                        ? 'Ocultar preços dos itens'
+                        : 'Mostrar preços dos itens',
+                    hint: 'O valor da lista continua no cartão',
+                    onTap: () => ref
+                        .read(shoppingViewPrefsProvider.notifier)
+                        .setItemPrices(!showPrices),
                   ),
                 ActionMenuItem(
                   icon: Icons.ios_share,
@@ -579,68 +596,142 @@ class _ProgressHeader extends StatelessWidget {
   }
 }
 
-/// O valor da lista: o estimado e, quando já se marcou algo, quanto ainda
-/// falta comprar.
-class _CostBar extends StatelessWidget {
+/// O valor da lista. Vem recolhido (só "Valor da lista" e uma seta) pra não
+/// tomar espaço dos itens; ao tocar mostra o estimado e, quando já se marcou
+/// algo, quanto ainda falta comprar. A escolha fica guardada.
+class _CostBar extends ConsumerWidget {
   const _CostBar({required this.cost, required this.allDone});
 
   final ShoppingCost cost;
   final bool allDone;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final prefs = ref.watch(shoppingViewPrefsProvider);
+    final notifier = ref.read(shoppingViewPrefsProvider.notifier);
+    final open = prefs.costOpen;
     final muted = colors.onSaturated.withValues(alpha: 0.65);
-    final showPending =
-        cost.pendingCents > 0 && cost.pendingCents != cost.totalCents;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
+
+    return Semantics(
+      button: true,
+      expanded: open,
+      label: 'Valor da lista',
+      child: Material(
         color: colors.inkSoft,
         borderRadius: BorderRadius.circular(AppRadii.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CostStat(
-                label: allDone ? 'GASTO ESTIMADO' : 'ESTIMADO',
-                cents: cost.totalCents,
-                color: colors.onSaturated,
-                size: 24,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => notifier.setCostOpen(!open),
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: open ? AppSpacing.sm : AppSpacing.xs + 2,
               ),
-              if (showPending)
-                _CostStat(
-                  label: 'FALTA COMPRAR',
-                  cents: cost.pendingCents,
-                  color: colors.lime,
-                  size: 24,
-                  alignEnd: true,
-                ),
+              child: open
+                  ? _buildOpen(context, notifier, prefs, muted)
+                  : _buildClosed(context, muted),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClosed(BuildContext context, Color muted) {
+    return Row(
+      children: [
+        Icon(Icons.payments_outlined, size: 18, color: muted),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Text(
+            'Valor da lista',
+            style: context.texts.labelLarge?.copyWith(color: muted),
+          ),
+        ),
+        Icon(Icons.keyboard_arrow_up_rounded, color: muted),
+      ],
+    );
+  }
+
+  Widget _buildOpen(
+    BuildContext context,
+    ShoppingViewPrefsNotifier notifier,
+    ShoppingViewPrefs prefs,
+    Color muted,
+  ) {
+    final colors = context.colors;
+    final showPending =
+        cost.pendingCents > 0 && cost.pendingCents != cost.totalCents;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'VALOR DA LISTA',
+                style: context.texts.labelSmall?.copyWith(color: muted),
+              ),
+            ),
+            IconButton(
+              tooltip: prefs.itemPrices
+                  ? 'Ocultar preços dos itens'
+                  : 'Mostrar preços dos itens',
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints.tightFor(width: 36, height: 32),
+              padding: EdgeInsets.zero,
+              onPressed: () => notifier.setItemPrices(!prefs.itemPrices),
+              icon: Icon(
+                prefs.itemPrices
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                size: 20,
+                color: muted,
+              ),
+            ),
+            Icon(Icons.keyboard_arrow_down_rounded, color: muted),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CostStat(
+              label: allDone ? 'GASTO ESTIMADO' : 'ESTIMADO',
+              cents: cost.totalCents,
+              color: colors.onSaturated,
+              size: 24,
+            ),
+            if (showPending)
+              _CostStat(
+                label: 'FALTA COMPRAR',
+                cents: cost.pendingCents,
+                color: colors.lime,
+                size: 24,
+                alignEnd: true,
+              ),
+          ],
+        ),
+        if (cost.missingCount > 0) ...[
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 14, color: muted),
+              const SizedBox(width: 6),
+              Text(
+                '${cost.missingCount} sem preço',
+                style: context.texts.bodySmall?.copyWith(color: muted),
+              ),
             ],
           ),
-          if (cost.missingCount > 0) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.info_outline, size: 14, color: muted),
-                const SizedBox(width: 6),
-                Text(
-                  '${cost.missingCount} sem preço',
-                  style: context.texts.bodySmall?.copyWith(color: muted),
-                ),
-              ],
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }
@@ -702,7 +793,11 @@ class _SectionHeader extends ConsumerWidget {
     final byItem = items.isEmpty
         ? const <String, int>{}
         : ref.watch(shoppingCostProvider(items.first.listId)).byItem;
-    final subtotal = items.fold<int>(0, (sum, i) => sum + (byItem[i.id] ?? 0));
+    final showPrices =
+        ref.watch(shoppingViewPrefsProvider.select((p) => p.itemPrices));
+    final subtotal = showPrices
+        ? items.fold<int>(0, (sum, i) => sum + (byItem[i.id] ?? 0))
+        : 0;
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: 2),
@@ -946,7 +1041,9 @@ class _ItemRow extends ConsumerWidget {
     final cents = ref.watch(
       shoppingCostProvider(item.listId).select((c) => c.byItem[item.id]),
     );
-    if (cents == null) return const SizedBox.shrink();
+    final show =
+        ref.watch(shoppingViewPrefsProvider.select((p) => p.itemPrices));
+    if (cents == null || !show) return const SizedBox.shrink();
     final alpha = item.checked ? 0.3 : 0.7;
     return Padding(
       padding: const EdgeInsets.only(left: AppSpacing.xs),
