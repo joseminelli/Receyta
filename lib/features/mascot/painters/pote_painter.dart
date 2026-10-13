@@ -30,8 +30,8 @@ class PotePainter extends MascotPainter {
   static const _shoulderRight = Offset(252, 270);
   static const _wristLeft = Offset(32, 358);
   static const _wristRight = Offset(271, 358);
-  static const _cuffLeft = CuffFrame(Offset(34.3, 361), -0.076);
-  static const _cuffRight = CuffFrame(Offset(273.3, 362.1), 0.087);
+  static const _cuffLeft = HandFrame(Offset(34.3, 361), -0.173);
+  static const _cuffRight = HandFrame(Offset(273.3, 362.1), 0.174);
   static const _hipLeft = Offset(127, 358);
   static const _hipRight = Offset(176, 358);
   static const _lidPivot = Offset(151, 98);

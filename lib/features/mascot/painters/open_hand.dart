@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../theme/tokens.dart';
 import 'hand_art.dart';
 
-/// Posição e inclinação do punho de uma luva, em pixels da imagem de origem.
-class CuffFrame {
-  const CuffFrame(this.center, this.angle);
+/// Onde o punho de uma mão está e para onde ela aponta, em pixels da imagem de
+/// origem. [lean] é a inclinação dos dedos (ou do antebraço) em relação à
+/// vertical, em radianos, positiva para o lado do +x.
+class HandFrame {
+  const HandFrame(this.center, this.lean);
 
   final Offset center;
-  final double angle;
+  final double lean;
 }
 
 class _Layer {
@@ -19,11 +21,12 @@ class _Layer {
 }
 
 /// Mão aberta da arte do Cloche (pose com os dedos em leque), vetorizada como
-/// o resto. Serve aos dois personagens: o desenho é alinhado pelo punho à luva
-/// fechada de cada um, com [scale] ajustando o tamanho.
+/// o resto. Serve aos dois personagens: o punho é encaixado no da luva fechada
+/// de cada um, e a mão é girada para os dedos continuarem a direção do
+/// antebraço ([HandFrame.lean]), com [scale] ajustando o tamanho.
 class OpenHand {
-  static const _sourceLeft = CuffFrame(Offset(45.1, 279.8), -0.240);
-  static const _sourceRight = CuffFrame(Offset(304.0, 279.9), 0.257);
+  static const _sourceLeft = HandFrame(Offset(45.1, 279.8), 0.303);
+  static const _sourceRight = HandFrame(Offset(304.0, 279.9), -0.327);
 
   static final Map<HandPart, List<_Layer>> _layers = {
     for (final entry in handShapes.entries)
@@ -48,13 +51,13 @@ class OpenHand {
     Canvas canvas,
     AppColors colors, {
     required bool left,
-    required CuffFrame target,
+    required HandFrame target,
     required double scale,
   }) {
     final source = left ? _sourceLeft : _sourceRight;
     canvas.save();
     canvas.translate(target.center.dx, target.center.dy);
-    canvas.rotate(target.angle - source.angle);
+    canvas.rotate(source.lean - target.lean);
     canvas.scale(scale);
     canvas.translate(-source.center.dx, -source.center.dy);
     for (final layer in _layers[left ? HandPart.handLeft : HandPart.handRight]!) {

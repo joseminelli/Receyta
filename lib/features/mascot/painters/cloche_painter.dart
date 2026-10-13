@@ -30,8 +30,8 @@ class ClochePainter extends MascotPainter {
   static const _shoulderRight = Offset(308, 176);
   static const _wristLeft = Offset(38, 272);
   static const _wristRight = Offset(310, 272);
-  static const _cuffLeft = CuffFrame(Offset(45.2, 273.8), -0.12);
-  static const _cuffRight = CuffFrame(Offset(303.6, 273.8), 0.116);
+  static const _cuffLeft = HandFrame(Offset(45.2, 273.8), 0.386);
+  static const _cuffRight = HandFrame(Offset(303.6, 273.8), -0.367);
   static const _hipLeft = Offset(146, 248);
   static const _hipRight = Offset(201, 248);
   static const _knobPivot = Offset(175, 50);
