@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
+import 'package:receyta/widgets/money_text.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/space/controllers/new_lists_share.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
+import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/shopping/screens/shopping_actions.dart';
@@ -17,6 +19,7 @@ import 'package:receyta/features/shopping/screens/shopping_recipe_picker.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
@@ -46,6 +49,9 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
   /// exige isso) enquanto o banco ainda apaga e o stream não reemitiu.
   final _removed = <String>{};
 
+  /// "Concluídas" começa recolhida; sem nenhuma em andamento, aparece aberta.
+  bool _doneOpen = false;
+
   ShoppingListRepository get _repo => ref.read(shoppingListRepositoryProvider);
 
   @override
@@ -61,10 +67,7 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
       title: 'Compras',
       subtitle: lists.isEmpty
           ? null
-          : _summaryLine(
-              lists.length,
-              lists.where((s) => !_isComplete(s)).length,
-            ),
+          : _summaryLine(lists.where((s) => !_isComplete(s)).length),
       color: TileColor.lime,
       showBack: false,
       backgroundColor: colors.ink,
@@ -81,10 +84,9 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     );
   }
 
-  String _summaryLine(int total, int active) {
-    final lists = total == 1 ? '1 lista' : '$total listas';
-    if (active == 0) return '$lists · tudo comprado';
-    return '$lists · $active em andamento';
+  String _summaryLine(int active) {
+    if (active == 0) return 'Tudo comprado';
+    return '$active em andamento';
   }
 
   Widget _buildMessage(BuildContext context, String text) {
@@ -149,14 +151,24 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
       for (final s in lists)
         if (_isComplete(s)) s
     ];
+    final showDone = _doneOpen || active.isEmpty;
     final children = <Widget>[
       if (active.isNotEmpty) ...[
         _SectionLabel('Em andamento', count: active.length),
-        for (final s in active) _buildCard(s),
+        _buildCard(active.first, featured: true),
+        for (final s in active.skip(1)) _buildCard(s),
       ],
       if (done.isNotEmpty) ...[
-        _SectionLabel('Concluídas', count: done.length),
-        for (final s in done) _buildCard(s),
+        _SectionLabel(
+          'Concluídas',
+          count: done.length,
+          open: showDone,
+          onTap: active.isEmpty
+              ? null
+              : () => setState(() => _doneOpen = !_doneOpen),
+        ),
+        if (showDone)
+          for (final s in done) _buildCard(s),
       ],
     ];
     return ListView(
@@ -170,9 +182,9 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     );
   }
 
-  Widget _buildCard(ShoppingListSummary summary) {
+  Widget _buildCard(ShoppingListSummary summary, {bool featured = false}) {
     final list = summary.list;
-    final radius = BorderRadius.circular(AppRadii.md);
+    final radius = BorderRadius.circular(featured ? AppRadii.lg : AppRadii.md);
     final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
@@ -206,11 +218,17 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
             return _confirmDelete(list);
           },
           onDismissed: (_) => _delete(list),
-          child: _ListCard(
-            summary: summary,
-            onOpen: () => context.push('/shopping/${list.id}'),
-            onMenu: () => _openListMenu(summary),
-          ),
+          child: featured
+              ? _FeaturedListCard(
+                  summary: summary,
+                  onOpen: () => context.push('/shopping/${list.id}'),
+                  onMenu: () => _openListMenu(summary),
+                )
+              : _ListRow(
+                  summary: summary,
+                  onOpen: () => context.push('/shopping/${list.id}'),
+                  onMenu: () => _openListMenu(summary),
+                ),
         ),
       ),
     );
@@ -542,50 +560,121 @@ Future<String?> _promptListName(
   );
 }
 
-/// "EM ANDAMENTO ———— 2": mesmo cabeçalho de seção da tela da lista.
+/// "EM ANDAMENTO ———— 2": mesmo cabeçalho de seção da tela da lista. Com
+/// [onTap], a seção recolhe e abre.
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label, {required this.count});
+  const _SectionLabel(
+    this.label, {
+    required this.count,
+    this.open,
+    this.onTap,
+  });
 
   final String label;
   final int count;
+  final bool? open;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final dim = colors.onSaturated.withValues(alpha: 0.6);
+    final row = Row(
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: context.texts.labelMedium?.copyWith(
+            color: onTap == null ? colors.lime : dim,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          '$count',
+          style: context.texts.labelMedium
+              ?.copyWith(color: colors.onSaturated.withValues(alpha: 0.35)),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: colors.onSaturated.withValues(alpha: 0.12),
+          ),
+        ),
+        if (onTap != null)
+          AnimatedRotation(
+            turns: (open ?? false) ? 0.5 : 0,
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            child: Icon(Icons.keyboard_arrow_down_rounded, color: dim),
+          ),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.xs),
-      child: Row(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: context.texts.labelMedium
-                ?.copyWith(color: colors.lime, letterSpacing: 1.2),
-          ),
-          const SizedBox(width: AppSpacing.xs),
-          Expanded(
-            child: Container(
-              height: 1,
-              color: colors.onSaturated.withValues(alpha: 0.12),
+      child: onTap == null
+          ? row
+          : Semantics(
+              button: true,
+              expanded: open ?? false,
+              label: '$label, $count',
+              excludeSemantics: true,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: row,
+                ),
+              ),
             ),
+    );
+  }
+}
+
+bool _isDone(ShoppingListSummary s) => s.total > 0 && s.checked == s.total;
+
+/// Linha miúda do cartão: quando a lista foi criada e o valor estimado.
+String _metaLine(ShoppingListSummary s, ShoppingCost cost) {
+  final when = _relativeDay(s.list.createdAt.toLocal());
+  if (s.total == 0) return 'Vazia · $when';
+  return cost.isEmpty ? when : '$when · ${formatMoney(cost.totalCents)}';
+}
+
+/// Barra fina de progresso em lime.
+class _ThinBar extends StatelessWidget {
+  const _ThinBar({required this.value, required this.height});
+
+  final double value;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      child: SizedBox(
+        height: height,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: value),
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          builder: (context, v, _) => LinearProgressIndicator(
+            value: v,
+            minHeight: height,
+            backgroundColor: colors.onSaturated.withValues(alpha: 0.12),
+            valueColor: AlwaysStoppedAnimation(colors.lime),
           ),
-          const SizedBox(width: AppSpacing.xs),
-          Text(
-            '$count',
-            style: context.texts.labelMedium?.copyWith(
-              color: colors.onSaturated.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// Cartão de uma lista: anel de progresso, nome, "X de Y itens · Hoje" e
-/// seta. Lista toda marcada apaga um pouco; o ⋯ abre renomear/duplicar/
-/// excluir.
-class _ListCard extends StatelessWidget {
-  const _ListCard({
+/// A lista em andamento mais recente, em destaque: quantos itens já foram,
+/// quanto falta gastar e a barra de progresso.
+class _FeaturedListCard extends ConsumerWidget {
+  const _FeaturedListCard({
     required this.summary,
     required this.onOpen,
     required this.onMenu,
@@ -595,82 +684,208 @@ class _ListCard extends StatelessWidget {
   final VoidCallback onOpen;
   final VoidCallback onMenu;
 
-  bool get _complete => summary.total > 0 && summary.checked == summary.total;
-
-  String get _subtitle {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final cost = ref.watch(shoppingCostProvider(summary.list.id));
     final total = summary.total;
-    final when = _relativeDay(summary.list.createdAt.toLocal());
-    if (total == 0) return 'Vazia · $when';
-    if (_complete) {
-      return '$total ${total == 1 ? 'item' : 'itens'} · $when';
-    }
-    return '${summary.checked} de $total ${total == 1 ? 'item' : 'itens'} · '
-        '$when';
+    final value = total == 0 ? 0.0 : summary.checked / total;
+    final muted = colors.onSaturated.withValues(alpha: 0.6);
+    final pending = cost.pendingCents;
+    final isEstimate = pending == cost.totalCents;
+
+    return Material(
+      color: colors.inkSoft,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.xs,
+            AppSpacing.xs,
+            AppSpacing.md,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (summary.list.spaceId != null) ...[
+                    Icon(Icons.people_alt_outlined,
+                        size: 14, color: colors.lime),
+                    const SizedBox(width: 4),
+                  ],
+                  Expanded(
+                    child: Text(
+                      summary.list.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.titleMedium
+                          ?.copyWith(color: colors.onSaturated),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Mais opções',
+                    onPressed: onMenu,
+                    icon: Icon(Icons.more_horiz, color: muted),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (total == 0)
+                          Text(
+                            'Lista vazia',
+                            style: AppTextStyles.display(24)
+                                .copyWith(color: muted),
+                          )
+                        else
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${summary.checked}',
+                                  style: AppTextStyles.display(44)
+                                      .copyWith(color: colors.onSaturated),
+                                ),
+                                TextSpan(
+                                  text: '/$total',
+                                  style: AppTextStyles.display(22).copyWith(
+                                    color: colors.onSaturated
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const Spacer(),
+                        if (pending > 0)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                isEstimate ? 'ESTIMADO' : 'FALTA',
+                                style: context.texts.labelSmall
+                                    ?.copyWith(color: muted),
+                              ),
+                              MoneyText(
+                                cents: pending,
+                                size: 24,
+                                color: isEstimate
+                                    ? colors.onSaturated
+                                    : colors.lime,
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _ThinBar(value: value, height: 6),
+                    const SizedBox(height: 6),
+                    Text(
+                      _metaLine(summary, cost),
+                      style: context.texts.bodySmall?.copyWith(color: muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
+}
+
+/// Uma lista compacta: nome, "3/8", barra fina e quando foi criada + valor.
+/// Lista toda marcada apaga um pouco.
+class _ListRow extends ConsumerWidget {
+  const _ListRow({
+    required this.summary,
+    required this.onOpen,
+    required this.onMenu,
+  });
+
+  final ShoppingListSummary summary;
+  final VoidCallback onOpen;
+  final VoidCallback onMenu;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
+    final cost = ref.watch(shoppingCostProvider(summary.list.id));
+    final complete = _isDone(summary);
+    final total = summary.total;
+    final value = total == 0 ? 0.0 : summary.checked / total;
+    final muted = colors.onSaturated.withValues(alpha: 0.6);
+
     return Material(
       color: colors.inkSoft,
       child: InkWell(
         onTap: onOpen,
         child: AnimatedOpacity(
           duration: const Duration(milliseconds: 250),
-          opacity: _complete ? 0.6 : 1,
+          opacity: complete ? 0.6 : 1,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
-              AppSpacing.sm,
+              AppSpacing.xs,
               AppSpacing.xs,
               AppSpacing.sm,
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ProgressRing(summary: summary),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+                Row(
+                  children: [
+                    if (summary.list.spaceId != null) ...[
+                      Icon(Icons.people_alt_outlined,
+                          size: 14, color: colors.lime),
+                      const SizedBox(width: 4),
+                    ],
+                    Expanded(
+                      child: Text(
                         summary.list.name,
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: context.texts.titleMedium
                             ?.copyWith(color: colors.onSaturated),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          if (summary.list.spaceId != null) ...[
-                            Icon(
-                              Icons.people_alt_outlined,
-                              size: 14,
-                              color: colors.lime,
-                            ),
-                            const SizedBox(width: 4),
-                          ],
-                          Flexible(
-                            child: Text(
-                              _subtitle,
-                              style: context.texts.bodySmall?.copyWith(
-                                color:
-                                    colors.onSaturated.withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ),
-                        ],
+                    ),
+                    if (complete)
+                      Icon(Icons.check, size: 18, color: colors.lime)
+                    else if (total > 0)
+                      Text(
+                        '${summary.checked}/$total',
+                        style:
+                            context.texts.labelMedium?.copyWith(color: muted),
+                      ),
+                    IconButton(
+                      tooltip: 'Mais opções',
+                      onPressed: onMenu,
+                      icon: Icon(Icons.more_horiz, color: muted),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ThinBar(value: value, height: 4),
+                      const SizedBox(height: 6),
+                      Text(
+                        _metaLine(summary, cost),
+                        style:
+                            context.texts.bodySmall?.copyWith(color: muted),
                       ),
                     ],
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Mais opções',
-                  onPressed: onMenu,
-                  icon: Icon(
-                    Icons.more_horiz,
-                    color: colors.onSaturated.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -692,63 +907,6 @@ String _relativeDay(DateTime date) {
   if (diff == 1) return 'Ontem';
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}';
-}
-
-/// Anel de progresso do cartão: porcentagem no centro, check quando tudo foi
-/// comprado, ícone de edição quando a lista ainda está vazia.
-class _ProgressRing extends StatelessWidget {
-  const _ProgressRing({required this.summary});
-
-  final ShoppingListSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final total = summary.total;
-    final value = total == 0 ? 0.0 : summary.checked / total;
-    final complete = total > 0 && summary.checked == total;
-
-    final Widget center;
-    if (total == 0) {
-      center = Icon(
-        Icons.edit_note,
-        size: 22,
-        color: colors.onSaturated.withValues(alpha: 0.5),
-      );
-    } else if (complete) {
-      center = Icon(Icons.check, size: 22, color: colors.lime);
-    } else {
-      center = Text(
-        '${(value * 100).round()}%',
-        style: context.texts.labelMedium?.copyWith(color: colors.onSaturated),
-      );
-    }
-
-    return SizedBox(
-      width: 52,
-      height: 52,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          TweenAnimationBuilder<double>(
-            tween: Tween(end: value),
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOutCubic,
-            builder: (context, v, _) => SizedBox.expand(
-              child: CircularProgressIndicator(
-                value: v,
-                strokeWidth: 5,
-                strokeCap: StrokeCap.round,
-                backgroundColor: colors.onSaturated.withValues(alpha: 0.12),
-                valueColor: AlwaysStoppedAnimation(colors.lime),
-              ),
-            ),
-          ),
-          center,
-        ],
-      ),
-    );
-  }
 }
 
 /// Interruptor "Compartilhar com a casa" da folha de nova lista.

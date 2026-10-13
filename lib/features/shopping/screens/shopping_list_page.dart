@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
+import 'package:receyta/widgets/money_text.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/domain/engine/shopping_text.dart';
@@ -196,7 +197,7 @@ class ShoppingListPage extends ConsumerWidget {
                 ? const _EmptyListHint()
                 : _buildGroups(context, items),
           ),
-          _AddItemBar(listId: list.id, autofocus: items.isEmpty),
+          _ListFooter(listId: list.id, items: items),
         ],
       ),
     );
@@ -205,6 +206,55 @@ class ShoppingListPage extends ConsumerWidget {
   Widget _buildGroups(BuildContext context, List<ShoppingListItem> items) =>
       _ShoppingItems(items: items);
 }
+
+/// Rodapé fixo: o valor da lista, sempre à vista e na altura do polegar, e o
+/// campo de adicionar item.
+class _ListFooter extends ConsumerWidget {
+  const _ListFooter({required this.listId, required this.items});
+
+  final String listId;
+  final List<ShoppingListItem> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cost = ref.watch(shoppingCostProvider(listId));
+    final allDone = items.isNotEmpty && items.every((i) => i.checked);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!cost.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.screen,
+              AppSpacing.xs,
+              AppSpacing.screen,
+              0,
+            ),
+            child: _CostBar(cost: cost, allDone: allDone),
+          ),
+        _AddItemBar(listId: listId, autofocus: items.isEmpty),
+      ],
+    );
+  }
+}
+
+IconData _categoryIcon(String slug) => switch (slug) {
+      'hortifruti' => Icons.eco_outlined,
+      'acougue' => Icons.kebab_dining_outlined,
+      'peixaria' => Icons.set_meal_outlined,
+      'frios_laticinios' => Icons.egg_alt_outlined,
+      'padaria' => Icons.bakery_dining_outlined,
+      'mercearia' => Icons.shopping_basket_outlined,
+      'massas_molhos' => Icons.ramen_dining_outlined,
+      'enlatados_conservas' => Icons.inventory_2_outlined,
+      'temperos_condimentos' => Icons.spa_outlined,
+      'matinais_cereais' => Icons.breakfast_dining_outlined,
+      'congelados' => Icons.ac_unit,
+      'bebidas' => Icons.local_drink_outlined,
+      'doces_sobremesas' => Icons.cake_outlined,
+      'higiene_limpeza' => Icons.cleaning_services_outlined,
+      _ => Icons.category_outlined,
+    };
 
 enum _MovePhase { still, leaving, entering }
 
@@ -234,6 +284,10 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
   /// Itens já deslizados pra fora: somem da tela na hora (o `Dismissible`
   /// exige isso) enquanto o banco ainda apaga e o stream não reemitiu.
   final _removed = <String>{};
+
+  /// A seção "Comprados" começa recolhida: o que já está no carrinho sai do
+  /// meio da lista.
+  bool _boughtOpen = false;
 
   List<ShoppingListItem> get _visible => [
         for (final i in widget.items)
@@ -292,9 +346,20 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
     final proxied = [
       for (final i in _visible) i.copyWith(checked: state[i.id] ?? i.checked),
     ];
+    final pending = [
+      for (final i in proxied)
+        if (!i.checked) i
+    ];
+    final bought = [
+      for (final i in proxied)
+        if (i.checked) i
+    ];
     return [
-      for (final g in groupShoppingItems(proxied, sinkChecked: true))
+      for (final g in groupShoppingItems(pending))
         for (final i in g.items) i.id,
+      if (_boughtOpen)
+        for (final g in groupShoppingItems(bought))
+          for (final i in g.items) i.id,
     ];
   }
 
@@ -338,26 +403,50 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
       for (final i in visible)
         i.copyWith(checked: _sortState[i.id] ?? i.checked),
     ];
+    final pending = [
+      for (final i in forSorting)
+        if (!i.checked) i
+    ];
+    final bought = [
+      for (final i in forSorting)
+        if (i.checked) i
+    ];
+
+    Widget row(ShoppingListItem item) {
+      final phase = _phase[item.id] ?? _MovePhase.still;
+      return _MoveTransition(
+        key: ValueKey(item.id),
+        phase: phase,
+        movingDown: item.checked,
+        leaveDuration: _leaveDuration,
+        enterDuration: _enterDuration,
+        child: _ItemRow(
+          item: item,
+          onRemoved: (removed) => _setRemoved(item.id, removed: removed),
+        ),
+      );
+    }
 
     final children = <Widget>[_ProgressHeader(items: visible)];
-    for (final group in groupShoppingItems(forSorting, sinkChecked: true)) {
+    for (final group in groupShoppingItems(pending)) {
       final rows = [for (final i in group.items) actualById[i.id]!];
-      children.add(_SectionHeader(label: group.label, items: rows));
-      for (final item in rows) {
-        final phase = _phase[item.id] ?? _MovePhase.still;
-        children.add(
-          _MoveTransition(
-            key: ValueKey(item.id),
-            phase: phase,
-            movingDown: item.checked,
-            leaveDuration: _leaveDuration,
-            enterDuration: _enterDuration,
-            child: _ItemRow(
-              item: item,
-              onRemoved: (removed) => _setRemoved(item.id, removed: removed),
-            ),
-          ),
-        );
+      children.add(
+        _SectionHeader(slug: group.slug, label: group.label, items: rows),
+      );
+      children.addAll(rows.map(row));
+    }
+    if (bought.isNotEmpty) {
+      children.add(
+        _BoughtHeader(
+          count: bought.length,
+          open: _boughtOpen,
+          onTap: () => setState(() => _boughtOpen = !_boughtOpen),
+        ),
+      );
+      if (_boughtOpen) {
+        for (final group in groupShoppingItems(bought)) {
+          children.addAll(group.items.map((i) => row(actualById[i.id]!)));
+        }
       }
     }
     return ListView(
@@ -416,68 +505,84 @@ class _MoveTransition extends StatelessWidget {
   }
 }
 
-/// "7 de 12 itens" + barra fina em lime que enche conforme se marca.
-class _ProgressHeader extends ConsumerWidget {
+/// "7/12" em escala grande ao lado de uma barra fina em lime que enche
+/// conforme se marca.
+class _ProgressHeader extends StatelessWidget {
   const _ProgressHeader({required this.items});
 
   final List<ShoppingListItem> items;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final total = items.length;
     final done = items.where((i) => i.checked).length;
     final allDone = total > 0 && done == total;
-    final cost = items.isEmpty
-        ? null
-        : ref.watch(shoppingCostProvider(items.first.listId));
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-            allDone
-                ? 'Tudo comprado'
-                : '$done de $total ${total == 1 ? 'item' : 'itens'}',
-            style: context.texts.titleMedium?.copyWith(
-              color: allDone ? colors.lime : colors.onSaturated,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: SizedBox(
-              height: 6,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(end: total == 0 ? 0 : done / total),
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, _) => LinearProgressIndicator(
-                  value: value,
-                  backgroundColor: colors.onSaturated.withValues(alpha: 0.12),
-                  valueColor: AlwaysStoppedAnimation(colors.lime),
-                  minHeight: 6,
+      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.xs),
+      child: Semantics(
+        label: allDone
+            ? 'Tudo comprado'
+            : '$done de $total ${total == 1 ? 'item' : 'itens'}',
+        excludeSemantics: true,
+        child: Row(
+          children: [
+            if (allDone)
+              Text(
+                'Tudo comprado',
+                style: AppTextStyles.display(24).copyWith(color: colors.lime),
+              )
+            else
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$done',
+                      style: AppTextStyles.display(32)
+                          .copyWith(color: colors.onSaturated),
+                    ),
+                    TextSpan(
+                      text: '/$total',
+                      style: AppTextStyles.display(18).copyWith(
+                        color: colors.onSaturated.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                child: SizedBox(
+                  height: 6,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(end: total == 0 ? 0 : done / total),
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, _) => LinearProgressIndicator(
+                      value: value,
+                      backgroundColor:
+                          colors.onSaturated.withValues(alpha: 0.12),
+                      valueColor: AlwaysStoppedAnimation(colors.lime),
+                      minHeight: 6,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-          if (cost != null && !cost.isEmpty) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _CostSummary(cost: cost, allDone: allDone),
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-/// O valor da lista em escala grande: o estimado e, quando já se marcou
-/// algo, quanto ainda falta comprar.
-class _CostSummary extends StatelessWidget {
-  const _CostSummary({required this.cost, required this.allDone});
+/// O valor da lista: o estimado e, quando já se marcou algo, quanto ainda
+/// falta comprar.
+class _CostBar extends StatelessWidget {
+  const _CostBar({required this.cost, required this.allDone});
 
   final ShoppingCost cost;
   final bool allDone;
@@ -488,43 +593,54 @@ class _CostSummary extends StatelessWidget {
     final muted = colors.onSaturated.withValues(alpha: 0.65);
     final showPending =
         cost.pendingCents > 0 && cost.pendingCents != cost.totalCents;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _CostStat(
-              label: allDone ? 'GASTO ESTIMADO' : 'ESTIMADO',
-              cents: cost.totalCents,
-              color: colors.onSaturated,
-            ),
-            if (showPending) ...[
-              const SizedBox(width: AppSpacing.lg),
-              _CostStat(
-                label: 'FALTA COMPRAR',
-                cents: cost.pendingCents,
-                color: colors.lime,
-              ),
-            ],
-          ],
-        ),
-        if (cost.missingCount > 0) ...[
-          const SizedBox(height: AppSpacing.xs),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: colors.inkSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline, size: 14, color: muted),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
+              _CostStat(
+                label: allDone ? 'GASTO ESTIMADO' : 'ESTIMADO',
+                cents: cost.totalCents,
+                color: colors.onSaturated,
+                size: 24,
+              ),
+              if (showPending)
+                _CostStat(
+                  label: 'FALTA COMPRAR',
+                  cents: cost.pendingCents,
+                  color: colors.lime,
+                  size: 24,
+                  alignEnd: true,
+                ),
+            ],
+          ),
+          if (cost.missingCount > 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 14, color: muted),
+                const SizedBox(width: 6),
+                Text(
                   '${cost.missingCount} sem preço',
                   style: context.texts.bodySmall?.copyWith(color: muted),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -534,11 +650,15 @@ class _CostStat extends StatelessWidget {
     required this.label,
     required this.cents,
     required this.color,
+    this.size = 30,
+    this.alignEnd = false,
   });
 
   final String label;
   final int cents;
   final Color color;
+  final double size;
+  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -547,7 +667,8 @@ class _CostStat extends StatelessWidget {
       label: '$label ${formatMoney(cents)}',
       excludeSemantics: true,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment:
+            alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Text(
             label,
@@ -555,111 +676,141 @@ class _CostStat extends StatelessWidget {
                 ?.copyWith(color: colors.onSaturated.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 2),
-          _Money(cents: cents, size: 30, color: color),
+          MoneyText(cents: cents, size: size, color: color),
         ],
       ),
     );
   }
 }
 
-/// "R$" pequeno e o valor em display: o número é o que se lê.
-class _Money extends StatelessWidget {
-  const _Money({
-    required this.cents,
-    required this.size,
-    required this.color,
-    this.showSymbol = true,
+/// "HORTIFRÚTI ———— R$ 18,50  3": ícone e nome do corredor, linha fina,
+/// o quanto falta gastar nele e quantos itens faltam.
+class _SectionHeader extends ConsumerWidget {
+  const _SectionHeader({
+    required this.slug,
+    required this.label,
+    required this.items,
   });
 
-  final int cents;
-  final double size;
-  final Color color;
-  final bool showSymbol;
-
-  @override
-  Widget build(BuildContext context) {
-    final amount = formatMoney(cents).replaceFirst('R\$ ', '');
-    return Text.rich(
-      TextSpan(
-        children: [
-          if (showSymbol)
-            TextSpan(
-              text: 'R\$ ',
-              style: context.texts.bodySmall?.copyWith(
-                color: color.withValues(alpha: 0.7),
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          TextSpan(
-            text: amount,
-            style: AppTextStyles.display(size).copyWith(color: color),
-          ),
-        ],
-      ),
-      maxLines: 1,
-    );
-  }
-}
-
-/// "HORTIFRÚTI ———— 2/5": nome do corredor, linha fina e progresso; a seção
-/// inteira marcada apaga.
-class _SectionHeader extends ConsumerWidget {
-  const _SectionHeader({required this.label, required this.items});
-
+  final String slug;
   final String label;
   final List<ShoppingListItem> items;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
-    final done = items.where((i) => i.checked).length;
-    final complete = done == items.length;
     final byItem = items.isEmpty
         ? const <String, int>{}
         : ref.watch(shoppingCostProvider(items.first.listId)).byItem;
     final subtotal = items.fold<int>(0, (sum, i) => sum + (byItem[i.id] ?? 0));
 
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 250),
-      opacity: complete ? 0.5 : 1,
-      child: Padding(
-        padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: 2),
-        child: Row(
-          children: [
-            Text(
-              label.toUpperCase(),
-              style: context.texts.labelMedium
-                  ?.copyWith(color: colors.lime, letterSpacing: 1.2),
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: 2),
+      child: Row(
+        children: [
+          Icon(_categoryIcon(slug), size: 16, color: colors.lime),
+          const SizedBox(width: 6),
+          Text(
+            label.toUpperCase(),
+            style: context.texts.labelMedium
+                ?.copyWith(color: colors.lime, letterSpacing: 1.2),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: colors.onSaturated.withValues(alpha: 0.12),
             ),
-            const SizedBox(width: AppSpacing.xs),
-            Expanded(
-              child: Container(
-                height: 1,
-                color: colors.onSaturated.withValues(alpha: 0.12),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            Text.rich(
-              TextSpan(
-                children: [
-                  if (subtotal > 0)
-                    TextSpan(
-                      text: '${formatMoney(subtotal)}  ',
-                      style: TextStyle(
-                        color: colors.onSaturated.withValues(alpha: 0.55),
-                      ),
-                    ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text.rich(
+            TextSpan(
+              children: [
+                if (subtotal > 0)
                   TextSpan(
-                    text: '$done/${items.length}',
+                    text: '${formatMoney(subtotal)}  ',
                     style: TextStyle(
-                      color: colors.onSaturated.withValues(alpha: 0.35),
+                      color: colors.onSaturated.withValues(alpha: 0.55),
                     ),
                   ),
-                ],
-              ),
-              style: context.texts.labelMedium,
+                TextSpan(
+                  text: '${items.length}',
+                  style: TextStyle(
+                    color: colors.onSaturated.withValues(alpha: 0.35),
+                  ),
+                ),
+              ],
             ),
-          ],
+            style: context.texts.labelMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "COMPRADOS 7 ———— ⌄": o que já está no carrinho, recolhido por padrão.
+class _BoughtHeader extends StatelessWidget {
+  const _BoughtHeader({
+    required this.count,
+    required this.open,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool open;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.lg),
+      child: Semantics(
+        button: true,
+        expanded: open,
+        label: 'Comprados, $count',
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Row(
+              children: [
+                Text(
+                  'COMPRADOS',
+                  style: context.texts.labelMedium?.copyWith(
+                    color: colors.onSaturated.withValues(alpha: 0.6),
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  '$count',
+                  style: context.texts.labelMedium?.copyWith(
+                    color: colors.onSaturated.withValues(alpha: 0.35),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Container(
+                    height: 1,
+                    color: colors.onSaturated.withValues(alpha: 0.12),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: open ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: colors.onSaturated.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -803,7 +954,7 @@ class _ItemRow extends ConsumerWidget {
         width: 60,
         child: Align(
           alignment: Alignment.centerRight,
-          child: _Money(
+          child: MoneyText(
             cents: cents,
             size: 15,
             showSymbol: false,
@@ -820,28 +971,28 @@ class _ItemRow extends ConsumerWidget {
     if (qty == null) return const SizedBox.shrink();
     final unit = shoppingItemUnit(item);
     final alpha = item.checked ? 0.35 : 1.0;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          qty,
-          style: context.texts.titleMedium?.copyWith(
-            color: colors.onSaturated.withValues(alpha: alpha),
-            fontWeight: FontWeight.w700,
-            height: 1.1,
-          ),
-        ),
-        const SizedBox(width: 5),
-        if (unit != null)
-          Text(
-            unit,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.texts.bodySmall?.copyWith(
-              color: colors.onSaturated.withValues(alpha: 0.6 * alpha),
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: qty,
+            style: context.texts.titleMedium?.copyWith(
+              color: colors.onSaturated.withValues(alpha: alpha),
+              fontWeight: FontWeight.w700,
+              height: 1.1,
             ),
           ),
-      ],
+          if (unit != null)
+            TextSpan(
+              text: ' $unit',
+              style: context.texts.bodySmall?.copyWith(
+                color: colors.onSaturated.withValues(alpha: 0.6 * alpha),
+              ),
+            ),
+        ],
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 
