@@ -17,6 +17,8 @@ import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
+import 'package:receyta/features/mascot/controllers/mascot_mood_provider.dart';
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_prefs.dart';
@@ -46,6 +48,10 @@ class ShoppingListPage extends ConsumerWidget {
   const ShoppingListPage({super.key, required this.listId});
 
   final String listId;
+
+  /// Lista concluída: tem itens e todos estão marcados.
+  bool _allChecked(List<ShoppingListItem>? items) =>
+      items != null && items.isNotEmpty && items.every((i) => i.checked);
 
   /// O botão "Desmarcar todos" só aparece com algo marcado.
   bool _hasChecked(WidgetRef ref, String id) =>
@@ -125,6 +131,12 @@ class ShoppingListPage extends ConsumerWidget {
     final showPrices =
         ref.watch(shoppingViewPrefsProvider.select((p) => p.itemPrices));
     final hasPrices = !ref.watch(shoppingCostProvider(listId)).isEmpty;
+
+    ref.listen(shoppingListItemsProvider(listId), (previous, next) {
+      if (!_allChecked(previous?.valueOrNull) && _allChecked(next.valueOrNull)) {
+        ref.read(mascotMoodProvider.notifier).celebrate();
+      }
+    });
 
     return HeaderScaffold(
       title: list?.name ?? 'Compras',
@@ -210,9 +222,17 @@ class ShoppingListPage extends ConsumerWidget {
       data: (items) => Column(
         children: [
           Expanded(
-            child: items.isEmpty
-                ? const _EmptyListHint()
-                : _buildGroups(context, items),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned.fill(
+                  child: items.isEmpty
+                      ? const _EmptyListHint()
+                      : _buildGroups(context, items),
+                ),
+                if (items.isNotEmpty) const _CelebrationOverlay(),
+              ],
+            ),
           ),
           _ListFooter(listId: list.id, items: items),
         ],
@@ -1265,6 +1285,28 @@ class _CheckDotState extends State<_CheckDot>
   }
 }
 
+/// Pote que aparece no canto só durante a comemoração de lista concluída.
+class _CelebrationOverlay extends ConsumerWidget {
+  const _CelebrationOverlay();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final celebrating = ref.watch(
+      mascotMoodProvider.select((m) => m == MascotMood.celebrating),
+    );
+    if (!celebrating) return const SizedBox.shrink();
+    return const IgnorePointer(
+      child: Align(
+        alignment: Alignment.bottomRight,
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.md),
+          child: AnimatedMascot(kind: MascotKind.pote, width: 96),
+        ),
+      ),
+    );
+  }
+}
+
 /// Estado da lista sem itens: diz o que fazer e mostra exemplos do que o
 /// campo de baixo entende (quantidade e unidade saem do texto).
 class _EmptyListHint extends StatelessWidget {
@@ -1282,7 +1324,7 @@ class _EmptyListHint extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.playlist_add, size: 56, color: colors.lime),
+            const AnimatedMascot(kind: MascotKind.pote, width: 120),
             const SizedBox(height: AppSpacing.lg),
             Text(
               'Sua lista está vazia',

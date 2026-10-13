@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/features/mascot/controllers/mascot_mood_provider.dart';
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/features/onboarding/controllers/onboarding_seen.dart';
 import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -15,18 +18,26 @@ import 'package:receyta/widgets/tile_pattern.dart';
 /// no mesmo desenho do app — bloco com a cor e a textura da seção em cima e,
 /// por cima dele, um cartão claro com um exemplo de verdade do recurso. Aparece
 /// uma vez só; "Pular" e "Começar" levam à home.
-class WelcomePage extends StatefulWidget {
+class WelcomePage extends ConsumerStatefulWidget {
   const WelcomePage({super.key});
 
   @override
-  State<WelcomePage> createState() => _WelcomePageState();
+  ConsumerState<WelcomePage> createState() => _WelcomePageState();
 }
 
-class _WelcomePageState extends State<WelcomePage> {
+class _WelcomePageState extends ConsumerState<WelcomePage> {
   final _controller = PageController();
   int _page = 0;
 
   static const _last = 2;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) ref.read(mascotMoodProvider.notifier).wave();
+    });
+  }
 
   @override
   void dispose() {
@@ -62,6 +73,7 @@ class _WelcomePageState extends State<WelcomePage> {
         body: 'Digite, importe de um link, de uma foto ou de um arquivo. '
             'Tudo fica guardado no seu aparelho.',
         mock: const _RecipeMock(),
+        mascot: MascotKind.cloche,
       ),
       _SlideData(
         color: TileColor.violet,
@@ -78,6 +90,7 @@ class _WelcomePageState extends State<WelcomePage> {
         body: 'A lista sai das receitas, com as quantidades já somadas. No '
             'modo cozinha, os timers ficam à vista até com o app minimizado.',
         mock: const _ShoppingMock(),
+        mascot: MascotKind.pote,
       ),
     ];
 
@@ -88,8 +101,14 @@ class _WelcomePageState extends State<WelcomePage> {
           Expanded(
             child: PageView(
               controller: _controller,
-              onPageChanged: (i) => setState(() => _page = i),
-              children: [for (final s in slides) _Slide(data: s)],
+              onPageChanged: (i) {
+                setState(() => _page = i);
+                ref.read(mascotMoodProvider.notifier).celebrate();
+              },
+              children: [
+                for (var i = 0; i < slides.length; i++)
+                  _Slide(data: slides[i], index: i, controller: _controller),
+              ],
             ),
           ),
           SafeArea(
@@ -147,6 +166,7 @@ class _SlideData {
     required this.title,
     required this.body,
     required this.mock,
+    this.mascot,
   });
 
   final TileColor color;
@@ -154,12 +174,19 @@ class _SlideData {
   final String title;
   final String body;
   final Widget mock;
+  final MascotKind? mascot;
 }
 
 class _Slide extends StatelessWidget {
-  const _Slide({required this.data});
+  const _Slide({
+    required this.data,
+    required this.index,
+    required this.controller,
+  });
 
   final _SlideData data;
+  final int index;
+  final PageController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -209,6 +236,12 @@ class _Slide extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (data.mascot != null)
+                  _SlideMascot(
+                    kind: data.mascot!,
+                    index: index,
+                    controller: controller,
+                  ),
               ],
             ),
           ),
@@ -233,6 +266,59 @@ class _Slide extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Mascote da tela: entra quicando de baixo e, ao deslizar, anda mais rápido
+/// que o cartão e se inclina para o lado do movimento (parallax).
+class _SlideMascot extends StatelessWidget {
+  const _SlideMascot({
+    required this.kind,
+    required this.index,
+    required this.controller,
+  });
+
+  final MascotKind kind;
+  final int index;
+  final PageController controller;
+
+  double _page() {
+    if (controller.hasClients && controller.position.haveDimensions) {
+      return controller.page ?? controller.initialPage.toDouble();
+    }
+    return controller.initialPage.toDouble();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onRight = kind == MascotKind.pote;
+    return Positioned(
+      left: onRight ? null : AppSpacing.md,
+      right: onRight ? AppSpacing.md : null,
+      bottom: 6,
+      child: IgnorePointer(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 900),
+          curve: Curves.elasticOut,
+          builder: (context, enter, child) => AnimatedBuilder(
+            animation: controller,
+            builder: (context, _) {
+              final delta = index - _page();
+              return Transform.translate(
+                offset: Offset(delta * 140, (1 - enter) * 120),
+                child: Transform.rotate(
+                  angle: delta * 0.4,
+                  alignment: Alignment.bottomCenter,
+                  child: child,
+                ),
+              );
+            },
+          ),
+          child: AnimatedMascot(kind: kind, width: onRight ? 104 : 132),
+        ),
+      ),
     );
   }
 }
