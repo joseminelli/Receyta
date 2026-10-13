@@ -465,7 +465,7 @@ class _ProgressHeader extends ConsumerWidget {
             ),
           ),
           if (cost != null && !cost.isEmpty) ...[
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.sm),
             _CostSummary(cost: cost, allDone: allDone),
           ],
         ],
@@ -517,10 +517,7 @@ class _CostSummary extends StatelessWidget {
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
-                  cost.missingCount == 1
-                      ? '1 item sem preço fica fora da conta'
-                      : '${cost.missingCount} itens sem preço ficam fora da '
-                          'conta',
+                  '${cost.missingCount} sem preço',
                   style: context.texts.bodySmall?.copyWith(color: muted),
                 ),
               ),
@@ -558,7 +555,7 @@ class _CostStat extends StatelessWidget {
                 ?.copyWith(color: colors.onSaturated.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 2),
-          _Money(cents: cents, size: 34, color: color),
+          _Money(cents: cents, size: 30, color: color),
         ],
       ),
     );
@@ -567,11 +564,17 @@ class _CostStat extends StatelessWidget {
 
 /// "R$" pequeno e o valor em display: o número é o que se lê.
 class _Money extends StatelessWidget {
-  const _Money({required this.cents, required this.size, required this.color});
+  const _Money({
+    required this.cents,
+    required this.size,
+    required this.color,
+    this.showSymbol = true,
+  });
 
   final int cents;
   final double size;
   final Color color;
+  final bool showSymbol;
 
   @override
   Widget build(BuildContext context) {
@@ -579,13 +582,14 @@ class _Money extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(
-            text: 'R\$ ',
-            style: context.texts.bodySmall?.copyWith(
-              color: color.withValues(alpha: 0.7),
-              fontWeight: FontWeight.w700,
+          if (showSymbol)
+            TextSpan(
+              text: 'R\$ ',
+              style: context.texts.bodySmall?.copyWith(
+                color: color.withValues(alpha: 0.7),
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
           TextSpan(
             text: amount,
             style: AppTextStyles.display(size).copyWith(color: color),
@@ -635,13 +639,25 @@ class _SectionHeader extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.xs),
-            Text(
-              subtotal > 0
-                  ? '${formatMoney(subtotal)} · $done/${items.length}'
-                  : '$done/${items.length}',
-              style: context.texts.labelMedium?.copyWith(
-                color: colors.onSaturated.withValues(alpha: 0.6),
+            Text.rich(
+              TextSpan(
+                children: [
+                  if (subtotal > 0)
+                    TextSpan(
+                      text: '${formatMoney(subtotal)}  ',
+                      style: TextStyle(
+                        color: colors.onSaturated.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  TextSpan(
+                    text: '$done/${items.length}',
+                    style: TextStyle(
+                      color: colors.onSaturated.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ],
               ),
+              style: context.texts.labelMedium,
             ),
           ],
         ),
@@ -780,16 +796,17 @@ class _ItemRow extends ConsumerWidget {
       shoppingCostProvider(item.listId).select((c) => c.byItem[item.id]),
     );
     if (cents == null) return const SizedBox.shrink();
-    final alpha = item.checked ? 0.35 : 0.85;
+    final alpha = item.checked ? 0.3 : 0.7;
     return Padding(
       padding: const EdgeInsets.only(left: AppSpacing.xs),
       child: SizedBox(
-        width: 76,
+        width: 60,
         child: Align(
           alignment: Alignment.centerRight,
           child: _Money(
             cents: cents,
-            size: 17,
+            size: 15,
+            showSymbol: false,
             color: context.colors.onSaturated.withValues(alpha: alpha),
           ),
         ),
@@ -888,13 +905,14 @@ class _ItemRow extends ConsumerWidget {
           ),
         ],
         if (origins.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              for (final name in origins) _OriginChip(name: name, dim: done),
-            ],
+          const SizedBox(height: 2),
+          Text(
+            origins.join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.texts.bodySmall?.copyWith(
+              color: colors.onSaturated.withValues(alpha: done ? 0.25 : 0.45),
+            ),
           ),
         ],
       ],
