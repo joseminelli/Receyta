@@ -35,7 +35,7 @@ abstract class MascotPainter extends CustomPainter {
     canvas.scale(size.width / designWidth);
     _paintShadow(canvas, pose);
     canvas.save();
-    canvas.translate(0, pose.dy);
+    canvas.translate(pose.dx, pose.dy);
     canvas.translate(100, groundY);
     canvas.rotate(pose.tilt);
     canvas.scale(pose.scaleX, pose.scaleY);
@@ -86,7 +86,7 @@ abstract class MascotPainter extends CustomPainter {
   void _paintShadow(Canvas canvas, MascotPose pose) {
     final radius = 56 + pose.dy * 0.8;
     final rect = Rect.fromCenter(
-      center: Offset(100, groundY + 1),
+      center: Offset(100 + pose.dx, groundY + 1),
       width: radius * 2,
       height: 14,
     );
@@ -226,6 +226,40 @@ abstract class MascotPainter extends CustomPainter {
       radius * 0.09,
       white,
     );
+    canvas.restore();
+  }
+
+  /// Mão com pulso girando em [wristAngle]: mistura a luva fechada da arte
+  /// ([paintClosed]) com a mão aberta ([paintOpen]) conforme [open] (0 a 1),
+  /// com uma transição curta entre as duas.
+  void paintHand(
+    Canvas canvas, {
+    required Offset wrist,
+    required double wristAngle,
+    required double open,
+    required VoidCallback paintClosed,
+    required VoidCallback paintOpen,
+  }) {
+    canvas.save();
+    canvas.translate(wrist.dx, wrist.dy);
+    canvas.rotate(wristAngle);
+    canvas.translate(-wrist.dx, -wrist.dy);
+    if (open < 0.02) {
+      paintClosed();
+    } else if (open > 0.98) {
+      paintOpen();
+    } else {
+      final bounds = Rect.fromLTWH(wrist.dx - 90, wrist.dy - 30, 180, 180);
+      canvas.saveLayer(
+        bounds,
+        Paint()..color = Color.fromRGBO(0, 0, 0, 1 - open),
+      );
+      paintClosed();
+      canvas.restore();
+      canvas.saveLayer(bounds, Paint()..color = Color.fromRGBO(0, 0, 0, open));
+      paintOpen();
+      canvas.restore();
+    }
     canvas.restore();
   }
 

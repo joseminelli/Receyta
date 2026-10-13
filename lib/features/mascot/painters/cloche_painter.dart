@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'cloche_art.dart';
 import 'mascot_painter.dart';
 import 'mascot_pose.dart';
+import 'open_hand.dart';
 
 class _Layer {
   const _Layer(this.tone, this.path);
@@ -27,6 +28,12 @@ class ClochePainter extends MascotPainter {
   static const _scale = MascotPainter.designWidth / clocheArtWidth;
   static const _shoulderLeft = Offset(40, 176);
   static const _shoulderRight = Offset(308, 176);
+  static const _wristLeft = Offset(38, 272);
+  static const _wristRight = Offset(310, 272);
+  static const _cuffLeft = CuffFrame(Offset(45.2, 273.8), -0.12);
+  static const _cuffRight = CuffFrame(Offset(303.6, 273.8), 0.116);
+  static const _hipLeft = Offset(146, 248);
+  static const _hipRight = Offset(201, 248);
   static const _knobPivot = Offset(175, 50);
   static const _eyeLeft = Offset(142.5, 132);
   static const _eyeRight = Offset(207.5, 132);
@@ -65,10 +72,10 @@ class ClochePainter extends MascotPainter {
   void paintBody(Canvas canvas, MascotPose pose) {
     canvas.scale(_scale);
     canvas.translate(1.5, 0);
-    _paintArm(canvas, ClochePart.armLeft, _shoulderLeft, pose.armLeft);
-    _paintArm(canvas, ClochePart.armRight, _shoulderRight, -pose.armRight);
-    _paintLayers(canvas, ClochePart.legLeft);
-    _paintLayers(canvas, ClochePart.legRight);
+    _paintArm(canvas, pose, left: true);
+    _paintArm(canvas, pose, left: false);
+    _paintLeg(canvas, ClochePart.legLeft, _hipLeft, pose.legLeft);
+    _paintLeg(canvas, ClochePart.legRight, _hipRight, -pose.legRight);
     _paintKnob(canvas, pose);
     _paintLayers(canvas, ClochePart.body);
     _paintFace(canvas, pose);
@@ -117,16 +124,43 @@ class ClochePainter extends MascotPainter {
       Offset(38.5, 170),
     ], true);
 
-  void _paintArm(Canvas canvas, ClochePart part, Offset pivot, double angle) {
+  void _paintArm(Canvas canvas, MascotPose pose, {required bool left}) {
+    final pivot = left ? _shoulderLeft : _shoulderRight;
     canvas.save();
     canvas.translate(pivot.dx, pivot.dy);
-    canvas.rotate(angle);
+    canvas.rotate(left ? pose.armLeft : -pose.armRight);
     canvas.translate(-pivot.dx, -pivot.dy);
-    _paintUpperArm(canvas, part == ClochePart.armLeft);
+    _paintUpperArm(canvas, left);
     canvas.save();
     canvas.clipRect(const Rect.fromLTRB(-50, 238, 450, 500));
-    _paintLayers(canvas, part);
+    _paintLayers(canvas, left ? ClochePart.armLeft : ClochePart.armRight);
     canvas.restore();
+    paintHand(
+      canvas,
+      wrist: left ? _wristLeft : _wristRight,
+      wristAngle: left ? pose.wristLeft : -pose.wristRight,
+      open: left ? pose.handLeft : pose.handRight,
+      paintClosed: () => _paintLayers(
+        canvas,
+        left ? ClochePart.handLeft : ClochePart.handRight,
+      ),
+      paintOpen: () => OpenHand.paint(
+        canvas,
+        colors,
+        left: left,
+        target: left ? _cuffLeft : _cuffRight,
+        scale: 1,
+      ),
+    );
+    canvas.restore();
+  }
+
+  void _paintLeg(Canvas canvas, ClochePart part, Offset hip, double angle) {
+    canvas.save();
+    canvas.translate(hip.dx, hip.dy);
+    canvas.rotate(angle);
+    canvas.translate(-hip.dx, -hip.dy);
+    _paintLayers(canvas, part);
     canvas.restore();
   }
 

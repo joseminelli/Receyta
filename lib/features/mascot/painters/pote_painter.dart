@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'mascot_painter.dart';
 import 'mascot_pose.dart';
+import 'open_hand.dart';
 import 'pote_art.dart';
 
 class _Layer {
@@ -27,6 +28,12 @@ class PotePainter extends MascotPainter {
   static const _scale = MascotPainter.designWidth / poteArtWidth;
   static const _shoulderLeft = Offset(46, 272);
   static const _shoulderRight = Offset(252, 270);
+  static const _wristLeft = Offset(32, 358);
+  static const _wristRight = Offset(271, 358);
+  static const _cuffLeft = CuffFrame(Offset(34.3, 361), -0.076);
+  static const _cuffRight = CuffFrame(Offset(273.3, 362.1), 0.087);
+  static const _hipLeft = Offset(127, 358);
+  static const _hipRight = Offset(176, 358);
   static const _lidPivot = Offset(151, 98);
   static const _eyeLeft = Offset(134.5, 222);
   static const _eyeRight = Offset(188.5, 222);
@@ -67,10 +74,10 @@ class PotePainter extends MascotPainter {
   void paintBody(Canvas canvas, MascotPose pose) {
     canvas.scale(_scale);
     canvas.translate(6.5, 0);
-    _paintArm(canvas, PotePart.armLeft, _shoulderLeft, pose.armLeft);
-    _paintArm(canvas, PotePart.armRight, _shoulderRight, -pose.armRight);
-    _paintLayers(canvas, PotePart.legLeft);
-    _paintLayers(canvas, PotePart.legRight);
+    _paintArm(canvas, pose, left: true);
+    _paintArm(canvas, pose, left: false);
+    _paintLeg(canvas, PotePart.legLeft, _hipLeft, pose.legLeft);
+    _paintLeg(canvas, PotePart.legRight, _hipRight, -pose.legRight);
     _paintLayers(canvas, PotePart.body);
     _paintContentDots(canvas);
     _paintFace(canvas, pose);
@@ -92,11 +99,36 @@ class PotePainter extends MascotPainter {
     }
   }
 
-  void _paintArm(Canvas canvas, PotePart part, Offset pivot, double angle) {
+  void _paintArm(Canvas canvas, MascotPose pose, {required bool left}) {
+    final pivot = left ? _shoulderLeft : _shoulderRight;
     canvas.save();
     canvas.translate(pivot.dx, pivot.dy);
-    canvas.rotate(angle);
+    canvas.rotate(left ? pose.armLeft : -pose.armRight);
     canvas.translate(-pivot.dx, -pivot.dy);
+    _paintLayers(canvas, left ? PotePart.armLeft : PotePart.armRight);
+    paintHand(
+      canvas,
+      wrist: left ? _wristLeft : _wristRight,
+      wristAngle: left ? pose.wristLeft : -pose.wristRight,
+      open: left ? pose.handLeft : pose.handRight,
+      paintClosed: () =>
+          _paintLayers(canvas, left ? PotePart.handLeft : PotePart.handRight),
+      paintOpen: () => OpenHand.paint(
+        canvas,
+        colors,
+        left: left,
+        target: left ? _cuffLeft : _cuffRight,
+        scale: 0.9,
+      ),
+    );
+    canvas.restore();
+  }
+
+  void _paintLeg(Canvas canvas, PotePart part, Offset hip, double angle) {
+    canvas.save();
+    canvas.translate(hip.dx, hip.dy);
+    canvas.rotate(angle);
+    canvas.translate(-hip.dx, -hip.dy);
     _paintLayers(canvas, part);
     canvas.restore();
   }
