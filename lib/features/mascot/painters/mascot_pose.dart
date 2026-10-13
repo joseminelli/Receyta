@@ -11,7 +11,7 @@ const waveSeconds = 2.4;
 /// calcula a pose (idle, thinking, waving, celebrating) são as funções de
 /// movimento. Ângulos em radianos, positivo = braço para fora. `look` vai de
 /// -1 a 1, `mouth` de 0 (sorriso) a 1 (boca aberta) e `burst` de 0 a 1 é o
-/// progresso do confete (0 = sem confete).
+/// progresso do confete (0 = sem confete). `lid` de 0 a 1 ergue a tampa do Pote.
 class MascotPose {
   final double dy;
   final double scaleX;
@@ -22,6 +22,7 @@ class MascotPose {
   final double tilt;
   final double mouth;
   final double burst;
+  final double lid;
   final Offset look;
 
   const MascotPose({
@@ -34,6 +35,7 @@ class MascotPose {
     this.tilt = 0,
     this.mouth = 0,
     this.burst = 0,
+    this.lid = 0,
     this.look = Offset.zero,
   });
 
@@ -57,6 +59,7 @@ class MascotPose {
       tilt: tilt ?? this.tilt,
       mouth: mouth ?? this.mouth,
       burst: burst,
+      lid: lid,
       look: look ?? this.look,
     );
   }
@@ -72,6 +75,7 @@ class MascotPose {
       tilt: lerpDouble(a.tilt, b.tilt, t)!,
       mouth: lerpDouble(a.mouth, b.mouth, t)!,
       burst: b.burst,
+      lid: lerpDouble(a.lid, b.lid, t)!,
       look: Offset.lerp(a.look, b.look, t)!,
     );
   }
@@ -92,7 +96,7 @@ MascotPose idlePose(double seconds) {
     armLeft: 0.06 + armSwing,
     armRight: 0.06 - armSwing,
     blink: blink,
-    look: Offset(math.sin(seconds * 0.7) * 0.4, 0),
+    look: Offset(0.55 + math.sin(seconds * 0.7) * 0.25, -0.2),
   );
 }
 
@@ -142,6 +146,7 @@ MascotPose celebratePose(double seconds) {
     tilt: math.sin(math.pi * 2 * air) * 0.1 * lift,
     mouth: math.sin(math.pi * ((t - 0.05) / 1.2).clamp(0.0, 1.0)),
     burst: ((t - 0.3) / 1.15).clamp(0.0, 1.0),
+    lid: lift,
     look: Offset(0, -0.6 * lift),
   );
 }

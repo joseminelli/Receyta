@@ -158,30 +158,51 @@ abstract class MascotPainter extends CustomPainter {
     canvas.save();
     canvas.translate(shoulder.dx, shoulder.dy);
     canvas.rotate(-side * angle);
+    final end = Offset(side * 17.0 * reach, 60 * reach);
     final arm = Path()
-      ..quadraticBezierTo(
-        side * 20.0 * reach,
-        30 * reach,
-        side * 24.0 * reach,
-        66 * reach,
-      );
+      ..quadraticBezierTo(side * 18.0 * reach, 28 * reach, end.dx, end.dy);
     canvas.drawPath(
       arm,
       Paint()
         ..color = colors.ink
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 9
+        ..strokeWidth = 10
         ..strokeCap = StrokeCap.round,
     );
-    final hand = Offset(side * 24.0 * reach, 72 * reach);
+    final metric = arm.computeMetrics().first;
+    canvas.drawPath(
+      metric.extractPath(metric.length * 0.32, metric.length),
+      Paint()
+        ..color = colors.onInk
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5.5,
+    );
+    _paintHand(canvas, end + Offset(side * 2.0 * reach, 12 * reach), side);
+    canvas.restore();
+  }
+
+  /// Luva grande: palma oval, polegar do lado de dentro e dois vincos de dedos.
+  void _paintHand(Canvas canvas, Offset center, int side) {
     final thumb = Path()
       ..addOval(
-        Rect.fromCircle(center: hand + Offset(-side * 11, -4), radius: 5),
+        Rect.fromCenter(
+          center: center + Offset(-side * 13.0, 2),
+          width: 11,
+          height: 18,
+        ),
       );
     shape(canvas, thumb, colors.onInk);
-    final palm = Path()..addOval(Rect.fromCircle(center: hand, radius: 13));
+    final palm = Path()
+      ..addOval(Rect.fromCenter(center: center, width: 28, height: 32));
     shape(canvas, palm, colors.onInk, shaded: true);
-    canvas.restore();
+    final crease = outline..strokeWidth = 2;
+    for (final dx in const [-4.5, 4.5]) {
+      canvas.drawLine(
+        center + Offset(dx, 15),
+        center + Offset(dx, 6),
+        crease,
+      );
+    }
   }
 
   void paintEye(Canvas canvas, Offset center, MascotPose pose, double radius) {
@@ -191,11 +212,16 @@ abstract class MascotPainter extends CustomPainter {
     final white = fill(colors.onSaturated);
     canvas.drawCircle(Offset.zero, radius, white);
     canvas.drawCircle(Offset.zero, radius, outline);
-    final pupil = pose.look * (radius * 0.3);
-    canvas.drawCircle(pupil, radius * 0.57, fill(colors.ink));
+    final pupil = pose.look * (radius * 0.32);
+    canvas.drawCircle(pupil, radius * 0.6, fill(colors.ink));
     canvas.drawCircle(
-      pupil + Offset(-radius * 0.17, -radius * 0.19),
-      radius * 0.17,
+      pupil + Offset(-radius * 0.2, -radius * 0.22),
+      radius * 0.2,
+      white,
+    );
+    canvas.drawCircle(
+      pupil + Offset(radius * 0.18, radius * 0.2),
+      radius * 0.09,
       white,
     );
     canvas.restore();
