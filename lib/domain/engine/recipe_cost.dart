@@ -8,6 +8,7 @@ import 'package:receyta/data/database/seed_data.dart';
 import 'package:receyta/domain/engine/unit_conversion.dart';
 import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/domain/models/recipe_ingredient.dart';
+import 'package:receyta/domain/models/shopping_list_item.dart';
 
 /// Aviso que acompanha qualquer valor de custo: é uma estimativa.
 const kCostDisclaimer = 'Valor estimado. Usa os preços que você informou e '
@@ -95,28 +96,45 @@ RecipeCost costOfRecipe(
   ]);
 }
 
+typedef _AmountCost = ({int? cents, CostGap? gap, bool counted});
+
 LineCost _costOfLine(
   RecipeIngredient line,
   Map<String, Ingredient> catalog,
   double factor,
 ) {
-  final unit = line.unitId == null ? null : _unitByCode[line.unitId];
+  final r = _costOfAmount(
+    line.ingredientId,
+    line.quantity,
+    line.unitId,
+    catalog,
+    factor,
+  );
+  return LineCost(line: line, cents: r.cents, gap: r.gap, counted: r.counted);
+}
+
+_AmountCost _costOfAmount(
+  String? ingredientId,
+  double? quantity,
+  String? unitId,
+  Map<String, Ingredient> catalog,
+  double factor,
+) {
+  final unit = unitId == null ? null : _unitByCode[unitId];
   // "A gosto", "pitada" e linhas sem quantidade nenhuma ("sal", "cheiro
   // verde", "sal e cheiro verde") são tempero: custo desprezível e sem como
   // calcular. Ficam fora da conta em vez de travar o custo da receita.
-  if (unit?.kind == 'subjective' || line.quantity == null) {
-    return LineCost(line: line, counted: false);
+  if (unit?.kind == 'subjective' || quantity == null) {
+    return (cents: null, gap: null, counted: false);
   }
 
-  final ingredient =
-      line.ingredientId == null ? null : catalog[line.ingredientId];
+  final ingredient = ingredientId == null ? null : catalog[ingredientId];
   final price = ingredient?.price;
   if (price == null) {
-    return LineCost(line: line, gap: CostGap.noPrice);
+    return (cents: null, gap: CostGap.noPrice, counted: true);
   }
-  final quantity = line.quantity!;
   if (quantity <= 0) {
-    return LineCost(line: line, gap: CostGap.cannotConvert);
+    return (cents: null, gap: CostGap.cannotConvert, counted: true);
   }
 
   final packs = _packsConsumed(
@@ -126,9 +144,9 @@ LineCost _costOfLine(
     ingredient!.displayName,
   );
   if (packs == null) {
-    return LineCost(line: line, gap: CostGap.cannotConvert);
+    return (cents: null, gap: CostGap.cannotConvert, counted: true);
   }
-  return LineCost(line: line, cents: (price.cents * packs).round());
+  return (cents: (price.cents * packs).round(), gap: null, counted: true);
 }
 
 /// Unidades em que dá pra informar um preço: tudo que não é "a gosto".
@@ -336,6 +354,62 @@ PlanCost costOfPlan(
     recipes: recipes,
     ingredients: ingredients,
     missingNames: missing.toList()..sort(),
+  );
+}
+
+/// Custo estimado de uma lista de compras.
+class ShoppingCost {
+  const ShoppingCost({
+    required this.byItem,
+    required this.totalCents,
+    required this.pendingCents,
+    required this.missingCount,
+  });
+
+  /// Custo por id de item; item sem preço ou sem conversão não aparece.
+  final Map<String, int> byItem;
+  final int totalCents;
+
+  /// Só o que ainda não foi marcado como comprado.
+  final int pendingCents;
+
+  /// Itens com quantidade que ficaram fora da conta (sem preço ou sem
+  /// conversão).
+  final int missingCount;
+
+  bool get isEmpty => byItem.isEmpty;
+}
+
+ShoppingCost costOfShoppingItems(
+  List<ShoppingListItem> items,
+  Map<String, Ingredient> catalog,
+) {
+  final byItem = <String, int>{};
+  var total = 0;
+  var pending = 0;
+  var missing = 0;
+  for (final item in items) {
+    final r = _costOfAmount(
+      item.ingredientId,
+      item.quantity,
+      item.unitId,
+      catalog,
+      1,
+    );
+    final cents = r.cents;
+    if (cents != null) {
+      byItem[item.id] = cents;
+      total += cents;
+      if (!item.checked) pending += cents;
+    } else if (r.counted) {
+      missing++;
+    }
+  }
+  return ShoppingCost(
+    byItem: byItem,
+    totalCents: total,
+    pendingCents: pending,
+    missingCount: missing,
   );
 }
 

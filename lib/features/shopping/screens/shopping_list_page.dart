@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
+import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/domain/engine/shopping_text.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
@@ -413,17 +414,21 @@ class _MoveTransition extends StatelessWidget {
 }
 
 /// "7 de 12 itens" + barra fina em lime que enche conforme se marca.
-class _ProgressHeader extends StatelessWidget {
+class _ProgressHeader extends ConsumerWidget {
   const _ProgressHeader({required this.items});
 
   final List<ShoppingListItem> items;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final total = items.length;
     final done = items.where((i) => i.checked).length;
     final allDone = total > 0 && done == total;
+    final cost = items.isEmpty
+        ? null
+        : ref.watch(shoppingCostProvider(items.first.listId));
+    final muted = colors.onSaturated.withValues(alpha: 0.65);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
@@ -439,6 +444,23 @@ class _ProgressHeader extends StatelessWidget {
               color: allDone ? colors.lime : colors.onSaturated,
             ),
           ),
+          if (cost != null && !cost.isEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              cost.pendingCents > 0 && cost.pendingCents != cost.totalCents
+                  ? '≈ ${formatMoney(cost.totalCents)} · faltam '
+                      '${formatMoney(cost.pendingCents)}'
+                  : '≈ ${formatMoney(cost.totalCents)}',
+              style: context.texts.bodyMedium?.copyWith(color: muted),
+            ),
+            if (cost.missingCount > 0)
+              Text(
+                cost.missingCount == 1
+                    ? '1 item sem preço fora da conta'
+                    : '${cost.missingCount} itens sem preço fora da conta',
+                style: context.texts.bodySmall?.copyWith(color: muted),
+              ),
+          ],
           const SizedBox(height: AppSpacing.xs),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -605,7 +627,25 @@ class _ItemRow extends ConsumerWidget {
             SizedBox(width: _quantityColumn, child: _buildQuantity(context)),
             const SizedBox(width: AppSpacing.xs),
             Expanded(child: _buildName(context, ref)),
+            _buildPrice(context, ref),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrice(BuildContext context, WidgetRef ref) {
+    final cents = ref.watch(
+      shoppingCostProvider(item.listId).select((c) => c.byItem[item.id]),
+    );
+    if (cents == null) return const SizedBox.shrink();
+    final alpha = item.checked ? 0.35 : 0.6;
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.xs),
+      child: Text(
+        formatMoney(cents),
+        style: context.texts.bodySmall?.copyWith(
+          color: context.colors.onSaturated.withValues(alpha: alpha),
         ),
       ),
     );
