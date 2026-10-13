@@ -21,6 +21,10 @@ abstract class MascotPainter extends CustomPainter {
   final ValueListenable<double> seconds;
   final MascotPose Function(double seconds) poseAt;
 
+  /// Desenha a sombra no chão. Desligada nas imagens de marketing, onde o fundo
+  /// é transparente.
+  bool paintsShadow = true;
+
   static const double designWidth = 200;
   static const double lineWidth = 3;
 
@@ -33,7 +37,7 @@ abstract class MascotPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final pose = poseAt(seconds.value);
     canvas.scale(size.width / designWidth);
-    _paintShadow(canvas, pose);
+    if (paintsShadow) _paintShadow(canvas, pose);
     canvas.save();
     canvas.translate(pose.dx, pose.dy);
     canvas.translate(100, groundY);
