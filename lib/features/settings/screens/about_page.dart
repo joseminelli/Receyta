@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/app_assets.dart';
 import 'package:receyta/data/services/app_info.dart';
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -46,6 +47,9 @@ class AboutPage extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.lg),
                 const _SectionTitle('O que dá pra fazer'),
                 for (final f in _features) _FeatureRow(feature: f),
+                const SizedBox(height: AppSpacing.lg),
+                const _SectionTitle('Quem cozinha com você'),
+                const _Mascots(),
                 const SizedBox(height: AppSpacing.lg),
                 const _SectionTitle('Perguntas frequentes'),
                 const _Faq(),
@@ -285,6 +289,108 @@ class _FeatureRow extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Os mascotes do app: Clô (o Cloche) e Tito (o Pote). Tocar neles os faz
+/// acenar ou pular.
+class _Mascots extends StatelessWidget {
+  const _Mascots();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: const [
+              Expanded(
+                child: _MascotCard(
+                  kind: MascotKind.cloche,
+                  width: 112,
+                  name: 'Clô',
+                  role: 'Ajudante da cozinha',
+                  text: 'Cuida das receitas e da agenda, comemora cada prato '
+                      'que sai e fica de olho no fogão.',
+                ),
+              ),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _MascotCard(
+                  kind: MascotKind.pote,
+                  width: 78,
+                  name: 'Tito',
+                  role: 'Guardião da despensa',
+                  text: 'Cuida das listas de compras, dos ingredientes e da '
+                      'organização, e não deixa nada faltar.',
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          'Toque neles para ver o que fazem.',
+          style: context.texts.bodySmall
+              ?.copyWith(color: context.colors.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+class _MascotCard extends StatelessWidget {
+  const _MascotCard({
+    required this.kind,
+    required this.width,
+    required this.name,
+    required this.role,
+    required this.text,
+  });
+
+  final MascotKind kind;
+  final double width;
+  final String name;
+  final String role;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 124,
+            width: double.infinity,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedMascot(
+                kind: kind,
+                width: width,
+                semanticLabel: '$name, mascote do Receyta',
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(name, style: AppTextStyles.display(26)),
+          Text(
+            role,
+            style: context.texts.labelSmall?.copyWith(color: colors.textMuted),
+          ),
+          const SizedBox(height: AppSpacing.xs / 2),
+          Text(text, style: context.texts.bodySmall),
         ],
       ),
     );
