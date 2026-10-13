@@ -23,6 +23,7 @@ import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
@@ -430,7 +431,6 @@ class _ProgressHeader extends ConsumerWidget {
     final cost = items.isEmpty
         ? null
         : ref.watch(shoppingCostProvider(items.first.listId));
-    final muted = colors.onSaturated.withValues(alpha: 0.65);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
@@ -446,23 +446,6 @@ class _ProgressHeader extends ConsumerWidget {
               color: allDone ? colors.lime : colors.onSaturated,
             ),
           ),
-          if (cost != null && !cost.isEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              cost.pendingCents > 0 && cost.pendingCents != cost.totalCents
-                  ? '≈ ${formatMoney(cost.totalCents)} · faltam '
-                      '${formatMoney(cost.pendingCents)}'
-                  : '≈ ${formatMoney(cost.totalCents)}',
-              style: context.texts.bodyMedium?.copyWith(color: muted),
-            ),
-            if (cost.missingCount > 0)
-              Text(
-                cost.missingCount == 1
-                    ? '1 item sem preço fora da conta'
-                    : '${cost.missingCount} itens sem preço fora da conta',
-                style: context.texts.bodySmall?.copyWith(color: muted),
-              ),
-          ],
           const SizedBox(height: AppSpacing.xs),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadii.pill),
@@ -481,25 +464,156 @@ class _ProgressHeader extends ConsumerWidget {
               ),
             ),
           ),
+          if (cost != null && !cost.isEmpty) ...[
+            const SizedBox(height: AppSpacing.md),
+            _CostSummary(cost: cost, allDone: allDone),
+          ],
         ],
       ),
     );
   }
 }
 
+/// O valor da lista em escala grande: o estimado e, quando já se marcou
+/// algo, quanto ainda falta comprar.
+class _CostSummary extends StatelessWidget {
+  const _CostSummary({required this.cost, required this.allDone});
+
+  final ShoppingCost cost;
+  final bool allDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final muted = colors.onSaturated.withValues(alpha: 0.65);
+    final showPending =
+        cost.pendingCents > 0 && cost.pendingCents != cost.totalCents;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _CostStat(
+              label: allDone ? 'GASTO ESTIMADO' : 'ESTIMADO',
+              cents: cost.totalCents,
+              color: colors.onSaturated,
+            ),
+            if (showPending) ...[
+              const SizedBox(width: AppSpacing.lg),
+              _CostStat(
+                label: 'FALTA COMPRAR',
+                cents: cost.pendingCents,
+                color: colors.lime,
+              ),
+            ],
+          ],
+        ),
+        if (cost.missingCount > 0) ...[
+          const SizedBox(height: AppSpacing.xs),
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 14, color: muted),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  cost.missingCount == 1
+                      ? '1 item sem preço fica fora da conta'
+                      : '${cost.missingCount} itens sem preço ficam fora da '
+                          'conta',
+                  style: context.texts.bodySmall?.copyWith(color: muted),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CostStat extends StatelessWidget {
+  const _CostStat({
+    required this.label,
+    required this.cents,
+    required this.color,
+  });
+
+  final String label;
+  final int cents;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Semantics(
+      label: '$label ${formatMoney(cents)}',
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: context.texts.labelSmall
+                ?.copyWith(color: colors.onSaturated.withValues(alpha: 0.6)),
+          ),
+          const SizedBox(height: 2),
+          _Money(cents: cents, size: 34, color: color),
+        ],
+      ),
+    );
+  }
+}
+
+/// "R$" pequeno e o valor em display: o número é o que se lê.
+class _Money extends StatelessWidget {
+  const _Money({required this.cents, required this.size, required this.color});
+
+  final int cents;
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = formatMoney(cents).replaceFirst('R\$ ', '');
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: 'R\$ ',
+            style: context.texts.bodySmall?.copyWith(
+              color: color.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          TextSpan(
+            text: amount,
+            style: AppTextStyles.display(size).copyWith(color: color),
+          ),
+        ],
+      ),
+      maxLines: 1,
+    );
+  }
+}
+
 /// "HORTIFRÚTI ———— 2/5": nome do corredor, linha fina e progresso; a seção
 /// inteira marcada apaga.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends ConsumerWidget {
   const _SectionHeader({required this.label, required this.items});
 
   final String label;
   final List<ShoppingListItem> items;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
     final done = items.where((i) => i.checked).length;
     final complete = done == items.length;
+    final byItem = items.isEmpty
+        ? const <String, int>{}
+        : ref.watch(shoppingCostProvider(items.first.listId)).byItem;
+    final subtotal = items.fold<int>(0, (sum, i) => sum + (byItem[i.id] ?? 0));
 
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 250),
@@ -522,7 +636,9 @@ class _SectionHeader extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.xs),
             Text(
-              '$done/${items.length}',
+              subtotal > 0
+                  ? '${formatMoney(subtotal)} · $done/${items.length}'
+                  : '$done/${items.length}',
               style: context.texts.labelMedium?.copyWith(
                 color: colors.onSaturated.withValues(alpha: 0.6),
               ),
@@ -664,13 +780,18 @@ class _ItemRow extends ConsumerWidget {
       shoppingCostProvider(item.listId).select((c) => c.byItem[item.id]),
     );
     if (cents == null) return const SizedBox.shrink();
-    final alpha = item.checked ? 0.35 : 0.6;
+    final alpha = item.checked ? 0.35 : 0.85;
     return Padding(
       padding: const EdgeInsets.only(left: AppSpacing.xs),
-      child: Text(
-        formatMoney(cents),
-        style: context.texts.bodySmall?.copyWith(
-          color: context.colors.onSaturated.withValues(alpha: alpha),
+      child: SizedBox(
+        width: 76,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: _Money(
+            cents: cents,
+            size: 17,
+            color: context.colors.onSaturated.withValues(alpha: alpha),
+          ),
         ),
       ),
     );
