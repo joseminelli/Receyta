@@ -11,7 +11,7 @@ const waveSeconds = 2.4;
 /// calcula a pose (idle, thinking, waving, celebrating) são as funções de
 /// movimento. Ângulos em radianos, positivo = braço para fora. `look` vai de
 /// -1 a 1, `mouth` de 0 (sorriso) a 1 (boca aberta) e `burst` de 0 a 1 é o
-/// progresso do confete (0 = sem confete). `lid` de 0 a 1 ergue a tampa do Pote.
+/// progresso do confete (0 = sem confete). `lid` de 0 a 1 ergue a peça de cima (tampa do Pote, botão do Cloche).
 class MascotPose {
   final double dy;
   final double scaleX;

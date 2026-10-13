@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 
+import 'cloche_art.dart';
 import 'mascot_painter.dart';
 import 'mascot_pose.dart';
 
-/// Mascote Cloche: cúpula larga e brilhante com botão, faixa pespontada na
-/// borda, bochechas, sobrancelhas expressivas e pernas curtas. Caixa de
-/// projeto 200×268.
+class _Layer {
+  const _Layer(this.tone, this.path);
+
+  final ClocheTone tone;
+  final Path path;
+}
+
+/// Mascote Cloche. O corpo vem da vetorização da arte de referência
+/// (`cloche_art.dart`), dividida em partes que se movem separadas: braços,
+/// pernas, botão e cúpula. Olhos e boca são desenhados aqui, nas coordenadas
+/// da imagem. Caixa de projeto 200×216.
 class ClochePainter extends MascotPainter {
   ClochePainter({
     required super.colors,
@@ -13,129 +22,133 @@ class ClochePainter extends MascotPainter {
     required super.poseAt,
   });
 
-  static const double designHeight = 268;
+  static const double designHeight = 216;
+
+  static const _scale = MascotPainter.designWidth / clocheArtWidth;
+  static const _shoulderLeft = Offset(30, 196);
+  static const _shoulderRight = Offset(320, 196);
+  static const _knobPivot = Offset(175, 50);
+  static const _eyeLeft = Offset(142.5, 132);
+  static const _eyeRight = Offset(207.5, 132);
+
+  static final Map<ClochePart, List<_Layer>> _layers = {
+    for (final entry in clocheShapes.entries)
+      entry.key: [
+        for (final shape in entry.value)
+          _Layer(shape.tone, _toPath(shape.loops)),
+      ],
+  };
+
+  static Path _toPath(List<List<double>> loops) {
+    final path = Path()..fillType = PathFillType.evenOdd;
+    for (final loop in loops) {
+      path.addPolygon(
+        [for (var i = 0; i < loop.length; i += 2) Offset(loop[i], loop[i + 1])],
+        true,
+      );
+    }
+    return path;
+  }
 
   @override
-  double get groundY => 252;
+  double get groundY => 207;
+
+  Color _tone(ClocheTone tone) => switch (tone) {
+        ClocheTone.ink => colors.ink,
+        ClocheTone.cream => colors.onInk,
+        ClocheTone.coral => colors.coral,
+        ClocheTone.coralDark => Color.lerp(colors.coral, colors.ink, 0.22)!,
+        ClocheTone.coralLight => colors.coralLight,
+      };
 
   @override
   void paintBody(Canvas canvas, MascotPose pose) {
-    _paintLegs(canvas);
-    paintArm(canvas, -1, pose.armLeft, const Offset(24, 160), reach: 0.85);
-    paintArm(canvas, 1, pose.armRight, const Offset(176, 160), reach: 0.85);
-    _paintKnob(canvas);
-    _paintDome(canvas);
-    _paintBand(canvas);
+    canvas.scale(_scale);
+    canvas.translate(1.5, 0);
+    _paintArm(canvas, ClochePart.armLeft, _shoulderLeft, pose.armLeft);
+    _paintArm(canvas, ClochePart.armRight, _shoulderRight, -pose.armRight);
+    _paintLayers(canvas, ClochePart.legLeft);
+    _paintLayers(canvas, ClochePart.legRight);
+    _paintKnob(canvas, pose);
+    _paintLayers(canvas, ClochePart.body);
     _paintFace(canvas, pose);
   }
 
-  void _paintLegs(Canvas canvas) {
-    for (final x in const [76.0, 110.0]) {
-      rrect(
-        canvas,
-        Rect.fromLTWH(x, 170, 14, 66),
-        7,
-        colors.coral,
-        shaded: true,
+  void _paintLayers(Canvas canvas, ClochePart part) {
+    for (final layer in _layers[part]!) {
+      final color = _tone(layer.tone);
+      canvas.drawPath(layer.path, Paint()..color = color);
+      canvas.drawPath(
+        layer.path,
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = layer.tone == ClocheTone.ink ? 0.3 : 0.8
+          ..strokeJoin = StrokeJoin.round,
       );
     }
-    rrect(
-      canvas,
-      const Rect.fromLTWH(56, 228, 44, 24),
-      12,
-      colors.coralLight,
-      shaded: true,
-    );
-    rrect(
-      canvas,
-      const Rect.fromLTWH(100, 228, 44, 24),
-      12,
-      colors.coralLight,
-      shaded: true,
-    );
   }
 
-  void _paintKnob(Canvas canvas) {
-    final knob = Path()
-      ..addOval(Rect.fromCircle(center: const Offset(100, 46), radius: 12));
-    shape(canvas, knob, colors.coral, shaded: true);
-    canvas.drawCircle(
-      const Offset(96, 42),
-      3,
-      fill(colors.onSaturated.withValues(alpha: 0.6)),
-    );
-  }
-
-  void _paintDome(Canvas canvas) {
-    final dome = Path()
-      ..moveTo(20, 160)
-      ..cubicTo(20, 92, 56, 56, 100, 56)
-      ..cubicTo(144, 56, 180, 92, 180, 160)
-      ..close();
-    canvas.drawPath(dome, fill(colors.coral));
-    final bounds = dome.getBounds();
+  void _paintArm(Canvas canvas, ClochePart part, Offset pivot, double angle) {
     canvas.save();
-    canvas.clipPath(dome);
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.45, -0.55),
-          colors: [
-            colors.onSaturated.withValues(alpha: 0.35),
-            colors.onSaturated.withValues(alpha: 0),
-            colors.ink.withValues(alpha: 0.22),
-          ],
-          stops: const [0, 0.5, 1],
-        ).createShader(bounds),
-    );
+    canvas.translate(pivot.dx, pivot.dy);
+    canvas.rotate(angle);
+    canvas.translate(-pivot.dx, -pivot.dy);
+    _paintLayers(canvas, part);
     canvas.restore();
-    canvas.drawPath(dome, outline);
-    final shineColor = colors.onSaturated.withValues(alpha: 0.5);
-    final shine = Path()
-      ..moveTo(36, 128)
-      ..quadraticBezierTo(36, 88, 66, 70);
-    canvas.drawPath(
-      shine,
-      Paint()
-        ..color = shineColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 7
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawCircle(const Offset(40, 144), 3.5, fill(shineColor));
   }
 
-  void _paintBand(Canvas canvas) {
-    rrect(
-      canvas,
-      const Rect.fromLTRB(8, 148, 192, 176),
-      14,
-      colors.coralLight,
-      shaded: true,
-    );
-    final stitch = Paint()
-      ..color = colors.ink.withValues(alpha: 0.35)
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round;
-    for (var x = 26.0; x < 176; x += 14) {
-      canvas.drawLine(Offset(x, 162), Offset(x + 6, 162), stitch);
+  void _paintKnob(Canvas canvas, MascotPose pose) {
+    canvas.save();
+    if (pose.lid > 0) {
+      canvas.translate(_knobPivot.dx, _knobPivot.dy);
+      canvas.rotate(pose.lid * 0.25);
+      canvas.translate(-_knobPivot.dx, -_knobPivot.dy - pose.lid * 12);
     }
+    _paintLayers(canvas, ClochePart.knob);
+    canvas.restore();
   }
 
   void _paintFace(Canvas canvas, MascotPose pose) {
-    final cheek = fill(colors.coralMuted.withValues(alpha: 0.8));
-    canvas.drawCircle(const Offset(58, 126), 8, cheek);
-    canvas.drawCircle(const Offset(142, 126), 8, cheek);
-    paintEye(canvas, const Offset(78, 106), pose, 16);
-    paintEye(canvas, const Offset(122, 106), pose, 16);
-    final lift = -pose.look.dy * 4;
-    for (final cx in const [78.0, 122.0]) {
-      final brow = Path()
-        ..moveTo(cx - 10, 87 + lift)
-        ..quadraticBezierTo(cx, 81 + lift, cx + 10, 87 + lift);
-      canvas.drawPath(brow, outline);
+    _paintEye(canvas, _eyeLeft, pose);
+    _paintEye(canvas, _eyeRight, pose);
+    _paintSmile(canvas, pose);
+  }
+
+  void _paintEye(Canvas canvas, Offset center, MascotPose pose) {
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.scale(1, 1 - pose.blink * 0.9);
+    canvas.drawCircle(Offset.zero, 27, fill(colors.ink));
+    final white = Path()
+      ..addOval(Rect.fromCircle(center: Offset.zero, radius: 23.6));
+    canvas.drawPath(white, fill(colors.onInk));
+    canvas.save();
+    canvas.clipPath(white);
+    final pupil = Offset(pose.look.dx * 8, pose.look.dy * 7);
+    canvas.drawCircle(pupil, 17, fill(colors.ink));
+    canvas.drawCircle(
+      pupil + const Offset(-9.5, -6.5),
+      5.8,
+      fill(colors.onSaturated),
+    );
+    canvas.restore();
+    canvas.restore();
+  }
+
+  void _paintSmile(Canvas canvas, MascotPose pose) {
+    if (pose.mouth >= 0.2) {
+      paintMouth(canvas, const Offset(175, 177), 58, pose);
+      return;
     }
-    paintMouth(canvas, const Offset(100, 132), 30, pose);
+    final line = Paint()
+      ..color = colors.ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round;
+    final smile = Path()
+      ..moveTo(148, 175)
+      ..quadraticBezierTo(175, 197, 201, 177);
+    canvas.drawPath(smile, line);
   }
 }

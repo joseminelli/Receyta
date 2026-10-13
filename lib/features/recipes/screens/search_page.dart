@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
-import 'package:receyta/features/mascot/controllers/mascot_mood_provider.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -28,47 +27,24 @@ class SearchPage extends ConsumerStatefulWidget {
 class _SearchPageState extends ConsumerState<SearchPage> {
   final _controller = TextEditingController();
   Timer? _debounce;
-  Timer? _settle;
-  late final MascotMoodNotifier _mood;
 
   @override
   void initState() {
     super.initState();
-    _mood = ref.read(mascotMoodProvider.notifier);
     _controller.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _settle?.cancel();
     _controller.dispose();
-    Future.microtask(_mood.stopThinking);
     super.dispose();
-  }
-
-  /// O Pote pensa enquanto o texto muda e por um instante depois da busca.
-  void _think(String value) {
-    _settle?.cancel();
-    if (value.trim().isEmpty) {
-      _mood.stopThinking();
-      return;
-    }
-    _mood.think();
-  }
-
-  void _settleSoon() {
-    _settle?.cancel();
-    _settle = Timer(const Duration(milliseconds: 700), _mood.stopThinking);
   }
 
   void _onChanged(String value) {
     _debounce?.cancel();
-    _think(value);
     _debounce = Timer(const Duration(milliseconds: 250), () {
-      if (!mounted) return;
-      ref.read(searchQueryProvider.notifier).state = value;
-      _settleSoon();
+      if (mounted) ref.read(searchQueryProvider.notifier).state = value;
     });
   }
 
@@ -79,8 +55,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       selection: TextSelection.collapsed(offset: value.length),
     );
     ref.read(searchQueryProvider.notifier).state = value;
-    _think(value);
-    if (value.trim().isNotEmpty) _settleSoon();
   }
 
   @override
@@ -100,31 +74,22 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             onBack: () => context.pop(),
           ),
           Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned.fill(
-                  child: query.isEmpty
-                      ? _Browse(onPickTag: _setQuery)
-                      : results.when(
-                          loading: () => const Center(child: BrandLoader()),
-                          error: (_, __) =>
-                              const _Message('Não deu para buscar.'),
-                          data: (list) => list.isEmpty
-                              ? _Message(
-                                  'Nada encontrado para "$query".',
-                                  showMascot: true,
-                                )
-                              : _GridBody(
-                                  recipes: list,
-                                  label:
-                                      '${list.length} ${list.length == 1 ? 'RESULTADO' : 'RESULTADOS'}',
-                                ),
-                        ),
-                ),
-                const _ThinkingPote(),
-              ],
-            ),
+            child: query.isEmpty
+                ? _Browse(onPickTag: _setQuery)
+                : results.when(
+                    loading: () => const Center(child: BrandLoader()),
+                    error: (_, __) => const _Message('Não deu para buscar.'),
+                    data: (list) => list.isEmpty
+                        ? _Message(
+                            'Nada encontrado para "$query".',
+                            showMascot: true,
+                          )
+                        : _GridBody(
+                            recipes: list,
+                            label:
+                                '${list.length} ${list.length == 1 ? 'RESULTADO' : 'RESULTADOS'}',
+                          ),
+                  ),
           ),
         ],
       ),
@@ -429,39 +394,6 @@ class _GridBody extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-/// Pote que aparece no canto enquanto o humor é "pensando": a busca é
-/// instantânea, então ele reage à digitação em vez de ao carregamento.
-class _ThinkingPote extends ConsumerWidget {
-  const _ThinkingPote();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final thinking = ref.watch(
-      mascotMoodProvider.select((m) => m == MascotMood.thinking),
-    );
-    return IgnorePointer(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
-        transitionBuilder: (child, animation) => ScaleTransition(
-          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
-          alignment: Alignment.bottomRight,
-          child: FadeTransition(opacity: animation, child: child),
-        ),
-        child: thinking
-            ? const Align(
-                key: ValueKey('thinking'),
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: EdgeInsets.all(AppSpacing.md),
-                  child: AnimatedMascot(kind: MascotKind.pote, width: 88),
-                ),
-              )
-            : const SizedBox.shrink(key: ValueKey('idle')),
-      ),
     );
   }
 }

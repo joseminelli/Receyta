@@ -84,20 +84,22 @@ abstract class MascotPainter extends CustomPainter {
   }
 
   void _paintShadow(Canvas canvas, MascotPose pose) {
-    final radius = 62 + pose.dy * 0.8;
+    final radius = 56 + pose.dy * 0.8;
     final rect = Rect.fromCenter(
-      center: Offset(100, groundY + 6),
+      center: Offset(100, groundY + 1),
       width: radius * 2,
-      height: 16,
+      height: 14,
     );
     canvas.drawOval(
       rect,
       Paint()
         ..shader = RadialGradient(
           colors: [
-            colors.ink.withValues(alpha: 0.22),
+            colors.ink.withValues(alpha: 0.2),
+            colors.ink.withValues(alpha: 0.16),
             colors.ink.withValues(alpha: 0),
           ],
+          stops: const [0, 0.6, 1],
         ).createShader(rect),
     );
   }
