@@ -704,9 +704,11 @@ Esforço em dias de trabalho focado.
 
 ### Status de implementação
 
-*Atualizado em 2026-10-06 (Bloco G fechado; Bloco H em andamento — conta
-Google e fotos feitas, sync de receitas é o próximo). Os blocos A–F foram
-conferidos pelo código em 2026-09-29/10-01.*
+*Atualizado em 2026-10-13: **todos os blocos (A–H) estão completos**, por
+declaração do usuário. Os blocos A–F foram conferidos pelo código em
+2026-09-29/10-01; G e H, parcialmente (ver notas de cada bloco). Itens que o
+próprio plano listava como "ainda não" (ex.: sugestão no calendário do mês,
+`servingsOverride`) seguem fora do escopo.*
 
 - **Bloco A (A1–A8)** — ✅ completo e commitado.
 - **Bloco B** — ✅ completo, **exceto imagem** (B7 foi movida para o bloco H,
@@ -846,7 +848,8 @@ conferidos pelo código em 2026-09-29/10-01.*
   permissões no manifest). iOS não configurado.
   G0 (vídeo `/brag`) fica por último, por decisão do usuário.
 
-- **Bloco H — em andamento (2026-10-06).** O app continua offline primeiro: o
+- **Bloco H — ✅ completo (2026-10-13, por declaração do usuário; H3, H4,
+  H5, H1 e H2 não foram reconferidos por mim no código).** O app continua offline primeiro: o
   banco local é a fonte da verdade e o login é **opcional**.
   - **Conta com Google ✅.** `supabase_flutter` + `google_sign_in` 6.3.0 (login
     nativo trocado por sessão com `signInWithIdToken`, sem navegador). Projeto
@@ -884,9 +887,9 @@ conferidos pelo código em 2026-09-29/10-01.*
     por foto).
   - **Armadilha registrada:** `RecipeDao.findById` esconde receita da lixeira;
     exclusão definitiva acontece na lixeira, então usa `findIncludingTrashed`.
-  - **Próximo: H3, sync de receitas** (proposta abaixo no bloco H, aguardando
-    as duas decisões do usuário). Resolve a foto em outro aparelho e o risco da
-    limpeza de fotos com a mesma conta em dois aparelhos.
+  - **H3 (sync de receitas e pastas), H4, H5 (Casa), H1 (link efêmero) e H2
+    (deep link) ✅** — detalhes no bloco H abaixo. O sync resolve a foto em outro
+    aparelho e o risco da limpeza de fotos com a mesma conta em dois aparelhos.
 
 ---
 
@@ -1004,7 +1007,7 @@ conferidos pelo código em 2026-09-29/10-01.*
 
 | ID | Entrega | Esforço | Pronto quando |
 |---|---|---|---|
-| G0 | Vídeo de divulgação com [brag](https://github.com/latent-spaces/brag) (skill de agente, MIT): `winget install Gyan.FFmpeg`, `/plugin marketplace add latent-spaces/brag` + `/plugin install brag@brag`, reiniciar o Claude Code, `/brag` na pasta do app | 0,5 | `brag-output/brag.mp4` gerado e revisado; conferido que o vídeo não expõe nada interno (nomes, chaves) |
+| G0 | ✅ Vídeo de divulgação com [brag](https://github.com/latent-spaces/brag) (skill de agente, MIT): `winget install Gyan.FFmpeg`, `/plugin marketplace add latent-spaces/brag` + `/plugin install brag@brag`, reiniciar o Claude Code, `/brag` na pasta do app | 0,5 | `brag-output/brag.mp4` gerado e revisado; conferido que o vídeo não expõe nada interno (nomes, chaves) |
 | G1 | Modo cozinha: wakelock, passos grandes, timers | 1 | Cozinhar sem tocar na tela com a mão suja |
 | G2 | Escalar porções | 0,5 | Dobrar a receita recalcula tudo |
 | G3 | Estados vazios e onboarding | 1 | App recém-instalado não parece quebrado |
@@ -1037,7 +1040,7 @@ pedida ao ativar o primeiro lembrete, nunca na abertura do app.
 ---
 
 ### Bloco H — Conta, sync e fotos
-*Em andamento desde 2026-10-06 (o usuário decidiu antecipar; a espera de "algumas semanas de uso" caiu).*
+*Completo em 2026-10-13. Começou em 2026-10-06 (o usuário decidiu antecipar; a espera de "algumas semanas de uso" caiu).*
 
 Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princípio que vale pro bloco todo: **offline primeiro** — o banco local é a fonte da verdade, salvar nunca espera a internet, e o login é opcional.
 
@@ -1046,11 +1049,11 @@ Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princí
 | H-auth | ✅ Conta com Google (login nativo → sessão Supabase), botão na aba Conta | 1 | Entrar e sair funcionam em debug e em release; app segue 100% usável sem login |
 | H0 | ✅ Imagem de receita (ex-B7): câmera e galeria, compressão até 400 KB, **Supabase Storage** privado com o arquivo local como cache; apagar receita limpa a nuvem | 1,5 | Foto aparece nos cards e no hero; sobe, troca e some da nuvem junto com a receita |
 | H0b | ✅ Foto no backup `.receyta` e no import de link | 0,5 | Restaurar um backup traz as fotos; importar de link já vem com a foto da página |
-| H3 | **Sync de receitas e pastas** pela conta Google (detalhe abaixo) | 5 | Receita criada, editada ou apagada num aparelho aparece igual no outro, com foto |
+| H3 | ✅ **Sync de receitas e pastas** pela conta Google (detalhe abaixo) | 5 | Receita criada, editada ou apagada num aparelho aparece igual no outro, com foto |
 | H4 | ✅ Sync do resto: calendário, listas de compras (lista + cada item), despensa, histórico "cozinhei" — mesmo motor do H3, um tratador por tipo | 3 | Cada um sincroniza sem duplicar nem perder item |
 | H5 | ✅ **Casa**: espaço compartilhado entre pessoas (até 6, uma casa por pessoa, convite por código de uso único, 48 h). **Listas de compras** compartilhadas uma a uma e **calendário** da casa (interruptor). Tempo real via Supabase Realtime | 4 | Quem marca um item ou planeja uma refeição aparece no outro aparelho em ~1 s; sair da casa devolve tudo à pessoa |
-| H1 | Link efêmero (ex-D7): function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
-| H2 | Deep link (ex-D8): App Links/Universal Links resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
+| H1 | ✅ Link efêmero (ex-D7): function + Redis (`SET share:<token> <json> EX 3600`, ou pilha de N por dispositivo) | 1 | Token expira/estoura sem faxina manual |
+| H2 | ✅ Deep link (ex-D8): App Links/Universal Links resolvendo o token e abrindo direto na tela de import | 1 | Tocar no link no WhatsApp abre o Receyta com a receita pronta pra importar |
 
 #### H5 — Casa (2026-10-06)
 
@@ -1061,7 +1064,7 @@ Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princí
 **Sair.** Sair da casa, ser removido ou a casa acabar devolve listas e refeições à pessoa (sobem pra conta) e apaga as refeições dos outros; ninguém perde o que já tinha no aparelho. Mudanças de preferências NÃO sincronizam (decisão do usuário, pra não gastar banco).
 
 
-#### H3 — Sync de receitas e pastas (em andamento)
+#### H3 — Sync de receitas e pastas (✅ completo)
 
 **Decisões (2026-10-06):** escopo inicial receitas + pastas (o resto no H4); conflito = a edição mais recente vence, por item. Seguimos com as duas por orientação do usuário ("podemos seguir").
 
@@ -1075,7 +1078,7 @@ Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princí
 - ✅ **Bug antigo corrigido junto:** `insertOnConflictUpdate` IGNORA nulos, então apagar "Sobre", tempos, rendimento ou notas ao editar uma receita não persistia (o valor antigo voltava). `saveWithChildren` e `upsertRaw` agora gravam o companion completo (`toCompanion(false)`).
 - ✅ **H4 — o resto sincroniza (2026-10-06):** schema **v9**. Um *tratador* por tipo (`data/sync/sync_handlers.dart`, interface `SyncHandler` em `sync_handler.dart`) plugado no mesmo motor: `pantry` (um item por ingrediente, id = chave normalizada), `shopping_list`, `shopping_item` (um doc por item, com as receitas de origem; duas pessoas marcando itens diferentes não se atropelam), `meal_plan` e `cook_log`. Aplicam depois de receitas/pastas; item só entra se a lista existe, refeição/histórico só se a receita existe. **Marcar "mudou" por gatilhos do banco** (`app_database.dart`, `_syncTriggerStatements`) nas tabelas sem data de edição (itens, histórico, despensa, status da lista): carimbam `updated_at` em ISO UTC só se um campo de DADO mudou e o `updated_at` não foi mexido na mesma instrução (marcar sincronizado e o sync aplicando a nuvem não contam). Backfill em `ensureReady()`. Avisos de exclusão pelos DAOs (`attachedDatabase.addTombstone`), só do que já subiu; apagar lista avisa dela e dos itens. `resetSyncState` zera tudo. SQL: **`docs/supabase/sync-h4.sql`** (amplia o `check` de `kind`; o usuário precisa rodar). Limites: mudança SÓ nas origens de um item (sem mexer no item) não sincroniza até o item mudar; leitura de outro aparelho em até ~3 min (ou ao voltar pro app).
 - ✅ **Teto de fotos por conta, 30 MB (2026-10-06):** regra NO SERVIDOR (`docs/supabase/photo-quota.sql`: `photo_quota_bytes()` = o número, único lugar pra mudar; `photo_usage_bytes()` security definer soma só a própria pasta; policy de insert do bucket exige uso < teto). App: `ImageRemote.usage()` (RPC), `PhotoQuotaExceeded` (403 confirmado por `usage()`), `RecipeImageSync` fica **bloqueada** (lembrado em prefs `image_quota_blocked`): fotos novas continuam pendentes e boas no aparelho, não insiste em enviar, só confere se sobrou espaço a cada rodada; remover foto/fila de exclusão seguem funcionando; aviso UMA vez ao atingir (`takeQuotaNotice`, `syncPhotosAndWarn`). Tela: linha "Fotos na nuvem · 12 MB de 30 MB" + barra na aba Conta (`photoQuotaProvider`, refaz depois de cada rodada), aviso a partir de 80% e mensagem no teto com quantas esperam. Medido pelo usuário: ~80 KB por foto. **O usuário precisa rodar `photo-quota.sql`.**
-- ⏳ **Etapa 5 — acertos finais:** testar no aparelho com 2 aparelhos; duplicatas quando o mesmo conteúdo foi criado separado nos dois (ids diferentes) não são unidas; "Limpar este aparelho" faz os dados voltarem ao sincronizar (já dito na confirmação).
+- ✅ **Etapa 5 — acertos finais** (fechada pelo usuário em 2026-10-13). Ressalvas que ficaram como limites conhecidos: testar no aparelho com 2 aparelhos; duplicatas quando o mesmo conteúdo foi criado separado nos dois (ids diferentes) não são unidas; "Limpar este aparelho" faz os dados voltarem ao sincronizar (já dito na confirmação).
 
 #### H3 — desenho original (proposta)
 
@@ -1148,9 +1151,8 @@ Supabase, auth, RLS, sync de receitas, fotos, compartilhamento por link. Princí
 | **Até G** | **35,5 d** | ~7 semanas de trabalho focado |
 | H — Conta, fotos e sync | ~12 d | Conta Google, fotos (✅), sync de receitas (H3), resto do sync (H4), link efêmero (H1/H2) |
 
-O bloco H está **em andamento** (2026-10-06): H-auth, H0 e H0b feitos; H3
-(sync de receitas e pastas, ~5 d) é o próximo; H4 (~3 d) e H1/H2 (~2 d)
-depois. O total "Até G" é a estimativa original e não foi refeito com o tempo real gasto.
+O bloco H está **completo** (2026-10-13): H-auth, H0, H0b, H3, H4, H5, H1 e H2.
+O total "Até G" é a estimativa original e não foi refeito com o tempo real gasto.
 
 Três momentos em que o app fica bom o bastante para parar: **fim do bloco B** (caderno de receitas digital), **fim do bloco E** (receitas + compras) e **fim do bloco F** (o produto completo). Qualquer um deles é um lugar legítimo para parar e usar por um mês antes de continuar.
 
