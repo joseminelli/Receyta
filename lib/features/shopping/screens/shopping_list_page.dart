@@ -15,6 +15,8 @@ import 'package:receyta/domain/engine/shopping_text.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/domain/models/shopping_list_item.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/features/recipes/controllers/cost_view_model.dart';
+import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/shopping/screens/shopping_actions.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
@@ -545,6 +547,29 @@ class _ItemRow extends ConsumerWidget {
   void _toggle(WidgetRef ref) {
     HapticFeedback.selectionClick();
     ref.read(shoppingListRepositoryProvider).setChecked(item.id, !item.checked);
+    if (!item.checked) _offerPrice(ref);
+  }
+
+  void _offerPrice(WidgetRef ref) {
+    final id = item.ingredientId;
+    final ingredient =
+        id == null ? null : ref.read(ingredientCatalogProvider)[id];
+    if (ingredient == null || ingredient.price != null) return;
+    final unit = item.unitId;
+    showAppSnackBar(
+      message: 'Quanto pagou em ${ingredient.displayName}?',
+      actionLabel: 'Informar',
+      onAction: () {
+        final context = rootNavigatorKey.currentContext;
+        if (context == null) return;
+        showIngredientPriceSheet(
+          context,
+          ingredient,
+          suggestedUnit: unit != null && isPriceUnit(unit) ? unit : 'unidade',
+          suggestedQuantity: item.quantity,
+        );
+      },
+    );
   }
 
   Future<bool> _confirmRemove(BuildContext context) {

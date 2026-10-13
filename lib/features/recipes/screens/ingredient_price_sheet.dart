@@ -26,6 +26,7 @@ Future<bool> showIngredientPriceSheet(
   BuildContext context,
   Ingredient ingredient, {
   String? suggestedUnit,
+  double? suggestedQuantity,
 }) async {
   final saved = await showModalBottomSheet<bool>(
     context: context,
@@ -34,6 +35,7 @@ Future<bool> showIngredientPriceSheet(
     builder: (_) => _PriceSheet(
       ingredient: ingredient,
       suggestedUnit: suggestedUnit,
+      suggestedQuantity: suggestedQuantity,
     ),
   );
   return saved ?? false;
@@ -83,10 +85,15 @@ final List<({String title, List<SeedUnit> units})> _unitGroups = () {
 }();
 
 class _PriceSheet extends ConsumerStatefulWidget {
-  const _PriceSheet({required this.ingredient, this.suggestedUnit});
+  const _PriceSheet({
+    required this.ingredient,
+    this.suggestedUnit,
+    this.suggestedQuantity,
+  });
 
   final Ingredient ingredient;
   final String? suggestedUnit;
+  final double? suggestedQuantity;
 
   @override
   ConsumerState<_PriceSheet> createState() => _PriceSheetState();
@@ -104,8 +111,13 @@ class _PriceSheetState extends ConsumerState<_PriceSheet> {
     final price = widget.ingredient.price;
     _value =
         TextEditingController(text: price == null ? '' : _plain(price.cents));
+    final suggestedQuantity = widget.suggestedQuantity;
     _quantity = TextEditingController(
-      text: price == null ? '1' : _quantityText(price.quantity),
+      text: price != null
+          ? _quantityText(price.quantity)
+          : suggestedQuantity != null && suggestedQuantity > 0
+              ? _quantityText(suggestedQuantity)
+              : '1',
     );
     final suggested = widget.suggestedUnit;
     _unit = price?.unitCode ??
