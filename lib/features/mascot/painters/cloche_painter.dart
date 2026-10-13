@@ -25,8 +25,8 @@ class ClochePainter extends MascotPainter {
   static const double designHeight = 216;
 
   static const _scale = MascotPainter.designWidth / clocheArtWidth;
-  static const _shoulderLeft = Offset(30, 196);
-  static const _shoulderRight = Offset(320, 196);
+  static const _shoulderLeft = Offset(40, 176);
+  static const _shoulderRight = Offset(308, 176);
   static const _knobPivot = Offset(175, 50);
   static const _eyeLeft = Offset(142.5, 132);
   static const _eyeRight = Offset(207.5, 132);
@@ -89,12 +89,58 @@ class ClochePainter extends MascotPainter {
     }
   }
 
+  static final Path _armOuter = Path()
+    ..addPolygon(const [
+      Offset(32, 170),
+      Offset(26, 178),
+      Offset(20.5, 186),
+      Offset(16.5, 195),
+      Offset(14.6, 204),
+      Offset(14, 214),
+      Offset(13.7, 230),
+      Offset(13.6, 246),
+      Offset(41.4, 246),
+      Offset(41.4, 170),
+    ], true);
+
+  static final Path _armInner = Path()
+    ..addPolygon(const [
+      Offset(35.2, 170),
+      Offset(29.2, 178),
+      Offset(23.7, 186),
+      Offset(19.7, 195),
+      Offset(17.8, 204),
+      Offset(17.2, 214),
+      Offset(16.9, 230),
+      Offset(16.8, 246),
+      Offset(38.5, 246),
+      Offset(38.5, 170),
+    ], true);
+
   void _paintArm(Canvas canvas, ClochePart part, Offset pivot, double angle) {
     canvas.save();
     canvas.translate(pivot.dx, pivot.dy);
     canvas.rotate(angle);
     canvas.translate(-pivot.dx, -pivot.dy);
+    _paintUpperArm(canvas, part == ClochePart.armLeft);
+    canvas.save();
+    canvas.clipRect(const Rect.fromLTRB(-50, 238, 450, 500));
     _paintLayers(canvas, part);
+    canvas.restore();
+    canvas.restore();
+  }
+
+  /// Tubo do braço desde o ombro, escondido atrás da cúpula, até o antebraço.
+  /// A pontinha que aparece ao lado da cúpula é só a parte do tubo que fica
+  /// fora da silhueta dela.
+  void _paintUpperArm(Canvas canvas, bool left) {
+    canvas.save();
+    if (!left) {
+      canvas.translate(348, 0);
+      canvas.scale(-1, 1);
+    }
+    canvas.drawPath(_armOuter, fill(colors.ink));
+    canvas.drawPath(_armInner, fill(colors.onInk));
     canvas.restore();
   }
 
