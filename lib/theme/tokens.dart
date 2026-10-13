@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 
 class AppColors extends ThemeExtension<AppColors> {
+  /// Bloco escuro (cabeçalho, Compras, modo cozinha, barra de navegação). É
+  /// superfície, não cor de texto: continua escuro no tema escuro (§9.2). Quem
+  /// escreve texto, ícone ou traço sobre o `paper` usa [onPaper].
   final Color ink;
+
+  /// Superfície elevada sobre [ink] (chips, campos).
   final Color inkSoft;
   final Color paper;
   final Color paperSoft;
+
+  /// Texto, ícone e traço sobre `paper`/`paperSoft`. No tema claro é o próprio
+  /// `ink`; no escuro vira creme.
+  final Color onPaper;
+
+  /// Texto e ícone sobre bloco [ink] ou sobre `lime`/`coral` quando o claro
+  /// usa `paper` nesse papel. No tema claro é o próprio `paper`.
+  final Color onInk;
   final Color lime;
   final Color coral;
   final Color coralLight;
@@ -43,6 +56,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.inkSoft,
     required this.paper,
     required this.paperSoft,
+    required this.onPaper,
+    required this.onInk,
     required this.lime,
     required this.coral,
     required this.coralLight,
@@ -66,6 +81,8 @@ class AppColors extends ThemeExtension<AppColors> {
     inkSoft: Color(0xFF2B2A20),
     paper: Color(0xFFF5F2EA),
     paperSoft: Color(0xFFE9E5D8),
+    onPaper: Color(0xFF16150F),
+    onInk: Color(0xFFF5F2EA),
     lime: Color(0xFFD6F45A),
     coral: Color(0xFFFF5A38),
     coralLight: Color(0xFFFF7A5E),
@@ -92,6 +109,8 @@ class AppColors extends ThemeExtension<AppColors> {
     inkSoft: Color(0xFF1A1A14),
     paper: Color(0xFFFFFFFF),
     paperSoft: Color(0xFFEDEAE0),
+    onPaper: Color(0xFF000000),
+    onInk: Color(0xFFFFFFFF),
     lime: Color(0xFFD6F45A),
     coral: Color(0xFFB82E0E),
     coralLight: Color(0xFFD9411F),
@@ -110,27 +129,33 @@ class AppColors extends ThemeExtension<AppColors> {
     limePattern: Color(0xFFC2E33F),
   );
 
+  /// Modo escuro (§9.2): `ink` não inverte, a paleta já é escura. O `paper`
+  /// escurece para `#1E1D16` e as cores saturadas perdem ~15% de saturação
+  /// (e um pouco de luz, pra o branco sobre elas seguir legível). Blocos `ink`
+  /// ficam mais fundos que a página; o texto sobre o papel passa a creme.
   static const AppColors dark = AppColors(
-    ink: Color(0xFFF5F2EA),
-    inkSoft: Color(0xFFE9E5D8),
+    ink: Color(0xFF0B0B07),
+    inkSoft: Color(0xFF26251B),
     paper: Color(0xFF1E1D16),
     paperSoft: Color(0xFF2B2A20),
-    lime: Color(0xFFC2E33F),
-    coral: Color(0xFFE64820),
-    coralLight: Color(0xFFFF6A48),
-    violetDeep: Color(0xFF5543C8),
-    violet: Color(0xFF6957D8),
-    textMuted: Color(0xFF776B5F),
-    textBody: Color(0xFFB8B5A8),
-    danger: Color(0xFFFF6B85),
+    onPaper: Color(0xFFF5F2EA),
+    onInk: Color(0xFFF5F2EA),
+    lime: Color(0xFFCDEB52),
+    coral: Color(0xFFEC4B2B),
+    coralLight: Color(0xFFF57A5E),
+    violetDeep: Color(0xFF4838C0),
+    violet: Color(0xFF5544E4),
+    textMuted: Color(0xFF9A9684),
+    textBody: Color(0xFFCFCCBF),
+    danger: Color(0xFFE94F6E),
     onSaturated: Color(0xFFFFFFFF),
-    coralMuted: Color(0xFFFFA38F),
-    violetMuted: Color(0xFFB3A8F5),
-    coralPattern: Color(0xFFE64820),
-    violetPattern: Color(0xFF7966E6),
-    inkPattern: Color(0xFF373625),
-    inkPatternAlt: Color(0xFF423F2C),
-    limePattern: Color(0xFFADD82E),
+    coralMuted: Color(0xFFF5A798),
+    violetMuted: Color(0xFFB8B1F2),
+    coralPattern: Color(0xFFF2674B),
+    violetPattern: Color(0xFF6E5CEC),
+    inkPattern: Color(0xFF1C1B14),
+    inkPatternAlt: Color(0xFF25241B),
+    limePattern: Color(0xFFB9D646),
   );
 
   @override
@@ -139,6 +164,8 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? inkSoft,
     Color? paper,
     Color? paperSoft,
+    Color? onPaper,
+    Color? onInk,
     Color? lime,
     Color? coral,
     Color? coralLight,
@@ -161,6 +188,8 @@ class AppColors extends ThemeExtension<AppColors> {
       inkSoft: inkSoft ?? this.inkSoft,
       paper: paper ?? this.paper,
       paperSoft: paperSoft ?? this.paperSoft,
+      onPaper: onPaper ?? this.onPaper,
+      onInk: onInk ?? this.onInk,
       lime: lime ?? this.lime,
       coral: coral ?? this.coral,
       coralLight: coralLight ?? this.coralLight,
@@ -188,6 +217,8 @@ class AppColors extends ThemeExtension<AppColors> {
       inkSoft: Color.lerp(inkSoft, other.inkSoft, t)!,
       paper: Color.lerp(paper, other.paper, t)!,
       paperSoft: Color.lerp(paperSoft, other.paperSoft, t)!,
+      onPaper: Color.lerp(onPaper, other.onPaper, t)!,
+      onInk: Color.lerp(onInk, other.onInk, t)!,
       lime: Color.lerp(lime, other.lime, t)!,
       coral: Color.lerp(coral, other.coral, t)!,
       coralLight: Color.lerp(coralLight, other.coralLight, t)!,

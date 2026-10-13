@@ -67,8 +67,8 @@ class PillButton extends StatelessWidget {
     final (background, foreground) = switch (variant) {
       PillButtonVariant.primary => (colors.ink, colors.lime),
       PillButtonVariant.accent => (colors.lime, colors.ink),
-      PillButtonVariant.secondary => (colors.paperSoft, colors.ink),
-      PillButtonVariant.ghost => (Colors.transparent, colors.ink),
+      PillButtonVariant.secondary => (colors.paperSoft, colors.onPaper),
+      PillButtonVariant.ghost => (Colors.transparent, colors.onPaper),
       PillButtonVariant.danger => (colors.danger, colors.onSaturated),
     };
 

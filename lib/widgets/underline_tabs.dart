@@ -61,7 +61,7 @@ class UnderlineTabs extends StatelessWidget {
                             tabs[i].icon,
                             size: 20,
                             color:
-                                i == selected ? colors.ink : colors.textMuted,
+                                i == selected ? colors.onPaper : colors.textMuted,
                           ),
                           const SizedBox(width: AppSpacing.xs),
                           Flexible(
@@ -71,7 +71,7 @@ class UnderlineTabs extends StatelessWidget {
                                   (context.texts.bodyLarge ?? const TextStyle())
                                       .copyWith(
                                 color: i == selected
-                                    ? colors.ink
+                                    ? colors.onPaper
                                     : colors.textMuted,
                                 fontWeight: i == selected
                                     ? FontWeight.w800
@@ -107,7 +107,7 @@ class UnderlineTabs extends StatelessWidget {
             },
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: colors.ink,
+                color: colors.onPaper,
                 borderRadius: BorderRadius.circular(AppRadii.pill),
               ),
             ),

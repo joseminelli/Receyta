@@ -152,7 +152,7 @@ class _NewTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.create_new_folder_outlined,
-                  size: 20, color: colors.ink),
+                  size: 20, color: colors.onPaper),
               Text(
                 'Nova pasta',
                 style:

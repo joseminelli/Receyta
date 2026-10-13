@@ -365,7 +365,7 @@ class _WeekRow extends StatelessWidget {
                 ? 'Nada pendente nesta semana'
                 : 'Lista de compras da semana ${weekRangeLabel(monday)}',
             iconSize: 22,
-            color: colors.ink,
+            color: colors.onPaper,
             onPressed: nothing ? null : () => onShopping(counts, others),
             icon: const Icon(Icons.add_shopping_cart_outlined),
           ),
@@ -409,7 +409,7 @@ class _DayCell extends StatelessWidget {
           seedId: e.recipe.id,
         ),
     ];
-    final numberColor = tiles.isEmpty ? colors.ink : tiles.first.onColor;
+    final numberColor = tiles.isEmpty ? colors.onPaper : tiles.first.onColor;
     final radius = BorderRadius.circular(AppRadii.sm - 4);
     final fade = !inMonth ? 0.65 : (allDone ? 0.4 : 0.0);
 
@@ -495,7 +495,7 @@ class _DayCell extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadii.sm),
             border: Border.all(
-              color: isToday ? colors.ink : Colors.transparent,
+              color: isToday ? colors.onPaper : Colors.transparent,
               width: 2,
             ),
           ),

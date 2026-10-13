@@ -61,7 +61,7 @@ class MetricStat extends StatelessWidget {
                   ],
           ),
           style: AppTextStyles.display(valueSize).copyWith(
-            color: color ?? colors.ink,
+            color: color ?? colors.onPaper,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

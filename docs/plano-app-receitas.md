@@ -518,7 +518,17 @@ Regras de pareamento:
 
 **Por que Compras é escura.** Não sobrou cor: coral e violeta estão ocupados e `lime` é a cor de ação. Mais importante, é a tela usada no mercado, com uma mão só e muitas vezes em corredor mal iluminado — fundo escuro reduz ofuscamento e economiza bateria em OLED. É também a tela mais sóbria por princípio (§9.1), e escuro entrega isso naturalmente. Aqui `lime` é o progresso e o item marcado; `ink` puro é o fundo, `inkSoft` são as caixas e checkboxes vazios.
 
-Modo escuro: inverter `ink` ↔ `paper` não funciona — a paleta já é escura por natureza. O modo escuro deve escurecer `paper` para `#1E1D16` e manter as cores saturadas com saturação reduzida em ~15%. **Decisão pendente**, não é v1.
+Modo escuro: inverter `ink` ↔ `paper` não funciona — a paleta já é escura por natureza. O modo escuro escurece `paper` para `#1E1D16` e mantém as cores saturadas com saturação reduzida em ~15% (e um pouco menos de luz, pra o branco sobre elas seguir legível). **Implementado (2026-10-13)**, escolha em Configurações → Aparência → Tema (Claro / Escuro / Sistema; padrão Claro; alto contraste sempre claro).
+
+Como `ink` faz dois papéis (bloco escuro e cor de texto sobre o papel), o escuro separa os dois com tokens novos:
+
+| Token | Papel | Claro | Escuro |
+|---|---|---|---|
+| `ink` / `inkSoft` | bloco escuro (superfície) | `#16150F` | `#0B0B07` — continua escuro |
+| `onPaper` | texto, ícone e traço sobre `paper` | = `ink` | `#F5F2EA` |
+| `onInk` | claro sobre bloco `ink`/saturado (onde o claro usa `paper` como cor de texto) | = `paper` | `#F5F2EA` |
+
+No tema claro `onPaper == ink` e `onInk == paper`, então migrar um uso não muda nada ali. Regra pra tela nova: texto sobre papel → `onPaper`; bloco escuro → `ink`; texto claro sobre bloco escuro → `onSaturated` ou `onInk`. PDF, imagens de compartilhar e a splash seguem sempre claros (usam `AppColors.light` / coral fixo). Os azulejos de cor fixa escolhidos pela pessoa (mar, framboesa, mostarda…) não mudam no escuro.
 
 ### 9.3 Tipografia
 

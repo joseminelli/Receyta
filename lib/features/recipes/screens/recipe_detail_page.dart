@@ -537,7 +537,7 @@ class _CostRow extends ConsumerWidget {
                       Text(
                         '≈ $title',
                         style: AppTextStyles.display(28)
-                            .copyWith(color: colors.ink, height: 1),
+                            .copyWith(color: colors.onPaper, height: 1),
                       )
                     else
                       Text(
@@ -560,7 +560,7 @@ class _CostRow extends ConsumerWidget {
                             Container(height: 6, color: colors.paper),
                             FractionallySizedBox(
                               widthFactor: cost.pricedLines / cost.countedLines,
-                              child: Container(height: 6, color: colors.ink),
+                              child: Container(height: 6, color: colors.onPaper),
                             ),
                           ],
                         ),
@@ -977,8 +977,8 @@ class _IngredientRow extends ConsumerWidget {
 
     final parsed = this.parsed!;
     final unit = unitLabel(ingredient.unitId, qty);
-    final base = context.texts.bodyLarge?.copyWith(color: colors.ink);
-    final quantityStyle = AppTextStyles.metric.copyWith(color: colors.ink);
+    final base = context.texts.bodyLarge?.copyWith(color: colors.onPaper);
+    final quantityStyle = AppTextStyles.metric.copyWith(color: colors.onPaper);
     final equivalent =
         ref.watch(appSettingsProvider.select((s) => s.showEquivalents))
             ? equivalentMeasure(

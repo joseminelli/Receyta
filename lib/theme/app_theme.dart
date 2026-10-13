@@ -32,8 +32,8 @@ abstract class AppTheme {
   static ThemeData highContrast() =>
       _build(AppColors.highContrast, Brightness.light);
 
-  /// Modo escuro é decisão pendente no plano (§9.2) — a paleta não inverte
-  /// trivialmente e a tela de Compras já nasce escura. Isto é um rascunho.
+  /// Modo escuro (§9.2): `paper` escurece, `ink` continua sendo o bloco escuro
+  /// e o texto sobre o papel vira creme (`onPaper`).
   static ThemeData dark() => _build(AppColors.dark, Brightness.dark);
 
   static ThemeData _build(AppColors colors, Brightness brightness) {
@@ -53,10 +53,10 @@ abstract class AppTheme {
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: colors.paper,
-        foregroundColor: colors.ink,
+        foregroundColor: colors.onPaper,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTextStyles.displayS.copyWith(color: colors.ink),
+        titleTextStyle: AppTextStyles.displayS.copyWith(color: colors.onPaper),
       ),
       inputDecorationTheme: _inputTheme(colors),
       textTheme: _textTheme(colors),
@@ -79,7 +79,7 @@ abstract class AppTheme {
       modalElevation: 0,
       clipBehavior: Clip.antiAlias,
       showDragHandle: true,
-      dragHandleColor: colors.ink.withValues(alpha: 0.18),
+      dragHandleColor: colors.onPaper.withValues(alpha: 0.18),
       dragHandleSize: const Size(44, 5),
       modalBarrierColor: colors.ink.withValues(alpha: 0.55),
       shape: const RoundedRectangleBorder(
@@ -122,16 +122,16 @@ abstract class AppTheme {
         vertical: AppSpacing.sm,
       ),
       hintStyle: AppTextStyles.body.copyWith(color: colors.textMuted),
-      border: border(colors.ink, 0),
-      enabledBorder: border(colors.ink, 0),
-      focusedBorder: border(colors.ink, 1.5),
+      border: border(colors.onPaper, 0),
+      enabledBorder: border(colors.onPaper, 0),
+      focusedBorder: border(colors.onPaper, 1.5),
       errorBorder: border(colors.danger, 1.5),
       focusedErrorBorder: border(colors.danger, 1.5),
     );
   }
 
   static TextTheme _textTheme(AppColors colors) {
-    final ink = colors.ink;
+    final ink = colors.onPaper;
     final body = colors.textBody;
     final muted = colors.textMuted;
 

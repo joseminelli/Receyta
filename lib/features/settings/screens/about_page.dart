@@ -62,13 +62,24 @@ class AboutPage extends ConsumerWidget {
                       ?.copyWith(color: colors.textMuted),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                Center(
-                  child: PillButton(
-                    label: 'Avaliar na loja',
-                    icon: Icons.star_outline_rounded,
-                    variant: PillButtonVariant.secondary,
-                    onPressed: () => ref.read(storeLauncherProvider).open(),
-                  ),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    PillButton(
+                      label: 'Visitar o site',
+                      icon: Icons.language,
+                      variant: PillButtonVariant.secondary,
+                      onPressed: () => ref.read(siteLauncherProvider).open(),
+                    ),
+                    PillButton(
+                      label: 'Avaliar na loja',
+                      icon: Icons.star_outline_rounded,
+                      variant: PillButtonVariant.secondary,
+                      onPressed: () => ref.read(storeLauncherProvider).open(),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: AppSpacing.md),
                 Center(
@@ -181,7 +192,7 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Text(
         text,
-        style: AppTextStyles.display(24).copyWith(color: context.colors.ink),
+        style: AppTextStyles.display(24).copyWith(color: context.colors.onPaper),
       ),
     );
   }
@@ -252,9 +263,9 @@ class _FeatureRow extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.paper,
               shape: BoxShape.circle,
-              border: Border.all(color: colors.ink, width: 1.5),
+              border: Border.all(color: colors.onPaper, width: 1.5),
             ),
-            child: Icon(feature.$1, size: 20, color: colors.ink),
+            child: Icon(feature.$1, size: 20, color: colors.onPaper),
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(

@@ -470,12 +470,12 @@ class _RankRow extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: colors.paper,
                             borderRadius: BorderRadius.circular(AppRadii.pill),
-                            border: Border.all(color: colors.ink),
+                            border: Border.all(color: colors.onPaper),
                           ),
                           child: Text(
                             badge!,
                             style: context.texts.labelSmall?.copyWith(
-                              color: colors.ink,
+                              color: colors.onPaper,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -497,7 +497,7 @@ class _RankRow extends StatelessWidget {
                         Container(height: 8, color: colors.paperSoft),
                         FractionallySizedBox(
                           widthFactor: fraction.clamp(0.04, 1.0),
-                          child: Container(height: 8, color: colors.ink),
+                          child: Container(height: 8, color: colors.onPaper),
                         ),
                       ],
                     ),

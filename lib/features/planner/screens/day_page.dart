@@ -185,7 +185,7 @@ class _DayPageState extends ConsumerState<DayPage> {
                             icon: Icons.arrow_back,
                             tooltip: 'Voltar',
                             background: context.colors.paper,
-                            foreground: context.colors.ink,
+                            foreground: context.colors.onPaper,
                             onTap: () => context.pop(),
                           ),
                           const Spacer(),
@@ -627,7 +627,7 @@ class _MealSection extends StatelessWidget {
                   IconButton(
                     tooltip: 'Agendar em ${meal.label}',
                     onPressed: onAdd,
-                    icon: Icon(Icons.add_circle_outline, color: colors.ink),
+                    icon: Icon(Icons.add_circle_outline, color: colors.onPaper),
                   ),
                 ],
               ),
@@ -902,9 +902,9 @@ class _EntryTile extends StatelessWidget {
                 height: 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: done ? colors.ink : Colors.transparent,
+                  color: done ? colors.onPaper : Colors.transparent,
                   border: Border.all(
-                    color: done ? colors.ink : colors.textMuted,
+                    color: done ? colors.onPaper : colors.textMuted,
                     width: 2,
                   ),
                 ),
@@ -949,7 +949,7 @@ class _DragGhost extends StatelessWidget {
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: context.texts.labelLarge?.copyWith(color: colors.paper),
+            style: context.texts.labelLarge?.copyWith(color: colors.onInk),
           ),
         ),
       ),

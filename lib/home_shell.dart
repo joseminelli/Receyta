@@ -268,7 +268,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
       PillNavItem(
         icon: Icons.person_outline,
         label: 'Conta',
-        color: colors.paper,
+        color: colors.onInk,
         motif: TileMotif.diagonal,
       ),
     ];

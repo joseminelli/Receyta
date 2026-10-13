@@ -112,7 +112,7 @@ class _WelcomePageState extends State<WelcomePage> {
                           width: i == _page ? 26 : 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: i == _page ? colors.ink : colors.paperSoft,
+                            color: i == _page ? colors.onPaper : colors.paperSoft,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -323,9 +323,9 @@ class _ShoppingMock extends StatelessWidget {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: done ? colors.ink : Colors.transparent,
+                  color: done ? colors.onPaper : Colors.transparent,
                   shape: BoxShape.circle,
-                  border: Border.all(color: colors.ink, width: 1.6),
+                  border: Border.all(color: colors.onPaper, width: 1.6),
                 ),
                 child: done
                     ? Icon(Icons.check, size: 14, color: colors.lime)
@@ -336,7 +336,7 @@ class _ShoppingMock extends StatelessWidget {
                 text,
                 style: AppTextStyles.display(20).copyWith(
                   decoration: done ? TextDecoration.lineThrough : null,
-                  color: done ? colors.textMuted : colors.ink,
+                  color: done ? colors.textMuted : colors.onPaper,
                 ),
               ),
             ],

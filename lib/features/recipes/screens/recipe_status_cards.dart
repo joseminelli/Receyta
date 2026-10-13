@@ -222,7 +222,7 @@ class _StatusCard extends StatelessWidget {
     final colors = context.colors;
     final tile = resolveTileAppearance(colors, color: color, motif: motif);
     final textColor = active ? tile.onColor : colors.textMuted;
-    final valueColor = active ? tile.onColor : colors.ink;
+    final valueColor = active ? tile.onColor : colors.onPaper;
 
     return Semantics(
       button: true,
@@ -319,7 +319,7 @@ class _StatusCard extends StatelessWidget {
       height: 32,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? colors.paper : Colors.transparent,
+        color: active ? colors.onInk : Colors.transparent,
         border: active ? null : Border.all(color: colors.textMuted, width: 1.5),
       ),
       child: Icon(

@@ -509,7 +509,7 @@ class _GroupHeader extends StatelessWidget {
           Text(
             title.toUpperCase(),
             style: context.texts.labelMedium?.copyWith(
-              color: colors.ink,
+              color: colors.onPaper,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.5,
             ),
@@ -550,7 +550,7 @@ class _UnitRow extends StatelessWidget {
                   child: Text(
                     label,
                     style: context.texts.bodyLarge?.copyWith(
-                      color: selected ? colors.onSaturated : colors.ink,
+                      color: selected ? colors.onSaturated : colors.onPaper,
                       fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
                     ),
                   ),

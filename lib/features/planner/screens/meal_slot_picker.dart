@@ -42,7 +42,7 @@ class ChoicePill extends StatelessWidget {
           child: Text(
             label,
             style: context.texts.labelLarge
-                ?.copyWith(color: selected ? colors.paper : colors.ink),
+                ?.copyWith(color: selected ? colors.onInk : colors.onPaper),
           ),
         ),
       ),

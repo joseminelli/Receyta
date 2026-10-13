@@ -343,7 +343,7 @@ class _StatTile extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: AppTextStyles.display(38).copyWith(color: colors.ink),
+              style: AppTextStyles.display(38).copyWith(color: colors.onPaper),
             ),
           ),
         ],

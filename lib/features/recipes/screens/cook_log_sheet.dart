@@ -297,7 +297,7 @@ class CookedCard extends ConsumerWidget {
                   logs.isEmpty
                       ? Icons.restaurant_outlined
                       : Icons.restaurant_rounded,
-                  color: colors.ink,
+                  color: colors.onPaper,
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(

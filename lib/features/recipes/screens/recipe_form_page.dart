@@ -774,7 +774,7 @@ class _TopBar extends StatelessWidget {
           IconButton(
             onPressed: () => context.pop(),
             icon: const Icon(Icons.arrow_back),
-            color: context.colors.ink,
+            color: context.colors.onPaper,
           ),
           Expanded(child: Text(title, style: context.texts.displaySmall)),
           PillButton(label: 'Salvar', onPressed: onSave, loading: saving),
@@ -942,7 +942,7 @@ class _RemovableChip extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: context.texts.labelLarge?.copyWith(color: colors.ink),
+                style: context.texts.labelLarge?.copyWith(color: colors.onPaper),
               ),
               const SizedBox(width: AppSpacing.xs / 2),
               Icon(Icons.close, size: 16, color: colors.textMuted),

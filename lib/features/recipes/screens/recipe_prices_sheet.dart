@@ -114,7 +114,7 @@ class _Row extends StatelessWidget {
             Text(
               text,
               style: context.texts.labelLarge?.copyWith(
-                color: muted ? colors.textMuted : colors.ink,
+                color: muted ? colors.textMuted : colors.onPaper,
                 fontWeight: muted ? FontWeight.w500 : FontWeight.w700,
               ),
             ),

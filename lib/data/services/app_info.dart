@@ -36,6 +36,26 @@ class StoreLauncher {
 
 final storeLauncherProvider = Provider<StoreLauncher>((ref) => StoreLauncher());
 
+/// Site do Receyta (o mesmo domínio dos links de convite e de receita).
+const kSiteUrl = 'https://receyta.whisklinestudio.com';
+
+/// Abre o site no navegador. Devolve false se nada abriu.
+class SiteLauncher {
+  Future<bool> open() async {
+    try {
+      return await launchUrl(
+        Uri.parse(kSiteUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      debugPrint('SiteLauncher: $e');
+      return false;
+    }
+  }
+}
+
+final siteLauncherProvider = Provider<SiteLauncher>((ref) => SiteLauncher());
+
 /// "1.0.0 (3)": versão e build instalados. Vazio se a leitura falhar.
 final appVersionProvider = FutureProvider<String>((ref) async {
   try {

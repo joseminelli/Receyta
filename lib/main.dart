@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,22 +34,27 @@ class ReceytaApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(appSettingsProvider);
+    final contrast = settings.highContrast;
     return MaterialApp.router(
       title: 'Receyta',
-      theme: settings.highContrast ? AppTheme.highContrast() : AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: ThemeMode.light,
+      theme: contrast ? AppTheme.highContrast() : AppTheme.light(),
+      darkTheme: contrast ? AppTheme.highContrast() : AppTheme.dark(),
+      themeMode: contrast ? ThemeMode.light : settings.themeMode,
       routerConfig: router,
       // Faixa de timers fixa no topo de qualquer tela (G1).
       builder: (context, child) {
         final media = MediaQuery.of(context);
         final scale = (media.textScaler.scale(1) * settings.textSize.factor)
             .clamp(0.8, 2.0);
-        return MediaQuery(
-          data: media.copyWith(textScaler: TextScaler.linear(scale)),
-          child: GlobalTimersBar(
-            onOpenRecipe: (id) => router.push('/recipe/$id/cook'),
-            child: child ?? const SizedBox.shrink(),
+        final dark = Theme.of(context).brightness == Brightness.dark;
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: dark ? SystemBars.onDark : SystemBars.onLight,
+          child: MediaQuery(
+            data: media.copyWith(textScaler: TextScaler.linear(scale)),
+            child: GlobalTimersBar(
+              onOpenRecipe: (id) => router.push('/recipe/$id/cook'),
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
         );
       },

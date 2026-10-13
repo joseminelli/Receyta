@@ -188,7 +188,7 @@ class _SearchHeader extends StatelessWidget {
               autofocus: true,
               onChanged: onChanged,
               textInputAction: TextInputAction.search,
-              cursorColor: colors.ink,
+              cursorColor: colors.onPaper,
               style: context.texts.bodyLarge,
               decoration: const InputDecoration(
                 hintText: 'Nome, notas ou tag',

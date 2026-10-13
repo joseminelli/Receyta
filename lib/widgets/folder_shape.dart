@@ -110,7 +110,7 @@ class FolderShapeCard extends StatelessWidget {
       motif: folder.tileMotif,
       fallbackColor: TileColor.violet,
     );
-    final onColor = outlined ? colors.ink : tile.onColor;
+    final onColor = outlined ? colors.onPaper : tile.onColor;
     final mutedColor =
         outlined ? colors.textMuted : onColor.withValues(alpha: 0.82);
     final pad = compact ? AppSpacing.xs : AppSpacing.sm;

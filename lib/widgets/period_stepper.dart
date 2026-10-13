@@ -66,7 +66,7 @@ class PeriodStepper extends StatelessWidget {
                       style: context.texts.labelLarge!.copyWith(
                         color: atToday
                             ? colors.textMuted.withValues(alpha: 0.6)
-                            : colors.ink,
+                            : colors.onPaper,
                         fontWeight: atToday ? FontWeight.w500 : FontWeight.w800,
                       ),
                       child: const Text('Hoje'),
@@ -107,7 +107,7 @@ class _Arrow extends StatelessWidget {
         child: SizedBox(
           width: AppSpacing.minTapTarget,
           height: AppSpacing.minTapTarget,
-          child: Icon(icon, color: context.colors.ink),
+          child: Icon(icon, color: context.colors.onPaper),
         ),
       ),
     );

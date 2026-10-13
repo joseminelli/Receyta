@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,6 +7,7 @@ import 'package:receyta/core/tile_style.dart';
 
 const _kTextSize = 'settings_text_size';
 const _kHighContrast = 'settings_high_contrast';
+const _kThemeMode = 'settings_theme_mode';
 const _kLastBackup = 'settings_last_backup_ms';
 const _kNickname = 'profile_nickname';
 const _kProfileColor = 'profile_color';
@@ -25,6 +27,13 @@ enum TextSizeStep {
   final String label;
 }
 
+ThemeMode _themeModeFromName(String? name) {
+  for (final m in ThemeMode.values) {
+    if (m.name == name) return m;
+  }
+  return ThemeMode.light;
+}
+
 TextSizeStep _textSizeFromName(String? name) {
   for (final s in TextSizeStep.values) {
     if (s.name == name) return s;
@@ -40,6 +49,7 @@ class AppSettings {
   const AppSettings({
     this.textSize = TextSizeStep.normal,
     this.highContrast = false,
+    this.themeMode = ThemeMode.light,
     this.lastBackupAt,
     this.nickname = '',
     this.profileColor = TileColor.coral,
@@ -48,6 +58,9 @@ class AppSettings {
 
   final TextSizeStep textSize;
   final bool highContrast;
+
+  /// Claro, escuro ou o do sistema. Alto contraste sempre vale o claro.
+  final ThemeMode themeMode;
 
   /// Mostra g ↔ xícara e °C ↔ °F ao lado do que a receita escreve.
   final bool showEquivalents;
@@ -60,6 +73,7 @@ class AppSettings {
   AppSettings copyWith({
     TextSizeStep? textSize,
     bool? highContrast,
+    ThemeMode? themeMode,
     DateTime? lastBackupAt,
     String? nickname,
     TileColor? profileColor,
@@ -68,6 +82,7 @@ class AppSettings {
       AppSettings(
         textSize: textSize ?? this.textSize,
         highContrast: highContrast ?? this.highContrast,
+        themeMode: themeMode ?? this.themeMode,
         lastBackupAt: lastBackupAt ?? this.lastBackupAt,
         nickname: nickname ?? this.nickname,
         profileColor: profileColor ?? this.profileColor,
@@ -79,6 +94,7 @@ class AppSettings {
       other is AppSettings &&
       other.textSize == textSize &&
       other.highContrast == highContrast &&
+      other.themeMode == themeMode &&
       other.lastBackupAt == lastBackupAt &&
       other.nickname == nickname &&
       other.profileColor == profileColor &&
@@ -88,6 +104,7 @@ class AppSettings {
   int get hashCode => Object.hash(
         textSize,
         highContrast,
+        themeMode,
         lastBackupAt,
         nickname,
         profileColor,
@@ -104,6 +121,7 @@ Future<AppSettings> loadAppSettings() async {
     return AppSettings(
       textSize: _textSizeFromName(prefs.getString(_kTextSize)),
       highContrast: prefs.getBool(_kHighContrast) ?? false,
+      themeMode: _themeModeFromName(prefs.getString(_kThemeMode)),
       lastBackupAt: backupMs == null
           ? null
           : DateTime.fromMillisecondsSinceEpoch(backupMs),
@@ -134,6 +152,11 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   Future<void> setHighContrast(bool on) async {
     state = state.copyWith(highContrast: on);
     await _write((p) => p.setBool(_kHighContrast, on));
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    state = state.copyWith(themeMode: mode);
+    await _write((p) => p.setString(_kThemeMode, mode.name));
   }
 
   Future<void> setShowEquivalents(bool on) async {

@@ -444,7 +444,7 @@ class _IngredientRow extends StatelessWidget {
                                   Icon(
                                     Icons.kitchen,
                                     size: 16,
-                                    color: colors.ink,
+                                    color: colors.onPaper,
                                     semanticLabel: 'Sempre tenho',
                                   ),
                                 ],
@@ -482,7 +482,7 @@ class _IngredientRow extends StatelessWidget {
                                     style: context.texts.labelMedium?.copyWith(
                                       color: price == null
                                           ? colors.textMuted
-                                          : colors.ink,
+                                          : colors.onPaper,
                                       fontWeight: price == null
                                           ? null
                                           : FontWeight.w700,

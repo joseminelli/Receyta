@@ -226,7 +226,7 @@ class _Row extends StatelessWidget {
                   ),
                 ),
                 if (selected)
-                  Icon(Icons.check_rounded, color: colors.ink)
+                  Icon(Icons.check_rounded, color: colors.onPaper)
                 else
                   Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
               ],

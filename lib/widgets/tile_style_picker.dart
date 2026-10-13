@@ -259,7 +259,7 @@ class _Swatch extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? colors.ink : colors.paperSoft,
+            color: selected ? colors.onPaper : colors.paperSoft,
             width: selected ? 2.5 : 1.5,
           ),
         ),

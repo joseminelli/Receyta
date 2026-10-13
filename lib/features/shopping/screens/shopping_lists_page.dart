@@ -774,7 +774,7 @@ class _ShareNewListRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.people_alt_outlined, color: colors.ink),
+          Icon(Icons.people_alt_outlined, color: colors.onPaper),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(

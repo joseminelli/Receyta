@@ -129,7 +129,7 @@ class AppSheetOption extends StatelessWidget {
                       Text(
                         title,
                         style: AppTextStyles.display(23).copyWith(
-                          color: danger ? colors.danger : colors.ink,
+                          color: danger ? colors.danger : colors.onPaper,
                         ),
                       ),
                       if (subtitle != null) ...[
@@ -144,7 +144,7 @@ class AppSheetOption extends StatelessWidget {
                   ),
                 ),
                 if (selected)
-                  Icon(Icons.check_rounded, color: colors.ink)
+                  Icon(Icons.check_rounded, color: colors.onPaper)
                 else if (enabled)
                   Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
               ],

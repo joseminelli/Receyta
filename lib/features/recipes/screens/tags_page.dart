@@ -245,7 +245,7 @@ class _TagRow extends StatelessWidget {
           Text(
             tag.name,
             style: AppTextStyles.display(22).copyWith(
-              color: unused ? colors.textMuted : colors.ink,
+              color: unused ? colors.textMuted : colors.onPaper,
               height: 1.05,
             ),
             maxLines: 1,
@@ -265,7 +265,7 @@ class _TagRow extends StatelessWidget {
                   Container(height: 6, color: colors.paper),
                   FractionallySizedBox(
                     widthFactor: (count / maxCount).clamp(0.06, 1.0),
-                    child: Container(height: 6, color: colors.ink),
+                    child: Container(height: 6, color: colors.onPaper),
                   ),
                 ],
               ),

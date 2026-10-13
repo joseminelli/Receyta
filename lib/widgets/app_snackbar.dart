@@ -247,7 +247,7 @@ class _AppSnackBarCard extends StatelessWidget {
             child: Text(
               message,
               style: context.texts.bodyLarge?.copyWith(
-                color: colors.paper,
+                color: colors.onInk,
                 fontWeight: FontWeight.w600,
               ),
             ),

@@ -79,7 +79,7 @@ class HowItWorksLink extends StatelessWidget {
         onTap: () => AppDialog.show<void>(
           context,
           icon: Icons.info_outline,
-          accent: colors.ink,
+          accent: colors.onPaper,
           title: 'Como é calculado',
           content: const CostDisclaimer(),
           actions: [

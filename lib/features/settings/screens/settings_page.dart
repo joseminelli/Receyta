@@ -468,11 +468,16 @@ class SettingsPage extends ConsumerWidget {
                         title: 'Aparência',
                         summary:
                             'Texto ${settings.textSize.label.toLowerCase()}'
-                            ' · ${settings.highContrast ? 'alto contraste' : 'contraste padrão'}',
+                            ' · ${settings.highContrast ? 'alto contraste' : 'tema ${_themeModeLabel(settings.themeMode).toLowerCase()}'}',
                         children: [
                           _TextSizeRow(
                             current: settings.textSize,
                             onSelected: settingsNotifier.setTextSize,
+                          ),
+                          _ThemeModeRow(
+                            current: settings.themeMode,
+                            highContrast: settings.highContrast,
+                            onSelected: settingsNotifier.setThemeMode,
                           ),
                           _SwitchRow(
                             icon: Icons.contrast,
@@ -601,12 +606,6 @@ class SettingsPage extends ConsumerWidget {
                             subtitle: _copiesSubtitle(auto),
                             onTap: () => showAutoBackupSheet(context),
                           ),
-                          _NavRow(
-                            icon: Icons.school_outlined,
-                            title: 'Ver a introdução de novo',
-                            subtitle: 'Revê as boas-vindas e o tour do app',
-                            onTap: () => context.go('/welcome'),
-                          ),
                         ],
                       ),
                       _AccordionItem(
@@ -627,6 +626,12 @@ class SettingsPage extends ConsumerWidget {
                             subtitle:
                                 'O app, perguntas frequentes e privacidade',
                             onTap: () => context.push('/about'),
+                          ),
+                          _NavRow(
+                            icon: Icons.school_outlined,
+                            title: 'Ver a introdução de novo',
+                            subtitle: 'Revê as boas-vindas e o tour do app',
+                            onTap: () => context.go('/welcome'),
                           ),
                           _NavRow(
                             icon: Icons.star_outline_rounded,
@@ -936,7 +941,7 @@ class _AccordionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final accent = item.danger ? colors.danger : colors.ink;
+    final accent = item.danger ? colors.danger : colors.onPaper;
 
     return Material(
       color: colors.paperSoft,
@@ -1041,7 +1046,7 @@ class _PanelBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final accent = danger ? colors.danger : colors.ink;
+    final accent = danger ? colors.danger : colors.onPaper;
     return Container(
       width: 44,
       height: 44,
@@ -1104,7 +1109,7 @@ class _RowText extends StatelessWidget {
           title,
           style: context.texts.bodyLarge?.copyWith(
             fontWeight: FontWeight.w600,
-            color: danger ? colors.danger : colors.ink,
+            color: danger ? colors.danger : colors.onPaper,
           ),
         ),
         Text(
@@ -1199,7 +1204,7 @@ class _InfoRow extends StatelessWidget {
                 title,
                 style: context.texts.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: colors.ink,
+                  color: colors.onPaper,
                 ),
               ),
             ),
@@ -1258,12 +1263,120 @@ class _SwitchRow extends StatelessWidget {
                         ? colors.lime
                         : colors.textMuted,
                   ),
-                  trackOutlineColor: WidgetStatePropertyAll(colors.ink),
+                  trackOutlineColor: WidgetStatePropertyAll(colors.onPaper),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+String _themeModeLabel(ThemeMode mode) => switch (mode) {
+      ThemeMode.light => 'Claro',
+      ThemeMode.dark => 'Escuro',
+      ThemeMode.system => 'Sistema',
+    };
+
+/// Claro, escuro ou o do aparelho. O alto contraste é sempre claro, então
+/// avisa quando a escolha não vai valer.
+class _ThemeModeRow extends StatelessWidget {
+  const _ThemeModeRow({
+    required this.current,
+    required this.highContrast,
+    required this.onSelected,
+  });
+
+  final ThemeMode current;
+  final bool highContrast;
+  final ValueChanged<ThemeMode> onSelected;
+
+  static const _options = [
+    (mode: ThemeMode.light, icon: Icons.light_mode_outlined),
+    (mode: ThemeMode.dark, icon: Icons.dark_mode_outlined),
+    (mode: ThemeMode.system, icon: Icons.brightness_auto_outlined),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const _Medallion(icon: Icons.contrast_rounded),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _RowText(
+                  title: 'Tema',
+                  subtitle: highContrast
+                      ? 'Bloqueado: o alto contraste usa o tema claro'
+                      : _themeModeLabel(current),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Opacity(
+            opacity: highContrast ? 0.45 : 1,
+            child: Row(
+              children: [
+                for (final (i, option) in _options.indexed) ...[
+                  if (i > 0) const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Semantics(
+                      button: true,
+                      enabled: !highContrast,
+                      selected: option.mode == current,
+                      label: 'Tema ${_themeModeLabel(option.mode)}',
+                      excludeSemantics: true,
+                      child: Material(
+                        color:
+                            option.mode == current ? colors.ink : colors.paper,
+                        borderRadius: BorderRadius.circular(AppRadii.sm),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(AppRadii.sm),
+                          onTap: highContrast
+                              ? null
+                              : () => onSelected(option.mode),
+                          child: SizedBox(
+                            height: 60,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  option.icon,
+                                  size: 20,
+                                  color: option.mode == current
+                                      ? colors.lime
+                                      : colors.onPaper,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _themeModeLabel(option.mode),
+                                  style: context.texts.labelMedium?.copyWith(
+                                    color: option.mode == current
+                                        ? colors.lime
+                                        : colors.onPaper,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1322,8 +1435,9 @@ class _TextSizeRow extends StatelessWidget {
                               textScaler: TextScaler.noScaling,
                               style: AppTextStyles.display(_glyphSizes[i])
                                   .copyWith(
-                                color:
-                                    step == current ? colors.lime : colors.ink,
+                                color: step == current
+                                    ? colors.lime
+                                    : colors.onPaper,
                               ),
                             ),
                           ),

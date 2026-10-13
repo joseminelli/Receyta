@@ -153,7 +153,7 @@ class _Hero extends ConsumerWidget {
                                 height: 92,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
-                                  color: colors.paper,
+                                  color: colors.onInk,
                                   shape: BoxShape.circle,
                                 ),
                                 clipBehavior: Clip.antiAlias,
@@ -330,7 +330,7 @@ class _TopRecipePill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.texts.bodyMedium?.copyWith(
-                color: colors.ink,
+                color: colors.onPaper,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -517,7 +517,7 @@ class _GoogleSignInButton extends ConsumerWidget {
           button: true,
           label: 'Entrar com Google',
           child: Material(
-            color: colors.paper,
+            color: colors.onInk,
             borderRadius: BorderRadius.circular(AppRadii.pill),
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -533,7 +533,7 @@ class _GoogleSignInButton extends ConsumerWidget {
                         height: 40,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          color: colors.paper,
+                          color: colors.onInk,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: colors.paperSoft,
@@ -770,7 +770,7 @@ class _PhotoQuotaTile extends ConsumerWidget {
 
     final colors = context.colors;
     final full = quota.blocked;
-    final accent = full ? colors.danger : colors.ink;
+    final accent = full ? colors.danger : colors.onPaper;
     final detail = full
         ? 'Limite atingido. As fotos novas ficam só neste aparelho'
             '${quota.pending > 0 ? ' (${quota.pending} esperando)' : ''}. '

@@ -153,7 +153,7 @@ Future<void> _renameSpace(
   final name = await AppDialog.show<String>(
     context,
     icon: Icons.home_outlined,
-    accent: context.colors.ink,
+    accent: context.colors.onPaper,
     title: 'Nome da casa',
     content: TextField(
       controller: controller,
@@ -710,7 +710,7 @@ class _InSpace extends ConsumerWidget {
     final ok = await AppDialog.confirm(
       context,
       icon: Icons.swap_horiz_rounded,
-      accent: context.colors.ink,
+      accent: context.colors.onPaper,
       title: 'Passar a casa para $name?',
       message: 'Ela passa a poder convidar, remover pessoas e renomear a '
           'casa. Você continua na casa como membro.',

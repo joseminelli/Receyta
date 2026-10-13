@@ -249,7 +249,7 @@ class SlidingSegmented extends StatelessWidget {
                           duration: const Duration(milliseconds: 200),
                           style: (context.texts.labelLarge ?? const TextStyle())
                               .copyWith(
-                            color: i == selected ? colors.lime : colors.ink,
+                            color: i == selected ? colors.lime : colors.onPaper,
                             fontWeight: FontWeight.w700,
                           ),
                           child: Text(labels[i]),

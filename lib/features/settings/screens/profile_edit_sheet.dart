@@ -164,7 +164,7 @@ class _ColorDot extends StatelessWidget {
             color: tile.background,
             shape: BoxShape.circle,
             border: Border.all(
-              color: selected ? colors.ink : Colors.transparent,
+              color: selected ? colors.onPaper : Colors.transparent,
               width: 3,
             ),
           ),
