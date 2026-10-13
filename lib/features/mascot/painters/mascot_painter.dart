@@ -229,9 +229,9 @@ abstract class MascotPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// Mão com pulso girando em [wristAngle]: mistura a luva fechada da arte
-  /// ([paintClosed]) com a mão aberta ([paintOpen]) conforme [open] (0 a 1),
-  /// com uma transição curta entre as duas.
+  /// Mão com pulso girando em [wristAngle]: luva fechada da arte
+  /// ([paintClosed]) ou mão aberta ([paintOpen]), conforme [open] (0 a 1). A
+  /// troca é direta, sem transparência, para não deixar a mão "fantasma".
   void paintHand(
     Canvas canvas, {
     required Offset wrist,
@@ -244,21 +244,10 @@ abstract class MascotPainter extends CustomPainter {
     canvas.translate(wrist.dx, wrist.dy);
     canvas.rotate(wristAngle);
     canvas.translate(-wrist.dx, -wrist.dy);
-    if (open < 0.02) {
-      paintClosed();
-    } else if (open > 0.98) {
+    if (open >= 0.5) {
       paintOpen();
     } else {
-      final bounds = Rect.fromLTWH(wrist.dx - 90, wrist.dy - 30, 180, 180);
-      canvas.saveLayer(
-        bounds,
-        Paint()..color = Color.fromRGBO(0, 0, 0, 1 - open),
-      );
       paintClosed();
-      canvas.restore();
-      canvas.saveLayer(bounds, Paint()..color = Color.fromRGBO(0, 0, 0, open));
-      paintOpen();
-      canvas.restore();
     }
     canvas.restore();
   }

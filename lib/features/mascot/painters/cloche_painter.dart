@@ -28,10 +28,10 @@ class ClochePainter extends MascotPainter {
   static const _scale = MascotPainter.designWidth / clocheArtWidth;
   static const _shoulderLeft = Offset(40, 176);
   static const _shoulderRight = Offset(308, 176);
-  static const _wristLeft = Offset(38, 272);
-  static const _wristRight = Offset(310, 272);
-  static const _cuffLeft = HandFrame(Offset(45.2, 273.8), 0.386);
-  static const _cuffRight = HandFrame(Offset(303.6, 273.8), -0.367);
+  static const _wristLeft = Offset(33.5, 272);
+  static const _wristRight = Offset(314.5, 272);
+  static const _cuffLeft = HandFrame(Offset(33.2, 270.4), 0.386);
+  static const _cuffRight = HandFrame(Offset(314.8, 270.4), -0.386);
   static const _hipLeft = Offset(146, 248);
   static const _hipRight = Offset(201, 248);
   static const _knobPivot = Offset(175, 50);
@@ -96,33 +96,10 @@ class ClochePainter extends MascotPainter {
     }
   }
 
-  static final Path _armOuter = Path()
-    ..addPolygon(const [
-      Offset(32, 170),
-      Offset(26, 178),
-      Offset(20.5, 186),
-      Offset(16.5, 195),
-      Offset(14.6, 204),
-      Offset(14, 214),
-      Offset(13.7, 230),
-      Offset(13.6, 246),
-      Offset(41.4, 246),
-      Offset(41.4, 170),
-    ], true);
-
-  static final Path _armInner = Path()
-    ..addPolygon(const [
-      Offset(35.2, 170),
-      Offset(29.2, 178),
-      Offset(23.7, 186),
-      Offset(19.7, 195),
-      Offset(17.8, 204),
-      Offset(17.2, 214),
-      Offset(16.9, 230),
-      Offset(16.8, 246),
-      Offset(38.5, 246),
-      Offset(38.5, 170),
-    ], true);
+  static final Path _armPath = Path()
+    ..moveTo(44, 170)
+    ..cubicTo(30, 184, 27, 216, 27.4, 246)
+    ..cubicTo(27.8, 258, 31.5, 268, 35, 277);
 
   void _paintArm(Canvas canvas, MascotPose pose, {required bool left}) {
     final pivot = left ? _shoulderLeft : _shoulderRight;
@@ -130,11 +107,7 @@ class ClochePainter extends MascotPainter {
     canvas.translate(pivot.dx, pivot.dy);
     canvas.rotate(left ? pose.armLeft : -pose.armRight);
     canvas.translate(-pivot.dx, -pivot.dy);
-    _paintUpperArm(canvas, left);
-    canvas.save();
-    canvas.clipRect(const Rect.fromLTRB(-50, 238, 450, 500));
-    _paintLayers(canvas, left ? ClochePart.armLeft : ClochePart.armRight);
-    canvas.restore();
+    _paintArmTube(canvas, left);
     paintHand(
       canvas,
       wrist: left ? _wristLeft : _wristRight,
@@ -164,17 +137,29 @@ class ClochePainter extends MascotPainter {
     canvas.restore();
   }
 
-  /// Tubo do braço desde o ombro, escondido atrás da cúpula, até o antebraço.
-  /// A pontinha que aparece ao lado da cúpula é só a parte do tubo que fica
-  /// fora da silhueta dela.
-  void _paintUpperArm(Canvas canvas, bool left) {
+  /// O braço é um tubo contínuo, desde o ombro escondido atrás da cúpula até o
+  /// punho. A pontinha que aparece ao lado da cúpula é só a parte do tubo que
+  /// fica fora da silhueta dela.
+  void _paintArmTube(Canvas canvas, bool left) {
     canvas.save();
     if (!left) {
       canvas.translate(348, 0);
       canvas.scale(-1, 1);
     }
-    canvas.drawPath(_armOuter, fill(colors.ink));
-    canvas.drawPath(_armInner, fill(colors.onInk));
+    canvas.drawPath(
+      _armPath,
+      Paint()
+        ..color = colors.ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 27.4,
+    );
+    canvas.drawPath(
+      _armPath,
+      Paint()
+        ..color = colors.onInk
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 21,
+    );
     canvas.restore();
   }
 
