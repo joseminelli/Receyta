@@ -310,7 +310,8 @@ const List<_Qa> _faq = [
     'Entre com a mesma conta do Google no aparelho novo: receitas, pastas, '
         'listas e fotos voltam sozinhas (os preços dos ingredientes ficam só '
         'no aparelho e precisam ser informados de novo). Sem conta, faça um '
-        'backup nos ajustes e abra o arquivo no aparelho novo.',
+        'cópia em Configurações > Seus dados > Suas cópias, envie para o '
+        'aparelho novo e abra o arquivo lá.',
   ),
   (
     'Apaguei uma receita sem querer. E agora?',

@@ -100,7 +100,7 @@ void main() {
     expect(loaded, const AppSettings());
   });
 
-  testWidgets('mostra as seções e o aviso de que ainda não há backup',
+  testWidgets('mostra as seções e não alerta por falta de backup',
       (tester) async {
     _usePhoneSize(tester);
     await tester.pumpWidget(_host());
@@ -111,7 +111,8 @@ void main() {
     expect(find.text('Timers e lembretes'), findsOneWidget);
     expect(find.text('Seus dados'), findsOneWidget);
     expect(find.text('Zona de risco'), findsOneWidget);
-    expect(find.text('Você ainda não fez backup'), findsOneWidget);
+    expect(find.text('Você ainda não fez backup'), findsNothing);
+    expect(find.text('Nenhuma cópia ainda'), findsOneWidget);
     expect(find.text('Alto contraste'), findsNothing);
   });
 
@@ -123,24 +124,25 @@ void main() {
     await _open(tester, 'Aparência');
     expect(find.text('Alto contraste'), findsOneWidget);
 
-    await _open(tester, 'Seus dados');
+    await _open(tester, 'Sobre');
     expect(find.text('Alto contraste'), findsNothing);
     expect(find.text('Ver a introdução de novo'), findsOneWidget);
 
-    await _open(tester, 'Seus dados');
+    await _open(tester, 'Sobre');
     expect(find.text('Ver a introdução de novo'), findsNothing);
   });
 
-  testWidgets('mostra a data do último backup quando há', (tester) async {
+  testWidgets('Seus dados: sem a linha "Backup", só o automático e as cópias',
+      (tester) async {
     _usePhoneSize(tester);
-    await tester.pumpWidget(
-      _host(initial: AppSettings(lastBackupAt: DateTime(2026, 9, 12, 8, 5))),
-    );
+    await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    expect(find.text('Último: 12/09/2026 às 08:05'), findsOneWidget);
     await _open(tester, 'Seus dados');
-    expect(find.text('Último: 12/09/2026 às 08:05'), findsNWidgets(2));
+    expect(find.text('Backup'), findsNothing);
+    expect(find.text('Backup automático'), findsOneWidget);
+    expect(find.text('Suas cópias'), findsOneWidget);
+    expect(find.text('Cópias automáticas'), findsNothing);
   });
 
   testWidgets('escolher um tamanho de texto atualiza a configuração',
@@ -177,7 +179,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    await _open(tester, 'Seus dados');
+    await _open(tester, 'Sobre');
     await tester.tap(find.text('Ver a introdução de novo'));
     await tester.pumpAndSettle();
 

@@ -54,9 +54,9 @@ const kTutorialSteps = [
   ),
   TutorialStep(
     target: TutorialTarget.navBar,
-    title: 'Faça backup',
-    body: 'Em Conta, toque na engrenagem e escolha Backup. Seus dados ficam '
-        'só neste aparelho — guarde uma cópia de vez em quando.',
+    title: 'Guarde uma cópia',
+    body: 'O app já faz uma cópia por dia. Em Conta, toque na engrenagem e '
+        'abra Suas cópias para enviar uma para fora do aparelho.',
   ),
 ];
 

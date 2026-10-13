@@ -8,7 +8,6 @@ import 'package:receyta/data/services/app_info.dart';
 import 'package:receyta/data/services/auth_service.dart';
 import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
-import 'package:receyta/data/services/recipe_export_service.dart';
 import 'package:receyta/domain/engine/quiet_hours.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
@@ -45,19 +44,9 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  Future<void> _backup(BuildContext context, WidgetRef ref) async {
-    final result =
-        await ref.read(recipeExportServiceProvider).shareFullBackup();
-    result.when(
-      ok: (_) => ref.read(appSettingsProvider.notifier).markBackedUp(
-            DateTime.now(),
-          ),
-      err: (f) => showAppSnackBar(
-        message: f.message,
-        variant: AppSnackBarVariant.error,
-      ),
-    );
-  }
+  /// Sem nenhuma cópia guardada (as automáticas são o backup do app).
+  bool _hasNoCopies(WidgetRef ref) =>
+      (ref.read(autoBackupProvider).valueOrNull?.count ?? 0) == 0;
 
   /// Sai da conta; as receitas continuam neste aparelho. Sem confirmação —
   /// nada é apagado, e entrar de novo leva um toque.
@@ -70,7 +59,7 @@ class SettingsPage extends ConsumerWidget {
   Future<void> _wipe(BuildContext context, WidgetRef ref) async {
     final colors = context.colors;
     final loggedIn = ref.read(authUserProvider).valueOrNull != null;
-    final neverBackedUp = ref.read(appSettingsProvider).lastBackupAt == null;
+    final neverBackedUp = _hasNoCopies(ref);
     final firstOk = await AppDialog.confirm(
       context,
       icon: Icons.warning_amber_rounded,
@@ -84,12 +73,13 @@ class SettingsPage extends ConsumerWidget {
               'que ficam só aqui). Para apagar também da conta, use '
               '"Apagar tudo, inclusive da conta".'
         else if (neverBackedUp)
-          'Você ainda não fez um backup. Apaga receitas, pastas, tags e '
-              'ingredientes deste aparelho — volte e use "Backup" antes, se '
-              'quiser guardar uma cópia.'
+          'Você ainda não tem nenhuma cópia. Apaga receitas, pastas, tags e '
+              'ingredientes deste aparelho — volte e use "Suas cópias" antes, '
+              'se quiser guardar uma.'
         else
           'Apaga receitas, pastas, tags e ingredientes salvos neste '
-              'aparelho. Seu último backup fica com você, fora do app.',
+              'aparelho. As cópias que você enviou para fora do app '
+              'continuam com você.',
       ].join(' '),
       cancelLabel: 'Voltar',
       confirmLabel:
@@ -127,7 +117,7 @@ class SettingsPage extends ConsumerWidget {
   /// única ação do app que não dá pra desfazer de jeito nenhum.
   Future<void> _wipeEverything(BuildContext context, WidgetRef ref) async {
     final colors = context.colors;
-    final neverBackedUp = ref.read(appSettingsProvider).lastBackupAt == null;
+    final neverBackedUp = _hasNoCopies(ref);
 
     final firstOk = await AppDialog.confirm(
       context,
@@ -137,8 +127,8 @@ class SettingsPage extends ConsumerWidget {
       message: 'Apaga receitas, pastas, tags e fotos deste aparelho E da sua '
           'conta na nuvem. Os outros aparelhos conectados também perdem tudo '
           'na próxima sincronização.\n\n'
-          '${neverBackedUp ? 'Você ainda não fez um backup — volte e use '
-              '"Backup" antes se quiser guardar uma cópia. ' : ''}'
+          '${neverBackedUp ? 'Você ainda não tem nenhuma cópia — volte e use '
+              '"Suas cópias" antes se quiser guardar uma. ' : ''}'
           'Isso não pode ser desfeito.',
       cancelLabel: 'Voltar',
       confirmLabel: 'Continuar',
@@ -413,14 +403,6 @@ class SettingsPage extends ConsumerWidget {
     return 'Timers $timers · $week';
   }
 
-  static String _backupSubtitle(DateTime? at) {
-    if (at == null) return 'Você ainda não fez backup';
-    final l = at.toLocal();
-    String two(int n) => n.toString().padLeft(2, '0');
-    return 'Último: ${two(l.day)}/${two(l.month)}/${l.year} às '
-        '${two(l.hour)}:${two(l.minute)}';
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.colors;
@@ -579,16 +561,8 @@ class SettingsPage extends ConsumerWidget {
                         id: 'dados',
                         icon: Icons.backup_outlined,
                         title: 'Seus dados',
-                        summary: _backupSubtitle(settings.lastBackupAt),
-                        warn: settings.lastBackupAt == null,
+                        summary: _copiesSubtitle(auto),
                         children: [
-                          _NavRow(
-                            icon: Icons.backup_outlined,
-                            title: 'Backup',
-                            subtitle: _backupSubtitle(settings.lastBackupAt),
-                            warn: settings.lastBackupAt == null,
-                            onTap: () => _backup(context, ref),
-                          ),
                           _SwitchRow(
                             icon: Icons.history_toggle_off,
                             title: 'Backup automático',
@@ -602,7 +576,7 @@ class SettingsPage extends ConsumerWidget {
                           ),
                           _NavRow(
                             icon: Icons.settings_backup_restore,
-                            title: 'Cópias automáticas',
+                            title: 'Suas cópias',
                             subtitle: _copiesSubtitle(auto),
                             onTap: () => showAutoBackupSheet(context),
                           ),
@@ -872,7 +846,6 @@ class _AccordionItem {
     required this.title,
     required this.summary,
     required this.children,
-    this.warn = false,
     this.danger = false,
   });
 
@@ -883,7 +856,6 @@ class _AccordionItem {
   final List<Widget> children;
 
   /// Resumo em destaque (algo que merece atenção, como "sem backup").
-  final bool warn;
 
   /// Painel de ações perigosas: ícone e título em vermelho, e uma distância
   /// maior dos outros.
@@ -982,12 +954,8 @@ class _AccordionCard extends StatelessWidget {
                               item.summary,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: context.texts.bodySmall?.copyWith(
-                                color: item.warn
-                                    ? colors.danger
-                                    : colors.textMuted,
-                                fontWeight: item.warn ? FontWeight.w700 : null,
-                              ),
+                              style: context.texts.bodySmall
+                                  ?.copyWith(color: colors.textMuted),
                             ),
                           ],
                         ),
@@ -1089,13 +1057,11 @@ class _RowText extends StatelessWidget {
   const _RowText({
     required this.title,
     required this.subtitle,
-    this.warn = false,
     this.danger = false,
   });
 
   final String title;
   final String subtitle;
-  final bool warn;
   final bool danger;
 
   @override
@@ -1115,8 +1081,7 @@ class _RowText extends StatelessWidget {
         Text(
           subtitle,
           style: context.texts.bodyMedium?.copyWith(
-            color: warn ? colors.danger : colors.textMuted,
-            fontWeight: warn ? FontWeight.w600 : null,
+            color: colors.textMuted,
           ),
         ),
       ],
@@ -1130,7 +1095,6 @@ class _NavRow extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.warn = false,
     this.danger = false,
   });
 
@@ -1138,7 +1102,6 @@ class _NavRow extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final bool warn;
   final bool danger;
 
   @override
@@ -1161,7 +1124,6 @@ class _NavRow extends StatelessWidget {
                 child: _RowText(
                   title: title,
                   subtitle: subtitle,
-                  warn: warn,
                   danger: danger,
                 ),
               ),

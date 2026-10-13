@@ -101,7 +101,7 @@ class _AutoBackupSheet extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Cópias automáticas', style: texts.displaySmall),
+            Text('Suas cópias', style: texts.displaySmall),
             const SizedBox(height: AppSpacing.xs),
             Text(
               'O app guarda uma cópia por dia, as 7 mais recentes. Restaurar '
