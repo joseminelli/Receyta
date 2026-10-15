@@ -7,6 +7,7 @@ import 'package:receyta/domain/engine/smart_collections.dart';
 /// (Dart puro) não conhece.
 extension SmartCollectionStyle on SmartCollection {
   IconData get icon => switch (this) {
+        SmartCollection.canCook => Icons.kitchen_rounded,
         SmartCollection.quick => Icons.bolt_rounded,
         SmartCollection.neverCooked => Icons.restaurant_menu_rounded,
         SmartCollection.mostCooked => Icons.repeat_rounded,
@@ -16,6 +17,7 @@ extension SmartCollectionStyle on SmartCollection {
 
   /// Textura própria de cada coleção, pra os azulejos não ficarem iguais.
   TileMotif get motif => switch (this) {
+        SmartCollection.canCook => TileMotif.xadrez,
         SmartCollection.quick => TileMotif.diagonal,
         SmartCollection.neverCooked => TileMotif.ponto,
         SmartCollection.mostCooked => TileMotif.arco,
@@ -24,6 +26,7 @@ extension SmartCollectionStyle on SmartCollection {
       };
 
   TileColor get color => switch (this) {
+        SmartCollection.canCook => TileColor.mostarda,
         SmartCollection.quick => TileColor.lime,
         SmartCollection.neverCooked => TileColor.violet,
         SmartCollection.mostCooked => TileColor.coral,

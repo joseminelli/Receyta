@@ -3,6 +3,7 @@
 /// Dart puro.
 library;
 
+import 'package:receyta/domain/engine/pantry_match.dart';
 import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/domain/models/recipe.dart';
 
@@ -16,6 +17,10 @@ const kForgottenDays = 60;
 const kMostCookedMin = 2;
 
 enum SmartCollection {
+  canCook(
+    'Dá pra fazer',
+    'Faltam até $kMaxMissingIngredients ingredientes da sua despensa',
+  ),
   quick('Rápidas', 'Até $kQuickMinutes minutos no total'),
   neverCooked('Nunca cozinhei', 'Salvas, mas ainda não feitas'),
   mostCooked('Mais feitas', 'As que você mais repete'),
@@ -79,9 +84,23 @@ List<Recipe> recipesIn(
   SmartCollection collection,
   List<Recipe> recipes,
   Map<String, CookStats> stats,
-  DateTime now,
-) {
+  DateTime now, {
+  Map<String, PantryMatch> pantry = const {},
+}) {
   switch (collection) {
+    case SmartCollection.canCook:
+      return [
+        for (final r in recipes)
+          if (pantry.containsKey(r.id)) r,
+      ]..sort((a, b) {
+          final ma = pantry[a.id]!;
+          final mb = pantry[b.id]!;
+          final byMissing = ma.missing.compareTo(mb.missing);
+          if (byMissing != 0) return byMissing;
+          final byHave = mb.have.compareTo(ma.have);
+          return byHave != 0 ? byHave : a.name.compareTo(b.name);
+        });
+
     case SmartCollection.quick:
       final out = [
         for (final r in recipes)
@@ -129,12 +148,13 @@ List<Recipe> recipesIn(
 Map<SmartCollection, List<Recipe>> buildSmartCollections(
   List<Recipe> recipes,
   Iterable<CookLog> logs,
-  DateTime now,
-) {
+  DateTime now, {
+  Map<String, PantryMatch> pantry = const {},
+}) {
   final stats = cookStatsOf(logs);
   final out = <SmartCollection, List<Recipe>>{};
   for (final c in SmartCollection.values) {
-    final list = recipesIn(c, recipes, stats, now);
+    final list = recipesIn(c, recipes, stats, now, pantry: pantry);
     if (list.isNotEmpty) out[c] = list;
   }
   return out;
