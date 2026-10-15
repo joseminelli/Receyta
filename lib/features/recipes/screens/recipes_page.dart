@@ -17,6 +17,7 @@ import 'package:receyta/features/recipes/screens/recipe_ocr_flow.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
 import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/recipes/controllers/recipe_selection.dart';
 import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/theme/app_theme.dart';
@@ -123,7 +124,15 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
       await ref.read(recipesStreamProvider.future);
     }
 
-    return recipes.when(
+    ref.listen(selectedTagIdsProvider, (_, __) {
+      ref.read(recipeSelectionProvider.notifier).selectAll(const {});
+    });
+    ref.listen(favoritesOnlyProvider, (_, __) {
+      ref.read(recipeSelectionProvider.notifier).selectAll(const {});
+    });
+    final selecting = ref.watch(recipeSelectionProvider) != null;
+
+    final content = recipes.when(
       loading: () => _Scaffold(
         controller: _controller,
         count: totalCount,
@@ -169,6 +178,14 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
                 showViewAll: !filtering,
               ),
       ),
+    );
+
+    return PopScope(
+      canPop: !selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) ref.read(recipeSelectionProvider.notifier).clear();
+      },
+      child: content,
     );
   }
 }
@@ -340,6 +357,7 @@ class _RecipeList extends ConsumerWidget {
     if (recipes.isEmpty) return const SliverToBoxAdapter(child: SizedBox());
     final featured = recipes.first;
     final rest = recipes.skip(1).toList();
+    final selecting = ref.watch(recipeSelectionProvider) != null;
 
     return SliverMainAxisGroup(
       slivers: [
@@ -349,8 +367,9 @@ class _RecipeList extends ConsumerWidget {
           context,
           featured,
           ref.read(tutorialTargetsProvider)[TutorialTarget.firstRecipe],
+          selecting,
         ),
-        _buildGrid(context, rest),
+        _buildGrid(context, rest, selecting),
         const SliverPadding(
           padding: EdgeInsets.only(bottom: 96),
           sliver: SliverToBoxAdapter(child: _HomeFooter()),
@@ -383,7 +402,12 @@ class _RecipeList extends ConsumerWidget {
     );
   }
 
-  Widget _buildFeatured(BuildContext context, Recipe featured, Key? tourKey) {
+  Widget _buildFeatured(
+    BuildContext context,
+    Recipe featured,
+    Key? tourKey,
+    bool selecting,
+  ) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -400,21 +424,28 @@ class _RecipeList extends ConsumerWidget {
           key: ValueKey(featured.id),
           child: KeyedSubtree(
             key: tourKey,
-            child: DraggableRecipe(
-              recipe: featured,
-              child: FeaturedRecipeCard(
-                recipe: featured,
-                onTap: () =>
-                    context.push('/recipe/${featured.id}', extra: featured),
-              ),
-            ),
+            child: selecting
+                ? _SelectableCard(
+                    radius: AppRadii.lg,
+                    recipe: featured,
+                    builder: (toggle) =>
+                        FeaturedRecipeCard(recipe: featured, onTap: toggle),
+                  )
+                : DraggableRecipe(
+                    recipe: featured,
+                    child: FeaturedRecipeCard(
+                      recipe: featured,
+                      onTap: () => context.push('/recipe/${featured.id}',
+                          extra: featured),
+                    ),
+                  ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildGrid(BuildContext context, List<Recipe> rest) {
+  Widget _buildGrid(BuildContext context, List<Recipe> rest, bool selecting) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -432,17 +463,111 @@ class _RecipeList extends ConsumerWidget {
         delegate: SliverChildBuilderDelegate(
           (context, i) => _EntranceFade(
             key: ValueKey(rest[i].id),
-            child: DraggableRecipe(
-              recipe: rest[i],
-              child: RecipeCard(
-                recipe: rest[i],
-                onTap: () =>
-                    context.push('/recipe/${rest[i].id}', extra: rest[i]),
-              ),
-            ),
+            child: selecting
+                ? _SelectableCard(
+                    recipe: rest[i],
+                    builder: (toggle) =>
+                        RecipeCard(recipe: rest[i], onTap: toggle),
+                  )
+                : DraggableRecipe(
+                    recipe: rest[i],
+                    child: RecipeCard(
+                      recipe: rest[i],
+                      onTap: () =>
+                          context.push('/recipe/${rest[i].id}', extra: rest[i]),
+                    ),
+                  ),
           ),
           childCount: rest.length,
         ),
+      ),
+    );
+  }
+}
+
+/// Card no modo de seleção: tocar marca/desmarca e um selo no canto mostra o
+/// estado. Sem arrastar nem abrir.
+class _SelectableCard extends ConsumerWidget {
+  const _SelectableCard({
+    required this.recipe,
+    required this.builder,
+    this.radius = AppRadii.md,
+  });
+
+  final Recipe recipe;
+  final Widget Function(VoidCallback toggle) builder;
+
+  /// Raio do card, pro contorno de marcado acompanhar o canto.
+  final double radius;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final selected =
+        ref.watch(recipeSelectionProvider)?.contains(recipe.id) ?? false;
+    void toggle() =>
+        ref.read(recipeSelectionProvider.notifier).toggle(recipe.id);
+    return AnimatedScale(
+      scale: selected ? 0.95 : 1,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutBack,
+      child: Stack(
+        children: [
+          builder(toggle),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(radius),
+                  border: Border.all(
+                    color: selected ? colors.ink : Colors.transparent,
+                    width: 4,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: AppSpacing.sm,
+            right: AppSpacing.sm,
+            child: IgnorePointer(child: _CheckBadge(selected: selected)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Selo de marcado do card: vazio é um anel de papel sobre vidro escuro (lê
+/// em qualquer cor de azulejo ou foto); marcado vira lima com o check
+/// estourando de dentro.
+class _CheckBadge extends StatelessWidget {
+  const _CheckBadge({required this.selected});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: selected ? colors.lime : colors.ink.withValues(alpha: 0.35),
+        border: Border.all(
+          color: selected ? colors.ink : colors.paper,
+          width: 3,
+        ),
+      ),
+      child: AnimatedScale(
+        scale: selected ? 1 : 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutBack,
+        child: Icon(Icons.check_rounded, size: 20, color: colors.ink),
       ),
     );
   }
@@ -565,7 +690,45 @@ class _Header extends ConsumerWidget {
     );
   }
 
+  Widget _buildSelectionRow(
+    BuildContext context,
+    WidgetRef ref,
+    AppColors colors,
+    int chosen,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  chosen == 0
+                      ? 'TOQUE NAS RECEITAS'
+                      : '$chosen ${chosen == 1 ? 'SELECIONADA' : 'SELECIONADAS'}',
+                  style: context.texts.labelSmall?.copyWith(color: colors.lime),
+                ),
+              ),
+              _CircleButton(
+                icon: Icons.close_rounded,
+                onTap: ref.read(recipeSelectionProvider.notifier).clear,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          const ReceytasWordmark(),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTitleRow(BuildContext context, WidgetRef ref, AppColors colors) {
+    final selection = ref.watch(recipeSelectionProvider);
+    if (selection != null) {
+      return _buildSelectionRow(context, ref, colors, selection.length);
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
       child: Column(
@@ -581,6 +744,13 @@ class _Header extends ConsumerWidget {
                   style: context.texts.labelSmall?.copyWith(color: colors.lime),
                 ),
               ),
+              if ((count ?? 0) > 0) ...[
+                _CircleButton(
+                  icon: Icons.checklist_rounded,
+                  onTap: ref.read(recipeSelectionProvider.notifier).start,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+              ],
               KeyedSubtree(
                 key: ref.read(tutorialTargetsProvider)[TutorialTarget.search],
                 child: _CircleButton(
@@ -769,11 +939,11 @@ class _ErrorState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           AnimatedMascot(
-              kind: MascotKind.cloche,
-              mood: MascotMood.sad,
-              width: 120,
-              semanticLabel: 'Cloche, triste',
-            ),
+            kind: MascotKind.cloche,
+            mood: MascotMood.sad,
+            width: 120,
+            semanticLabel: 'Cloche, triste',
+          ),
           const SizedBox(height: AppSpacing.lg),
           Text(
             'Não deu para carregar as receitas',
@@ -799,11 +969,11 @@ class _NoMatch extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           AnimatedMascot(
-              kind: MascotKind.cloche,
-              mood: MascotMood.sad,
-              width: 120,
-              semanticLabel: 'Cloche, triste',
-            ),
+            kind: MascotKind.cloche,
+            mood: MascotMood.sad,
+            width: 120,
+            semanticLabel: 'Cloche, triste',
+          ),
           const SizedBox(height: AppSpacing.lg),
           Text(
             'Nada nesse filtro',
@@ -836,11 +1006,11 @@ class _EmptyState extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           AnimatedMascot(
-              kind: MascotKind.cloche,
-              mood: MascotMood.sad,
-              width: 120,
-              semanticLabel: 'Cloche, triste',
-            ),
+            kind: MascotKind.cloche,
+            mood: MascotMood.sad,
+            width: 120,
+            semanticLabel: 'Cloche, triste',
+          ),
           const SizedBox(height: AppSpacing.lg),
           Text(
             'Nenhuma receita ainda',

@@ -18,12 +18,15 @@ import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/features/onboarding/screens/tutorial_overlay.dart';
 import 'package:receyta/features/recipes/screens/receyta_import_flow.dart';
 import 'package:receyta/features/planner/screens/month_page.dart';
+import 'package:receyta/features/recipes/controllers/recipe_selection.dart';
 import 'package:receyta/features/recipes/screens/recipes_page.dart';
+import 'package:receyta/features/recipes/screens/selection_bar.dart';
 import 'package:receyta/features/settings/controllers/reminder_settings.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_lists_page.dart';
 import 'package:receyta/features/space/controllers/invite_link.dart';
 import 'package:receyta/theme/app_theme.dart';
+import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -111,8 +114,10 @@ class _HomeShellState extends ConsumerState<HomeShell>
       case LauncherShortcut.shopping:
         _select(2);
       case LauncherShortcut.cookLast:
-        final recent =
-            await ref.read(recipeRepositoryProvider).watchRecent(limit: 1).first;
+        final recent = await ref
+            .read(recipeRepositoryProvider)
+            .watchRecent(limit: 1)
+            .first;
         if (!mounted) return;
         if (recent.isEmpty) {
           showAppSnackBar(message: 'Você ainda não abriu nenhuma receita.');
@@ -273,6 +278,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
       ),
     ];
 
+    final selecting = ref.watch(recipeSelectionProvider) != null;
+
     return Scaffold(
       extendBody: true,
       body: Stack(
@@ -281,12 +288,45 @@ class _HomeShellState extends ConsumerState<HomeShell>
           Align(
             alignment: Alignment.bottomCenter,
             child: SafeArea(
-              child: KeyedSubtree(
-                key: ref.read(tutorialTargetsProvider)[TutorialTarget.navBar],
-                child: PillNavBar(
-                  items: items,
-                  currentIndex: _tab,
-                  onSelected: _select,
+              child: IgnorePointer(
+                ignoring: selecting,
+                child: AnimatedOpacity(
+                  opacity: selecting ? 0 : 1,
+                  duration: const Duration(milliseconds: 180),
+                  child: KeyedSubtree(
+                    key: ref
+                        .read(tutorialTargetsProvider)[TutorialTarget.navBar],
+                    child: PillNavBar(
+                      items: items,
+                      currentIndex: _tab,
+                      onSelected: _select,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.screen),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOutBack,
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.6),
+                        end: Offset.zero,
+                      ).animate(anim),
+                      child: child,
+                    ),
+                  ),
+                  child: selecting
+                      ? const SelectionBar(key: ValueKey('selection-bar'))
+                      : const SizedBox(key: ValueKey('no-selection')),
                 ),
               ),
             ),

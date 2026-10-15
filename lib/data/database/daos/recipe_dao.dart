@@ -274,6 +274,29 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     });
   }
 
+  /// Acrescenta [tagIds] a cada receita de [recipeIds] (quem já tem fica como
+  /// está) e marca as receitas como editadas, pro sync e a busca verem.
+  Future<void> addTags(
+    List<String> recipeIds,
+    List<String> tagIds,
+    DateTime at,
+  ) {
+    return transaction(() async {
+      await batch((b) {
+        b.insertAll(
+          recipeTags,
+          [
+            for (final r in recipeIds)
+              for (final t in tagIds) RecipeTagRow(recipeId: r, tagId: t),
+          ],
+          mode: InsertMode.insertOrIgnore,
+        );
+      });
+      await (update(recipes)..where((r) => r.id.isIn(recipeIds)))
+          .write(RecipesCompanion(updatedAt: Value(at)));
+    });
+  }
+
   /// Receitas ativas de uma pasta (por `folderId`); nulo = as soltas na raiz.
   Stream<List<RecipeRow>> watchInFolder(String? folderId) {
     return (select(recipes)

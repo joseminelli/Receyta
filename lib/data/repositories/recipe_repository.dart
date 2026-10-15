@@ -317,6 +317,32 @@ class RecipeRepository {
     }
   }
 
+  /// Põe as tags de [tagNames] (vírgula separa, forma canônica, as que não
+  /// existem são criadas) em todas as receitas de [recipeIds], sem tirar as
+  /// que elas já têm.
+  Future<Result<void>> addTags(
+    List<String> recipeIds,
+    List<String> tagNames,
+  ) async {
+    final seen = <String>{};
+    final names = [
+      for (final raw in tagNames)
+        for (final part in raw.split(',')) canonicalTagName(part),
+    ].where((n) => n.isNotEmpty && seen.add(n)).toList();
+    if (recipeIds.isEmpty || names.isEmpty) return const Ok(null);
+    try {
+      final rows = await _tagDao.ensureTags(names);
+      await _dao.addTags(
+        recipeIds,
+        [for (final t in rows) t.id],
+        _clock().toUtc(),
+      );
+      return const Ok(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao pôr as tags', cause: e));
+    }
+  }
+
   /// Troca a cor e/ou o módulo do azulejo (§9.4). Nulo em qualquer um volta ao
   /// automático daquele eixo.
   Future<Result<void>> setAppearance(

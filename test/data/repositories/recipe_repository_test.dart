@@ -489,4 +489,28 @@ void main() {
     expect(byRecipe[a.id]!.every((i) => i.ingredientName != null), isTrue);
     expect(await repo.ingredientsByRecipe(const []), isEmpty);
   });
+
+  test('addTags põe as tags em várias receitas sem tirar as que já tinham',
+      () async {
+    final a = unwrap(await repo.saveDetail(name: 'A', tagNames: ['Doces']));
+    final b = unwrap(await repo.saveDetail(name: 'B'));
+    clock = DateTime.utc(2026, 2, 1);
+
+    final result = await repo.addTags([a.id, b.id], ['jantar rápido, Doces']);
+
+    expect(result.isOk, isTrue);
+    final tagsA = unwrapDetail(await repo.getDetail(a.id)).tags;
+    final tagsB = unwrapDetail(await repo.getDetail(b.id)).tags;
+    expect(tagsA.map((t) => t.name).toSet(), {'Doces', 'Jantar Rápido'});
+    expect(tagsB.map((t) => t.name).toSet(), {'Doces', 'Jantar Rápido'});
+    expect(unwrapDetail(await repo.getDetail(b.id)).recipe.updatedAt, clock);
+  });
+
+  test('addTags sem receitas ou sem nomes não faz nada', () async {
+    final a = unwrap(await repo.saveDetail(name: 'A'));
+
+    expect((await repo.addTags(const [], ['x'])).isOk, isTrue);
+    expect((await repo.addTags([a.id], [' , '])).isOk, isTrue);
+    expect(unwrapDetail(await repo.getDetail(a.id)).tags, isEmpty);
+  });
 }
