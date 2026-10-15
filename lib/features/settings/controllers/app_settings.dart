@@ -12,6 +12,7 @@ const _kLastBackup = 'settings_last_backup_ms';
 const _kNickname = 'profile_nickname';
 const _kProfileColor = 'profile_color';
 const _kShowEquivalents = 'settings_show_equivalents';
+const _kVolumeSteps = 'settings_volume_steps';
 
 /// Tamanho do texto do app (RF-08.2): multiplicador próprio, que se soma à
 /// escala de fonte do sistema em vez de depender dela.
@@ -54,6 +55,7 @@ class AppSettings {
     this.nickname = '',
     this.profileColor = TileColor.coral,
     this.showEquivalents = true,
+    this.volumeSteps = true,
   });
 
   final TextSizeStep textSize;
@@ -64,6 +66,9 @@ class AppSettings {
 
   /// Mostra g ↔ xícara e °C ↔ °F ao lado do que a receita escreve.
   final bool showEquivalents;
+
+  /// No modo cozinha, os botões de volume avançam e voltam o passo.
+  final bool volumeSteps;
   final DateTime? lastBackupAt;
 
   /// Como a pessoa quer ser chamada; vazio = ainda não escolheu.
@@ -78,6 +83,7 @@ class AppSettings {
     String? nickname,
     TileColor? profileColor,
     bool? showEquivalents,
+    bool? volumeSteps,
   }) =>
       AppSettings(
         textSize: textSize ?? this.textSize,
@@ -87,6 +93,7 @@ class AppSettings {
         nickname: nickname ?? this.nickname,
         profileColor: profileColor ?? this.profileColor,
         showEquivalents: showEquivalents ?? this.showEquivalents,
+        volumeSteps: volumeSteps ?? this.volumeSteps,
       );
 
   @override
@@ -98,7 +105,8 @@ class AppSettings {
       other.lastBackupAt == lastBackupAt &&
       other.nickname == nickname &&
       other.profileColor == profileColor &&
-      other.showEquivalents == showEquivalents;
+      other.showEquivalents == showEquivalents &&
+      other.volumeSteps == volumeSteps;
 
   @override
   int get hashCode => Object.hash(
@@ -109,6 +117,7 @@ class AppSettings {
         nickname,
         profileColor,
         showEquivalents,
+        volumeSteps,
       );
 }
 
@@ -129,6 +138,7 @@ Future<AppSettings> loadAppSettings() async {
       profileColor:
           tileColorFromName(prefs.getString(_kProfileColor)) ?? TileColor.coral,
       showEquivalents: prefs.getBool(_kShowEquivalents) ?? true,
+      volumeSteps: prefs.getBool(_kVolumeSteps) ?? true,
     );
   } catch (e) {
     debugPrint('loadAppSettings: $e');
@@ -162,6 +172,11 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   Future<void> setShowEquivalents(bool on) async {
     state = state.copyWith(showEquivalents: on);
     await _write((p) => p.setBool(_kShowEquivalents, on));
+  }
+
+  Future<void> setVolumeSteps(bool on) async {
+    state = state.copyWith(volumeSteps: on);
+    await _write((p) => p.setBool(_kVolumeSteps, on));
   }
 
   Future<void> markBackedUp(DateTime at) async {

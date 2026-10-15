@@ -475,6 +475,14 @@ class SettingsPage extends ConsumerWidget {
                             value: settings.showEquivalents,
                             onChanged: settingsNotifier.setShowEquivalents,
                           ),
+                          _SwitchRow(
+                            icon: Icons.volume_up_outlined,
+                            title: 'Volume avança o passo',
+                            subtitle:
+                                'No modo cozinha: volume − marca o passo e + volta (Android)',
+                            value: settings.volumeSteps,
+                            onChanged: settingsNotifier.setVolumeSteps,
+                          ),
                         ],
                       ),
                       _AccordionItem(

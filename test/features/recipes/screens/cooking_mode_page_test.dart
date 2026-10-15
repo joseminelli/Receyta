@@ -8,6 +8,7 @@ import 'package:receyta/domain/models/recipe_ingredient.dart';
 import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/screens/cooking_mode_page.dart';
 import 'package:receyta/data/services/alarm_driver.dart';
+import 'package:receyta/data/services/volume_keys.dart';
 import 'package:receyta/data/services/timer_notifications.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
@@ -17,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helpers/fake_alarm_driver.dart';
 import '../../../helpers/fake_timer_notifications.dart';
+import '../../../helpers/fake_volume_keys.dart';
 
 RecipeDetail _detail({List<RecipeStep> steps = _steps, int? cook}) =>
     RecipeDetail(
@@ -53,7 +55,11 @@ const _steps = [
       id: 's3', recipeId: 'r1', text: 'Junte o leite de coco', position: 2),
 ];
 
-Widget _host(RecipeDetail? detail, {DateTime Function()? clock}) {
+Widget _host(
+  RecipeDetail? detail, {
+  DateTime Function()? clock,
+  VolumeKeys? volume,
+}) {
   final router = GoRouter(
     routes: [
       GoRoute(
@@ -81,6 +87,7 @@ Widget _host(RecipeDetail? detail, {DateTime Function()? clock}) {
       cookingAlertProvider.overrideWithValue(() {}),
       alarmDriverProvider.overrideWithValue(_driver),
       timerNotificationsProvider.overrideWithValue(_notifications),
+      volumeKeysProvider.overrideWithValue(volume ?? FakeVolumeKeys()),
     ],
     child: MaterialApp.router(theme: AppTheme.light(), routerConfig: router),
   );
@@ -91,11 +98,12 @@ Future<void> _open(
   RecipeDetail? detail, {
   DateTime Function()? clock,
   Size size = const Size(400, 900),
+  VolumeKeys? volume,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
-  await tester.pumpWidget(_host(detail, clock: clock));
+  await tester.pumpWidget(_host(detail, clock: clock, volume: volume));
   await tester.pumpAndSettle();
   await tester.tap(find.text('ir'));
   await tester.pumpAndSettle();
@@ -178,6 +186,42 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(stepStrike().done, isTrue);
+  });
+
+  testWidgets('volume − marca o próximo passo e volume + desfaz o último',
+      (tester) async {
+    final volume = FakeVolumeKeys();
+    await _open(tester, _detail(), volume: volume);
+    expect(volume.enabled, isTrue);
+
+    bool done(String text) => tester
+        .widget<SweepStrikeText>(find.widgetWithText(SweepStrikeText, text))
+        .done;
+
+    volume.press(VolumeKey.down);
+    await tester.pumpAndSettle();
+    expect(done('Tempere o frango'), isTrue);
+    expect(done('Refogue o alho'), isFalse);
+
+    volume.press(VolumeKey.down);
+    await tester.pumpAndSettle();
+    expect(done('Refogue o alho'), isTrue);
+
+    volume.press(VolumeKey.up);
+    await tester.pumpAndSettle();
+    expect(done('Refogue o alho'), isFalse);
+    expect(done('Tempere o frango'), isTrue);
+  });
+
+  testWidgets('sair do modo cozinha solta os botões de volume', (tester) async {
+    final volume = FakeVolumeKeys();
+    await _open(tester, _detail(), volume: volume);
+    expect(volume.enabled, isTrue);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(volume.enabled, isFalse);
   });
 
   testWidgets('sem passos, mostra aviso e mantém ingredientes', (tester) async {

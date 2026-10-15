@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:receyta/core/breakpoints.dart';
 import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/data/services/volume_keys.dart';
 import 'package:receyta/domain/engine/ingredient_format.dart';
 import 'package:receyta/domain/engine/serving_scale.dart';
 import 'package:receyta/domain/engine/step_duration.dart';
@@ -53,10 +57,24 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
 
   late final ProviderContainer _container;
 
+  /// Botões de volume como controle do passo (só Android, e só se ligado nas
+  /// Configurações).
+  VolumeKeys? _volume;
+  StreamSubscription<VolumeKey>? _volumeSub;
+  int _stepCount = 0;
+  final _stepKeys = <int, GlobalKey>{};
+  final _finishKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _setWakelock(true);
+    if (ref.read(appSettingsProvider).volumeSteps) {
+      final VolumeKeys volume = ref.read(volumeKeysProvider);
+      _volume = volume;
+      volume.setEnabled(true);
+      _volumeSub = volume.events.listen(_onVolumeKey);
+    }
     // A faixa global de timers esconde os desta receita enquanto o modo
     // cozinha dela está aberto (aqui já tem a faixa grande). Mexer num
     // provider durante o build não pode: vai pro fim do quadro.
@@ -79,6 +97,8 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       }
     });
     _setWakelock(false);
+    _volumeSub?.cancel();
+    _volume?.setEnabled(false);
     _ingredientsOpen.dispose();
     for (final n in _doneNotifiers.values) {
       n.dispose();
@@ -94,6 +114,91 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     } catch (_) {}
   }
 
+  GlobalKey _stepKey(int i) => _stepKeys.putIfAbsent(i, GlobalKey.new);
+
+  /// Volume − marca o primeiro passo ainda aberto e mostra o próximo; volume +
+  /// desmarca o último marcado e mostra ele de novo.
+  void _onVolumeKey(VolumeKey key) {
+    if (_stepCount == 0) return;
+    HapticFeedback.selectionClick();
+    if (key == VolumeKey.down) {
+      final i = _firstOpenStep();
+      if (i == null) {
+        _reveal(_finishKey, from: _stepKey(_stepCount - 1), delta: 400);
+        return;
+      }
+      _doneNotifierFor(i).value = true;
+      final next = i + 1;
+      _reveal(
+        next < _stepCount ? _stepKey(next) : _finishKey,
+        from: _stepKey(i),
+        delta: 400,
+      );
+    } else {
+      final j = _lastDoneStep();
+      if (j == null) return;
+      _doneNotifierFor(j).value = false;
+      _reveal(_stepKey(j), from: _stepKey(j + 1), delta: -400);
+    }
+  }
+
+  int? _firstOpenStep() {
+    for (var i = 0; i < _stepCount; i++) {
+      if (!_doneNotifierFor(i).value) return i;
+    }
+    return null;
+  }
+
+  int? _lastDoneStep() {
+    for (var i = _stepCount - 1; i >= 0; i--) {
+      if (_doneNotifierFor(i).value) return i;
+    }
+    return null;
+  }
+
+  /// Rola até o alvo. A lista monta só o que está perto da tela: se o alvo
+  /// ainda não existe, anda [delta] a partir de [from] e tenta de novo.
+  Future<void> _reveal(
+    GlobalKey target, {
+    required GlobalKey from,
+    required double delta,
+  }) async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      if (!mounted) return;
+      final shown = _showNow(target);
+      if (shown != null) {
+        await shown;
+        return;
+      }
+      if (!_nudge(from, delta)) return;
+      await WidgetsBinding.instance.endOfFrame;
+    }
+  }
+
+  Future<void>? _showNow(GlobalKey target) {
+    final context = target.currentContext;
+    if (context == null) return null;
+    return Scrollable.ensureVisible(
+      context,
+      alignment: 0.12,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  bool _nudge(GlobalKey from, double delta) {
+    final context = from.currentContext;
+    if (context == null) return false;
+    final position = Scrollable.of(context).position;
+    position.jumpTo(
+      (position.pixels + delta).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      ),
+    );
+    return true;
+  }
+
   /// Um `ValueNotifier` por passo: tocar um cartão só reconstrói aquele
   /// cartão (via `ValueListenableBuilder`), não a página inteira.
   ValueNotifier<bool> _doneNotifierFor(int index) =>
@@ -106,37 +211,40 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
     final g = steps[i].groupLabel;
     final prevGroup = i > 0 ? steps[i - 1].groupLabel : null;
     final showGroupLabel = g != prevGroup && g != null && g.isNotEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (showGroupLabel)
+    return KeyedSubtree(
+      key: _stepKey(i),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (showGroupLabel)
+            Padding(
+              padding: const EdgeInsets.only(
+                top: AppSpacing.md,
+                bottom: AppSpacing.xs,
+              ),
+              child: _GroupLabel(g),
+            ),
           Padding(
-            padding: const EdgeInsets.only(
-              top: AppSpacing.md,
-              bottom: AppSpacing.xs,
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: _StepCard(
+              recipeId: widget.recipeId,
+              recipeName: recipe.name,
+              tileColor: recipe.tileColor,
+              tileMotif: recipe.tileMotif,
+              index: i,
+              text: ref.watch(
+                      appSettingsProvider.select((s) => s.showEquivalents))
+                  ? annotateTemperatures(steps[i].text)
+                  : steps[i].text,
+              durations: _durationsByText.putIfAbsent(
+                steps[i].text,
+                () => findStepDurations(steps[i].text),
+              ),
+              doneListenable: _doneNotifierFor(i),
             ),
-            child: _GroupLabel(g),
           ),
-        Padding(
-          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-          child: _StepCard(
-            recipeId: widget.recipeId,
-            recipeName: recipe.name,
-            tileColor: recipe.tileColor,
-            tileMotif: recipe.tileMotif,
-            index: i,
-            text:
-                ref.watch(appSettingsProvider.select((s) => s.showEquivalents))
-                    ? annotateTemperatures(steps[i].text)
-                    : steps[i].text,
-            durations: _durationsByText.putIfAbsent(
-              steps[i].text,
-              () => findStepDurations(steps[i].text),
-            ),
-            doneListenable: _doneNotifierFor(i),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -158,6 +266,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   }
 
   Widget _buildBody(BuildContext context, RecipeDetail detail) {
+    _stepCount = detail.steps.length;
     final wide = isWideLayout(context);
     return SafeArea(
       child: Column(
@@ -306,7 +415,10 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, i) => i == detail.steps.length
-              ? _finishButton(context, detail.recipe.name)
+              ? KeyedSubtree(
+                  key: _finishKey,
+                  child: _finishButton(context, detail.recipe.name),
+                )
               : _stepItem(detail.steps, i, detail.recipe),
           childCount: detail.steps.length + 1,
         ),
@@ -393,28 +505,55 @@ class _TopBar extends StatelessWidget {
 }
 
 /// Aviso visível de que a tela não vai apagar durante o preparo (RF-01.11).
-class _WakeTip extends StatelessWidget {
+class _WakeTip extends ConsumerWidget {
   const _WakeTip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final volume = ref.watch(appSettingsProvider.select((s) => s.volumeSteps));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const _TipLine(
+            icon: Icons.light_mode_outlined,
+            text: 'A tela fica acesa enquanto você cozinha',
+          ),
+          if (volume) ...[
+            const SizedBox(height: 2),
+            const _TipLine(
+              icon: Icons.volume_up_outlined,
+              text: 'Volume − avança o passo, + volta',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TipLine extends StatelessWidget {
+  const _TipLine({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.lightbulb_outline,
-              size: 14, color: colors.lime.withValues(alpha: 0.8)),
-          const SizedBox(width: AppSpacing.xs / 2),
-          Text(
-            'A tela fica acesa enquanto você cozinha',
-            style: context.texts.labelSmall?.copyWith(
-              color: colors.onSaturated.withValues(alpha: 0.6),
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: colors.lime.withValues(alpha: 0.8)),
+        const SizedBox(width: AppSpacing.xs / 2),
+        Text(
+          text,
+          style: context.texts.labelSmall?.copyWith(
+            color: colors.onSaturated.withValues(alpha: 0.6),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
