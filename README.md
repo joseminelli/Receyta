@@ -20,16 +20,18 @@ lista pronta — tudo local, tudo rápido, tudo em português.
 
 <table>
   <tr>
-    <td width="25%"><img src="https://i.imgur.com/6n68rXL.png" alt="Home"></td>
-    <td width="25%"><img src="https://i.imgur.com/MhsDxHj.png" alt="Detalhe da receita"></td>
-    <td width="25%"><img src="https://i.imgur.com/s9LhK7S.png" alt="Passos de preparo"></td>
-    <td width="25%"><img src="https://i.imgur.com/VmlVifw.png" alt="Modo cozinha"></td>
+    <td width="20%"><img src="https://i.imgur.com/A2LDnzC.jpeg" alt="Home"></td>
+    <td width="20%"><img src="https://i.imgur.com/quF5Rj4.jpeg" alt="Detalhe da receita"></td>
+    <td width="20%"><img src="https://i.imgur.com/dEo2omj.jpeg" alt="Modo cozinha"></td>
+    <td width="20%"><img src="https://i.imgur.com/C2idYmB.jpeg" alt="Agenda"></td>
+    <td width="20%"><img src="https://i.imgur.com/dRImex6.jpeg" alt="Lista de Compras"></td>
   </tr>
   <tr>
     <td align="center"><b>Home</b><br><sub>cabeçalho de azulejo, filtro de tags, faixa de pastas, destaque em "Recentes"</sub></td>
     <td align="center"><b>Detalhe</b><br><sub>hero na cor escolhida, métricas gigantes, ingredientes com separador de seção</sub></td>
-    <td align="center"><b>Preparo</b><br><sub>passos numerados, seções "Bolo" / "Calda" na fonte display</sub></td>
     <td align="center"><b>Modo cozinha</b><br><sub>tela escura que não apaga, passos grandes, ingredientes a um toque</sub></td>
+    <td align="center"><b>Agenda</b><br><sub>Planeje sua semana e o seu mês</sub></td>
+    <td align="center"><b>Lista de compras</b><br><sub>Liste seus ingredientes da semana numa única lista</sub></td>
   </tr>
 </table>
 
