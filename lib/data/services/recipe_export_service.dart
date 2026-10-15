@@ -19,6 +19,7 @@ import 'package:receyta/domain/engine/recipe_link.dart';
 import 'package:receyta/domain/engine/recipe_pdf.dart';
 import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/widgets/recipe_card_image.dart';
 import 'package:receyta/widgets/recipe_pdf_banner.dart';
 
 /// Exporta receitas como arquivo `.receyta` e abre o share sheet do sistema
@@ -120,7 +121,8 @@ class RecipeExportService {
           subject: detail.recipe.name);
       return const Ok(null);
     } catch (e) {
-      return Err(ProcessingFailure('Falha ao compartilhar a receita', cause: e));
+      return Err(
+          ProcessingFailure('Falha ao compartilhar a receita', cause: e));
     }
   }
 
@@ -162,6 +164,42 @@ class RecipeExportService {
       return const Ok(null);
     } catch (e) {
       return Err(ProcessingFailure('Falha ao gerar o PDF', cause: e));
+    }
+  }
+
+  /// Cartão da receita como imagem (1080×1350) no share sheet: capa com foto
+  /// ou azulejo, tempos, porções e os primeiros ingredientes.
+  Future<Result<void>> shareCard(String recipeId) async {
+    final detailResult = await _recipeRepository.getDetail(recipeId);
+    if (detailResult is Err<RecipeDetail>) return Err(detailResult.failure);
+    final detail = (detailResult as Ok<RecipeDetail>).value;
+
+    try {
+      Uint8List? photo;
+      final name = detail.recipe.imagePath;
+      final images = _images;
+      if (name != null && images != null) {
+        try {
+          final file = await images.fileFor(name);
+          if (await file.exists()) photo = await file.readAsBytes();
+        } catch (_) {
+          photo = null;
+        }
+      }
+      final png = await renderRecipeCardPng(detail, photo: photo);
+      if (png == null) {
+        return const Err(ProcessingFailure('Não deu pra gerar a imagem.'));
+      }
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/${_slug(detail.recipe.name)}.png');
+      await file.writeAsBytes(png, flush: true);
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png')],
+        text: detail.recipe.name,
+      );
+      return const Ok(null);
+    } catch (e) {
+      return Err(ProcessingFailure('Falha ao gerar o cartão', cause: e));
     }
   }
 

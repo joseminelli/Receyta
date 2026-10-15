@@ -729,6 +729,15 @@ class _Hero extends ConsumerWidget {
               },
             ),
             AppSheetOption(
+              icon: Icons.image_outlined,
+              title: 'Cartão (imagem)',
+              subtitle: 'Pra postar ou mandar no WhatsApp',
+              onTap: () {
+                Navigator.of(sheet).pop();
+                _shareAs(context, ref, (s) => s.shareCard(recipe.id));
+              },
+            ),
+            AppSheetOption(
               icon: Icons.description_outlined,
               title: 'Arquivo .receyta',
               subtitle: 'Pra importar em outro Receyta',
