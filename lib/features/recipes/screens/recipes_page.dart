@@ -362,7 +362,7 @@ class _RecipeList extends ConsumerWidget {
     return SliverMainAxisGroup(
       slivers: [
         const SliverToBoxAdapter(child: FoldersStrip()),
-        _buildSectionHeader(context),
+        _buildSectionHeader(context, ref, selecting),
         _buildFeatured(
           context,
           featured,
@@ -378,7 +378,11 @@ class _RecipeList extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context) {
+  Widget _buildSectionHeader(
+    BuildContext context,
+    WidgetRef ref,
+    bool selecting,
+  ) {
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.screen,
@@ -389,14 +393,24 @@ class _RecipeList extends ConsumerWidget {
       sliver: SliverToBoxAdapter(
         child: SectionHeader(
           title: 'Recentes',
-          action: showViewAll
-              ? PillButton(
-                  label: 'Ver todas',
-                  variant: PillButtonVariant.ghost,
-                  dense: true,
-                  onPressed: () => context.push('/search'),
-                )
-              : null,
+          action: selecting
+              ? null
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _SelectButton(
+                      onTap: ref.read(recipeSelectionProvider.notifier).start,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    if (showViewAll)
+                      PillButton(
+                        label: 'Ver todas',
+                        variant: PillButtonVariant.ghost,
+                        dense: true,
+                        onPressed: () => context.push('/search'),
+                      ),
+                  ],
+                ),
         ),
       ),
     );
@@ -479,6 +493,35 @@ class _RecipeList extends ConsumerWidget {
                   ),
           ),
           childCount: rest.length,
+        ),
+      ),
+    );
+  }
+}
+
+/// Entrada do modo de seleção: círculo só com contorno e o ícone de lista,
+/// do tamanho de um botão pequeno, ao lado do "Ver todas".
+class _SelectButton extends StatelessWidget {
+  const _SelectButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Tooltip(
+      message: 'Selecionar receitas',
+      child: Material(
+        color: Colors.transparent,
+        shape: CircleBorder(side: BorderSide(color: colors.textMuted)),
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            child:
+                Icon(Icons.checklist_rounded, size: 20, color: colors.onPaper),
+          ),
         ),
       ),
     );
@@ -701,21 +744,17 @@ class _Header extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  chosen == 0
-                      ? 'TOQUE NAS RECEITAS'
-                      : '$chosen ${chosen == 1 ? 'SELECIONADA' : 'SELECIONADAS'}',
-                  style: context.texts.labelSmall?.copyWith(color: colors.lime),
-                ),
+          SizedBox(
+            height: 2 * AppSpacing.sm + 22,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                chosen == 0
+                    ? 'TOQUE NAS RECEITAS'
+                    : '$chosen ${chosen == 1 ? 'SELECIONADA' : 'SELECIONADAS'}',
+                style: context.texts.labelSmall?.copyWith(color: colors.lime),
               ),
-              _CircleButton(
-                icon: Icons.close_rounded,
-                onTap: ref.read(recipeSelectionProvider.notifier).clear,
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           const ReceytasWordmark(),
@@ -744,13 +783,6 @@ class _Header extends ConsumerWidget {
                   style: context.texts.labelSmall?.copyWith(color: colors.lime),
                 ),
               ),
-              if ((count ?? 0) > 0) ...[
-                _CircleButton(
-                  icon: Icons.checklist_rounded,
-                  onTap: ref.read(recipeSelectionProvider.notifier).start,
-                ),
-                const SizedBox(width: AppSpacing.xs),
-              ],
               KeyedSubtree(
                 key: ref.read(tutorialTargetsProvider)[TutorialTarget.search],
                 child: _CircleButton(
