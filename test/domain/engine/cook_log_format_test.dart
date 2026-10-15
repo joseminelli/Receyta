@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:receyta/domain/engine/cook_log_format.dart';
+import 'package:receyta/domain/models/cook_log.dart';
 
 void main() {
   final now = DateTime(2026, 10, 2, 15);
@@ -42,5 +43,58 @@ void main() {
   test('formatMonthYear', () {
     expect(formatMonthYear(DateTime(2026, 10, 1)), 'Outubro 2026');
     expect(formatMonthYear(DateTime(2025, 3, 31)), 'Março 2025');
+  });
+
+  group('frases do como ficou', () {
+    test('liga acrescentando e desliga tirando', () {
+      var note = toggleNotePhrase('', 'Menos sal');
+      expect(note, 'Menos sal');
+
+      note = toggleNotePhrase(note, 'Ficou seco');
+      expect(note, 'Menos sal, ficou seco');
+      expect(noteHasPhrase(note, 'Ficou seco'), isTrue);
+
+      note = toggleNotePhrase(note, 'Menos sal');
+      expect(note, 'ficou seco');
+      expect(noteHasPhrase(note, 'Menos sal'), isFalse);
+    });
+
+    test('ignora maiúscula e preserva texto digitado à mão', () {
+      expect(noteHasPhrase('menos SAL, mais alho', 'Menos sal'), isTrue);
+      expect(
+        toggleNotePhrase('colocar alho', 'Menos sal'),
+        'colocar alho, menos sal',
+      );
+    });
+
+    test('clocheReply', () {
+      expect(clocheReply(null), 'E aí, gostou?');
+      expect(clocheReply(5), 'Uau, perfeito!');
+    });
+
+    test('ratingVerdict', () {
+      expect(ratingVerdict(null), '');
+      expect(ratingVerdict(5), 'Perfeito!');
+    });
+  });
+
+  group('latestFeedback', () {
+    CookLog log(String id, {int? rating, String? note}) => CookLog(
+          id: id,
+          recipeId: 'r',
+          cookedAt: DateTime(2026, 10, 1),
+          rating: rating,
+          note: note,
+        );
+
+    test('pega o mais recente que tem estrelas ou frase', () {
+      final logs = [log('a'), log('b', rating: 4), log('c', note: 'ótimo')];
+      expect(latestFeedback(logs)!.id, 'b');
+    });
+
+    test('nulo quando nenhum tem', () {
+      expect(latestFeedback([log('a'), log('b', note: '  ')]), isNull);
+      expect(latestFeedback(const []), isNull);
+    });
   });
 }

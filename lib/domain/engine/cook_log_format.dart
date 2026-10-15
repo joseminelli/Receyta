@@ -2,6 +2,8 @@
 /// de inicialização de locale. Puro: recebe o "agora" de fora.
 library;
 
+import 'package:receyta/domain/models/cook_log.dart';
+
 const _months = [
   'jan',
   'fev',
@@ -66,4 +68,68 @@ String cookedAgo(DateTime date, DateTime now) {
 String cookedTimesLabel(int times) {
   if (times <= 0) return 'Nunca cozinhada';
   return times == 1 ? 'Cozinhada 1 vez' : 'Cozinhada $times vezes';
+}
+
+/// O registro mais recente que tem estrelas ou frase ([logs] vem do mais novo
+/// ao mais antigo), ou nulo se nenhum tem.
+CookLog? latestFeedback(List<CookLog> logs) {
+  for (final l in logs) {
+    if (l.rating != null || l.hasNote) return l;
+  }
+  return null;
+}
+
+/// Frases prontas do "como ficou?": um toque escreve na nota.
+const kQuickFeedbackPhrases = [
+  'Menos sal',
+  'Mais tempero',
+  'Menos açúcar',
+  'Cozinhar mais',
+  'Ficou seco',
+  'Repetir sempre',
+];
+
+/// Palavra que acompanha as estrelas ("Perfeito!"); vazio sem nota.
+String ratingVerdict(int? stars) => switch (stars) {
+      1 => 'Não rolou',
+      2 => 'Dava pra melhorar',
+      3 => 'Bom',
+      4 => 'Muito bom',
+      5 => 'Perfeito!',
+      _ => '',
+    };
+
+/// O que o cloche diz no balão conforme as estrelas.
+String clocheReply(int? stars) => switch (stars) {
+      1 => 'Ah, que pena…',
+      2 => 'Dá pra melhorar!',
+      3 => 'Foi bom!',
+      4 => 'Que bom!',
+      5 => 'Uau, perfeito!',
+      _ => 'E aí, gostou?',
+    };
+
+List<String> _noteParts(String note) => [
+      for (final p in note.split(','))
+        if (p.trim().isNotEmpty) p.trim(),
+    ];
+
+/// A [phrase] já está na [note] (partes separadas por vírgula)?
+bool noteHasPhrase(String note, String phrase) {
+  final want = phrase.toLowerCase();
+  return _noteParts(note).any((p) => p.toLowerCase() == want);
+}
+
+/// Liga/desliga a [phrase] na [note]: tira se já está, senão acrescenta ao
+/// fim (com a inicial minúscula quando não é a primeira).
+String toggleNotePhrase(String note, String phrase) {
+  final parts = _noteParts(note);
+  final want = phrase.toLowerCase();
+  if (parts.any((p) => p.toLowerCase() == want)) {
+    return parts.where((p) => p.toLowerCase() != want).join(', ');
+  }
+  final added = parts.isEmpty
+      ? phrase
+      : '${phrase[0].toLowerCase()}${phrase.substring(1)}';
+  return [...parts, added].join(', ');
 }

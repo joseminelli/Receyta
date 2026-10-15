@@ -289,6 +289,9 @@ class CookLogs extends Table {
   TextColumn get mealPlanEntryId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
+  /// Estrelas de "como ficou", de 1 a 5; nulo quando a pessoa não avaliou.
+  IntColumn get rating => integer().nullable()();
+
   /// Última mudança (um gatilho do banco preenche ao inserir e ao editar) e a
   /// versão já sincronizada com a conta (H4).
   DateTimeColumn get updatedAt => dateTime().nullable()();

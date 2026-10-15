@@ -16,6 +16,7 @@ import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/features/recipes/controllers/cooking_timers.dart';
 import 'package:receyta/features/recipes/controllers/serving_scale.dart';
 import 'package:receyta/features/shopping/screens/add_to_shopping_list_flow.dart';
+import 'package:receyta/features/recipes/screens/cook_feedback_sheet.dart';
 import 'package:receyta/features/recipes/screens/cook_log_sheet.dart';
 import 'package:receyta/features/recipes/screens/global_timers_bar.dart'
     show TimerAlertToggles;
@@ -305,7 +306,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, i) => i == detail.steps.length
-              ? _finishButton(context)
+              ? _finishButton(context, detail.recipe.name)
               : _stepItem(detail.steps, i, detail.recipe),
           childCount: detail.steps.length + 1,
         ),
@@ -314,7 +315,7 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
   }
 
   /// Fim da receita: um toque registra que você cozinhou (G7).
-  Widget _finishButton(BuildContext context) {
+  Widget _finishButton(BuildContext context, String name) {
     final colors = context.colors;
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.md),
@@ -323,7 +324,13 @@ class _CookingModePageState extends ConsumerState<CookingModePage> {
         borderRadius: BorderRadius.circular(AppRadii.pill),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadii.pill),
-          onTap: () => logCookedNow(ref, widget.recipeId),
+          onTap: () async {
+            final logId = await logCookedNow(ref, widget.recipeId, quiet: true);
+            if (logId != null && context.mounted) {
+              await showCookFeedbackSheet(context, logId, recipeName: name);
+              if (context.mounted) context.pop();
+            }
+          },
           child: SizedBox(
             height: 64,
             child: Row(

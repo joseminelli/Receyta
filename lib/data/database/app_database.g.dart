@@ -5388,6 +5388,11 @@ class $CookLogsTable extends CookLogs
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _ratingMeta = const VerificationMeta('rating');
+  @override
+  late final GeneratedColumn<int> rating = GeneratedColumn<int>(
+      'rating', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _updatedAtMeta =
       const VerificationMeta('updatedAt');
   @override
@@ -5408,6 +5413,7 @@ class $CookLogsTable extends CookLogs
         note,
         mealPlanEntryId,
         createdAt,
+        rating,
         updatedAt,
         syncedAt
       ];
@@ -5452,6 +5458,10 @@ class $CookLogsTable extends CookLogs
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
     }
+    if (data.containsKey('rating')) {
+      context.handle(_ratingMeta,
+          rating.isAcceptableOrUnknown(data['rating']!, _ratingMeta));
+    }
     if (data.containsKey('updated_at')) {
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
@@ -5481,6 +5491,8 @@ class $CookLogsTable extends CookLogs
           DriftSqlType.string, data['${effectivePrefix}meal_plan_entry_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      rating: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}rating']),
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at']),
       syncedAt: attachedDatabase.typeMapping
@@ -5502,6 +5514,9 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
   final String? mealPlanEntryId;
   final DateTime createdAt;
 
+  /// Estrelas de "como ficou", de 1 a 5; nulo quando a pessoa não avaliou.
+  final int? rating;
+
   /// Última mudança (um gatilho do banco preenche ao inserir e ao editar) e a
   /// versão já sincronizada com a conta (H4).
   final DateTime? updatedAt;
@@ -5513,6 +5528,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
       this.note,
       this.mealPlanEntryId,
       required this.createdAt,
+      this.rating,
       this.updatedAt,
       this.syncedAt});
   @override
@@ -5528,6 +5544,9 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
       map['meal_plan_entry_id'] = Variable<String>(mealPlanEntryId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || rating != null) {
+      map['rating'] = Variable<int>(rating);
+    }
     if (!nullToAbsent || updatedAt != null) {
       map['updated_at'] = Variable<DateTime>(updatedAt);
     }
@@ -5547,6 +5566,8 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           ? const Value.absent()
           : Value(mealPlanEntryId),
       createdAt: Value(createdAt),
+      rating:
+          rating == null && nullToAbsent ? const Value.absent() : Value(rating),
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(updatedAt),
@@ -5566,6 +5587,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
       note: serializer.fromJson<String?>(json['note']),
       mealPlanEntryId: serializer.fromJson<String?>(json['mealPlanEntryId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      rating: serializer.fromJson<int?>(json['rating']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
     );
@@ -5580,6 +5602,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
       'note': serializer.toJson<String?>(note),
       'mealPlanEntryId': serializer.toJson<String?>(mealPlanEntryId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'rating': serializer.toJson<int?>(rating),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'syncedAt': serializer.toJson<DateTime?>(syncedAt),
     };
@@ -5592,6 +5615,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           Value<String?> note = const Value.absent(),
           Value<String?> mealPlanEntryId = const Value.absent(),
           DateTime? createdAt,
+          Value<int?> rating = const Value.absent(),
           Value<DateTime?> updatedAt = const Value.absent(),
           Value<DateTime?> syncedAt = const Value.absent()}) =>
       CookLogRow(
@@ -5603,6 +5627,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
             ? mealPlanEntryId.value
             : this.mealPlanEntryId,
         createdAt: createdAt ?? this.createdAt,
+        rating: rating.present ? rating.value : this.rating,
         updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
         syncedAt: syncedAt.present ? syncedAt.value : this.syncedAt,
       );
@@ -5616,6 +5641,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           ? data.mealPlanEntryId.value
           : this.mealPlanEntryId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      rating: data.rating.present ? data.rating.value : this.rating,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncedAt: data.syncedAt.present ? data.syncedAt.value : this.syncedAt,
     );
@@ -5630,6 +5656,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           ..write('note: $note, ')
           ..write('mealPlanEntryId: $mealPlanEntryId, ')
           ..write('createdAt: $createdAt, ')
+          ..write('rating: $rating, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncedAt: $syncedAt')
           ..write(')'))
@@ -5638,7 +5665,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
 
   @override
   int get hashCode => Object.hash(id, recipeId, cookedAt, note, mealPlanEntryId,
-      createdAt, updatedAt, syncedAt);
+      createdAt, rating, updatedAt, syncedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -5649,6 +5676,7 @@ class CookLogRow extends DataClass implements Insertable<CookLogRow> {
           other.note == this.note &&
           other.mealPlanEntryId == this.mealPlanEntryId &&
           other.createdAt == this.createdAt &&
+          other.rating == this.rating &&
           other.updatedAt == this.updatedAt &&
           other.syncedAt == this.syncedAt);
 }
@@ -5660,6 +5688,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
   final Value<String?> note;
   final Value<String?> mealPlanEntryId;
   final Value<DateTime> createdAt;
+  final Value<int?> rating;
   final Value<DateTime?> updatedAt;
   final Value<DateTime?> syncedAt;
   final Value<int> rowid;
@@ -5670,6 +5699,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     this.note = const Value.absent(),
     this.mealPlanEntryId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.rating = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -5681,6 +5711,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     this.note = const Value.absent(),
     this.mealPlanEntryId = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.rating = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -5694,6 +5725,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     Expression<String>? note,
     Expression<String>? mealPlanEntryId,
     Expression<DateTime>? createdAt,
+    Expression<int>? rating,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? syncedAt,
     Expression<int>? rowid,
@@ -5705,6 +5737,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
       if (note != null) 'note': note,
       if (mealPlanEntryId != null) 'meal_plan_entry_id': mealPlanEntryId,
       if (createdAt != null) 'created_at': createdAt,
+      if (rating != null) 'rating': rating,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncedAt != null) 'synced_at': syncedAt,
       if (rowid != null) 'rowid': rowid,
@@ -5718,6 +5751,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
       Value<String?>? note,
       Value<String?>? mealPlanEntryId,
       Value<DateTime>? createdAt,
+      Value<int?>? rating,
       Value<DateTime?>? updatedAt,
       Value<DateTime?>? syncedAt,
       Value<int>? rowid}) {
@@ -5728,6 +5762,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
       note: note ?? this.note,
       mealPlanEntryId: mealPlanEntryId ?? this.mealPlanEntryId,
       createdAt: createdAt ?? this.createdAt,
+      rating: rating ?? this.rating,
       updatedAt: updatedAt ?? this.updatedAt,
       syncedAt: syncedAt ?? this.syncedAt,
       rowid: rowid ?? this.rowid,
@@ -5755,6 +5790,9 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (rating.present) {
+      map['rating'] = Variable<int>(rating.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -5776,6 +5814,7 @@ class CookLogsCompanion extends UpdateCompanion<CookLogRow> {
           ..write('note: $note, ')
           ..write('mealPlanEntryId: $mealPlanEntryId, ')
           ..write('createdAt: $createdAt, ')
+          ..write('rating: $rating, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncedAt: $syncedAt, ')
           ..write('rowid: $rowid')
@@ -10279,6 +10318,7 @@ typedef $$CookLogsTableCreateCompanionBuilder = CookLogsCompanion Function({
   Value<String?> note,
   Value<String?> mealPlanEntryId,
   Value<DateTime> createdAt,
+  Value<int?> rating,
   Value<DateTime?> updatedAt,
   Value<DateTime?> syncedAt,
   Value<int> rowid,
@@ -10290,6 +10330,7 @@ typedef $$CookLogsTableUpdateCompanionBuilder = CookLogsCompanion Function({
   Value<String?> note,
   Value<String?> mealPlanEntryId,
   Value<DateTime> createdAt,
+  Value<int?> rating,
   Value<DateTime?> updatedAt,
   Value<DateTime?> syncedAt,
   Value<int> rowid,
@@ -10318,6 +10359,7 @@ class $$CookLogsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> mealPlanEntryId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<int?> rating = const Value.absent(),
             Value<DateTime?> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -10329,6 +10371,7 @@ class $$CookLogsTableTableManager extends RootTableManager<
             note: note,
             mealPlanEntryId: mealPlanEntryId,
             createdAt: createdAt,
+            rating: rating,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
             rowid: rowid,
@@ -10340,6 +10383,7 @@ class $$CookLogsTableTableManager extends RootTableManager<
             Value<String?> note = const Value.absent(),
             Value<String?> mealPlanEntryId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<int?> rating = const Value.absent(),
             Value<DateTime?> updatedAt = const Value.absent(),
             Value<DateTime?> syncedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -10351,6 +10395,7 @@ class $$CookLogsTableTableManager extends RootTableManager<
             note: note,
             mealPlanEntryId: mealPlanEntryId,
             createdAt: createdAt,
+            rating: rating,
             updatedAt: updatedAt,
             syncedAt: syncedAt,
             rowid: rowid,
@@ -10383,6 +10428,11 @@ class $$CookLogsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
       column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnFilters(column, joinBuilders: joinBuilders));
+
+  ColumnFilters<int> get rating => $state.composableBuilder(
+      column: $state.table.rating,
       builder: (column, joinBuilders) =>
           ColumnFilters(column, joinBuilders: joinBuilders));
 
@@ -10434,6 +10484,11 @@ class $$CookLogsTableOrderingComposer
 
   ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
       column: $state.table.createdAt,
+      builder: (column, joinBuilders) =>
+          ColumnOrderings(column, joinBuilders: joinBuilders));
+
+  ColumnOrderings<int> get rating => $state.composableBuilder(
+      column: $state.table.rating,
       builder: (column, joinBuilders) =>
           ColumnOrderings(column, joinBuilders: joinBuilders));
 

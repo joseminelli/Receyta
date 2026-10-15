@@ -15,40 +15,56 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_button.dart';
+import 'package:receyta/widgets/star_rating.dart';
 
 /// Registra agora que a receita foi feita, com aviso e "Desfazer". É o atalho
 /// do modo cozinha: um toque, sem formulário. Se a receita está na agenda de
 /// hoje e ainda pendente, a refeição também é marcada como feita (e é ela que
-/// grava no histórico, pra não contar duas vezes).
-Future<void> logCookedNow(WidgetRef ref, String recipeId) async {
+/// grava no histórico, pra não contar duas vezes). Devolve o id do registro,
+/// pra quem quiser pedir "como ficou?" em seguida; nulo se falhou. Com
+/// [quiet] não mostra aviso nem mascote: quem chama assume o feedback (a
+/// folha "Como ficou?" já traz o mascote).
+Future<String?> logCookedNow(
+  WidgetRef ref,
+  String recipeId, {
+  bool quiet = false,
+}) async {
   final plan = ref.read(mealPlanRepositoryProvider);
+  final repo = ref.read(cookLogRepositoryProvider);
   final marked = await plan.markCookedToday(recipeId);
   if (marked is Ok<String?> && marked.value != null) {
     final entryId = marked.value!;
-    showAppSnackBar(
-      message: 'Registrado e marcado na agenda de hoje',
-      actionLabel: 'Desfazer',
-      onAction: () => plan.setDone(entryId, false),
-    );
-    showMascotMoment(kind: MascotKind.cloche);
-    return;
-  }
-
-  final repo = ref.read(cookLogRepositoryProvider);
-  final result = await repo.add(recipeId);
-  result.when(
-    ok: (id) {
+    if (!quiet) {
       showAppSnackBar(
-        message: 'Registrado: você cozinhou hoje',
+        message: 'Registrado e marcado na agenda de hoje',
         actionLabel: 'Desfazer',
-        onAction: () => repo.remove(id),
+        onAction: () => plan.setDone(entryId, false),
       );
       showMascotMoment(kind: MascotKind.cloche);
+    }
+    return repo.idForMealEntry(entryId);
+  }
+
+  final result = await repo.add(recipeId);
+  return result.when(
+    ok: (id) {
+      if (!quiet) {
+        showAppSnackBar(
+          message: 'Registrado: você cozinhou hoje',
+          actionLabel: 'Desfazer',
+          onAction: () => repo.remove(id),
+        );
+        showMascotMoment(kind: MascotKind.cloche);
+      }
+      return id;
     },
-    err: (f) => showAppSnackBar(
-      message: f.message,
-      variant: AppSnackBarVariant.error,
-    ),
+    err: (f) {
+      showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      );
+      return null;
+    },
   );
 }
 
@@ -254,6 +270,7 @@ class _LogRow extends StatelessWidget {
                   style: context.texts.bodyLarge
                       ?.copyWith(fontWeight: FontWeight.w600),
                 ),
+                if (log.rating != null) StarRating(value: log.rating, size: 16),
                 if (log.hasNote)
                   Text(log.note!, style: context.texts.bodyMedium),
               ],
@@ -283,6 +300,7 @@ class CookedCard extends ConsumerWidget {
     final logs = ref.watch(cookLogsProvider(recipeId)).valueOrNull ?? const [];
     final now = DateTime.now();
     final last = logs.isEmpty ? null : logs.first.cookedAt;
+    final feedback = latestFeedback(logs);
 
     return Semantics(
       button: true,
@@ -323,6 +341,19 @@ class CookedCard extends ConsumerWidget {
                         style: context.texts.bodyMedium
                             ?.copyWith(color: colors.textMuted),
                       ),
+                      if (feedback != null) ...[
+                        const SizedBox(height: 4),
+                        if (feedback.rating != null)
+                          StarRating(value: feedback.rating, size: 16),
+                        if (feedback.hasNote)
+                          Text(
+                            '“${feedback.note!.trim()}”',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.texts.bodyMedium
+                                ?.copyWith(fontStyle: FontStyle.italic),
+                          ),
+                      ],
                     ],
                   ),
                 ),

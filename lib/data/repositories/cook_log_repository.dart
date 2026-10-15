@@ -22,6 +22,7 @@ class CookLogRepository {
     String recipeId, {
     DateTime? cookedAt,
     String? note,
+    int? rating,
   }) async {
     try {
       final trimmed = note?.trim();
@@ -29,6 +30,7 @@ class CookLogRepository {
         recipeId: recipeId,
         cookedAt: (cookedAt ?? _clock()).toUtc(),
         note: (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+        rating: _validRating(rating),
       );
       return Ok(id);
     } catch (e) {
@@ -37,6 +39,32 @@ class CookLogRepository {
           DatabaseFailure('Falha ao registrar que você cozinhou', cause: e));
     }
   }
+
+  /// Grava "como ficou" num registro já feito: estrelas (1 a 5) e uma frase.
+  Future<Result<void>> setFeedback(
+    String id, {
+    int? rating,
+    String? note,
+  }) async {
+    try {
+      final trimmed = note?.trim();
+      await _dao.setFeedback(
+        id,
+        rating: _validRating(rating),
+        note: (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+      );
+      return const Ok(null);
+    } catch (e) {
+      debugPrint('CookLogRepository.setFeedback: $e');
+      return Err(DatabaseFailure('Falha ao salvar como ficou', cause: e));
+    }
+  }
+
+  /// Id do registro que a refeição agendada gerou ao ser marcada como feita.
+  Future<String?> idForMealEntry(String mealPlanEntryId) async =>
+      (await _dao.findForMealEntry(mealPlanEntryId))?.id;
+
+  int? _validRating(int? r) => (r == null || r < 1 || r > 5) ? null : r;
 
   Future<Result<void>> remove(String id) async {
     try {
@@ -66,6 +94,7 @@ class CookLogRepository {
         recipeName: recipeName,
         cookedAt: r.cookedAt.toLocal(),
         note: r.note,
+        rating: r.rating,
       );
 }
 

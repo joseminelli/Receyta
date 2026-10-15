@@ -207,4 +207,41 @@ void main() {
 
     expect(await logs.watchAll().first, isEmpty);
   });
+
+  group('como ficou', () {
+    test('grava estrelas e frase num registro existente', () async {
+      final r = await newRecipe('Bolo');
+      final id = ((await logs.add(r.id)) as Ok<String>).value;
+
+      await logs.setFeedback(id, rating: 4, note: '  menos sal  ');
+
+      final log = (await logs.watchForRecipe(r.id).first).single;
+      expect(log.rating, 4);
+      expect(log.note, 'menos sal');
+    });
+
+    test('estrela fora de 1 a 5 e frase vazia viram nulo', () async {
+      final r = await newRecipe('Bolo');
+      final id =
+          ((await logs.add(r.id, rating: 3, note: 'x')) as Ok<String>).value;
+
+      await logs.setFeedback(id, rating: 9, note: '   ');
+
+      final log = (await logs.watchForRecipe(r.id).first).single;
+      expect(log.rating, isNull);
+      expect(log.hasNote, isFalse);
+    });
+
+    test('acha o registro que a refeição agendada gerou', () async {
+      final r = await newRecipe('Bolo');
+      final day = DateTime(2026, 10, 1);
+      await plan.add(r.id, day, MealType.lunch);
+      final entryId =
+          ((await plan.markCookedToday(r.id)) as Ok<String?>).value!;
+
+      final logId = await logs.idForMealEntry(entryId);
+
+      expect(logId, (await logs.watchForRecipe(r.id).first).single.id);
+    });
+  });
 }

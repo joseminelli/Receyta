@@ -19,6 +19,7 @@ class CookLogDao extends DatabaseAccessor<AppDatabase> with _$CookLogDaoMixin {
     required String recipeId,
     required DateTime cookedAt,
     String? note,
+    int? rating,
     String? mealPlanEntryId,
     DateTime? createdAt,
   }) async {
@@ -29,6 +30,7 @@ class CookLogDao extends DatabaseAccessor<AppDatabase> with _$CookLogDaoMixin {
         recipeId: recipeId,
         cookedAt: cookedAt,
         note: Value(note),
+        rating: Value(rating),
         mealPlanEntryId: Value(mealPlanEntryId),
         createdAt: createdAt == null ? const Value.absent() : Value(createdAt),
       ),
@@ -107,6 +109,20 @@ class CookLogDao extends DatabaseAccessor<AppDatabase> with _$CookLogDaoMixin {
   Future<int> markSynced(String id, DateTime? updatedAt) {
     return (update(cookLogs)..where((l) => l.id.equals(id)))
         .write(CookLogsCompanion(syncedAt: Value(updatedAt)));
+  }
+
+  /// Grava a avaliação e a nota de um registro já existente.
+  Future<void> setFeedback(String id, {int? rating, String? note}) {
+    return (update(cookLogs)..where((l) => l.id.equals(id))).write(
+      CookLogsCompanion(rating: Value(rating), note: Value(note)),
+    );
+  }
+
+  Future<CookLogRow?> findForMealEntry(String mealPlanEntryId) {
+    return (select(cookLogs)
+          ..where((l) => l.mealPlanEntryId.equals(mealPlanEntryId))
+          ..limit(1))
+        .getSingleOrNull();
   }
 
   Future<bool> existsForMealEntry(String mealPlanEntryId) async {

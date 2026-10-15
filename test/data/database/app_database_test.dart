@@ -43,7 +43,7 @@ void main() {
   });
 
   test('schema v12', () {
-    expect(db.schemaVersion, 12);
+    expect(db.schemaVersion, 15);
   });
 
   test('onCreate cria todas as tabelas do schema + o índice FTS', () async {

@@ -19,6 +19,7 @@ class SyncCookLog {
     required this.createdAt,
     required this.updatedAt,
     this.note,
+    this.rating,
     this.mealPlanEntryId,
   });
 
@@ -28,6 +29,7 @@ class SyncCookLog {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? note;
+  final int? rating;
   final String? mealPlanEntryId;
 }
 
@@ -37,6 +39,7 @@ Map<String, dynamic> cookLogToSyncJson(SyncCookLog l) => {
       'recipeId': l.recipeId,
       'cookedAt': l.cookedAt.toUtc().toIso8601String(),
       'note': l.note,
+      'rating': l.rating,
       'mealPlanEntryId': l.mealPlanEntryId,
       'createdAt': l.createdAt.toUtc().toIso8601String(),
       'updatedAt': l.updatedAt.toUtc().toIso8601String(),
@@ -59,8 +62,14 @@ SyncCookLog? parseCookLogSync(Object? raw) {
     createdAt: _date(raw['createdAt']) ?? cookedAt,
     updatedAt: updatedAt,
     note: _str(raw['note']),
+    rating: _rating(raw['rating']),
     mealPlanEntryId: _str(raw['mealPlanEntryId']),
   );
+}
+
+int? _rating(Object? v) {
+  final n = _int(v);
+  return (n == null || n < 1 || n > 5) ? null : n;
 }
 
 // ---------------------------------------------------------------------------

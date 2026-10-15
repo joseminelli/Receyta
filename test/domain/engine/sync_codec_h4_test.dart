@@ -22,6 +22,22 @@ void main() {
       updatedAt: updated,
     );
 
+    test('avaliação vai e volta; fora de 1 a 5 ou ausente vira nulo', () {
+      final rated = SyncCookLog(
+        id: 'c1',
+        recipeId: 'r1',
+        cookedAt: log.cookedAt,
+        rating: 4,
+        createdAt: created,
+        updatedAt: updated,
+      );
+      expect(parseCookLogSync(viaJson(cookLogToSyncJson(rated)))!.rating, 4);
+
+      final json = viaJson(cookLogToSyncJson(rated));
+      expect(parseCookLogSync({...json, 'rating': 9})!.rating, isNull);
+      expect(parseCookLogSync(json..remove('rating'))!.rating, isNull);
+    });
+
     test('ida e volta pelo JSON', () {
       final r = parseCookLogSync(viaJson(cookLogToSyncJson(log)))!;
 
