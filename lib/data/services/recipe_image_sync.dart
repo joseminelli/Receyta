@@ -234,6 +234,11 @@ class RecipeImageSync {
     );
   }
 
+  /// Quantas fotos esperam pra subir (a conta sem acesso à nuvem, sem rede ou
+  /// no teto de fotos).
+  Future<int> pendingCount() async =>
+      (await _dao.pendingImageSync()).where((r) => r.imagePath != null).length;
+
   /// Anota fotos que precisam sair do Storage (receita apagada de vez). Fica
   /// guardado no aparelho até dar pra apagar de fato — sem login ou sem rede
   /// a remoção espera a próxima rodada.

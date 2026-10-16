@@ -102,7 +102,7 @@ class SyncCoordinator extends Notifier<SyncState> {
   bool _again = false;
   int _failures = 0;
 
-  static const _lastSyncKey = 'sync_last_at';
+  static const lastSyncKey = 'sync_last_at';
 
   @override
   SyncState build() {
@@ -187,7 +187,7 @@ class SyncCoordinator extends Notifier<SyncState> {
 
   Future<void> _loadLastSync() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = DateTime.tryParse(prefs.getString(_lastSyncKey) ?? '');
+    final saved = DateTime.tryParse(prefs.getString(lastSyncKey) ?? '');
     if (saved != null && state.lastSyncAt == null && state.enabled) {
       state = state.copyWith(lastSyncAt: saved.toUtc());
     }
@@ -315,7 +315,7 @@ class SyncCoordinator extends Notifier<SyncState> {
 
   Future<void> _saveLastSync(DateTime at) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_lastSyncKey, at.toIso8601String());
+    await prefs.setString(lastSyncKey, at.toIso8601String());
   }
 
   /// Guarda a falha e agenda (ou não) a próxima tentativa conforme a causa:

@@ -5,18 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:receyta/core/format_bytes.dart';
-import 'package:receyta/core/result.dart';
-import 'package:receyta/data/services/recipe_image_sync.dart';
 import 'package:receyta/data/subscription/cloud_access_remote.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
-import 'package:receyta/domain/engine/sync_status_text.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
 import 'package:receyta/features/settings/controllers/profile_preview.dart';
 import 'package:receyta/features/settings/screens/profile_edit_sheet.dart';
 import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
+import 'package:receyta/features/subscription/screens/sync_details.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -49,8 +46,6 @@ class AccountPage extends ConsumerWidget {
         children: const [
           _Hero(),
           _PlusTile(),
-          _SyncStatusTile(),
-          _PhotoQuotaTile(),
           SizedBox(height: AppSpacing.lg),
           _Shortcuts(),
         ],
@@ -656,9 +651,9 @@ class _LoginRevealState extends State<_LoginReveal>
   }
 }
 
-/// O Receyta Plus, logo abaixo do perfil: convida a assinar quem não tem a
-/// parte online e mostra de onde vem o acesso de quem tem. Só aparece com
-/// conta conectada.
+/// O Receyta Plus, logo abaixo do perfil. Sem assinatura, convida a assinar;
+/// com ela vira um bloco escuro de membro (textura em dois tons, fio `lime`) com
+/// o estado da sincronização. Só aparece com conta conectada.
 class _PlusTile extends ConsumerWidget {
   const _PlusTile();
 
@@ -669,18 +664,22 @@ class _PlusTile extends ConsumerWidget {
     final access = ref.watch(cloudAccessProvider);
     if (access.isLoading && !access.hasValue) return const SizedBox.shrink();
 
-    final colors = context.colors;
     final active = ref.watch(hasCloudAccessProvider);
+    final ended = access.valueOrNull?.ended ?? false;
     final source = access.valueOrNull?.source;
+    final sync = ref.watch(syncCoordinatorProvider);
+
     final title = !active
         ? 'Receyta Plus'
         : source == AccessSource.house
             ? 'Plus da casa'
             : 'Plus ativo';
-    final text = !active
-        ? 'Sincronize entre aparelhos, guarde as fotos na nuvem e divida a '
-            'casa'
-        : 'Sincronização, fotos na nuvem e casa liberadas';
+    final text = active
+        ? syncSummary(sync, ref.watch(syncClockProvider)())
+        : ended
+            ? 'Seu plano acabou. A sincronização está pausada'
+            : 'Sincronize entre aparelhos, guarde as fotos na nuvem e divida '
+                'a casa';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -689,45 +688,60 @@ class _PlusTile extends ConsumerWidget {
         AppSpacing.screen,
         0,
       ),
-      child: Material(
-        color: colors.paperSoft,
+      child: active
+          ? _MemberTile(title: title, text: text)
+          : _InviteTile(title: title, text: text),
+    );
+  }
+}
+
+class _InviteTile extends StatelessWidget {
+  const _InviteTile({required this.title, required this.text});
+
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Material(
+      color: colors.paperSoft,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
         borderRadius: BorderRadius.circular(AppRadii.md),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadii.md),
-          onTap: () => context.push('/plus'),
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration:
-                      BoxDecoration(color: colors.ink, shape: BoxShape.circle),
-                  child: Icon(
-                    Icons.workspace_premium_outlined,
-                    size: 22,
-                    color: colors.lime,
-                  ),
+        onTap: () => context.push('/plus'),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration:
+                    BoxDecoration(color: colors.ink, shape: BoxShape.circle),
+                child: Icon(
+                  Icons.workspace_premium_outlined,
+                  size: 22,
+                  color: colors.lime,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: AppTextStyles.display(22)),
-                      const SizedBox(height: 2),
-                      Text(
-                        text,
-                        style: context.texts.bodySmall
-                            ?.copyWith(color: colors.textMuted),
-                      ),
-                    ],
-                  ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: AppTextStyles.display(22)),
+                    const SizedBox(height: 2),
+                    Text(
+                      text,
+                      style: context.texts.bodySmall
+                          ?.copyWith(color: colors.textMuted),
+                    ),
+                  ],
                 ),
-                Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
-              ],
-            ),
+              ),
+              Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
+            ],
           ),
         ),
       ),
@@ -735,189 +749,102 @@ class _PlusTile extends ConsumerWidget {
   }
 }
 
-/// Estado do sync com a conta, logo abaixo do perfil: "Sincronizado · há 2
-/// min", "Sincronizando…" ou a falha, com o botão de sincronizar agora. Só
-/// aparece com conta conectada.
-class _SyncStatusTile extends ConsumerStatefulWidget {
-  const _SyncStatusTile();
+class _MemberTile extends StatelessWidget {
+  const _MemberTile({required this.title, required this.text});
 
-  @override
-  ConsumerState<_SyncStatusTile> createState() => _SyncStatusTileState();
-}
-
-class _SyncStatusTileState extends ConsumerState<_SyncStatusTile> {
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    // O "há N min" envelhece sozinho.
-    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
+  final String title;
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final sync = ref.watch(syncCoordinatorProvider);
-    if (!sync.enabled) return const SizedBox.shrink();
-
     final colors = context.colors;
-    final now = ref.watch(syncClockProvider)();
-    final syncing = sync.phase == SyncPhase.syncing;
-    final failed = sync.phase == SyncPhase.error;
-    final needsSignIn = failed && sync.problem == SyncProblem.auth;
-    final last = sync.lastSyncAt;
-
-    final text = syncing
-        ? 'Sincronizando…'
-        : failed
-            ? (sync.failure ?? 'Não foi possível sincronizar agora.')
-            : last == null
-                ? 'Aguardando a primeira sincronização'
-                : 'Sincronizado · ${formatSyncAgo(last, now)}';
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.md,
-        AppSpacing.screen,
-        0,
-      ),
-      child: Semantics(
-        container: true,
-        label: text,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: syncing
-                  ? const CircularProgressIndicator(strokeWidth: 2.5)
-                  : Icon(
-                      failed
-                          ? (needsSignIn ||
-                                  sync.problem == SyncProblem.serverFull
-                              ? Icons.error_outline_rounded
-                              : Icons.cloud_off_outlined)
-                          : Icons.cloud_done_outlined,
-                      size: 22,
-                      color: failed ? colors.danger : colors.textMuted,
+    final radius = BorderRadius.circular(AppRadii.md);
+    return Semantics(
+      button: true,
+      label: '$title. $text',
+      child: Material(
+        color: colors.ink,
+        borderRadius: radius,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: colors.lime, width: 1.5),
+          ),
+          child: InkWell(
+            borderRadius: radius,
+            onTap: () => context.push('/plus'),
+            child: ClipRRect(
+              borderRadius: radius,
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: -30,
+                    right: -30,
+                    child: SizedBox(
+                      width: 170,
+                      height: 170,
+                      child: TilePattern(
+                        motif: TileMotif.diagonal,
+                        background: colors.ink,
+                        patternColor: colors.inkPattern,
+                        patternColorAlt: colors.inkPatternAlt,
+                      ),
                     ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                text,
-                style: context.texts.bodyMedium?.copyWith(
-                  color: failed ? colors.danger : colors.textMuted,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: syncing
-                  ? null
-                  : needsSignIn
-                      ? () => ref.read(authControllerProvider.notifier).signIn()
-                      : () => ref
-                          .read(syncCoordinatorProvider.notifier)
-                          .requestSync(immediate: true),
-              child: Text(needsSignIn ? 'Entrar de novo' : 'Sincronizar'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// "Fotos na nuvem · 12 MB de 30 MB", com uma barra. Perto do teto avisa; no
-/// teto explica que as fotos novas ficam só neste aparelho (e quantas esperam).
-/// Some quando não há conta ou o servidor não informa o uso.
-class _PhotoQuotaTile extends ConsumerWidget {
-  const _PhotoQuotaTile();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final enabled = ref.watch(syncCoordinatorProvider.select((s) => s.enabled));
-    if (!enabled) return const SizedBox.shrink();
-    final quota = ref.watch(photoQuotaProvider).valueOrNull;
-    if (quota == null) return const SizedBox.shrink();
-
-    final colors = context.colors;
-    final full = quota.blocked;
-    final accent = full ? colors.danger : colors.onPaper;
-    final detail = full
-        ? 'Limite atingido. As fotos novas ficam só neste aparelho'
-            '${quota.pending > 0 ? ' (${quota.pending} esperando)' : ''}. '
-            'Apague fotos de receitas que não usa mais para liberar espaço.'
-        : quota.nearLimit
-            ? 'Quase no limite. Apague fotos de receitas que não usa mais '
-                'para abrir espaço.'
-            : null;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.sm,
-        AppSpacing.screen,
-        0,
-      ),
-      child: Semantics(
-        container: true,
-        label: 'Fotos na nuvem: ${formatBytes(quota.usedBytes)} de '
-            '${formatBytes(quota.quotaBytes)}',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.photo_library_outlined,
-                    size: 22, color: full ? colors.danger : colors.textMuted),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'Fotos na nuvem',
-                    style: context.texts.bodyMedium
-                        ?.copyWith(color: colors.textMuted),
                   ),
-                ),
-                Text(
-                  '${formatBytes(quota.usedBytes)} de '
-                  '${formatBytes(quota.quotaBytes)}',
-                  style: context.texts.bodyMedium?.copyWith(
-                    color: accent,
-                    fontWeight: FontWeight.w700,
+                  Padding(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: colors.ink,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.lime, width: 1.5),
+                          ),
+                          child: Icon(
+                            Icons.workspace_premium_rounded,
+                            size: 26,
+                            color: colors.lime,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'MEMBRO',
+                                style: context.texts.labelSmall
+                                    ?.copyWith(color: colors.lime),
+                              ),
+                              Text(
+                                title,
+                                style: AppTextStyles.display(26)
+                                    .copyWith(color: colors.onSaturated),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                text,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.texts.bodySmall?.copyWith(
+                                  color:
+                                      colors.onSaturated.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.arrow_forward_rounded, color: colors.lime),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadii.pill),
-              child: LinearProgressIndicator(
-                value: quota.fraction,
-                minHeight: 8,
-                backgroundColor: colors.paperSoft,
-                color: accent,
+                ],
               ),
             ),
-            if (detail != null) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                detail,
-                style: context.texts.bodySmall?.copyWith(
-                  color: full ? colors.danger : colors.textMuted,
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

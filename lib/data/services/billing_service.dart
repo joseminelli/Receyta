@@ -14,11 +14,19 @@ class PlanOption {
   const PlanOption({
     required this.period,
     required this.priceText,
+    required this.price,
     required this.handle,
+    this.perMonthText,
   });
 
   final PlanPeriod period;
   final String priceText;
+
+  /// Valor numérico, na moeda da loja (só serve pra comparar os planos).
+  final double price;
+
+  /// "R$ 7,50" já formatado pela loja: quanto o plano custa por mês.
+  final String? perMonthText;
 
   /// O pacote do RevenueCat; só o [BillingService] que o criou sabe usá-lo.
   final Object handle;
@@ -102,12 +110,16 @@ class RevenueCatBillingService implements BillingService {
           PlanOption(
             period: PlanPeriod.monthly,
             priceText: offering.monthly!.storeProduct.priceString,
+            price: offering.monthly!.storeProduct.price,
+            perMonthText: offering.monthly!.storeProduct.pricePerMonthString,
             handle: offering.monthly!,
           ),
         if (offering.annual != null)
           PlanOption(
             period: PlanPeriod.annual,
             priceText: offering.annual!.storeProduct.priceString,
+            price: offering.annual!.storeProduct.price,
+            perMonthText: offering.annual!.storeProduct.pricePerMonthString,
             handle: offering.annual!,
           ),
       ];
@@ -123,9 +135,7 @@ class RevenueCatBillingService implements BillingService {
       final result = await Purchases.purchase(
         PurchaseParams.package(plan.handle as Package),
       );
-      return Ok(
-        result.customerInfo.entitlements.active.containsKey(kCloudEntitlement),
-      );
+      return Ok(_isLive(result.customerInfo));
     } on PlatformException catch (e) {
       final code = PurchasesErrorHelper.getErrorCode(e);
       if (code == PurchasesErrorCode.purchaseCancelledError) {
@@ -145,7 +155,17 @@ class RevenueCatBillingService implements BillingService {
   Future<Result<bool>> restore() async {
     try {
       final info = await Purchases.restorePurchases();
-      return Ok(info.entitlements.active.containsKey(kCloudEntitlement));
+      if (_isLive(info)) return const Ok(true);
+      if (info.entitlements.all.containsKey(kCloudEntitlement)) {
+        return const Err(
+          ProcessingFailure(
+            'Encontramos uma assinatura, mas ela não está ativa: venceu ou '
+            'há um problema de pagamento. Resolva na Google Play ou assine '
+            'de novo.',
+          ),
+        );
+      }
+      return const Ok(false);
     } on PlatformException catch (e) {
       debugPrint('Billing.restore: $e');
       return Err(_failure(PurchasesErrorHelper.getErrorCode(e)));
@@ -155,6 +175,16 @@ class RevenueCatBillingService implements BillingService {
         ProcessingFailure('Não foi possível restaurar agora.'),
       );
     }
+  }
+
+  /// Assinatura que vale agora. O RevenueCat também chama de "ativa" a que já
+  /// venceu mas está em carência de pagamento; o servidor não, então aqui só
+  /// vale quem ainda está dentro do período.
+  bool _isLive(CustomerInfo info) {
+    final entitlement = info.entitlements.active[kCloudEntitlement];
+    if (entitlement == null) return false;
+    final end = DateTime.tryParse(entitlement.expirationDate ?? '');
+    return end == null || end.isAfter(DateTime.now());
   }
 
   Failure _failure(PurchasesErrorCode code) => switch (code) {

@@ -794,6 +794,7 @@ class _InSpace extends ConsumerWidget {
     final sharedLists = lists.where((s) => s.list.spaceId != null).length;
     final calendarOn = ref.watch(calendarSharedProvider).valueOrNull ?? false;
     final pantryOn = ref.watch(pantrySharedProvider).valueOrNull ?? false;
+    final paused = !ref.watch(hasCloudAccessProvider);
 
     Future<void> setPantry(bool value) async {
       final result = await ref.read(pantrySharedProvider.notifier).set(value);
@@ -829,7 +830,7 @@ class _InSpace extends ConsumerWidget {
                 ),
             ],
           ),
-        if (_iAmOwner) ...[
+        if (_iAmOwner && !paused) ...[
           const SizedBox(height: AppSpacing.sm),
           PillButton(
             label: 'Convidar alguém',
@@ -851,30 +852,47 @@ class _InSpace extends ConsumerWidget {
             _InfoRow(
               icon: Icons.shopping_basket_outlined,
               title: 'Listas de compras',
-              text: sharedLists == 0
-                  ? 'Nenhuma ainda. No menu ⋯ de uma lista, escolha '
-                      '"Compartilhar com a casa".'
-                  : sharedLists == 1
-                      ? '1 lista compartilhada'
-                      : '$sharedLists listas compartilhadas',
+              text: paused
+                  ? (sharedLists == 0
+                      ? 'Pausado: o plano do dono não está ativo.'
+                      : 'Pausado: o plano do dono não está ativo. As '
+                          '$sharedLists listas compartilhadas ficam salvas '
+                          'neste aparelho.')
+                  : sharedLists == 0
+                      ? 'Nenhuma ainda. No menu ⋯ de uma lista, escolha '
+                          '"Compartilhar com a casa".'
+                      : sharedLists == 1
+                          ? '1 lista compartilhada'
+                          : '$sharedLists listas compartilhadas',
             ),
             _InfoRow(
               icon: Icons.calendar_month_outlined,
               title: 'Calendário',
-              text: calendarOn
-                  ? 'Suas refeições de hoje em diante aparecem para todos, e '
-                      'as deles no seu calendário.'
-                  : 'Desligado. Ligue para ver o que a casa vai cozinhar.',
-              trailing: Switch(value: calendarOn, onChanged: setCalendar),
+              text: paused
+                  ? 'Pausado: o plano do dono não está ativo.'
+                  : calendarOn
+                      ? 'Suas refeições de hoje em diante aparecem para todos, '
+                          'e as deles no seu calendário.'
+                      : 'Desligado. Ligue para ver o que a casa vai cozinhar.',
+              trailing: Switch(
+                value: calendarOn,
+                onChanged: paused ? null : setCalendar,
+              ),
             ),
             _InfoRow(
               icon: Icons.kitchen_outlined,
               title: 'Despensa',
-              text: pantryOn
-                  ? 'O que vocês sempre têm vale para todos, e não entra nas '
-                      'listas de ninguém.'
-                  : 'Desligada. Ligue para dividir o que vocês sempre têm em casa.',
-              trailing: Switch(value: pantryOn, onChanged: setPantry),
+              text: paused
+                  ? 'Pausado: o plano do dono não está ativo.'
+                  : pantryOn
+                      ? 'O que vocês sempre têm vale para todos, e não entra '
+                          'nas listas de ninguém.'
+                      : 'Desligada. Ligue para dividir o que vocês sempre têm '
+                          'em casa.',
+              trailing: Switch(
+                value: pantryOn,
+                onChanged: paused ? null : setPantry,
+              ),
             ),
           ],
         ),

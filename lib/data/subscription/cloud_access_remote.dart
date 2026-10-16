@@ -34,6 +34,9 @@ class CloudAccess {
   /// Fim do período pago ou liberado. Nulo com [active] = sem prazo.
   final DateTime? until;
 
+  /// Já teve acesso e acabou: o servidor devolve o fim do último período.
+  bool get ended => !active && until != null;
+
   /// Vale agora? Cobre o caso de o prazo passar com o app aberto ou de o
   /// aparelho estar sem internet para perguntar de novo.
   bool isActiveAt(DateTime now) {
@@ -70,8 +73,9 @@ abstract class CloudAccessRemote {
   Future<CloudAccess> fetch();
 
   /// Pede ao servidor que confira a assinatura direto na loja (função
-  /// `sync-subscription`) em vez de esperar o aviso do RevenueCat.
-  Future<void> syncSubscription();
+  /// `sync-subscription`) em vez de esperar o aviso do RevenueCat. Devolve se
+  /// ela vale agora; nulo = o servidor não soube dizer (função fora do ar).
+  Future<bool?> syncSubscription();
 }
 
 class SupabaseCloudAccessRemote implements CloudAccessRemote {
@@ -84,8 +88,10 @@ class SupabaseCloudAccessRemote implements CloudAccessRemote {
       CloudAccess.fromJson(await _client.rpc('my_access'));
 
   @override
-  Future<void> syncSubscription() async {
-    await _client.functions.invoke('sync-subscription');
+  Future<bool?> syncSubscription() async {
+    final response = await _client.functions.invoke('sync-subscription');
+    final data = response.data;
+    return data is Map && data['active'] is bool ? data['active'] as bool : null;
   }
 }
 
@@ -96,7 +102,7 @@ class NoCloudAccessRemote implements CloudAccessRemote {
   Future<CloudAccess> fetch() async => CloudAccess.none;
 
   @override
-  Future<void> syncSubscription() async {}
+  Future<bool?> syncSubscription() async => null;
 }
 
 final cloudAccessRemoteProvider = Provider<CloudAccessRemote>((ref) {

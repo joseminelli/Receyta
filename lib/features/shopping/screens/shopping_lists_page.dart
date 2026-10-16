@@ -11,6 +11,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/space/controllers/new_lists_share.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 import 'package:receyta/data/repositories/shopping_list_repository.dart';
 import 'package:receyta/domain/engine/recipe_cost.dart';
 import 'package:receyta/domain/models/shopping_list.dart';
@@ -247,10 +248,13 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
   /// se ela já nasce compartilhada. A última escolha do interruptor fica
   /// guardada.
   Future<void> _openCreateSheet(BuildContext context) async {
-    final hasSpace = ref.read(currentSpaceIdProvider) != null;
+    final hasSpace = ref.read(currentSpaceIdProvider) != null &&
+        ref.read(hasCloudAccessProvider);
     final flag = ref.read(newListsSharedProvider.notifier);
     var shared = hasSpace &&
-        (await ref.read(newListsSharedProvider.future).catchError((_) => false));
+        (await ref
+            .read(newListsSharedProvider.future)
+            .catchError((_) => false));
     if (!context.mounted) return;
 
     final choice =
@@ -408,7 +412,10 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
                 _duplicate(list);
               },
             ),
-            if (ref.read(authUserProvider).valueOrNull != null)
+            if (ref.read(authUserProvider).valueOrNull != null &&
+                (list.spaceId != null ||
+                    ref.read(currentSpaceIdProvider) == null ||
+                    ref.read(hasCloudAccessProvider)))
               AppSheetOption(
                 icon: list.spaceId == null
                     ? Icons.group_add_outlined
@@ -888,8 +895,7 @@ class _ListRow extends ConsumerWidget {
                       const SizedBox(height: 6),
                       Text(
                         _metaLine(summary, cost),
-                        style:
-                            context.texts.bodySmall?.copyWith(color: muted),
+                        style: context.texts.bodySmall?.copyWith(color: muted),
                       ),
                     ],
                   ),

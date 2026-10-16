@@ -66,10 +66,15 @@ class CloudAccessController extends AsyncNotifier<CloudAccess> {
   /// Depois de comprar ou restaurar: manda o servidor conferir a assinatura na
   /// loja agora e espera o acesso ligar. Devolve se ligou.
   Future<bool> activate() async {
+    bool? confirmed;
     try {
-      await _remote.syncSubscription();
+      confirmed = await _remote.syncSubscription();
     } catch (e) {
       debugPrint('CloudAccess.activate: $e');
+    }
+    if (confirmed == false) {
+      await refresh();
+      return _active;
     }
     final wait = ref.read(accessPollProvider);
     for (var i = 0; i < 15; i++) {

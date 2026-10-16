@@ -148,7 +148,16 @@ begin
     );
   end if;
 
-  return jsonb_build_object('active', false, 'source', 'none', 'until', null);
+  -- Sem acesso agora. Se já teve, `until` é o fim do último período (o app
+  -- mostra "seu Plus acabou em ...").
+  return jsonb_build_object(
+    'active', false,
+    'source', 'none',
+    'until', (
+      select greatest(e.plan_until, e.grant_until)
+      from public.entitlements e where e.user_id = v_me
+    )
+  );
 end;
 $$;
 

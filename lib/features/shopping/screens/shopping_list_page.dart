@@ -24,6 +24,7 @@ import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_prefs.dart';
 import 'package:receyta/features/shopping/screens/shopping_actions.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -133,7 +134,8 @@ class ShoppingListPage extends ConsumerWidget {
     final hasPrices = !ref.watch(shoppingCostProvider(listId)).isEmpty;
 
     ref.listen(shoppingListItemsProvider(listId), (previous, next) {
-      if (!_allChecked(previous?.valueOrNull) && _allChecked(next.valueOrNull)) {
+      if (!_allChecked(previous?.valueOrNull) &&
+          _allChecked(next.valueOrNull)) {
         showMascotMoment(kind: MascotKind.pote);
       }
     });
@@ -179,7 +181,10 @@ class ShoppingListPage extends ConsumerWidget {
                   hint: 'Como texto',
                   onTap: () => _share(ref),
                 ),
-                if (ref.watch(authUserProvider).valueOrNull != null)
+                if (ref.watch(authUserProvider).valueOrNull != null &&
+                    (list.spaceId != null ||
+                        ref.watch(currentSpaceIdProvider) == null ||
+                        ref.watch(hasCloudAccessProvider)))
                   ActionMenuItem(
                     icon: list.spaceId == null
                         ? Icons.group_add_outlined
