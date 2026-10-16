@@ -412,3 +412,49 @@ revoke all on function public.join_space(text, text) from public;
 grant execute on function public.create_space(text)     to authenticated;
 grant execute on function public.create_invite()        to authenticated;
 grant execute on function public.join_space(text, text) to authenticated;
+
+-- ------------------------------------------------------ links de receita
+-- Criar o link curto guarda texto no servidor, então exige acesso à parte
+-- online. Ler continua livre (quem recebe o link não precisa de conta). Sem
+-- acesso o app usa o link longo, que não depende do servidor.
+-- Mesma função do `recipe-links.sql`, com a checagem a mais.
+
+create or replace function public.create_recipe_link(p_data text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_token text;
+begin
+  if auth.uid() is null then
+    raise exception 'not_authenticated';
+  end if;
+  if not public.has_cloud_access() then
+    raise exception 'subscription_required';
+  end if;
+  if p_data is null or char_length(p_data) = 0 then
+    raise exception 'empty_data';
+  end if;
+  delete from shared_recipe_links where expires_at < now();
+  if (
+    select count(*) from shared_recipe_links
+    where created_by = auth.uid() and created_at > now() - interval '1 day'
+  ) >= 20 then
+    raise exception 'too_many_links';
+  end if;
+  loop
+    v_token := substr(replace(gen_random_uuid()::text, '-', ''), 1, 10);
+    exit when not exists (
+      select 1 from shared_recipe_links where token = v_token
+    );
+  end loop;
+  insert into shared_recipe_links (token, created_by, data, expires_at)
+    values (v_token, auth.uid(), p_data, now() + interval '30 days');
+  return v_token;
+end;
+$$;
+
+revoke all on function public.create_recipe_link(text) from public;
+grant execute on function public.create_recipe_link(text) to authenticated;

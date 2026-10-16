@@ -112,8 +112,8 @@ class RecipeExportService {
     final link = await _shortLink(fragment) ?? longRecipeLink(fragment);
     if (link == null) {
       return const Err(ProcessingFailure(
-        'Para compartilhar esta receita como link, entre na sua conta e '
-        'conecte-se à internet. Ou compartilhe como arquivo.',
+        'Esta receita é grande demais para um link sem o Receyta Plus. '
+        'Assine o Plus e conecte-se à internet, ou compartilhe como arquivo.',
       ));
     }
     try {
@@ -126,8 +126,9 @@ class RecipeExportService {
     }
   }
 
-  /// O link curto, ou nulo quando não dá (sem conta, sem internet, limite
-  /// diário): aí quem chama cai no link longo, que não depende do servidor.
+  /// O link curto, ou nulo quando não dá (sem o Receyta Plus, sem internet,
+  /// limite diário): aí quem chama cai no link longo, que não depende do
+  /// servidor.
   Future<String?> _shortLink(String fragment) async {
     final links = _links;
     if (links == null || !links.canCreate) return null;
