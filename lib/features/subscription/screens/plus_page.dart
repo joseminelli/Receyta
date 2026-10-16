@@ -80,7 +80,8 @@ class _PlusPageState extends ConsumerState<PlusPage> {
 
   /// A loja já confirmou: mostra o "ativando" na hora e liga o acesso no
   /// servidor.
-  Future<void> _activate(String successMessage, {bool restoring = false}) async {
+  Future<void> _activate(String successMessage,
+      {bool restoring = false}) async {
     setState(() {
       _activating = true;
       _restoring = restoring;
@@ -809,11 +810,17 @@ class _Activating extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Ativando o seu Plus…',
-                      style: AppTextStyles.display(24)),
+                  Text(
+                    restoring
+                        ? 'Verificando sua assinatura…'
+                        : 'Ativando o seu Plus…',
+                    style: AppTextStyles.display(24),
+                  ),
                   const SizedBox(height: 2),
                   Text(
-                    'Pagamento confirmado. Leva só alguns segundos.',
+                    restoring
+                        ? 'Leva só alguns segundos.'
+                        : 'Pagamento confirmado. Leva só alguns segundos.',
                     style: context.texts.bodyMedium
                         ?.copyWith(color: colors.textMuted),
                   ),

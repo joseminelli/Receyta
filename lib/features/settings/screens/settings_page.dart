@@ -10,6 +10,7 @@ import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/domain/engine/quiet_hours.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 import 'package:receyta/features/recipes/controllers/cooking_alert_settings.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/reminder_settings.dart';
@@ -639,7 +640,11 @@ class SettingsPage extends ConsumerWidget {
                                 : 'Limpar este aparelho',
                             subtitle: user == null
                                 ? 'Apaga tudo o que está salvo neste aparelho'
-                                : 'A conta guarda uma cópia, que volta ao sincronizar',
+                                : ref.watch(hasCloudAccessProvider)
+                                    ? 'A conta guarda uma cópia, que volta ao '
+                                        'sincronizar'
+                                    : 'Apaga tudo o que está salvo neste '
+                                        'aparelho',
                             danger: true,
                             onTap: () => _wipe(context, ref),
                           ),
@@ -670,7 +675,11 @@ class SettingsPage extends ConsumerWidget {
                   Text(
                     user == null
                         ? 'Receyta · seus dados ficam só neste aparelho'
-                        : 'Receyta · conta conectada, fotos guardadas na nuvem',
+                        : ref.watch(hasCloudAccessProvider)
+                            ? 'Receyta Plus · conta conectada, fotos guardadas '
+                                'na nuvem'
+                            : 'Receyta · conta conectada, seus dados ficam só '
+                                'neste aparelho',
                     style: context.texts.bodySmall
                         ?.copyWith(color: colors.textMuted),
                     textAlign: TextAlign.center,

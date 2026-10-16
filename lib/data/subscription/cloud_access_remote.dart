@@ -91,7 +91,9 @@ class SupabaseCloudAccessRemote implements CloudAccessRemote {
   Future<bool?> syncSubscription() async {
     final response = await _client.functions.invoke('sync-subscription');
     final data = response.data;
-    return data is Map && data['active'] is bool ? data['active'] as bool : null;
+    return data is Map && data['active'] is bool
+        ? data['active'] as bool
+        : null;
   }
 }
 

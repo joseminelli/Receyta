@@ -196,7 +196,8 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Text(
         text,
-        style: AppTextStyles.display(24).copyWith(color: context.colors.onPaper),
+        style:
+            AppTextStyles.display(24).copyWith(color: context.colors.onPaper),
       ),
     );
   }
@@ -243,8 +244,8 @@ const List<_Feature> _features = [
   ),
   (
     Icons.cloud_sync_outlined,
-    'Conta e sincronização',
-    'Entre com o Google para ter tudo em mais de um aparelho.',
+    'Receyta Plus',
+    'Assine para ter tudo em mais de um aparelho, com fotos na nuvem e a casa.',
   ),
 ];
 
@@ -403,8 +404,20 @@ const List<_Qa> _faq = [
   (
     'Preciso de conta para usar o Receyta?',
     'Não. O app funciona inteiro sem conta, com tudo salvo só no seu '
-        'aparelho. A conta é opcional e serve para ter os dados em mais de '
-        'um aparelho.',
+        'aparelho. A conta serve para assinar o Receyta Plus, que liga a '
+        'parte online: sincronização entre aparelhos, fotos na nuvem e a '
+        'casa.',
+  ),
+  (
+    'O que acontece se a assinatura acabar?',
+    'Nada é apagado: tudo continua salvo no seu aparelho. Só a '
+        'sincronização, as fotos na nuvem e a casa ficam em pausa, e voltam '
+        'quando você assinar de novo.',
+  ),
+  (
+    'Quem entra na minha casa paga alguma coisa?',
+    'Não. Só quem cria a casa assina o Plus. Quem entra usa de graça '
+        'enquanto o plano do dono estiver ativo.',
   ),
   (
     'Como trago receitas de outros lugares?',
@@ -413,11 +426,11 @@ const List<_Qa> _faq = [
   ),
   (
     'Troquei de celular. Como levo minhas receitas?',
-    'Entre com a mesma conta do Google no aparelho novo: receitas, pastas, '
-        'listas e fotos voltam sozinhas (os preços dos ingredientes ficam só '
-        'no aparelho e precisam ser informados de novo). Sem conta, faça um '
-        'cópia em Configurações > Seus dados > Suas cópias, envie para o '
-        'aparelho novo e abra o arquivo lá.',
+    'Com o Receyta Plus, entre com a mesma conta do Google no aparelho '
+        'novo: receitas, pastas, listas e fotos voltam sozinhas (os preços '
+        'dos ingredientes ficam só no aparelho e precisam ser informados de '
+        'novo). Sem o Plus, faça uma cópia em Configurações > Seus dados > '
+        'Suas cópias, envie para o aparelho novo e abra o arquivo lá.',
   ),
   (
     'Apaguei uma receita sem querer. E agora?',
@@ -426,9 +439,9 @@ const List<_Qa> _faq = [
   ),
   (
     'Quanto espaço as fotos ocupam?',
-    'As fotos são reduzidas para ocupar pouco. Cada conta tem 30 MB para '
-        'fotos na nuvem; passou disso, a foto fica só no aparelho. Você vê '
-        'o quanto usou na aba Conta.',
+    'As fotos são reduzidas para ocupar pouco. Com o Plus, cada conta tem '
+        '30 MB para fotos na nuvem; passou disso, a foto fica só no '
+        'aparelho. Você vê o quanto usou na tela do Receyta Plus.',
   ),
   (
     'Os timers tocam com o app fechado?',

@@ -244,9 +244,10 @@ create policy "sync_docs: update own" on public.sync_docs
   using (user_id = auth.uid() and public.has_cloud_access())
   with check (user_id = auth.uid() and public.has_cloud_access());
 
+-- Apagar os próprios dados é sempre permitido, mesmo sem assinatura.
 create policy "sync_docs: delete own" on public.sync_docs
   for delete to authenticated
-  using (user_id = auth.uid() and public.has_cloud_access());
+  using (user_id = auth.uid());
 
 -- ------------------------------------------------------- itens da casa
 
@@ -303,8 +304,7 @@ using (bucket_id = 'recipe-images'
 create policy "recipe images: delete own"
 on storage.objects for delete to authenticated
 using (bucket_id = 'recipe-images'
-       and (storage.foldername(name))[1] = auth.uid()::text
-       and public.has_cloud_access());
+       and (storage.foldername(name))[1] = auth.uid()::text);
 
 -- ------------------------------------------------------------- a casa
 -- Quem CRIA a casa precisa ter acesso próprio (é o dono que paga). Quem ENTRA
