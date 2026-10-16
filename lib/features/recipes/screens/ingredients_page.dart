@@ -16,11 +16,11 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
-import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
+import 'package:receyta/widgets/category_icon.dart';
 import 'package:receyta/widgets/underline_tabs.dart';
 
 /// Gerenciar ingredientes (C6): lista o catálogo com contagem de uso, aponta
@@ -350,7 +350,7 @@ Map<String, Ingredient> _detectDuplicates(List<Ingredient> all) {
   return out;
 }
 
-/// Cartão de ingrediente, enxuto: uma bolinha com a inicial, o nome e uma
+/// Cartão de ingrediente, enxuto: uma bolinha com o ícone do tipo, o nome e uma
 /// linha só com "N receitas · preço". Tudo o que se faz com ele mora no menu
 /// "⋯": definir ou editar o preço, "sempre tenho" (despensa), mesclar e apagar.
 /// Quem está na despensa leva um ícone de cozinha ao lado do nome, e quem não
@@ -390,7 +390,6 @@ class _IngredientRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final name = ingredient.displayName;
-    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
     final price = ingredient.price;
     final inPantry = ingredient.inPantry;
 
@@ -416,19 +415,10 @@ class _IngredientRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppRadii.sm),
                   child: Row(
                     children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: colors.ink,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          initial,
-                          style: AppTextStyles.display(22)
-                              .copyWith(color: colors.lime, height: 1),
-                        ),
+                      IngredientIconBadge(
+                        ingredient: ingredient,
+                        ink: colors.ink,
+                        accent: colors.lime,
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(

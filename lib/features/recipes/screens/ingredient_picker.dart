@@ -8,6 +8,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_sheet.dart';
+import 'package:receyta/widgets/category_icon.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 
 /// Abre o seletor "Mesclar com" (C6): busca + lista do catálogo inteiro,
@@ -140,7 +141,7 @@ class _IngredientPickerSheetState
         itemBuilder: (context, i) {
           final ing = options[i];
           return _PickerRow(
-            label: ing.displayName,
+            ingredient: ing,
             onTap: () => Navigator.of(context).pop<Ingredient>(ing),
           );
         },
@@ -149,18 +150,16 @@ class _IngredientPickerSheetState
   }
 }
 
-/// Linha de opção: bolinha `ink` com a inicial, o nome e uma seta — o mesmo
-/// par dos cartões da tela de ingredientes.
+/// Linha de opção: bolinha com o ícone do tipo, o nome e uma seta.
 class _PickerRow extends StatelessWidget {
-  const _PickerRow({required this.label, required this.onTap});
+  const _PickerRow({required this.ingredient, required this.onTap});
 
-  final String label;
+  final Ingredient ingredient;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final initial = label.isEmpty ? '?' : label[0].toUpperCase();
     return InkWell(
       onTap: onTap,
       child: ConstrainedBox(
@@ -172,22 +171,16 @@ class _PickerRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                alignment: Alignment.center,
-                decoration:
-                    BoxDecoration(color: colors.ink, shape: BoxShape.circle),
-                child: Text(
-                  initial,
-                  style: AppTextStyles.display(18)
-                      .copyWith(color: colors.lime, height: 1),
-                ),
+              IngredientIconBadge(
+                ingredient: ingredient,
+                size: 36,
+                ink: colors.ink,
+                accent: colors.lime,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
-                  label,
+                  ingredient.displayName,
                   style: context.texts.bodyLarge
                       ?.copyWith(fontWeight: FontWeight.w600),
                   maxLines: 1,

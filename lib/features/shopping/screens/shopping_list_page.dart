@@ -33,6 +33,7 @@ import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/brand_loader.dart';
+import 'package:receyta/widgets/category_icon.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
 import 'package:receyta/widgets/sweep_strike_text.dart';
@@ -271,24 +272,6 @@ class _ListFooter extends ConsumerWidget {
     );
   }
 }
-
-IconData _categoryIcon(String slug) => switch (slug) {
-      'hortifruti' => Icons.eco_outlined,
-      'acougue' => Icons.kebab_dining_outlined,
-      'peixaria' => Icons.set_meal_outlined,
-      'frios_laticinios' => Icons.egg_alt_outlined,
-      'padaria' => Icons.bakery_dining_outlined,
-      'mercearia' => Icons.shopping_basket_outlined,
-      'massas_molhos' => Icons.ramen_dining_outlined,
-      'enlatados_conservas' => Icons.inventory_2_outlined,
-      'temperos_condimentos' => Icons.spa_outlined,
-      'matinais_cereais' => Icons.breakfast_dining_outlined,
-      'congelados' => Icons.ac_unit,
-      'bebidas' => Icons.local_drink_outlined,
-      'doces_sobremesas' => Icons.cake_outlined,
-      'higiene_limpeza' => Icons.cleaning_services_outlined,
-      _ => Icons.category_outlined,
-    };
 
 enum _MovePhase { still, leaving, entering }
 
@@ -820,7 +803,7 @@ class _SectionHeader extends ConsumerWidget {
       padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: 2),
       child: Row(
         children: [
-          Icon(_categoryIcon(slug), size: 16, color: colors.lime),
+          Icon(categoryIcon(slug), size: 16, color: colors.lime),
           const SizedBox(width: 6),
           Text(
             label.toUpperCase(),
