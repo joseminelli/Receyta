@@ -416,8 +416,10 @@ const List<_Qa> _faq = [
   ),
   (
     'Quem entra na minha casa paga alguma coisa?',
-    'Não. Só quem cria a casa assina o Plus. Quem entra usa de graça '
-        'enquanto o plano do dono estiver ativo.',
+    'Não. Só quem cria a casa assina o Plus. Quem entra usa a lista de '
+        'compras, o calendário e a despensa da casa de graça enquanto o '
+        'plano do dono estiver ativo. Para sincronizar as próprias receitas '
+        'e guardar fotos na nuvem, cada pessoa assina o seu Plus.',
   ),
   (
     'Como trago receitas de outros lugares?',

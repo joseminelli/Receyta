@@ -184,7 +184,7 @@ class ShoppingListPage extends ConsumerWidget {
                 if (ref.watch(authUserProvider).valueOrNull != null &&
                     (list.spaceId != null ||
                         ref.watch(currentSpaceIdProvider) == null ||
-                        ref.watch(hasCloudAccessProvider)))
+                        ref.watch(hasHouseAccessProvider)))
                   ActionMenuItem(
                     icon: list.spaceId == null
                         ? Icons.group_add_outlined

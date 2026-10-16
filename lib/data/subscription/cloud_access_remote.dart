@@ -11,9 +11,6 @@ enum AccessSource {
 
   /// Liberação manual (amigos, testers).
   grant,
-
-  /// Casa cujo dono tem acesso.
-  house,
 }
 
 /// Se a pessoa pode usar a parte online (sync, casa, fotos na nuvem) e até
@@ -24,6 +21,8 @@ class CloudAccess {
     required this.active,
     this.source = AccessSource.none,
     this.until,
+    this.house = false,
+    this.houseUntil,
   });
 
   static const none = CloudAccess(active: false);
@@ -34,8 +33,23 @@ class CloudAccess {
   /// Fim do período pago ou liberado. Nulo com [active] = sem prazo.
   final DateTime? until;
 
+  /// Usa a casa pelo plano do dono. Dá só o que a casa divide (lista,
+  /// calendário, despensa): não vale como Plus próprio.
+  final bool house;
+
+  /// Fim do plano do dono; nulo = sem prazo.
+  final DateTime? houseUntil;
+
   /// Já teve acesso e acabou: o servidor devolve o fim do último período.
   bool get ended => !active && until != null;
+
+  /// Pode usar o que a casa divide? O Plus próprio ou o plano do dono.
+  bool houseAccessAt(DateTime now) {
+    if (isActiveAt(now)) return true;
+    if (!house) return false;
+    final end = houseUntil;
+    return end == null || end.isAfter(now);
+  }
 
   /// Vale agora? Cobre o caso de o prazo passar com o app aberto ou de o
   /// aparelho estar sem internet para perguntar de novo.
@@ -47,16 +61,20 @@ class CloudAccess {
 
   static CloudAccess fromJson(Object? json) {
     if (json is! Map) return none;
+    final legacyHouse = json['source'] == 'house';
     final source = switch (json['source']) {
       'own' => AccessSource.own,
       'grant' => AccessSource.grant,
-      'house' => AccessSource.house,
       _ => AccessSource.none,
     };
     return CloudAccess(
-      active: json['active'] == true,
+      active: json['active'] == true && !legacyHouse,
       source: source,
-      until: DateTime.tryParse('${json['until'] ?? ''}')?.toUtc(),
+      until: legacyHouse
+          ? null
+          : DateTime.tryParse('${json['until'] ?? ''}')?.toUtc(),
+      house: json['house'] == true || legacyHouse,
+      houseUntil: DateTime.tryParse('${json['house_until'] ?? ''}')?.toUtc(),
     );
   }
 
@@ -64,6 +82,8 @@ class CloudAccess {
         'active': active,
         'source': source.name,
         'until': until?.toIso8601String(),
+        'house': house,
+        'house_until': houseUntil?.toIso8601String(),
       };
 }
 

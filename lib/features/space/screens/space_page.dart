@@ -76,6 +76,7 @@ class _SpacePageState extends ConsumerState<SpacePage> {
     final user = ref.watch(authUserProvider).valueOrNull;
     final info = space.valueOrNull;
     final hasAccess = ref.watch(hasCloudAccessProvider);
+    final hasHouseAccess = ref.watch(hasHouseAccessProvider);
 
     final Widget body;
     if (user == null) {
@@ -120,7 +121,7 @@ class _SpacePageState extends ConsumerState<SpacePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (user != null && info != null && !hasAccess) ...[
+                  if (user != null && info != null && !hasHouseAccess) ...[
                     const _PausedNotice(),
                     const SizedBox(height: AppSpacing.lg),
                   ],
@@ -592,9 +593,9 @@ class _NoSpaceState extends ConsumerState<_NoSpace> {
         Text(
           widget.canCreate
               ? 'Até 6 pessoas por casa. Você entra com o código de um convite.'
-              : 'Quem cria a casa assina o Receyta Plus; quem entra com um '
-                  'código usa de graça enquanto o plano do dono estiver '
-                  'ativo.',
+              : 'Quem cria a casa assina o Receyta Plus. Quem entra com um '
+                  'código usa a lista, o calendário e a despensa da casa de '
+                  'graça enquanto o plano do dono estiver ativo.',
           textAlign: TextAlign.center,
           style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
         ),
@@ -794,7 +795,7 @@ class _InSpace extends ConsumerWidget {
     final sharedLists = lists.where((s) => s.list.spaceId != null).length;
     final calendarOn = ref.watch(calendarSharedProvider).valueOrNull ?? false;
     final pantryOn = ref.watch(pantrySharedProvider).valueOrNull ?? false;
-    final paused = !ref.watch(hasCloudAccessProvider);
+    final paused = !ref.watch(hasHouseAccessProvider);
 
     Future<void> setPantry(bool value) async {
       final result = await ref.read(pantrySharedProvider.notifier).set(value);

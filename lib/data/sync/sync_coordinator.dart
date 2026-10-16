@@ -98,6 +98,7 @@ class SyncCoordinator extends Notifier<SyncState> {
   String? _realtimeSpace;
   bool _disposed = false;
   bool _started = false;
+  bool _ownSync = false;
   bool _running = false;
   bool _again = false;
   int _failures = 0;
@@ -130,12 +131,33 @@ class SyncCoordinator extends Notifier<SyncState> {
     );
     ref.listen<bool>(
         hasCloudAccessProvider, (previous, next) => _applyAccess());
+    ref.listen<bool>(
+        hasHouseAccessProvider, (previous, next) => _applyAccess());
     _applyAccess();
   }
 
+  /// Liga o sync de quem tem o que sincronizar: o Plus próprio (receitas,
+  /// fotos e o resto da conta) ou só a casa pelo plano do dono (lista,
+  /// calendário e despensa dela).
   void _applyAccess() {
     final user = ref.read(authUserProvider).valueOrNull;
-    _onUser(user != null && ref.read(hasCloudAccessProvider) ? user : null);
+    final own = ref.read(hasCloudAccessProvider);
+    final house = ref.read(hasHouseAccessProvider);
+    _onUser(user != null && (own || house) ? user : null);
+    if (!state.enabled) {
+      _ownSync = false;
+      return;
+    }
+    if (own != _ownSync) {
+      _ownSync = own;
+      if (own) {
+        _watchAccount();
+      } else {
+        _accountRealtime?.cancel();
+        _accountRealtime = null;
+      }
+      requestSync(immediate: true);
+    }
   }
 
   /// Pede uma rodada. Com [immediate] não espera o atraso (login, botão);
@@ -176,7 +198,8 @@ class SyncCoordinator extends Notifier<SyncState> {
     state = state.copyWith(enabled: true);
     unawaited(_loadLastSync());
     _watchChanges();
-    _watchAccount();
+    _ownSync = ref.read(hasCloudAccessProvider);
+    if (_ownSync) _watchAccount();
     _watchSpace(ref.read(currentSpaceIdProvider));
     final period = ref.read(syncPeriodProvider);
     if (period != null) {
@@ -251,16 +274,19 @@ class SyncCoordinator extends Notifier<SyncState> {
   }
 
   Future<bool> _hasPendingChanges() async {
-    if (await ref.read(syncEngineProvider).hasPending()) return true;
+    if (ref.read(hasCloudAccessProvider) &&
+        await ref.read(syncEngineProvider).hasPending()) {
+      return true;
+    }
     final space = ref.read(currentSpaceIdProvider);
-    if (space == null) return false;
+    if (space == null || !ref.read(hasHouseAccessProvider)) return false;
     return ref.read(sharedSyncEngineProvider(space)).hasPending();
   }
 
   /// A rodada da casa, depois da da conta. `null` = não há casa.
   Future<Result<SyncReport>?> _syncShared() async {
     final space = ref.read(currentSpaceIdProvider);
-    if (space == null) return null;
+    if (space == null || !ref.read(hasHouseAccessProvider)) return null;
     return ref.read(sharedSyncEngineProvider(space)).sync();
   }
 
@@ -276,7 +302,9 @@ class SyncCoordinator extends Notifier<SyncState> {
 
     Result<SyncReport> result;
     try {
-      result = await ref.read(syncEngineProvider).sync();
+      result = ref.read(hasCloudAccessProvider)
+          ? await ref.read(syncEngineProvider).sync()
+          : const Ok((pulled: 0, applied: 0, removed: 0, pushed: 0, merged: 0));
       if (result is Ok<SyncReport>) {
         final shared = await _syncShared();
         if (shared is Err<SyncReport>) result = shared;

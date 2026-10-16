@@ -9,8 +9,13 @@
 --   entitlements   uma linha por pessoa: até quando a assinatura da Google Play
 --                  vale (`plan_until`, gravado pelo webhook do RevenueCat) e as
 --                  liberações manuais (`grant_until` ou `lifetime`).
---   has_cloud_access()  "a pessoa que chamou tem a parte online?": assinatura
---                  própria, liberação manual ou casa cujo DONO tem acesso.
+--   has_cloud_access()  o Plus da própria pessoa (assinatura ou liberação
+--                  manual): sincronização das receitas, fotos na nuvem, links
+--                  curtos e criar casa.
+--   has_house_access()  o que a casa divide (lista, calendário, despensa): o
+--                  Plus próprio OU uma casa cujo DONO tem o Plus. Quem só
+--                  entra na casa NÃO herda a assinatura: não sincroniza as
+--                  próprias receitas nem guarda fotos na nuvem.
 --
 -- Quem não tem acesso não lê nem grava nada na nuvem. Nada é apagado: os dados
 -- ficam no servidor e no aparelho, e tudo volta quando o acesso volta.
@@ -74,8 +79,21 @@ $$;
 
 revoke all on function public.space_owner_has_access(uuid) from public;
 
--- A pessoa que chamou tem a parte online? Própria, liberada ou pela casa.
+-- O Plus da própria pessoa (assinatura ou liberação manual).
 create or replace function public.has_cloud_access()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select auth.uid() is not null
+     and public.user_has_own_access(auth.uid());
+$$;
+
+-- O que a casa divide: o Plus próprio ou o de quem é dono da casa onde a
+-- pessoa está.
+create or replace function public.has_house_access()
 returns boolean
 language sql
 security definer
@@ -93,11 +111,17 @@ as $$
   );
 $$;
 
+revoke all on function public.has_house_access() from public;
+grant execute on function public.has_house_access() to authenticated;
+
 revoke all on function public.has_cloud_access() from public;
 grant execute on function public.has_cloud_access() to authenticated;
 
--- O que o app mostra: { active, source: none|own|grant|house, until }.
--- `until` nulo com `active` = sem prazo (liberação vitalícia).
+-- O que o app mostra:
+--   { active, source: none|own|grant, until, house, house_until }
+-- `active` é o Plus da própria pessoa; `until` nulo com `active` = sem prazo
+-- (liberação vitalícia); sem acesso, `until` é o fim do último período.
+-- `house` diz se a pessoa usa a casa pelo plano do dono (sem o Plus próprio).
 create or replace function public.my_access()
 returns jsonb
 language plpgsql
@@ -106,30 +130,18 @@ stable
 set search_path = public
 as $$
 declare
-  v_me     uuid := auth.uid();
-  v_e      public.entitlements;
-  v_until  timestamptz;
-  v_owner  public.entitlements;
+  v_me          uuid := auth.uid();
+  v_e           public.entitlements;
+  v_until       timestamptz;
+  v_owner       public.entitlements;
+  v_house       boolean := false;
+  v_house_until timestamptz;
 begin
   if v_me is null then
-    return jsonb_build_object('active', false, 'source', 'none', 'until', null);
-  end if;
-
-  select * into v_e from public.entitlements where user_id = v_me;
-  if found then
-    if v_e.lifetime then
-      return jsonb_build_object('active', true, 'source', 'grant', 'until', null);
-    end if;
-    v_until := greatest(v_e.plan_until, v_e.grant_until);
-    if v_until is not null and v_until > now() then
-      return jsonb_build_object(
-        'active', true,
-        'source', case
-          when v_e.plan_until is not null and v_e.plan_until > now()
-            then 'own' else 'grant' end,
-        'until', v_until
-      );
-    end if;
+    return jsonb_build_object(
+      'active', false, 'source', 'none', 'until', null,
+      'house', false, 'house_until', null
+    );
   end if;
 
   select e.* into v_owner
@@ -140,23 +152,41 @@ begin
     and public.user_has_own_access(s.owner_id)
   limit 1;
   if found then
-    return jsonb_build_object(
-      'active', true,
-      'source', 'house',
-      'until', case when v_owner.lifetime then null
-                    else greatest(v_owner.plan_until, v_owner.grant_until) end
-    );
+    v_house := true;
+    v_house_until := case when v_owner.lifetime then null
+                          else greatest(v_owner.plan_until, v_owner.grant_until) end;
   end if;
 
-  -- Sem acesso agora. Se já teve, `until` é o fim do último período (o app
-  -- mostra "seu Plus acabou em ...").
+  select * into v_e from public.entitlements where user_id = v_me;
+  if found then
+    if v_e.lifetime then
+      return jsonb_build_object(
+        'active', true, 'source', 'grant', 'until', null,
+        'house', v_house, 'house_until', v_house_until
+      );
+    end if;
+    v_until := greatest(v_e.plan_until, v_e.grant_until);
+    if v_until is not null and v_until > now() then
+      return jsonb_build_object(
+        'active', true,
+        'source', case
+          when v_e.plan_until is not null and v_e.plan_until > now()
+            then 'own' else 'grant' end,
+        'until', v_until,
+        'house', v_house, 'house_until', v_house_until
+      );
+    end if;
+  end if;
+
   return jsonb_build_object(
     'active', false,
     'source', 'none',
     'until', (
       select greatest(e.plan_until, e.grant_until)
       from public.entitlements e where e.user_id = v_me
-    )
+    ),
+    'house', v_house,
+    'house_until', v_house_until
   );
 end;
 $$;
@@ -258,20 +288,20 @@ drop policy if exists "shared_docs: delete member" on public.shared_docs;
 
 create policy "shared_docs: select member" on public.shared_docs
   for select to authenticated
-  using (public.is_space_member(space_id) and public.has_cloud_access());
+  using (public.is_space_member(space_id) and public.has_house_access());
 
 create policy "shared_docs: insert member" on public.shared_docs
   for insert to authenticated
-  with check (public.is_space_member(space_id) and public.has_cloud_access());
+  with check (public.is_space_member(space_id) and public.has_house_access());
 
 create policy "shared_docs: update member" on public.shared_docs
   for update to authenticated
-  using (public.is_space_member(space_id) and public.has_cloud_access())
-  with check (public.is_space_member(space_id) and public.has_cloud_access());
+  using (public.is_space_member(space_id) and public.has_house_access())
+  with check (public.is_space_member(space_id) and public.has_house_access());
 
 create policy "shared_docs: delete member" on public.shared_docs
   for delete to authenticated
-  using (public.is_space_member(space_id) and public.has_cloud_access());
+  using (public.is_space_member(space_id) and public.has_house_access());
 
 -- ------------------------------------------------------- fotos (Storage)
 
@@ -308,7 +338,9 @@ using (bucket_id = 'recipe-images'
 
 -- ------------------------------------------------------------- a casa
 -- Quem CRIA a casa precisa ter acesso próprio (é o dono que paga). Quem ENTRA
--- não precisa: usa a casa de graça enquanto o plano do dono estiver valendo.
+-- não precisa: usa a lista, o calendário e a despensa da casa de graça
+-- enquanto o plano do dono estiver valendo (mas não ganha sincronização das
+-- próprias receitas nem fotos na nuvem).
 
 create or replace function public.create_space(p_display_name text default '')
 returns uuid

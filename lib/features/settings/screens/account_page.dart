@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:receyta/data/subscription/cloud_access_remote.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
@@ -666,20 +665,19 @@ class _PlusTile extends ConsumerWidget {
 
     final active = ref.watch(hasCloudAccessProvider);
     final ended = access.valueOrNull?.ended ?? false;
-    final source = access.valueOrNull?.source;
+    final house = ref.watch(hasHouseAccessProvider);
     final sync = ref.watch(syncCoordinatorProvider);
 
-    final title = !active
-        ? 'Receyta Plus'
-        : source == AccessSource.house
-            ? 'Plus da casa'
-            : 'Plus ativo';
+    final title = active ? 'Plus ativo' : 'Receyta Plus';
     final text = active
         ? syncSummary(sync, ref.watch(syncClockProvider)())
-        : ended
-            ? 'Seu plano acabou. A sincronização está pausada'
-            : 'Sincronize entre aparelhos, guarde as fotos na nuvem e divida '
-                'a casa';
+        : house
+            ? 'Você usa a casa pelo plano do dono. Assine para sincronizar '
+                'receitas e fotos'
+            : ended
+                ? 'Seu plano acabou. A sincronização está pausada'
+                : 'Sincronize entre aparelhos, guarde as fotos na nuvem e '
+                    'divida a casa';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(

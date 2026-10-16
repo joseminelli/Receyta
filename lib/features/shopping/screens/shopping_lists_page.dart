@@ -249,7 +249,7 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
   /// guardada.
   Future<void> _openCreateSheet(BuildContext context) async {
     final hasSpace = ref.read(currentSpaceIdProvider) != null &&
-        ref.read(hasCloudAccessProvider);
+        ref.read(hasHouseAccessProvider);
     final flag = ref.read(newListsSharedProvider.notifier);
     var shared = hasSpace &&
         (await ref
@@ -415,7 +415,7 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
             if (ref.read(authUserProvider).valueOrNull != null &&
                 (list.spaceId != null ||
                     ref.read(currentSpaceIdProvider) == null ||
-                    ref.read(hasCloudAccessProvider)))
+                    ref.read(hasHouseAccessProvider)))
               AppSheetOption(
                 icon: list.spaceId == null
                     ? Icons.group_add_outlined

@@ -166,6 +166,10 @@ class _PlusPageState extends ConsumerState<PlusPage> {
       action = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (ref.watch(hasHouseAccessProvider)) ...[
+            const _HouseCard(),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           if (endedAt != null) ...[
             EndedCard(endedAt: endedAt),
             const SizedBox(height: AppSpacing.lg),
@@ -388,11 +392,6 @@ class _IncludedChip extends StatelessWidget {
 ({String title, String detail}) _activeInfo(CloudAccess access) {
   final date = access.until == null ? null : formatAccessDate(access.until!);
   return switch (access.source) {
-    AccessSource.house => (
-        title: 'Plus da casa',
-        detail: 'Você usa a parte online pela assinatura do dono da casa'
-            '${date == null ? '' : ', válida até $date'}.',
-      ),
     AccessSource.grant => (
         title: 'Acesso liberado',
         detail: date == null
@@ -406,6 +405,50 @@ class _IncludedChip extends StatelessWidget {
             : 'Sua assinatura está ativa até $date.',
       ),
   };
+}
+
+/// Quem usa a casa pelo plano do dono: o que já tem e o que precisa do Plus
+/// próprio. A assinatura do dono não passa pra quem entra.
+class _HouseCard extends StatelessWidget {
+  const _HouseCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.home_outlined, size: 28, color: colors.onPaper),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Você usa a casa de graça',
+                  style: AppTextStyles.display(24),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Lista de compras, calendário e despensa compartilhados, '
+                  'pelo plano do dono. Para sincronizar as suas receitas e '
+                  'guardar fotos na nuvem, assine o Plus.',
+                  style: context.texts.bodyMedium
+                      ?.copyWith(color: colors.textMuted),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -444,8 +487,8 @@ class _Perks extends StatelessWidget {
     (
       Icons.home_outlined,
       'Casa para até 6 pessoas',
-      'Só o dono assina. Quem entra usa de graça enquanto o plano do dono '
-          'estiver ativo.',
+      'Só o dono assina. Quem entra usa lista, calendário e despensa da '
+          'casa de graça, enquanto o plano do dono estiver ativo.',
     ),
   ];
 

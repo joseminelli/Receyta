@@ -118,10 +118,19 @@ final cloudAccessProvider =
   CloudAccessController.new,
 );
 
-/// A pessoa pode usar a parte online agora? É isto que liga e desliga o
-/// sync, a casa e as fotos na nuvem.
+/// A pessoa tem o Plus próprio agora (assinatura ou liberação)? É isto que
+/// liga a sincronização das receitas, as fotos na nuvem e os links curtos.
+/// Quem só usa a casa pelo plano do dono NÃO passa aqui.
 final hasCloudAccessProvider = Provider<bool>((ref) {
   final access = ref.watch(cloudAccessProvider).valueOrNull;
   if (access == null) return false;
   return access.isActiveAt(ref.watch(accessClockProvider)());
+});
+
+/// A pessoa pode usar o que a casa divide (lista, calendário, despensa)? Vale
+/// o Plus próprio ou o plano de quem é dono da casa dela.
+final hasHouseAccessProvider = Provider<bool>((ref) {
+  final access = ref.watch(cloudAccessProvider).valueOrNull;
+  if (access == null) return false;
+  return access.houseAccessAt(ref.watch(accessClockProvider)());
 });
