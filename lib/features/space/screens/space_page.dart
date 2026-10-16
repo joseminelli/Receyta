@@ -5,9 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:receyta/core/day.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/space/space_remote.dart';
+import 'package:receyta/domain/models/meal_plan_entry.dart';
+import 'package:receyta/domain/models/shopping_list.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
+import 'package:receyta/features/planner/controllers/planner_view_model.dart';
 import 'package:receyta/features/shopping/controllers/shopping_view_model.dart';
 import 'package:receyta/features/space/controllers/calendar_share.dart';
 import 'package:receyta/features/space/controllers/invite_link.dart';
@@ -810,6 +814,10 @@ class _InSpace extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!paused) ...[
+          _TodaySummary(calendarOn: calendarOn),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         const _SectionLabel('QUEM ESTÁ NA CASA'),
         if (space.members.isEmpty)
           const _Notice(
@@ -847,8 +855,15 @@ class _InSpace extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: AppSpacing.lg),
-        const _SectionLabel('O QUE A CASA DIVIDE'),
-        _Card(
+        _Collapsible(
+          title: 'O que a casa divide',
+          summary: _sharingSummary(
+            paused: paused,
+            lists: sharedLists,
+            calendar: calendarOn,
+            pantry: pantryOn,
+          ),
+          child: _Card(
           children: [
             _InfoRow(
               icon: Icons.shopping_basket_outlined,
@@ -896,6 +911,7 @@ class _InSpace extends ConsumerWidget {
               ),
             ),
           ],
+          ),
         ),
         const SizedBox(height: AppSpacing.xl),
         Center(
@@ -907,6 +923,196 @@ class _InSpace extends ConsumerWidget {
               style: context.texts.labelLarge?.copyWith(color: colors.danger),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// "2 listas · calendário · despensa": o que está dividido, numa linha.
+String _sharingSummary({
+  required bool paused,
+  required int lists,
+  required bool calendar,
+  required bool pantry,
+}) {
+  if (paused) return 'Pausado';
+  final parts = [
+    if (lists > 0) lists == 1 ? '1 lista' : '$lists listas',
+    if (calendar) 'calendário',
+    if (pantry) 'despensa',
+  ];
+  return parts.isEmpty ? 'Nada dividido ainda' : parts.join(' · ');
+}
+
+/// Seção que abre e fecha: título, resumo e seta no cabeçalho; o [child] só
+/// aparece aberto. Começa fechada.
+class _Collapsible extends StatefulWidget {
+  const _Collapsible({
+    required this.title,
+    required this.summary,
+    required this.child,
+  });
+
+  final String title;
+  final String summary;
+  final Widget child;
+
+  @override
+  State<_Collapsible> createState() => _CollapsibleState();
+}
+
+class _CollapsibleState extends State<_Collapsible> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Material(
+          color: colors.paperSoft,
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            onTap: () => setState(() => _open = !_open),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.title, style: AppTextStyles.display(21)),
+                        Text(
+                          widget.summary,
+                          style: context.texts.bodySmall
+                              ?.copyWith(color: colors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: _open ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.expand_more_rounded,
+                      color: colors.onPaper,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _open
+              ? Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: widget.child,
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+      ],
+    );
+  }
+}
+
+/// O que importa agora: quantos itens faltam nas listas da casa e o que a casa
+/// vai comer hoje (com quem planejou).
+class _TodaySummary extends ConsumerWidget {
+  const _TodaySummary({required this.calendarOn});
+
+  final bool calendarOn;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.colors;
+    final all = ref.watch(shoppingListsProvider).valueOrNull ??
+        const <ShoppingListSummary>[];
+    final lists = [
+      for (final s in all)
+        if (s.list.spaceId != null) s,
+    ];
+    var missing = 0;
+    for (final s in lists) {
+      missing += s.total - s.checked;
+    }
+    final day = today();
+    final meals = calendarOn
+        ? [
+            for (final e in ref.watch(dayEntriesProvider(day)).valueOrNull ??
+                const <MealPlanEntry>[])
+              if (e.spaceId != null) e,
+          ]
+        : const <MealPlanEntry>[];
+
+    final String shoppingText;
+    if (lists.isEmpty) {
+      shoppingText = 'Nenhuma lista compartilhada ainda.';
+    } else if (missing == 0) {
+      shoppingText = lists.length == 1
+          ? 'Tudo comprado na lista da casa.'
+          : 'Tudo comprado nas ${lists.length} listas da casa.';
+    } else {
+      shoppingText = '${missing == 1 ? '1 item' : '$missing itens'} em '
+          '${lists.length == 1 ? '1 lista' : '${lists.length} listas'}.';
+    }
+
+    final String mealsText;
+    if (!calendarOn) {
+      mealsText = 'Calendário desligado. Ligue em "O que a casa divide".';
+    } else if (meals.isEmpty) {
+      mealsText = 'Nada planejado para hoje.';
+    } else {
+      mealsText = [
+        for (final e in meals)
+          '${e.mealType.label}: ${e.recipeName}'
+              '${e.sharedBy == null ? '' : ' (${e.sharedBy})'}',
+      ].join('\n');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _SectionLabel('AGORA NA CASA'),
+        _Card(
+          children: [
+            InkWell(
+              onTap: lists.isEmpty
+                  ? null
+                  : () => context.push('/shopping/${lists.first.list.id}'),
+              child: _InfoRow(
+                icon: Icons.shopping_basket_outlined,
+                title: missing == 0 ? 'Compras em dia' : 'Falta comprar',
+                text: shoppingText,
+                trailing: lists.isEmpty
+                    ? null
+                    : Icon(Icons.chevron_right, color: colors.textMuted),
+              ),
+            ),
+            InkWell(
+              onTap: calendarOn
+                  ? () => context.push('/planner/day/${dayToParam(day)}')
+                  : null,
+              child: _InfoRow(
+                icon: Icons.restaurant_outlined,
+                title: 'Hoje no cardápio',
+                text: mealsText,
+                trailing: calendarOn
+                    ? Icon(Icons.chevron_right, color: colors.textMuted)
+                    : null,
+              ),
+            ),
+          ],
         ),
       ],
     );
