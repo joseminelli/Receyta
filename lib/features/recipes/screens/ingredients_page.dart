@@ -8,9 +8,12 @@ import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/ingredient_repository.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/engine/fuzzy_match.dart';
+import 'package:receyta/domain/engine/ingredient_category.dart';
+import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/features/recipes/screens/ingredient_picker.dart';
 import 'package:receyta/features/recipes/screens/ingredient_recipes_sheet.dart';
+import 'package:receyta/features/recipes/screens/ingredients_filter_bar.dart';
 import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
@@ -41,10 +44,30 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
   final _query = TextEditingController();
   late bool _pantryOnly = widget.pantryOnly;
 
+  IngredientSort _sort = IngredientSort.nameAsc;
+  String? _category;
+  bool _showFilters = true;
+
   @override
   void dispose() {
     _query.dispose();
     super.dispose();
+  }
+
+  /// Ordem escolhida; empate cai no nome, sem ligar pra acento.
+  int _comparator(
+    ({Ingredient ingredient, int count}) a,
+    ({Ingredient ingredient, int count}) b,
+  ) {
+    int byName() => stripAccents(a.ingredient.displayName.toLowerCase())
+        .compareTo(stripAccents(b.ingredient.displayName.toLowerCase()));
+    final byUse = switch (_sort) {
+      IngredientSort.mostUsed => b.count.compareTo(a.count),
+      IngredientSort.leastUsed => a.count.compareTo(b.count),
+      _ => 0,
+    };
+    if (byUse != 0) return byUse;
+    return _sort == IngredientSort.nameDesc ? -byName() : byName();
   }
 
   Future<void> _merge(Ingredient source, Ingredient target) async {
@@ -111,6 +134,34 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
     );
   }
 
+  /// Apaga do catálogo tudo o que nenhuma receita usa, menos "sempre tenho" e
+  /// os com preço.
+  Future<void> _deleteUnused() async {
+    final ok = await AppDialog.confirm(
+      context,
+      icon: Icons.delete_sweep_outlined,
+      accent: context.colors.danger,
+      title: 'Apagar os não usados?',
+      message: 'Os ingredientes que não estão em nenhuma receita saem da '
+          'lista. Os marcados como "sempre tenho" e os que têm preço ficam. '
+          'Não dá pra desfazer.',
+      confirmLabel: 'Apagar',
+    );
+    if (!ok || !mounted) return;
+    final result = await ref.read(ingredientRepositoryProvider).deleteUnused();
+    result.when(
+      ok: (n) => showAppSnackBar(
+        message: n == 0
+            ? 'Nenhum ingrediente pra apagar.'
+            : '$n ${n == 1 ? 'ingrediente apagado' : 'ingredientes apagados'}.',
+      ),
+      err: (f) => showAppSnackBar(
+        message: f.message,
+        variant: AppSnackBarVariant.error,
+      ),
+    );
+  }
+
   Future<void> _editPrice(Ingredient ingredient) async {
     await showIngredientPriceSheet(context, ingredient);
   }
@@ -148,6 +199,12 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
             label: 'Refazer a leitura',
             hint: 'Corrige nomes e medidas',
             onTap: _reanalyze,
+          ),
+          ActionMenuItem(
+            icon: Icons.delete_sweep_outlined,
+            label: 'Apagar não usados',
+            hint: 'Tira os que nenhuma receita usa',
+            onTap: _deleteUnused,
           ),
         ],
       ),
@@ -215,15 +272,35 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
     List<({Ingredient ingredient, int count})> rows,
   ) {
     final duplicateOf = _detectDuplicates([for (final r in rows) r.ingredient]);
-    final query = _query.text.trim().toLowerCase();
+    final query = stripAccents(_query.text.trim().toLowerCase());
     final pantryCount = rows.where((r) => r.ingredient.inPantry).length;
-    final filtered = [
+    final matching = [
       for (final r in rows)
         if ((!_pantryOnly || r.ingredient.inPantry) &&
             (query.isEmpty ||
-                r.ingredient.displayName.toLowerCase().contains(query)))
+                stripAccents(r.ingredient.displayName.toLowerCase())
+                    .contains(query)))
           r,
     ];
+    final slugOf = {
+      for (final r in matching)
+        r.ingredient.id: categorySlugFromId(r.ingredient.categoryId) ??
+            categorySlugFor(r.ingredient.displayName),
+    };
+    final counts = <String, int>{};
+    for (final slug in slugOf.values) {
+      counts[slug] = (counts[slug] ?? 0) + 1;
+    }
+    final categories = [
+      for (final slug in counts.keys.toList()
+        ..sort((a, b) => categoryOrder(a).compareTo(categoryOrder(b))))
+        (slug: slug, label: categoryLabel(slug), count: counts[slug]!),
+    ];
+    final category = counts.containsKey(_category) ? _category : null;
+    final filtered = [
+      for (final r in matching)
+        if (category == null || slugOf[r.ingredient.id] == category) r,
+    ]..sort(_comparator);
 
     return Column(
       children: [
@@ -244,12 +321,56 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
             onChanged: (i) => setState(() => _pantryOnly = i == 1),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
-        _buildSearchField(context),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _showFilters
+              ? Column(
+                  children: [
+                    const SizedBox(height: AppSpacing.sm),
+                    _buildSearchField(context),
+                    IngredientsFilterBar(
+                      sort: _sort,
+                      onSort: (s) => setState(() => _sort = s),
+                      categories: categories,
+                      category: category,
+                      onCategory: (c) => setState(() => _category = c),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                )
+              : const SizedBox(width: double.infinity),
+        ),
         Expanded(
-            child: _buildResultsList(context, filtered, duplicateOf, query)),
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: _buildResultsList(context, filtered, duplicateOf, query),
+          ),
+        ),
       ],
     );
+  }
+
+  /// Rolar pra baixo esconde busca e filtros; rolar pra cima (ou voltar ao
+  /// topo) mostra de novo. Só esconde quando a lista tem folga de sobra: com a
+  /// área maior ela poderia deixar de rolar e ficar presa sem os filtros.
+  bool _onScroll(ScrollNotification n) {
+    if (n.depth != 0 || n.metrics.axis != Axis.vertical) return false;
+    final metrics = n.metrics;
+    if (_showFilters) {
+      if (n is ScrollUpdateNotification &&
+          (n.scrollDelta ?? 0) > 6 &&
+          metrics.pixels > 40 &&
+          metrics.maxScrollExtent > 180) {
+        setState(() => _showFilters = false);
+      }
+    } else if (metrics.maxScrollExtent <= 0 ||
+        metrics.pixels <= 0 ||
+        (n is ScrollUpdateNotification && (n.scrollDelta ?? 0) < -6)) {
+      setState(() => _showFilters = true);
+    }
+    return false;
   }
 
   Widget _buildSearchField(BuildContext context) {

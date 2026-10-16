@@ -236,6 +236,18 @@ class IngredientDao extends DatabaseAccessor<AppDatabase>
     return (delete(ingredients)..where((i) => i.id.equals(id))).go();
   }
 
+  /// Apaga os ingredientes que nenhuma receita usa, menos os "sempre tenho" e
+  /// os com preço (escolhas do usuário). Devolve quantos saíram.
+  Future<int> deleteUnused() {
+    return (delete(ingredients)
+          ..where((i) =>
+              i.inPantry.equals(false) &
+              i.priceCents.isNull() &
+              notExistsQuery(select(recipeIngredients)
+                ..where((r) => r.ingredientId.equalsExp(i.id)))))
+        .go();
+  }
+
   /// Grava o alias confirmado pelo usuário (§8.2 passo 3) — próxima vez que
   /// esse nome aparecer, bate direto por `normalized_alias`, sem fuzzy.
   Future<void> addAlias(String ingredientId, String normalizedAlias) {

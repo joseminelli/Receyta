@@ -111,6 +111,16 @@ class IngredientRepository {
     }
   }
 
+  /// Limpa o catálogo: apaga o que nenhuma receita usa, poupando os "sempre
+  /// tenho" e os com preço. Devolve quantos saíram.
+  Future<Result<int>> deleteUnused() async {
+    try {
+      return Ok(await _dao.deleteUnused());
+    } catch (e) {
+      return Err(DatabaseFailure('Falha ao apagar os não usados', cause: e));
+    }
+  }
+
   Future<Result<void>> confirmAlias(
       String ingredientId, String aliasText) async {
     final key = normalize(aliasText);
