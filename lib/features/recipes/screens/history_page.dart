@@ -15,6 +15,8 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/brand_loader.dart';
+import 'package:receyta/widgets/recipe_cover.dart';
+import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/state_badge.dart';
 
 /// Tudo o que você cozinhou (G7), do mais recente ao mais antigo, agrupado por
@@ -251,6 +253,7 @@ class _HistoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final day = log.cookedAt.toLocal();
+    final recipe = log.recipe;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Material(
@@ -268,23 +271,26 @@ class _HistoryRow extends StatelessWidget {
             ),
             child: Row(
               children: [
-                SizedBox(
-                  width: 52,
-                  child: Column(
-                    children: [
-                      Text('${day.day}', style: AppTextStyles.display(34)),
-                      Text(
-                        formatCookedDate(day, now)
-                            .split(',')
-                            .first
-                            .toUpperCase(),
-                        style: context.texts.labelSmall
-                            ?.copyWith(color: colors.textMuted),
+                if (recipe != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadii.sm),
+                    child: SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: RecipeCover(
+                        recipe: recipe,
+                        tile: resolveTileAppearance(
+                          colors,
+                          color: recipe.tileColor,
+                          motif: recipe.tileMotif,
+                          seedId: recipe.id,
+                        ),
+                        cacheWidth: 200,
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,13 +302,42 @@ class _HistoryRow extends StatelessWidget {
                         style: context.texts.bodyLarge
                             ?.copyWith(fontWeight: FontWeight.w700),
                       ),
-                      if (log.hasNote)
-                        Text(log.note!, style: context.texts.bodyMedium),
-                      Text(
-                        cookedAgo(log.cookedAt, now),
-                        style: context.texts.bodySmall
-                            ?.copyWith(color: colors.textMuted),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${formatCookedDate(day, now)} · '
+                              '${cookedAgo(log.cookedAt, now)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.texts.labelMedium
+                                  ?.copyWith(color: colors.textMuted),
+                            ),
+                          ),
+                          if (log.rating != null) ...[
+                            const SizedBox(width: AppSpacing.xs),
+                            for (var i = 1; i <= 5; i++)
+                              Icon(
+                                i <= log.rating!
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                size: 14,
+                                color: i <= log.rating!
+                                    ? colors.onPaper
+                                    : colors.textMuted,
+                              ),
+                          ],
+                        ],
                       ),
+                      if (log.hasNote) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '“${log.note!.trim()}”',
+                          style: context.texts.bodyMedium
+                              ?.copyWith(fontStyle: FontStyle.italic),
+                        ),
+                      ],
                     ],
                   ),
                 ),

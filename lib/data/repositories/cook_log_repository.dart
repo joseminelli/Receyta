@@ -5,6 +5,7 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/cook_log_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
+import 'package:receyta/data/repositories/recipe_repository.dart' show recipeFromRow;
 import 'package:receyta/domain/models/cook_log.dart';
 
 /// Histórico "cozinhei" (G7): registrar, listar e desfazer. Sem lógica de
@@ -84,17 +85,24 @@ class CookLogRepository {
   /// Todo o histórico, com o nome da receita, do mais recente ao mais antigo.
   Stream<List<CookLog>> watchAll() => _dao.watchAllWithRecipe().map(
         (rows) => [
-          for (final r in rows) _toDomain(r.log, recipeName: r.recipe.name),
+          for (final r in rows)
+            _toDomain(r.log, recipeName: r.recipe.name, recipe: r.recipe),
         ],
       );
 
-  CookLog _toDomain(CookLogRow r, {String recipeName = ''}) => CookLog(
+  CookLog _toDomain(
+    CookLogRow r, {
+    String recipeName = '',
+    RecipeRow? recipe,
+  }) =>
+      CookLog(
         id: r.id,
         recipeId: r.recipeId,
         recipeName: recipeName,
         cookedAt: r.cookedAt.toLocal(),
         note: r.note,
         rating: r.rating,
+        recipe: recipe == null ? null : recipeFromRow(recipe),
       );
 }
 
