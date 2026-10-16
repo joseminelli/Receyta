@@ -225,6 +225,7 @@ class RecipeRepository {
   Future<Result<int>> reprocessLegacyIngredients() async {
     try {
       final rows = await _dao.findUnresolvedIngredients();
+      final touched = <String>{};
       for (final row in rows) {
         final parsed = parseIngredientLine(row.rawText);
         String? ingredientId;
@@ -239,7 +240,9 @@ class RecipeRepository {
           unitId: parsed.unitCode,
           qualifier: parsed.qualifier,
         );
+        touched.add(row.recipeId);
       }
+      await _dao.touch(touched, _clock().toUtc());
       return Ok(rows.length);
     } catch (e) {
       return Err(
@@ -252,12 +255,16 @@ class RecipeRepository {
   /// quantidade, unidade, observação e o vínculo com o catálogo. Existe porque
   /// o parser melhora ("1 xícara (chá) de açúcar" já chegou a virar o
   /// ingrediente "(chá) de Açúcar"), e o que foi lido antes fica como estava.
+  /// Toda receita com ingrediente é marcada como alterada, mesmo as que não
+  /// mudaram agora: assim uma releitura já feita antes (que não avisou o sync)
+  /// também sobe pra nuvem.
   /// O texto digitado nunca muda. Ingredientes do catálogo que ficarem sem uso
   /// por causa disso são apagados. Devolve quantas linhas mudaram.
   Future<Result<int>> reanalyzeIngredients() async {
     try {
       final rows = await _dao.allIngredientLines();
       final oldIds = <String>{};
+      final touched = <String>{for (final row in rows) row.recipeId};
       var changed = 0;
       for (final row in rows) {
         final parsed = parseIngredientLine(row.rawText);
@@ -282,6 +289,7 @@ class RecipeRepository {
         );
         changed++;
       }
+      await _dao.touch(touched, _clock().toUtc());
       for (final id in oldIds) {
         try {
           await _ingredientDao.deleteIngredient(id);
@@ -293,6 +301,24 @@ class RecipeRepository {
     } catch (e) {
       return Err(
         DatabaseFailure('Falha ao refazer a leitura dos ingredientes',
+            cause: e),
+      );
+    }
+  }
+
+  /// As receitas que usam o ingrediente [ingredientId], por nome. As da lixeira
+  /// vêm marcadas, porque também entram na contagem de uso do catálogo.
+  Future<Result<List<({String id, String name, bool inTrash})>>>
+      recipesUsingIngredient(String ingredientId) async {
+    try {
+      final rows = await _dao.recipesUsingIngredient(ingredientId);
+      return Ok([
+        for (final r in rows)
+          (id: r.id, name: r.name, inTrash: r.deletedAt != null),
+      ]);
+    } catch (e) {
+      return Err(
+        DatabaseFailure('Falha ao buscar as receitas do ingrediente',
             cause: e),
       );
     }

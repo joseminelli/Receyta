@@ -212,6 +212,31 @@ class RecipeDao extends DatabaseAccessor<AppDatabase> with _$RecipeDaoMixin {
     );
   }
 
+  /// Receitas (inclusive as da lixeira) que têm [ingredientId] em alguma linha,
+  /// por nome, sem repetir a que usa o mesmo ingrediente em duas linhas.
+  Future<List<RecipeRow>> recipesUsingIngredient(String ingredientId) async {
+    final query = select(recipes).join([
+      innerJoin(
+        recipeIngredients,
+        recipeIngredients.recipeId.equalsExp(recipes.id),
+      ),
+    ])
+      ..where(recipeIngredients.ingredientId.equals(ingredientId))
+      ..orderBy([OrderingTerm.asc(recipes.name)]);
+    final seen = <String>{};
+    return [
+      for (final row in await query.get())
+        if (seen.add(row.readTable(recipes).id)) row.readTable(recipes),
+    ];
+  }
+
+  /// Marca as receitas como alteradas agora, pro sync reenviar. Usado quando
+  /// só as linhas de ingrediente mudaram (releitura pelo parser).
+  Future<void> touch(Iterable<String> recipeIds, DateTime at) {
+    return (update(recipes)..where((r) => r.id.isIn(recipeIds.toList())))
+        .write(RecipesCompanion(updatedAt: Value(at)));
+  }
+
   Future<List<RecipeStepRow>> stepsOf(String recipeId) {
     return (select(recipeSteps)
           ..where((s) => s.recipeId.equals(recipeId))

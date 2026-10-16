@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/theme/typography.dart';
+import 'package:receyta/widgets/app_sheet.dart';
+import 'package:receyta/widgets/circle_icon_button.dart';
 
 /// Abre o seletor "Mesclar com" (C6): busca + lista do catálogo inteiro,
 /// sem [excludeId] — o próprio ingrediente não pode virar alvo dele mesmo.
@@ -15,7 +19,6 @@ Future<Ingredient?> pickIngredient(
 }) {
   return showModalBottomSheet<Ingredient>(
     context: context,
-    backgroundColor: context.colors.paper,
     showDragHandle: true,
     isScrollControlled: true,
     builder: (sheet) => _IngredientPickerSheet(excludeId: excludeId),
@@ -42,108 +45,112 @@ class _IngredientPickerSheetState
     super.dispose();
   }
 
+  String _fold(String s) => stripAccents(s.trim().toLowerCase());
+
   @override
   Widget build(BuildContext context) {
     final all =
         ref.watch(allIngredientsProvider).valueOrNull ?? const <Ingredient>[];
-    final q = _query.text.trim().toLowerCase();
+    final q = _fold(_query.text);
     final options = all
         .where((i) => i.id != widget.excludeId)
-        .where((i) => q.isEmpty || i.displayName.toLowerCase().contains(q))
+        .where((i) => q.isEmpty || _fold(i.displayName).contains(q))
         .toList();
+    final height = MediaQuery.sizeOf(context).height;
 
-    return SafeArea(
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.75,
-        ),
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: AppSheetFrame(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildTitle(context),
+            Row(
+              children: [
+                CircleIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: 'Voltar',
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text('Mesclar com', style: AppTextStyles.display(30)),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
             _buildSearchField(context),
             const SizedBox(height: AppSpacing.sm),
-            Flexible(child: _buildList(context, options, q)),
+            SizedBox(
+              height: height * 0.5,
+              child: _buildList(context, options),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTitle(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        0,
-        AppSpacing.screen,
-        AppSpacing.md,
-      ),
-      child: Text('Mesclar com', style: context.texts.displaySmall),
-    );
-  }
-
   Widget _buildSearchField(BuildContext context) {
     final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-      child: TextField(
-        controller: _query,
-        onChanged: (_) => setState(() {}),
-        textCapitalization: TextCapitalization.none,
-        style: context.texts.bodyLarge,
-        decoration: InputDecoration(
-          hintText: 'Buscar ingrediente',
-          prefixIcon: Icon(Icons.search, color: colors.textMuted),
-          filled: true,
-          fillColor: colors.paperSoft,
-          contentPadding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            borderSide: BorderSide.none,
-          ),
-        ),
+    return TextField(
+      controller: _query,
+      onChanged: (_) => setState(() {}),
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: 'Buscar ingrediente',
+        prefixIcon: Icon(Icons.search, color: colors.textMuted),
+        suffixIcon: _query.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Limpar busca',
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  _query.clear();
+                  setState(() {});
+                },
+              ),
       ),
     );
   }
 
-  Widget _buildList(BuildContext context, List<Ingredient> options, String q) {
+  Widget _buildList(BuildContext context, List<Ingredient> options) {
+    final colors = context.colors;
     if (options.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(AppSpacing.screen),
+      return Center(
         child: Text(
-          q.isEmpty
+          _query.text.trim().isEmpty
               ? 'Nenhum outro ingrediente ainda.'
-              : 'Nada encontrado pra "$q".',
-          style: context.texts.bodyMedium
-              ?.copyWith(color: context.colors.textMuted),
+              : 'Nada encontrado pra "${_query.text.trim()}".',
+          textAlign: TextAlign.center,
+          style: context.texts.bodyMedium?.copyWith(color: colors.textMuted),
         ),
       );
     }
-    return ListView.separated(
-      shrinkWrap: true,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        0,
-        AppSpacing.screen,
-        AppSpacing.lg,
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
       ),
-      itemCount: options.length,
-      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.xs),
-      itemBuilder: (context, i) {
-        final ing = options[i];
-        return _PickerRow(
-          label: ing.displayName,
-          onTap: () => Navigator.of(context).pop<Ingredient>(ing),
-        );
-      },
+      clipBehavior: Clip.antiAlias,
+      child: ListView.separated(
+        padding: EdgeInsets.zero,
+        itemCount: options.length,
+        separatorBuilder: (_, __) => Divider(height: 1, color: colors.paper),
+        itemBuilder: (context, i) {
+          final ing = options[i];
+          return _PickerRow(
+            label: ing.displayName,
+            onTap: () => Navigator.of(context).pop<Ingredient>(ing),
+          );
+        },
+      ),
     );
   }
 }
 
-/// Linha de opção: cartão `paperSoft` arredondado, ícone + nome + seta —
-/// mesma linguagem visual do resto do app, em vez do `ListTile` cru do
-/// Material.
+/// Linha de opção: bolinha `ink` com a inicial, o nome e uma seta — o mesmo
+/// par dos cartões da tela de ingredientes.
 class _PickerRow extends StatelessWidget {
   const _PickerRow({required this.label, required this.onTap});
 
@@ -153,30 +160,41 @@ class _PickerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return Material(
-      color: colors.paperSoft,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        onTap: onTap,
+    final initial = label.isEmpty ? '?' : label[0].toUpperCase();
+    return InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
           ),
           child: Row(
             children: [
-              Icon(Icons.egg_outlined, size: 20, color: colors.textMuted),
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration:
+                    BoxDecoration(color: colors.ink, shape: BoxShape.circle),
+                child: Text(
+                  initial,
+                  style: AppTextStyles.display(18)
+                      .copyWith(color: colors.lime, height: 1),
+                ),
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   label,
-                  style: context.texts.bodyLarge,
+                  style: context.texts.bodyLarge
+                      ?.copyWith(fontWeight: FontWeight.w600),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(Icons.chevron_right, size: 18, color: colors.textMuted),
+              Icon(Icons.chevron_right, size: 20, color: colors.textMuted),
             ],
           ),
         ),

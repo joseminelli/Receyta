@@ -10,6 +10,7 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/engine/fuzzy_match.dart';
 import 'package:receyta/domain/models/ingredient.dart';
 import 'package:receyta/features/recipes/screens/ingredient_picker.dart';
+import 'package:receyta/features/recipes/screens/ingredient_recipes_sheet.dart';
 import 'package:receyta/features/recipes/screens/ingredient_price_sheet.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
@@ -322,6 +323,9 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
           onPickMerge: () => _pickAndMerge(ingredient),
           onTogglePantry: () => _togglePantry(ingredient),
           onEditPrice: () => _editPrice(ingredient),
+          onShowRecipes: count == 0
+              ? null
+              : () => showIngredientRecipesSheet(context, ingredient),
           onDelete: count == 0 ? () => _delete(ingredient) : null,
         );
       },
@@ -362,6 +366,7 @@ class _IngredientRow extends StatelessWidget {
     required this.onPickMerge,
     required this.onTogglePantry,
     required this.onEditPrice,
+    required this.onShowRecipes,
     required this.onDelete,
   });
 
@@ -372,6 +377,9 @@ class _IngredientRow extends StatelessWidget {
   final VoidCallback onPickMerge;
   final VoidCallback onTogglePantry;
   final VoidCallback onEditPrice;
+
+  /// Nulo quando nenhuma receita usa o ingrediente.
+  final VoidCallback? onShowRecipes;
 
   /// Nulo quando o ingrediente está em uso — `RecipeIngredients.ingredientId`
   /// é `onDelete: restrict`, então apagar falharia; some a opção em vez de
@@ -462,13 +470,18 @@ class _IngredientRow extends StatelessWidget {
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                Text(
-                                  count == 0
-                                      ? 'Não usado'
-                                      : '$count receita${count == 1 ? '' : 's'}',
-                                  style: context.texts.labelMedium
-                                      ?.copyWith(color: colors.textMuted),
-                                ),
+                                if (onShowRecipes == null)
+                                  Text(
+                                    'Não usado',
+                                    style: context.texts.labelMedium
+                                        ?.copyWith(color: colors.textMuted),
+                                  )
+                                else
+                                  _TapLink(
+                                    label:
+                                        '$count receita${count == 1 ? '' : 's'}',
+                                    onTap: onShowRecipes!,
+                                  ),
                                 Text(
                                   '  ·  ',
                                   style: context.texts.labelMedium
@@ -504,6 +517,12 @@ class _IngredientRow extends StatelessWidget {
               ActionMenuButton(
                 tooltip: 'Opções do ingrediente',
                 items: [
+                  if (onShowRecipes != null)
+                    ActionMenuItem(
+                      icon: Icons.menu_book_outlined,
+                      label: 'Ver receitas',
+                      onTap: onShowRecipes!,
+                    ),
                   ActionMenuItem(
                     icon: price == null
                         ? Icons.add_circle_outline
@@ -548,6 +567,45 @@ class _IngredientRow extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// "6 receitas ›": texto em negrito com seta no fim, sem caixa — sinaliza que
+/// toca sem pesar o cartão.
+class _TapLink extends StatelessWidget {
+  const _TapLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Semantics(
+      button: true,
+      label: 'Ver $label',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: context.texts.labelMedium?.copyWith(
+                color: colors.onPaper,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 16,
+              color: colors.onPaper,
+            ),
+          ],
+        ),
       ),
     );
   }
