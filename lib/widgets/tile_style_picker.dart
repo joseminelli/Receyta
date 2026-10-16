@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:receyta/core/tile_style.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -18,7 +22,14 @@ class TileStylePicker extends StatelessWidget {
     required this.onChanged,
     this.fallbackColor = TileColor.coral,
     this.seedId,
+    this.plusUnlocked = true,
+    this.onPlusLocked,
   });
+
+  /// Sem o Receyta Plus, a coleção dele aparece com cadeado e o toque chama
+  /// [onPlusLocked] em vez de escolher.
+  final bool plusUnlocked;
+  final VoidCallback? onPlusLocked;
 
   final TileColor? color;
   final TileMotif? motif;
@@ -39,7 +50,10 @@ class TileStylePicker extends StatelessWidget {
       excludeSemantics: true,
       child: _Swatch(
         selected: motif == m,
-        onTap: () => onChanged(color, m),
+        locked: m.isPlus && !plusUnlocked,
+        onTap: m.isPlus && !plusUnlocked
+            ? () => onPlusLocked?.call()
+            : () => onChanged(color, m),
         child: TilePattern(
           motif: m,
           background: resolved.background,
@@ -59,7 +73,10 @@ class TileStylePicker extends StatelessWidget {
       excludeSemantics: true,
       child: _Swatch(
         selected: color == c,
-        onTap: () => onChanged(c, motif),
+        locked: c.isPlus && !plusUnlocked,
+        onTap: c.isPlus && !plusUnlocked
+            ? () => onPlusLocked?.call()
+            : () => onChanged(c, motif),
         child: ColoredBox(
           color: resolveTileAppearance(colors, color: c).background,
         ),
@@ -120,6 +137,16 @@ class TileStylePicker extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
+        _Caption('Cores do Plus'),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final c in kPlusTileColors) _colorSwatch(colors, c),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
         _Caption('Texturas originais'),
         const SizedBox(height: AppSpacing.xs),
         Wrap(
@@ -144,6 +171,16 @@ class TileStylePicker extends StatelessWidget {
             for (final m in kExtraTileMotifs) _motifSwatch(m, resolved),
           ],
         ),
+        const SizedBox(height: AppSpacing.sm),
+        _Caption('Texturas do Plus'),
+        const SizedBox(height: AppSpacing.xs),
+        Wrap(
+          spacing: AppSpacing.xs,
+          runSpacing: AppSpacing.xs,
+          children: [
+            for (final m in kPlusTileMotifs) _motifSwatch(m, resolved),
+          ],
+        ),
       ],
     );
   }
@@ -160,10 +197,13 @@ Future<void> showAppearanceSheet(
   String? seedId,
   required void Function(TileColor? color, TileMotif? motif) onChanged,
 }) {
+  final plusUnlocked = ProviderScope.containerOf(context, listen: false)
+      .read(hasCloudAccessProvider);
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     builder: (_) => _AppearanceSheet(
+      plusUnlocked: plusUnlocked,
       title: title,
       color: color,
       motif: motif,
@@ -176,6 +216,7 @@ Future<void> showAppearanceSheet(
 
 class _AppearanceSheet extends StatefulWidget {
   const _AppearanceSheet({
+    required this.plusUnlocked,
     required this.title,
     required this.color,
     required this.motif,
@@ -184,6 +225,7 @@ class _AppearanceSheet extends StatefulWidget {
     required this.onChanged,
   });
 
+  final bool plusUnlocked;
   final String title;
   final TileColor? color;
   final TileMotif? motif;
@@ -199,6 +241,21 @@ class _AppearanceSheetState extends State<_AppearanceSheet> {
   late TileColor? _color = widget.color;
   late TileMotif? _motif = widget.motif;
 
+  Future<void> _askPlus() async {
+    final router = GoRouter.of(context);
+    final go = await AppDialog.confirm(
+      context,
+      icon: Icons.workspace_premium_outlined,
+      accent: context.colors.onPaper,
+      title: 'Estampas do Plus',
+      message: 'Cores e texturas exclusivas vêm com o Receyta Plus.',
+      confirmLabel: 'Ver o Plus',
+    );
+    if (!go || !mounted) return;
+    Navigator.of(context).pop();
+    router.push('/plus');
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppSheetFrame(
@@ -209,6 +266,8 @@ class _AppearanceSheetState extends State<_AppearanceSheet> {
         motif: _motif,
         seedId: widget.seedId,
         fallbackColor: widget.fallbackColor,
+        plusUnlocked: widget.plusUnlocked,
+        onPlusLocked: _askPlus,
         onChanged: (c, m) {
           setState(() {
             _color = c;
@@ -240,8 +299,10 @@ class _Swatch extends StatelessWidget {
     required this.selected,
     required this.onTap,
     required this.child,
+    this.locked = false,
   });
 
+  final bool locked;
   final bool selected;
   final VoidCallback onTap;
   final Widget child;
@@ -265,7 +326,22 @@ class _Swatch extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(9),
-          child: child,
+          child: locked
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    child,
+                    ColoredBox(color: colors.ink.withValues(alpha: 0.35)),
+                    const Center(
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                )
+              : child,
         ),
       ),
     );

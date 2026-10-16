@@ -6,6 +6,7 @@ import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/data/repositories/folder_repository.dart';
 import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/screens/folder_picker.dart';
+import 'package:receyta/features/recipes/screens/recipe_book_flow.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/app_dialog.dart';
@@ -160,7 +161,8 @@ Future<void> folderAppearanceFlow(
   );
 }
 
-/// Menu ⋯ da tela da pasta: renomear, aparência, mover, nova subpasta, excluir.
+/// Menu ⋯ da tela da pasta: renomear, aparência, mover, nova subpasta, livro
+/// em PDF, excluir.
 Future<void> showFolderMenu(
   BuildContext context,
   WidgetRef ref,
@@ -206,6 +208,15 @@ Future<void> showFolderMenu(
             onTap: () {
               Navigator.of(sheet).pop();
               createFolderFlow(context, ref, parentId: folder.id);
+            },
+          ),
+          AppSheetOption(
+            icon: Icons.menu_book_outlined,
+            title: 'Livro de receitas (PDF)',
+            subtitle: 'Capa, sumário e as receitas da pasta',
+            onTap: () {
+              Navigator.of(sheet).pop();
+              exportFolderBook(context, ref, folder);
             },
           ),
           AppSheetOption(

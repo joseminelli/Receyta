@@ -77,8 +77,10 @@ Future<Uint8List?> renderRecipePdfBanner({
   }
   title.paint(canvas, Offset(_pad, _h - _pad - title.height));
 
-  final image = await recorder.endRecording().toImage(_w, _h);
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(_w, _h);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  picture.dispose();
   image.dispose();
   return data?.buffer.asUint8List();
 }

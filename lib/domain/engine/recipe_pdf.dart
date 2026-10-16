@@ -32,99 +32,310 @@ Future<Uint8List> buildRecipePdf(
   RecipeDetail detail, {
   Uint8List? banner,
 }) async {
-  final recipe = detail.recipe;
-  final doc = pw.Document(title: recipe.name, creator: 'Receyta');
-  final accent = _accentOf(recipe);
+  final doc = pw.Document(title: detail.recipe.name, creator: 'Receyta');
+  doc.addPage(_recipePage(detail, banner: banner));
+  return doc.save();
+}
+
+/// Uma receita do livro: o PDF já pronto de [detail] e a foto dela, se tiver.
+typedef RecipeBookEntry = ({
+  RecipeDetail detail,
+  Uint8List? banner,
+  Uint8List? photo,
+});
+
+/// O livro de receitas: capa ([cover] é o PNG de `renderRecipeBookCover`),
+/// sumário com links e uma ou mais páginas por receita, na ordem de [entries].
+Future<Uint8List> buildRecipeBookPdf({
+  required String title,
+  required List<RecipeBookEntry> entries,
+  Uint8List? cover,
+}) async {
+  final doc = pw.Document(title: title, creator: 'Receyta');
+
+  if (cover != null) {
+    doc.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.zero,
+        build: (_) => pw.FullPage(
+          ignoreMargins: true,
+          child: pw.Image(pw.MemoryImage(cover), fit: pw.BoxFit.cover),
+        ),
+      ),
+    );
+  }
 
   doc.addPage(
     pw.MultiPage(
-      pageTheme: pw.PageTheme(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.fromLTRB(36, 36, 36, 44),
-        buildBackground: (_) => pw.FullPage(
-          ignoreMargins: true,
-          child: pw.Container(color: _paper),
-        ),
-      ),
-      footer: (context) => pw.Padding(
-        padding: const pw.EdgeInsets.only(top: 10),
-        child: pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      pageTheme: _pageTheme(),
+      footer: (context) => _footer(title, context),
+      build: (context) => [
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.end,
           children: [
             pw.Text(
-              'Receyta  |  Suas receitas, num lugar só',
-              style: const pw.TextStyle(fontSize: 9, color: _muted),
+              'Sumário',
+              style: pw.TextStyle(
+                fontSize: 30,
+                fontWeight: pw.FontWeight.bold,
+                color: _ink,
+              ),
             ),
-            pw.Text(
-              '${context.pageNumber}/${context.pagesCount}',
-              style: const pw.TextStyle(fontSize: 9, color: _muted),
+            pw.SizedBox(width: 12),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              margin: const pw.EdgeInsets.only(bottom: 5),
+              decoration: pw.BoxDecoration(
+                color: _ink,
+                borderRadius: pw.BorderRadius.circular(10),
+              ),
+              child: pw.Text(
+                '${entries.length} ${entries.length == 1 ? 'receita' : 'receitas'}',
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                  color: _lime,
+                ),
+              ),
             ),
           ],
         ),
-      ),
-      build: (context) => [
-        if (banner != null)
-          pw.Image(pw.MemoryImage(banner), width: PdfPageFormat.a4.width - 72)
-        else
-          pw.Text(
-            recipe.name,
-            style: pw.TextStyle(
-              fontSize: 28,
-              fontWeight: pw.FontWeight.bold,
-              color: _ink,
+        pw.SizedBox(height: 20),
+        for (var i = 0; i < entries.length; i += 2)
+          pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 10),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                _indexCard(i, entries[i].detail),
+                pw.SizedBox(width: 10),
+                if (i + 1 < entries.length)
+                  _indexCard(i + 1, entries[i + 1].detail)
+                else
+                  pw.SizedBox(width: _indexCardWidth),
+              ],
             ),
           ),
-        pw.SizedBox(height: 14),
-        _metricsRow(recipe),
-        if ((recipe.about ?? '').isNotEmpty) ...[
-          pw.SizedBox(height: 14),
+      ],
+    ),
+  );
+
+  for (var i = 0; i < entries.length; i++) {
+    final e = entries[i];
+    doc.addPage(
+      _recipePage(
+        e.detail,
+        banner: e.banner,
+        photo: e.photo,
+        anchor: 'recipe-$i',
+        footerLabel: title,
+      ),
+    );
+  }
+  return doc.save();
+}
+
+final _indexCardWidth = (PdfPageFormat.a4.width - 72 - 10) / 2;
+
+/// Cartão do sumário: faixa na cor da receita, número, nome e os tempos. O
+/// cartão inteiro é um link pra página da receita.
+pw.Widget _indexCard(int index, RecipeDetail detail) {
+  final recipe = detail.recipe;
+  final accent = _accentOf(recipe);
+  final minutes = (recipe.prepMinutes ?? 0) + (recipe.cookMinutes ?? 0);
+  final meta = [
+    if (minutes > 0) '$minutes min',
+    if (recipe.servings != null) '${recipe.servings} porções',
+  ].join('  |  ');
+  return pw.Link(
+    destination: 'recipe-$index',
+    child: pw.Container(
+      width: _indexCardWidth,
+      height: 56,
+      decoration: pw.BoxDecoration(
+        color: PdfColors.white,
+        borderRadius: pw.BorderRadius.circular(12),
+        border: pw.Border.all(color: _paperSoft, width: 1.5),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          pw.Container(
+            width: 34,
+            alignment: pw.Alignment.center,
+            decoration: pw.BoxDecoration(
+              color: accent,
+              borderRadius: const pw.BorderRadius.only(
+                topLeft: pw.Radius.circular(11),
+                bottomLeft: pw.Radius.circular(11),
+              ),
+            ),
+            child: pw.Text(
+              '${index + 1}',
+              style: pw.TextStyle(
+                fontSize: 12,
+                fontWeight: pw.FontWeight.bold,
+                color: _onAccent(accent),
+              ),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Padding(
+              padding: const pw.EdgeInsets.fromLTRB(10, 9, 8, 9),
+              child: pw.Column(
+                mainAxisAlignment: pw.MainAxisAlignment.center,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    _pdfSafe(recipe.name),
+                    maxLines: 2,
+                    style: pw.TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: _ink,
+                    ),
+                  ),
+                  if (meta.isNotEmpty) ...[
+                    pw.SizedBox(height: 3),
+                    pw.Text(
+                      meta,
+                      style: const pw.TextStyle(fontSize: 9, color: _muted),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Texto escuro sobre cor clara, branco sobre escura.
+PdfColor _onAccent(PdfColor c) =>
+    (0.299 * c.red + 0.587 * c.green + 0.114 * c.blue) > 0.6
+        ? _ink
+        : PdfColors.white;
+
+pw.PageTheme _pageTheme() => pw.PageTheme(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.fromLTRB(36, 36, 36, 44),
+      buildBackground: (_) => pw.FullPage(
+        ignoreMargins: true,
+        child: pw.Container(color: _paper),
+      ),
+    );
+
+pw.Widget _footer(String? label, pw.Context context) => pw.Padding(
+      padding: const pw.EdgeInsets.only(top: 10),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
           pw.Text(
-            recipe.about!,
+            label == null
+                ? 'Receyta  |  Suas receitas, num lugar só'
+                : 'Receyta  |  ${_pdfSafe(label)}',
+            style: const pw.TextStyle(fontSize: 9, color: _muted),
+          ),
+          pw.Text(
+            label == null
+                ? '${context.pageNumber}/${context.pagesCount}'
+                : '${context.pageNumber}',
+            style: const pw.TextStyle(fontSize: 9, color: _muted),
+          ),
+        ],
+      ),
+    );
+
+pw.MultiPage _recipePage(
+  RecipeDetail detail, {
+  Uint8List? banner,
+  Uint8List? photo,
+  String? anchor,
+  String? footerLabel,
+}) {
+  final recipe = detail.recipe;
+  final accent = _accentOf(recipe);
+
+  return pw.MultiPage(
+    pageTheme: _pageTheme(),
+    footer: (context) => _footer(footerLabel, context),
+    build: (context) => [
+      if (anchor != null) pw.Anchor(name: anchor, child: pw.SizedBox()),
+      if (banner != null)
+        pw.Image(pw.MemoryImage(banner), width: PdfPageFormat.a4.width - 72)
+      else
+        pw.Text(
+          _pdfSafe(recipe.name),
+          style: pw.TextStyle(
+            fontSize: 28,
+            fontWeight: pw.FontWeight.bold,
+            color: _ink,
+          ),
+        ),
+      if (photo != null) ...[
+        pw.SizedBox(height: 14),
+        pw.ClipRRect(
+          horizontalRadius: 16,
+          verticalRadius: 16,
+          child: pw.Image(
+            pw.MemoryImage(photo),
+            width: PdfPageFormat.a4.width - 72,
+            height: 230,
+            fit: pw.BoxFit.cover,
+          ),
+        ),
+      ],
+      pw.SizedBox(height: 14),
+      _metricsRow(recipe),
+      if ((recipe.about ?? '').isNotEmpty) ...[
+        pw.SizedBox(height: 14),
+        pw.Text(
+          _pdfSafe(recipe.about!),
+          style: const pw.TextStyle(
+            fontSize: 12,
+            color: _body,
+            lineSpacing: 3,
+          ),
+        ),
+      ],
+      pw.SizedBox(height: 22),
+      if (detail.ingredients.isNotEmpty) ...[
+        _sectionTitle('Ingredientes', accent),
+        pw.SizedBox(height: 10),
+        _ingredientCard(detail.ingredients, accent),
+        pw.SizedBox(height: 22),
+      ],
+      if (detail.steps.isNotEmpty) ...[
+        _sectionTitle('Preparo', accent),
+        pw.SizedBox(height: 10),
+        ..._stepBlocks(detail.steps),
+      ],
+      if ((recipe.notes ?? '').isNotEmpty) ...[
+        pw.SizedBox(height: 22),
+        _sectionTitle('Notas', accent),
+        pw.SizedBox(height: 10),
+        pw.Container(
+          width: double.infinity,
+          padding: const pw.EdgeInsets.all(14),
+          decoration: pw.BoxDecoration(
+            color: _paperSoft,
+            borderRadius: pw.BorderRadius.circular(14),
+          ),
+          child: pw.Text(
+            _pdfSafe(recipe.notes!),
             style: const pw.TextStyle(
               fontSize: 12,
               color: _body,
               lineSpacing: 3,
             ),
           ),
-        ],
-        pw.SizedBox(height: 22),
-        if (detail.ingredients.isNotEmpty) ...[
-          _sectionTitle('Ingredientes', accent),
-          pw.SizedBox(height: 10),
-          _ingredientCard(detail.ingredients, accent),
-          pw.SizedBox(height: 22),
-        ],
-        if (detail.steps.isNotEmpty) ...[
-          _sectionTitle('Preparo', accent),
-          pw.SizedBox(height: 10),
-          ..._stepBlocks(detail.steps),
-        ],
-        if ((recipe.notes ?? '').isNotEmpty) ...[
-          pw.SizedBox(height: 22),
-          _sectionTitle('Notas', accent),
-          pw.SizedBox(height: 10),
-          pw.Container(
-            width: double.infinity,
-            padding: const pw.EdgeInsets.all(14),
-            decoration: pw.BoxDecoration(
-              color: _paperSoft,
-              borderRadius: pw.BorderRadius.circular(14),
-            ),
-            child: pw.Text(
-              recipe.notes!,
-              style: const pw.TextStyle(
-                fontSize: 12,
-                color: _body,
-                lineSpacing: 3,
-              ),
-            ),
-          ),
-        ],
+        ),
       ],
-    ),
+    ],
   );
-
-  return doc.save();
 }
 
 /// A cor de destaque do PDF: a do azulejo da receita.
@@ -199,7 +410,7 @@ pw.Widget? _groupHeader(String? label, String? prevLabel) {
   return pw.Padding(
     padding: const pw.EdgeInsets.only(top: 8, bottom: 6),
     child: pw.Text(
-      label.toUpperCase(),
+      _pdfSafe(label.toUpperCase()),
       style: pw.TextStyle(
         fontSize: 10,
         fontWeight: pw.FontWeight.bold,
@@ -218,7 +429,7 @@ pw.Widget _ingredientCard(List<RecipeIngredient> items, PdfColor accent) {
     final header = _groupHeader(i.groupLabel, prevGroup);
     if (header != null) lines.add(header);
     prevGroup = i.groupLabel;
-    lines.add(_bulletLine(formatIngredientLine(i), accent));
+    lines.add(_bulletLine(_pdfSafe(formatIngredientLine(i)), accent));
   }
   return pw.Container(
     width: double.infinity,
@@ -297,7 +508,7 @@ List<pw.Widget> _stepBlocks(List<RecipeStep> steps) {
             child: pw.Padding(
               padding: const pw.EdgeInsets.only(top: 3),
               child: pw.Text(
-                s.text,
+                _pdfSafe(s.text),
                 style: const pw.TextStyle(
                   fontSize: 12,
                   color: _ink,
@@ -311,4 +522,42 @@ List<pw.Widget> _stepBlocks(List<RecipeStep> steps) {
     ));
   }
   return widgets;
+}
+
+/// As fontes padrão do PDF só têm Latin-1: troca aspas, travessões e frações
+/// curtas pelos equivalentes simples e tira o que não cabe (emoji, símbolos),
+/// em vez de sair um quadradinho.
+String _pdfSafe(String text) {
+  const swaps = {
+    '–': '-',
+    '—': '-',
+    '−': '-',
+    '‘': "'",
+    '’': "'",
+    '“': '"',
+    '”': '"',
+    '…': '...',
+    '•': '-',
+    ' ': ' ',
+    '⅓': '1/3',
+    '⅔': '2/3',
+    '⅛': '1/8',
+    '⅜': '3/8',
+    '⅝': '5/8',
+    '⅞': '7/8',
+    '⅕': '1/5',
+    '⅙': '1/6',
+    '⁄': '/',
+  };
+  final out = StringBuffer();
+  for (final rune in text.runes) {
+    final ch = String.fromCharCode(rune);
+    final swap = swaps[ch];
+    if (swap != null) {
+      out.write(swap);
+    } else if (rune == 0x0A || (rune >= 0x20 && rune <= 0xFF)) {
+      out.write(ch);
+    }
+  }
+  return out.toString();
 }

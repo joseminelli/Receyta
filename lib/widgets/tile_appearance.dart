@@ -73,6 +73,10 @@ TileColor _colorForMotif(TileMotif m) => switch (m) {
       TileMotif.xadrez => TileColor.coral,
       TileMotif.faixa => TileColor.lime,
       TileMotif.circulo => TileColor.coral,
+      TileMotif.escama => TileColor.violet,
+      TileMotif.cruz => TileColor.ink,
+      TileMotif.tijolo => TileColor.coral,
+      TileMotif.estrela => TileColor.lime,
     };
 
 TileMotif _motifForColor(TileColor c) => switch (c) {
@@ -86,6 +90,10 @@ TileMotif _motifForColor(TileColor c) => switch (c) {
       TileColor.cobalto => TileMotif.diagonal,
       TileColor.floresta => TileMotif.arco,
       TileColor.terra => TileMotif.diagonal,
+      TileColor.ameixa => TileMotif.escama,
+      TileColor.oliva => TileMotif.cruz,
+      TileColor.petroleo => TileMotif.estrela,
+      TileColor.rosa => TileMotif.tijolo,
     };
 
 /// Cores opcionais: fundo no tom normal e num tom mais fundo pro alto
@@ -98,6 +106,10 @@ const _extraBackgrounds = <TileColor, (Color, Color)>{
   TileColor.cobalto: (Color(0xFF2F5BEA), Color(0xFF2040B0)),
   TileColor.floresta: (Color(0xFF2E7D4F), Color(0xFF1F5E39)),
   TileColor.terra: (Color(0xFF8A4B2E), Color(0xFF6E3A22)),
+  TileColor.ameixa: (Color(0xFF6B2D5C), Color(0xFF55204A)),
+  TileColor.oliva: (Color(0xFF6A7A2A), Color(0xFF516020)),
+  TileColor.petroleo: (Color(0xFF17566B), Color(0xFF0F4254)),
+  TileColor.rosa: (Color(0xFFF08FB4), Color(0xFFDB6C97)),
 };
 
 /// Alto contraste = papel branco (ver `AppColors.highContrast`).
@@ -144,7 +156,9 @@ TileAppearance resolveTileAppearance(
   final alt = c == TileColor.ink
       ? colors.inkPatternAlt
       : Color.alphaBlend(Colors.black.withValues(alpha: 0.12), pattern);
-  final onColor = (c == TileColor.lime || c == TileColor.mostarda)
+  final onColor = (c == TileColor.lime ||
+          c == TileColor.mostarda ||
+          c == TileColor.rosa)
       ? colors.ink
       : colors.onSaturated;
 
@@ -163,7 +177,7 @@ TileAppearance resolveTileAppearance(
 (Color, Color) _extraColors(AppColors colors, TileColor c) {
   final (normal, strong) = _extraBackgrounds[c]!;
   final bg = _isHighContrast(colors) ? strong : normal;
-  final pattern = c == TileColor.mostarda
+  final pattern = (c == TileColor.mostarda || c == TileColor.rosa)
       ? Color.lerp(bg, Colors.black, 0.10)!
       : Color.lerp(bg, Colors.white, 0.16)!;
   return (bg, pattern);

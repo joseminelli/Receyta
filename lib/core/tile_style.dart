@@ -36,6 +36,20 @@ enum TileMotif {
 
   /// Círculos grandes que se tocam (quatro quartos por tile).
   circulo,
+
+  // Coleção do Receyta Plus: também opcionais, só pra personalizar.
+
+  /// Escamas: círculos que se sobrepõem.
+  escama,
+
+  /// Cruzes pequenas em grade.
+  cruz,
+
+  /// Tijolinhos com a fiada deslocada.
+  tijolo,
+
+  /// Estrelas de quatro pontas.
+  estrela,
 }
 
 /// Os quatro módulos originais (§9.4). **São os únicos que a escolha
@@ -57,8 +71,19 @@ const kExtraTileMotifs = [
   TileMotif.circulo,
 ];
 
+/// Os módulos exclusivos do Receyta Plus.
+const kPlusTileMotifs = [
+  TileMotif.escama,
+  TileMotif.cruz,
+  TileMotif.tijolo,
+  TileMotif.estrela,
+];
+
 extension TileMotifInfo on TileMotif {
   bool get isExtra => kExtraTileMotifs.contains(this);
+
+  /// Só quem tem o Receyta Plus escolhe.
+  bool get isPlus => kPlusTileMotifs.contains(this);
 
   /// Nome pra leitor de tela e legenda.
   String get label => switch (this) {
@@ -71,6 +96,10 @@ extension TileMotifInfo on TileMotif {
         TileMotif.xadrez => 'Xadrez',
         TileMotif.faixa => 'Faixas',
         TileMotif.circulo => 'Círculos',
+        TileMotif.escama => 'Escamas',
+        TileMotif.cruz => 'Cruzes',
+        TileMotif.tijolo => 'Tijolinhos',
+        TileMotif.estrela => 'Estrelas',
       };
 }
 
@@ -90,6 +119,12 @@ enum TileColor {
   cobalto,
   floresta,
   terra,
+
+  // Coleção do Receyta Plus.
+  ameixa,
+  oliva,
+  petroleo,
+  rosa,
 }
 
 /// As quatro cores do app (§9.2).
@@ -110,8 +145,19 @@ const kExtraTileColors = [
   TileColor.terra,
 ];
 
+/// As cores exclusivas do Receyta Plus.
+const kPlusTileColors = [
+  TileColor.ameixa,
+  TileColor.oliva,
+  TileColor.petroleo,
+  TileColor.rosa,
+];
+
 extension TileColorInfo on TileColor {
   bool get isExtra => kExtraTileColors.contains(this);
+
+  /// Só quem tem o Receyta Plus escolhe.
+  bool get isPlus => kPlusTileColors.contains(this);
 
   /// Nome pra leitor de tela e legenda.
   String get label => switch (this) {
@@ -125,6 +171,10 @@ extension TileColorInfo on TileColor {
         TileColor.cobalto => 'Cobalto',
         TileColor.floresta => 'Floresta',
         TileColor.terra => 'Terra',
+        TileColor.ameixa => 'Ameixa',
+        TileColor.oliva => 'Oliva',
+        TileColor.petroleo => 'Petróleo',
+        TileColor.rosa => 'Rosa',
       };
 }
 

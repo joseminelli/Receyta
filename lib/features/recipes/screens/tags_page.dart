@@ -8,6 +8,7 @@ import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/tag_repository.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/recipes/screens/recipe_book_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -131,6 +132,14 @@ class TagsPage extends ConsumerWidget {
           count: count,
           maxCount: maxCount,
           onDelete: () => _delete(context, ref, tag, count),
+          onBook: count == 0
+              ? null
+              : () => exportTagBook(
+                    context,
+                    ref,
+                    tagId: tag.id,
+                    tagName: tag.name,
+                  ),
         );
       },
     );
@@ -147,12 +156,16 @@ class _TagRow extends StatelessWidget {
     required this.count,
     required this.maxCount,
     required this.onDelete,
+    required this.onBook,
   });
 
   final Tag tag;
   final int count;
   final int maxCount;
   final VoidCallback onDelete;
+
+  /// Livro de receitas em PDF com as receitas da tag; nulo se não há nenhuma.
+  final VoidCallback? onBook;
 
   static const _tileSize = 84.0;
 
@@ -177,11 +190,24 @@ class _TagRow extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.sm),
               child: Center(
-                child: CircleIconButton(
-                  icon: Icons.delete_outline,
-                  background: colors.danger,
-                  onTap: onDelete,
-                  tooltip: 'Apagar',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onBook != null) ...[
+                      CircleIconButton(
+                        icon: Icons.menu_book_outlined,
+                        onTap: onBook!,
+                        tooltip: 'Livro de receitas (PDF)',
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
+                    CircleIconButton(
+                      icon: Icons.delete_outline,
+                      background: colors.danger,
+                      onTap: onDelete,
+                      tooltip: 'Apagar',
+                    ),
+                  ],
                 ),
               ),
             ),

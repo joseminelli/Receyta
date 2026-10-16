@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
@@ -19,6 +19,7 @@ import 'package:receyta/domain/engine/recipe_link.dart';
 import 'package:receyta/domain/engine/recipe_pdf.dart';
 import 'package:receyta/domain/engine/text_normalize.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
+import 'package:receyta/widgets/recipe_book_cover.dart';
 import 'package:receyta/widgets/recipe_card_image.dart';
 import 'package:receyta/widgets/recipe_pdf_banner.dart';
 
@@ -165,6 +166,80 @@ class RecipeExportService {
       return const Ok(null);
     } catch (e) {
       return Err(ProcessingFailure('Falha ao gerar o PDF', cause: e));
+    }
+  }
+
+  /// Livro de receitas em PDF: capa, sumário e as receitas de [recipeIds] por
+  /// ordem alfabética, cada uma com o cabeçalho colorido e a foto, se tiver.
+  /// Receita que não carrega é pulada em vez de derrubar o livro.
+  Future<Result<void>> shareBookPdf({
+    required String title,
+    required List<String> recipeIds,
+  }) async {
+    try {
+      final entries = <RecipeBookEntry>[];
+      for (final id in recipeIds) {
+        final result = await _recipeRepository.getDetail(id);
+        if (result is! Ok<RecipeDetail>) continue;
+        final detail = result.value;
+        Uint8List? banner;
+        try {
+          banner = await renderRecipePdfBanner(
+            recipe: detail.recipe,
+            tags: [for (final tag in detail.tags) tag.name],
+          );
+        } catch (_) {
+          banner = null;
+        }
+        entries.add((
+          detail: detail,
+          banner: banner,
+          photo: await _photoBytes(detail),
+        ));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+      if (entries.isEmpty) {
+        return const Err(ProcessingFailure('Não há receitas para o livro.'));
+      }
+      entries.sort(
+        (a, b) => stripAccents(a.detail.recipe.name.toLowerCase())
+            .compareTo(stripAccents(b.detail.recipe.name.toLowerCase())),
+      );
+      final count = entries.length;
+      Uint8List? cover;
+      try {
+        cover = await renderRecipeBookCover(
+          title: title,
+          subtitle: '$count ${count == 1 ? 'receita' : 'receitas'}',
+        );
+      } catch (_) {
+        cover = null;
+      }
+      final bytes = await buildRecipeBookPdf(
+        title: title,
+        entries: entries,
+        cover: cover,
+      );
+      await Printing.sharePdf(
+        bytes: bytes,
+        filename: 'livro-${_slug(title)}.pdf',
+      );
+      return const Ok(null);
+    } catch (e, st) {
+      debugPrint('shareBookPdf: $e\n$st');
+      return Err(ProcessingFailure('Falha ao gerar o livro', cause: e));
+    }
+  }
+
+  Future<Uint8List?> _photoBytes(RecipeDetail detail) async {
+    final name = detail.recipe.imagePath;
+    final images = _images;
+    if (name == null || images == null) return null;
+    try {
+      final file = await images.fileFor(name);
+      return await file.exists() ? await file.readAsBytes() : null;
+    } catch (_) {
+      return null;
     }
   }
 

@@ -7,7 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:receyta/core/tile_style.dart';
 
 export 'package:receyta/core/tile_style.dart'
-    show TileMotif, TileMotifInfo, kBaseTileMotifs, kExtraTileMotifs;
+    show
+        TileMotif,
+        TileMotifInfo,
+        kBaseTileMotifs,
+        kExtraTileMotifs,
+        kPlusTileMotifs;
 
 /// Módulo determinístico a partir de um id (§9.4) — sem campo no banco.
 ///
@@ -348,6 +353,65 @@ void _paintMotifTile(Canvas canvas, _TileKey key) {
       ]) {
         canvas.drawCircle(corner, r, fill);
       }
+
+    case TileMotif.escama:
+      // Círculos vazados no centro e nos cantos: sobrepostos viram escamas.
+      final line = Paint()
+        ..color = key.color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = t * 0.07
+        ..isAntiAlias = true;
+      for (final c in [
+        Offset(t / 2, t / 2),
+        Offset.zero,
+        Offset(t, 0),
+        Offset(0, t),
+        Offset(t, t),
+      ]) {
+        canvas.drawCircle(c, t / 2, line);
+      }
+
+    case TileMotif.cruz:
+      final arm = t * 0.14;
+      final len = t * 0.5;
+      canvas.drawRect(
+        Rect.fromCenter(
+            center: Offset(t / 2, t / 2), width: len, height: arm),
+        fill,
+      );
+      canvas.drawRect(
+        Rect.fromCenter(
+            center: Offset(t / 2, t / 2), width: arm, height: len),
+        fill,
+      );
+
+    case TileMotif.tijolo:
+      final w = t * 0.9;
+      final h = t * 0.4;
+      final r = Radius.circular(t * 0.05);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(t * 0.05, t * 0.05, w, h), r),
+        fill,
+      );
+      for (final dx in [-t * 0.45, t * 0.55]) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(Rect.fromLTWH(dx, t * 0.55, w, h), r),
+          fill,
+        );
+      }
+
+    case TileMotif.estrela:
+      final c = Offset(t / 2, t / 2);
+      canvas.drawPath(
+        Path()
+          ..moveTo(t / 2, t * 0.12)
+          ..quadraticBezierTo(c.dx, c.dy, t * 0.88, t / 2)
+          ..quadraticBezierTo(c.dx, c.dy, t / 2, t * 0.88)
+          ..quadraticBezierTo(c.dx, c.dy, t * 0.12, t / 2)
+          ..quadraticBezierTo(c.dx, c.dy, t / 2, t * 0.12)
+          ..close(),
+        fill,
+      );
   }
 }
 
