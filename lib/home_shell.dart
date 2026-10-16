@@ -25,6 +25,7 @@ import 'package:receyta/features/settings/controllers/reminder_settings.dart';
 import 'package:receyta/features/settings/screens/account_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_lists_page.dart';
 import 'package:receyta/features/space/controllers/invite_link.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
@@ -195,6 +196,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      unawaited(ref.read(cloudAccessProvider.notifier).refresh());
       ref.read(syncCoordinatorProvider.notifier).onResumed();
     }
   }

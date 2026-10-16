@@ -46,6 +46,13 @@ SyncFailure classifySyncError(Object error) {
         cause: error,
       );
     }
+    if (code == '42501') {
+      return SyncFailure(
+        SyncProblem.noAccess,
+        'A sincronização está pausada. Assine o Receyta Plus para voltar.',
+        cause: error,
+      );
+    }
     if (code == 'PGRST301' || code == 'PGRST303' || text.contains('jwt')) {
       return SyncFailure(
         SyncProblem.auth,
@@ -64,6 +71,14 @@ SyncFailure classifySyncError(Object error) {
         cause: error,
       );
     }
+  }
+
+  if (error is sb.StorageException && error.statusCode == '403') {
+    return SyncFailure(
+      SyncProblem.noAccess,
+      'A sincronização está pausada. Assine o Receyta Plus para voltar.',
+      cause: error,
+    );
   }
 
   if (error is sb.StorageException && _isServerStatus(error.statusCode ?? '')) {

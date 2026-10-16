@@ -26,6 +26,7 @@ import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/features/settings/screens/about_page.dart';
 import 'package:receyta/features/space/screens/space_page.dart';
+import 'package:receyta/features/subscription/screens/plus_page.dart';
 import 'package:receyta/features/settings/screens/settings_page.dart';
 import 'package:receyta/features/shopping/screens/shopping_list_page.dart';
 import 'package:receyta/home_shell.dart';
@@ -173,6 +174,11 @@ final router = GoRouter(
       name: 'space',
       builder: (context, state) =>
           SpacePage(inviteCode: state.uri.queryParameters['code']),
+    ),
+    GoRoute(
+      path: '/plus',
+      name: 'plus',
+      builder: (context, state) => const PlusPage(),
     ),
     GoRoute(
       path: '/about',

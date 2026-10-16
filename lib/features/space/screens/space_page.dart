@@ -14,6 +14,7 @@ import 'package:receyta/features/space/controllers/invite_link.dart';
 import 'package:receyta/features/space/controllers/pantry_share.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 import 'package:receyta/features/space/screens/invite_scan_page.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -74,6 +75,7 @@ class _SpacePageState extends ConsumerState<SpacePage> {
     final space = ref.watch(spaceControllerProvider);
     final user = ref.watch(authUserProvider).valueOrNull;
     final info = space.valueOrNull;
+    final hasAccess = ref.watch(hasCloudAccessProvider);
 
     final Widget body;
     if (user == null) {
@@ -89,7 +91,7 @@ class _SpacePageState extends ConsumerState<SpacePage> {
         child: Center(child: BrandLoader()),
       );
     } else if (info == null) {
-      body = const _NoSpace();
+      body = _NoSpace(canCreate: hasAccess);
     } else {
       body = _InSpace(space: info, myId: user.id);
     }
@@ -118,17 +120,11 @@ class _SpacePageState extends ConsumerState<SpacePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  body,
-                  if (user != null) ...[
+                  if (user != null && info != null && !hasAccess) ...[
+                    const _PausedNotice(),
                     const SizedBox(height: AppSpacing.lg),
-                    const _Notice(
-                      icon: Icons.info_outline,
-                      title: 'Gratuito por enquanto',
-                      text: 'No futuro, a casa pode virar um recurso pago. '
-                          'Avisaremos com antecedência antes de qualquer '
-                          'mudança.',
-                    ),
                   ],
+                  body,
                 ],
               ),
             ),
@@ -486,8 +482,39 @@ class _Notice extends StatelessWidget {
   }
 }
 
+/// A casa existe, mas o plano do dono não está ativo: a sincronização dela
+/// fica pausada (nada é apagado) até o plano voltar.
+class _PausedNotice extends StatelessWidget {
+  const _PausedNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _Notice(
+          icon: Icons.pause_circle_outline,
+          title: 'Casa em pausa',
+          text: 'O plano Receyta Plus do dono não está ativo, então a casa '
+              'não sincroniza. Nada foi apagado: volta quando o plano voltar.',
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        PillButton(
+          label: 'Ver o Receyta Plus',
+          variant: PillButtonVariant.secondary,
+          onPressed: () => context.push('/plus'),
+        ),
+      ],
+    );
+  }
+}
+
 class _NoSpace extends ConsumerStatefulWidget {
-  const _NoSpace();
+  const _NoSpace({required this.canCreate});
+
+  /// Só quem tem o Receyta Plus cria uma casa (o dono é quem assina); entrar
+  /// com um código é de graça.
+  final bool canCreate;
 
   @override
   ConsumerState<_NoSpace> createState() => _NoSpaceState();
@@ -541,10 +568,18 @@ class _NoSpaceState extends ConsumerState<_NoSpace> {
         ),
         const SizedBox(height: AppSpacing.lg),
         PillButton(
-          label: 'Criar uma casa',
-          icon: Icons.home_outlined,
+          label: widget.canCreate
+              ? 'Criar uma casa'
+              : 'Assinar para criar uma casa',
+          icon: widget.canCreate
+              ? Icons.home_outlined
+              : Icons.workspace_premium_outlined,
           loading: _creating,
-          onPressed: _creating ? null : _create,
+          onPressed: _creating
+              ? null
+              : widget.canCreate
+                  ? _create
+                  : () => context.push('/plus'),
         ),
         const SizedBox(height: AppSpacing.xs),
         PillButton(
@@ -555,7 +590,11 @@ class _NoSpaceState extends ConsumerState<_NoSpace> {
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'Até 6 pessoas por casa. Você entra com o código de um convite.',
+          widget.canCreate
+              ? 'Até 6 pessoas por casa. Você entra com o código de um convite.'
+              : 'Quem cria a casa assina o Receyta Plus; quem entra com um '
+                  'código usa de graça enquanto o plano do dono estiver '
+                  'ativo.',
           textAlign: TextAlign.center,
           style: context.texts.bodySmall?.copyWith(color: colors.textMuted),
         ),

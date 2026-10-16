@@ -64,9 +64,8 @@ class SpaceInfo {
           userId: m['user_id'] as String,
           displayName: '${m['display_name'] ?? ''}'.trim(),
           isOwner: m['role'] == 'owner',
-          shareCalendar: m['share_calendar'] is bool
-              ? m['share_calendar'] as bool
-              : null,
+          shareCalendar:
+              m['share_calendar'] is bool ? m['share_calendar'] as bool : null,
           sharePantry:
               m['share_pantry'] is bool ? m['share_pantry'] as bool : null,
           shareNewLists: m['share_new_lists'] is bool
@@ -263,6 +262,10 @@ Failure failureForSpace(Object error) {
     'not_member': 'Essa pessoa não está mais na casa.',
     'empty_name': 'Dê um nome à casa.',
     'not_authenticated': 'Entre na sua conta para usar a casa.',
+    'subscription_required':
+        'Criar uma casa faz parte do Receyta Plus. Assine para continuar.',
+    'space_inactive':
+        'O plano do dono dessa casa não está ativo. Peça para ele renovar.',
   });
   if (known != null) return ValidationFailure(known);
 

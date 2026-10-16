@@ -2,7 +2,7 @@ name: receyta
 description: Gerenciador de receitas offline-first com lista de compras e planejamento semanal.
 publish_to: 'none'
 
-version: 1.4.0+21
+version: 1.5.0+24
 
 environment:
   sdk: ^3.6.0
@@ -47,7 +47,7 @@ dependencies:
   image: ^4.2.0
 
   # File sharing
-  share_plus: ^8.0.0
+  share_plus: ^10.1.4
   receive_sharing_intent: ^1.4.0
   file_picker: ^8.0.7
 
@@ -89,6 +89,7 @@ dependencies:
   crypto: ^3.0.7
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.11
+  purchases_flutter: 10.16.0
 
 dev_dependencies:
   flutter_test:

@@ -15,6 +15,7 @@ import 'package:receyta/data/sync/sync_error.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/space/controllers/shared_sync_providers.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 
 enum SyncPhase { idle, syncing, error }
 
@@ -29,7 +30,8 @@ class SyncState {
     this.problem,
   });
 
-  /// Há conta conectada (sem ela não há o que sincronizar nem o que mostrar).
+  /// Há conta conectada com acesso à parte online (sem isso não há o que
+  /// sincronizar nem o que mostrar).
   final bool enabled;
   final SyncPhase phase;
 
@@ -111,8 +113,9 @@ class SyncCoordinator extends Notifier<SyncState> {
     return const SyncState();
   }
 
-  /// Liga os gatilhos. Idempotente. Enquanto não há conta, não toca em banco
-  /// nem em rede.
+  /// Liga os gatilhos. Idempotente. Enquanto não há conta com acesso à parte
+  /// online (assinatura, liberação ou casa de quem assina), não toca em banco
+  /// nem em rede. Quando o acesso acaba o sync só pausa: nada é apagado.
   void start() {
     if (_started) return;
     _started = true;
@@ -123,9 +126,16 @@ class SyncCoordinator extends Notifier<SyncState> {
     });
     ref.listen<AsyncValue<AppUser?>>(
       authUserProvider,
-      (previous, next) => _onUser(next.valueOrNull),
-      fireImmediately: true,
+      (previous, next) => _applyAccess(),
     );
+    ref.listen<bool>(
+        hasCloudAccessProvider, (previous, next) => _applyAccess());
+    _applyAccess();
+  }
+
+  void _applyAccess() {
+    final user = ref.read(authUserProvider).valueOrNull;
+    _onUser(user != null && ref.read(hasCloudAccessProvider) ? user : null);
   }
 
   /// Pede uma rodada. Com [immediate] não espera o atraso (login, botão);
@@ -322,10 +332,14 @@ class SyncCoordinator extends Notifier<SyncState> {
     );
     _retry?.cancel();
     _retry = null;
+    if (failure.problem == SyncProblem.noAccess) {
+      unawaited(ref.read(cloudAccessProvider.notifier).refresh());
+    }
 
     final base = ref.read(syncRetryBaseProvider).inMilliseconds;
     final Duration? wait = switch (failure.problem) {
       SyncProblem.auth => null,
+      SyncProblem.noAccess => null,
       // 20x a espera base: 10 minutos com a base de 30 s.
       SyncProblem.serverFull => Duration(milliseconds: base * 20),
       _ => Duration(

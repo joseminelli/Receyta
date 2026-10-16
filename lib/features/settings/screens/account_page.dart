@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:receyta/core/format_bytes.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
+import 'package:receyta/data/subscription/cloud_access_remote.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:receyta/domain/engine/sync_status_text.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
@@ -15,6 +16,7 @@ import 'package:receyta/features/settings/controllers/app_settings.dart';
 import 'package:receyta/features/settings/controllers/library_stats.dart';
 import 'package:receyta/features/settings/controllers/profile_preview.dart';
 import 'package:receyta/features/settings/screens/profile_edit_sheet.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
@@ -46,6 +48,7 @@ class AccountPage extends ConsumerWidget {
         padding: const EdgeInsets.only(bottom: 120),
         children: const [
           _Hero(),
+          _PlusTile(),
           _SyncStatusTile(),
           _PhotoQuotaTile(),
           SizedBox(height: AppSpacing.lg),
@@ -569,7 +572,7 @@ class _GoogleSignInButton extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Opcional · guarda as fotos das suas receitas na nuvem',
+          'Opcional · necessário para assinar o Receyta Plus',
           style: context.texts.bodySmall
               ?.copyWith(color: onColor.withValues(alpha: 0.85)),
         ),
@@ -648,6 +651,85 @@ class _LoginRevealState extends State<_LoginReveal>
         scale: _scale,
         alignment: Alignment.centerLeft,
         child: widget.child,
+      ),
+    );
+  }
+}
+
+/// O Receyta Plus, logo abaixo do perfil: convida a assinar quem não tem a
+/// parte online e mostra de onde vem o acesso de quem tem. Só aparece com
+/// conta conectada.
+class _PlusTile extends ConsumerWidget {
+  const _PlusTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authUserProvider).valueOrNull;
+    if (user == null) return const SizedBox.shrink();
+    final access = ref.watch(cloudAccessProvider);
+    if (access.isLoading && !access.hasValue) return const SizedBox.shrink();
+
+    final colors = context.colors;
+    final active = ref.watch(hasCloudAccessProvider);
+    final source = access.valueOrNull?.source;
+    final title = !active
+        ? 'Receyta Plus'
+        : source == AccessSource.house
+            ? 'Plus da casa'
+            : 'Plus ativo';
+    final text = !active
+        ? 'Sincronize entre aparelhos, guarde as fotos na nuvem e divida a '
+            'casa'
+        : 'Sincronização, fotos na nuvem e casa liberadas';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.md,
+        AppSpacing.screen,
+        0,
+      ),
+      child: Material(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadii.md),
+          onTap: () => context.push('/plus'),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration:
+                      BoxDecoration(color: colors.ink, shape: BoxShape.circle),
+                  child: Icon(
+                    Icons.workspace_premium_outlined,
+                    size: 22,
+                    color: colors.lime,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: AppTextStyles.display(22)),
+                      const SizedBox(height: 2),
+                      Text(
+                        text,
+                        style: context.texts.bodySmall
+                            ?.copyWith(color: colors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

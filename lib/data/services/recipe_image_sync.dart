@@ -9,6 +9,7 @@ import 'package:receyta/data/database/daos/recipe_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
+import 'package:receyta/features/subscription/controllers/cloud_access_controller.dart';
 
 /// Nome do bucket privado (ver `docs/supabase/recipe-images.sql`).
 const kRecipeImagesBucket = 'recipe-images';
@@ -46,14 +47,19 @@ abstract class ImageRemote {
 }
 
 class SupabaseImageRemote implements ImageRemote {
-  SupabaseImageRemote(this._client);
+  SupabaseImageRemote(this._client, {bool Function()? hasAccess})
+      : _hasAccess = hasAccess ?? (() => true);
 
   final sb.SupabaseClient _client;
+
+  /// Sem acesso à parte online, [userId] fica nulo e o sync de fotos não faz
+  /// nada (as fotos continuam no aparelho, pendentes).
+  final bool Function() _hasAccess;
 
   sb.StorageFileApi get _bucket => _client.storage.from(kRecipeImagesBucket);
 
   @override
-  String? get userId => _client.auth.currentUser?.id;
+  String? get userId => _hasAccess() ? _client.auth.currentUser?.id : null;
 
   @override
   Future<void> upload(String path, File file) async {
@@ -434,7 +440,10 @@ class PhotoQuota {
 
 final imageRemoteProvider = Provider<ImageRemote>((ref) {
   try {
-    return SupabaseImageRemote(sb.Supabase.instance.client);
+    return SupabaseImageRemote(
+      sb.Supabase.instance.client,
+      hasAccess: () => ref.read(hasCloudAccessProvider),
+    );
   } catch (_) {
     return const NoImageRemote();
   }

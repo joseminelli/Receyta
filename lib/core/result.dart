@@ -77,6 +77,10 @@ enum SyncProblem {
   /// Sessão vencida ou recusada: só entrando de novo.
   auth,
 
+  /// A assinatura (ou a liberação) acabou: o servidor recusa a escrita. O
+  /// coordenador pausa o sync até o acesso voltar.
+  noAccess,
+
   /// Qualquer outra coisa.
   unknown,
 }
