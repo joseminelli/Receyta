@@ -6,7 +6,7 @@ part 'shopping_list.freezed.dart';
 /// só `'active'` existe hoje; arquivar/múltiplas listas simultâneas
 /// (RF-05.9, Could) decide o resto do vocabulário quando chegar lá.
 @freezed
-class ShoppingList with _$ShoppingList {
+abstract class ShoppingList with _$ShoppingList {
   const factory ShoppingList({
     required String id,
     required String name,

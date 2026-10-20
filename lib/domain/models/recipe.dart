@@ -9,7 +9,7 @@ part 'recipe.freezed.dart';
 /// depois. `id`/`createdAt`/`updatedAt` ficam aqui porque a UI navega por id e
 /// ordena por data.
 @freezed
-class Recipe with _$Recipe {
+abstract class Recipe with _$Recipe {
   const factory Recipe({
     required String id,
     required String name,

@@ -24,7 +24,7 @@ class IngredientPrice {
 }
 
 @freezed
-class Ingredient with _$Ingredient {
+abstract class Ingredient with _$Ingredient {
   const factory Ingredient({
     required String id,
     required String displayName,

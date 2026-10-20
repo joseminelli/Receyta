@@ -10,7 +10,7 @@ part 'recipe_detail.freezed.dart';
 /// A receita com suas listas (§5: "listas próprias"). A home usa só [Recipe];
 /// a tela de detalhe e o formulário usam este agregado.
 @freezed
-class RecipeDetail with _$RecipeDetail {
+abstract class RecipeDetail with _$RecipeDetail {
   const factory RecipeDetail({
     required Recipe recipe,
     @Default(<RecipeIngredient>[]) List<RecipeIngredient> ingredients,

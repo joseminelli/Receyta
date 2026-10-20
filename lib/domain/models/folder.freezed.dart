@@ -1,6 +1,6 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: type=lint
+// coverage:ignore-file
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'folder.dart';
@@ -9,99 +9,64 @@ part of 'folder.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
 mixin _$Folder {
-  String get id => throw _privateConstructorUsedError;
-  String get name => throw _privateConstructorUsedError;
-  String? get parentId => throw _privateConstructorUsedError;
+  String get id;
+  String get name;
+  String? get parentId;
 
   /// Aparência do azulejo (§9.4). Nulo = padrão (violet/meia-lua).
-  TileColor? get tileColor => throw _privateConstructorUsedError;
-  TileMotif? get tileMotif => throw _privateConstructorUsedError;
-  int get position => throw _privateConstructorUsedError;
+  TileColor? get tileColor;
+  TileMotif? get tileMotif;
+  int get position;
 
   /// Create a copy of Folder
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  $FolderCopyWith<Folder> get copyWith => throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $FolderCopyWith<$Res> {
-  factory $FolderCopyWith(Folder value, $Res Function(Folder) then) =
-      _$FolderCopyWithImpl<$Res, Folder>;
-  @useResult
-  $Res call(
-      {String id,
-      String name,
-      String? parentId,
-      TileColor? tileColor,
-      TileMotif? tileMotif,
-      int position});
-}
-
-/// @nodoc
-class _$FolderCopyWithImpl<$Res, $Val extends Folder>
-    implements $FolderCopyWith<$Res> {
-  _$FolderCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of Folder
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  $FolderCopyWith<Folder> get copyWith =>
+      _$FolderCopyWithImpl<Folder>(this as Folder, _$identity);
+
   @override
-  $Res call({
-    Object? id = null,
-    Object? name = null,
-    Object? parentId = freezed,
-    Object? tileColor = freezed,
-    Object? tileMotif = freezed,
-    Object? position = null,
-  }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      name: null == name
-          ? _value.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String,
-      parentId: freezed == parentId
-          ? _value.parentId
-          : parentId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      tileColor: freezed == tileColor
-          ? _value.tileColor
-          : tileColor // ignore: cast_nullable_to_non_nullable
-              as TileColor?,
-      tileMotif: freezed == tileMotif
-          ? _value.tileMotif
-          : tileMotif // ignore: cast_nullable_to_non_nullable
-              as TileMotif?,
-      position: null == position
-          ? _value.position
-          : position // ignore: cast_nullable_to_non_nullable
-              as int,
-    ) as $Val);
+  bool operator ==(Object other) {
+    final _this = this as Folder;
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is Folder &&
+            (identical(other.id, _this.id) || other.id == _this.id) &&
+            (identical(other.name, _this.name) || other.name == _this.name) &&
+            (identical(other.parentId, _this.parentId) ||
+                other.parentId == _this.parentId) &&
+            (identical(other.tileColor, _this.tileColor) ||
+                other.tileColor == _this.tileColor) &&
+            (identical(other.tileMotif, _this.tileMotif) ||
+                other.tileMotif == _this.tileMotif) &&
+            (identical(other.position, _this.position) ||
+                other.position == _this.position));
+  }
+
+  @override
+  int get hashCode {
+    final _this = this as Folder;
+    return Object.hash(runtimeType, _this.id, _this.name, _this.parentId,
+        _this.tileColor, _this.tileMotif, _this.position);
+  }
+
+  @override
+  String toString() {
+    final _this = this as Folder;
+    return 'Folder(id: ${_this.id}, name: ${_this.name}, parentId: ${_this.parentId}, tileColor: ${_this.tileColor}, tileMotif: ${_this.tileMotif}, position: ${_this.position})';
   }
 }
 
 /// @nodoc
-abstract class _$$FolderImplCopyWith<$Res> implements $FolderCopyWith<$Res> {
-  factory _$$FolderImplCopyWith(
-          _$FolderImpl value, $Res Function(_$FolderImpl) then) =
-      __$$FolderImplCopyWithImpl<$Res>;
-  @override
+abstract mixin class $FolderCopyWith<$Res> {
+  factory $FolderCopyWith(Folder value, $Res Function(Folder) _then) =
+      _$FolderCopyWithImpl;
   @useResult
   $Res call(
       {String id,
@@ -113,12 +78,11 @@ abstract class _$$FolderImplCopyWith<$Res> implements $FolderCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$FolderImplCopyWithImpl<$Res>
-    extends _$FolderCopyWithImpl<$Res, _$FolderImpl>
-    implements _$$FolderImplCopyWith<$Res> {
-  __$$FolderImplCopyWithImpl(
-      _$FolderImpl _value, $Res Function(_$FolderImpl) _then)
-      : super(_value, _then);
+class _$FolderCopyWithImpl<$Res> implements $FolderCopyWith<$Res> {
+  _$FolderCopyWithImpl(this._self, this._then);
+
+  final Folder _self;
+  final $Res Function(Folder) _then;
 
   /// Create a copy of Folder
   /// with the given fields replaced by the non-null parameter values.
@@ -132,39 +96,205 @@ class __$$FolderImplCopyWithImpl<$Res>
     Object? tileMotif = freezed,
     Object? position = null,
   }) {
-    return _then(_$FolderImpl(
+    return _then(Folder(
       id: null == id
-          ? _value.id
+          ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
       name: null == name
-          ? _value.name
+          ? _self.name
           : name // ignore: cast_nullable_to_non_nullable
               as String,
       parentId: freezed == parentId
-          ? _value.parentId
+          ? _self.parentId
           : parentId // ignore: cast_nullable_to_non_nullable
               as String?,
       tileColor: freezed == tileColor
-          ? _value.tileColor
+          ? _self.tileColor
           : tileColor // ignore: cast_nullable_to_non_nullable
               as TileColor?,
       tileMotif: freezed == tileMotif
-          ? _value.tileMotif
+          ? _self.tileMotif
           : tileMotif // ignore: cast_nullable_to_non_nullable
               as TileMotif?,
       position: null == position
-          ? _value.position
+          ? _self.position
           : position // ignore: cast_nullable_to_non_nullable
               as int,
     ));
   }
 }
 
+/// Adds pattern-matching-related methods to [Folder].
+extension FolderPatterns on Folder {
+  /// A variant of `map` that fallback to returning `orElse`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_Folder value)? $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _Folder() when $default != null:
+        return $default(_that);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// Callbacks receives the raw object, upcasted.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case final Subclass2 value:
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_Folder value) $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Folder():
+        return $default(_that);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `map` that fallback to returning `null`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_Folder value)? $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Folder() when $default != null:
+        return $default(_that);
+      case _:
+        return null;
+    }
+  }
+
+  /// A variant of `when` that fallback to an `orElse` callback.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(String id, String name, String? parentId,
+            TileColor? tileColor, TileMotif? tileMotif, int position)?
+        $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _Folder() when $default != null:
+        return $default(_that.id, _that.name, _that.parentId, _that.tileColor,
+            _that.tileMotif, _that.position);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// As opposed to `map`, this offers destructuring.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case Subclass2(:final field2):
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(String id, String name, String? parentId,
+            TileColor? tileColor, TileMotif? tileMotif, int position)
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Folder():
+        return $default(_that.id, _that.name, _that.parentId, _that.tileColor,
+            _that.tileMotif, _that.position);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `when` that fallback to returning `null`
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(String id, String name, String? parentId,
+            TileColor? tileColor, TileMotif? tileMotif, int position)?
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Folder() when $default != null:
+        return $default(_that.id, _that.name, _that.parentId, _that.tileColor,
+            _that.tileMotif, _that.position);
+      case _:
+        return null;
+    }
+  }
+}
+
 /// @nodoc
 
-class _$FolderImpl implements _Folder {
-  const _$FolderImpl(
+class _Folder implements Folder {
+  const _Folder(
       {required this.id,
       required this.name,
       this.parentId,
@@ -188,16 +318,19 @@ class _$FolderImpl implements _Folder {
   @JsonKey()
   final int position;
 
+  /// Create a copy of Folder
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  String toString() {
-    return 'Folder(id: $id, name: $name, parentId: $parentId, tileColor: $tileColor, tileMotif: $tileMotif, position: $position)';
-  }
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$FolderCopyWith<_Folder> get copyWith =>
+      __$FolderCopyWithImpl<_Folder>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$FolderImpl &&
+            other is _Folder &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.parentId, parentId) ||
@@ -211,46 +344,78 @@ class _$FolderImpl implements _Folder {
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType, id, name, parentId, tileColor, tileMotif, position);
+  int get hashCode {
+    return Object.hash(
+        runtimeType, id, name, parentId, tileColor, tileMotif, position);
+  }
+
+  @override
+  String toString() {
+    return 'Folder(id: $id, name: $name, parentId: $parentId, tileColor: $tileColor, tileMotif: $tileMotif, position: $position)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$FolderCopyWith<$Res> implements $FolderCopyWith<$Res> {
+  factory _$FolderCopyWith(_Folder value, $Res Function(_Folder) _then) =
+      __$FolderCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {String id,
+      String name,
+      String? parentId,
+      TileColor? tileColor,
+      TileMotif? tileMotif,
+      int position});
+}
+
+/// @nodoc
+class __$FolderCopyWithImpl<$Res> implements _$FolderCopyWith<$Res> {
+  __$FolderCopyWithImpl(this._self, this._then);
+
+  final _Folder _self;
+  final $Res Function(_Folder) _then;
 
   /// Create a copy of Folder
   /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$FolderImplCopyWith<_$FolderImpl> get copyWith =>
-      __$$FolderImplCopyWithImpl<_$FolderImpl>(this, _$identity);
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? parentId = freezed,
+    Object? tileColor = freezed,
+    Object? tileMotif = freezed,
+    Object? position = null,
+  }) {
+    return _then(_Folder(
+      id: null == id
+          ? _self.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      parentId: freezed == parentId
+          ? _self.parentId
+          : parentId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      tileColor: freezed == tileColor
+          ? _self.tileColor
+          : tileColor // ignore: cast_nullable_to_non_nullable
+              as TileColor?,
+      tileMotif: freezed == tileMotif
+          ? _self.tileMotif
+          : tileMotif // ignore: cast_nullable_to_non_nullable
+              as TileMotif?,
+      position: null == position
+          ? _self.position
+          : position // ignore: cast_nullable_to_non_nullable
+              as int,
+    ));
+  }
 }
 
-abstract class _Folder implements Folder {
-  const factory _Folder(
-      {required final String id,
-      required final String name,
-      final String? parentId,
-      final TileColor? tileColor,
-      final TileMotif? tileMotif,
-      final int position}) = _$FolderImpl;
-
-  @override
-  String get id;
-  @override
-  String get name;
-  @override
-  String? get parentId;
-
-  /// Aparência do azulejo (§9.4). Nulo = padrão (violet/meia-lua).
-  @override
-  TileColor? get tileColor;
-  @override
-  TileMotif? get tileMotif;
-  @override
-  int get position;
-
-  /// Create a copy of Folder
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$FolderImplCopyWith<_$FolderImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
+// dart format on

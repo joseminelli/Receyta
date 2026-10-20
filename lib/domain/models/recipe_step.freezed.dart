@@ -1,6 +1,6 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: type=lint
+// coverage:ignore-file
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'recipe_step.dart';
@@ -9,93 +9,60 @@ part of 'recipe_step.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
 mixin _$RecipeStep {
-  String get id => throw _privateConstructorUsedError;
-  String get recipeId => throw _privateConstructorUsedError;
-  String get text => throw _privateConstructorUsedError;
-  int get position => throw _privateConstructorUsedError;
-  String? get groupLabel => throw _privateConstructorUsedError;
+  String get id;
+  String get recipeId;
+  String get text;
+  int get position;
+  String? get groupLabel;
 
   /// Create a copy of RecipeStep
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  $RecipeStepCopyWith<RecipeStep> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $RecipeStepCopyWith<$Res> {
-  factory $RecipeStepCopyWith(
-          RecipeStep value, $Res Function(RecipeStep) then) =
-      _$RecipeStepCopyWithImpl<$Res, RecipeStep>;
-  @useResult
-  $Res call(
-      {String id,
-      String recipeId,
-      String text,
-      int position,
-      String? groupLabel});
-}
-
-/// @nodoc
-class _$RecipeStepCopyWithImpl<$Res, $Val extends RecipeStep>
-    implements $RecipeStepCopyWith<$Res> {
-  _$RecipeStepCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of RecipeStep
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  $RecipeStepCopyWith<RecipeStep> get copyWith =>
+      _$RecipeStepCopyWithImpl<RecipeStep>(this as RecipeStep, _$identity);
+
   @override
-  $Res call({
-    Object? id = null,
-    Object? recipeId = null,
-    Object? text = null,
-    Object? position = null,
-    Object? groupLabel = freezed,
-  }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      recipeId: null == recipeId
-          ? _value.recipeId
-          : recipeId // ignore: cast_nullable_to_non_nullable
-              as String,
-      text: null == text
-          ? _value.text
-          : text // ignore: cast_nullable_to_non_nullable
-              as String,
-      position: null == position
-          ? _value.position
-          : position // ignore: cast_nullable_to_non_nullable
-              as int,
-      groupLabel: freezed == groupLabel
-          ? _value.groupLabel
-          : groupLabel // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
+  bool operator ==(Object other) {
+    final _this = this as RecipeStep;
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is RecipeStep &&
+            (identical(other.id, _this.id) || other.id == _this.id) &&
+            (identical(other.recipeId, _this.recipeId) ||
+                other.recipeId == _this.recipeId) &&
+            (identical(other.text, _this.text) || other.text == _this.text) &&
+            (identical(other.position, _this.position) ||
+                other.position == _this.position) &&
+            (identical(other.groupLabel, _this.groupLabel) ||
+                other.groupLabel == _this.groupLabel));
+  }
+
+  @override
+  int get hashCode {
+    final _this = this as RecipeStep;
+    return Object.hash(runtimeType, _this.id, _this.recipeId, _this.text,
+        _this.position, _this.groupLabel);
+  }
+
+  @override
+  String toString() {
+    final _this = this as RecipeStep;
+    return 'RecipeStep(id: ${_this.id}, recipeId: ${_this.recipeId}, text: ${_this.text}, position: ${_this.position}, groupLabel: ${_this.groupLabel})';
   }
 }
 
 /// @nodoc
-abstract class _$$RecipeStepImplCopyWith<$Res>
-    implements $RecipeStepCopyWith<$Res> {
-  factory _$$RecipeStepImplCopyWith(
-          _$RecipeStepImpl value, $Res Function(_$RecipeStepImpl) then) =
-      __$$RecipeStepImplCopyWithImpl<$Res>;
-  @override
+abstract mixin class $RecipeStepCopyWith<$Res> {
+  factory $RecipeStepCopyWith(
+          RecipeStep value, $Res Function(RecipeStep) _then) =
+      _$RecipeStepCopyWithImpl;
   @useResult
   $Res call(
       {String id,
@@ -106,12 +73,11 @@ abstract class _$$RecipeStepImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$RecipeStepImplCopyWithImpl<$Res>
-    extends _$RecipeStepCopyWithImpl<$Res, _$RecipeStepImpl>
-    implements _$$RecipeStepImplCopyWith<$Res> {
-  __$$RecipeStepImplCopyWithImpl(
-      _$RecipeStepImpl _value, $Res Function(_$RecipeStepImpl) _then)
-      : super(_value, _then);
+class _$RecipeStepCopyWithImpl<$Res> implements $RecipeStepCopyWith<$Res> {
+  _$RecipeStepCopyWithImpl(this._self, this._then);
+
+  final RecipeStep _self;
+  final $Res Function(RecipeStep) _then;
 
   /// Create a copy of RecipeStep
   /// with the given fields replaced by the non-null parameter values.
@@ -124,35 +90,201 @@ class __$$RecipeStepImplCopyWithImpl<$Res>
     Object? position = null,
     Object? groupLabel = freezed,
   }) {
-    return _then(_$RecipeStepImpl(
+    return _then(RecipeStep(
       id: null == id
-          ? _value.id
+          ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
       recipeId: null == recipeId
-          ? _value.recipeId
+          ? _self.recipeId
           : recipeId // ignore: cast_nullable_to_non_nullable
               as String,
       text: null == text
-          ? _value.text
+          ? _self.text
           : text // ignore: cast_nullable_to_non_nullable
               as String,
       position: null == position
-          ? _value.position
+          ? _self.position
           : position // ignore: cast_nullable_to_non_nullable
               as int,
       groupLabel: freezed == groupLabel
-          ? _value.groupLabel
+          ? _self.groupLabel
           : groupLabel // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }
 }
 
+/// Adds pattern-matching-related methods to [RecipeStep].
+extension RecipeStepPatterns on RecipeStep {
+  /// A variant of `map` that fallback to returning `orElse`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_RecipeStep value)? $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _RecipeStep() when $default != null:
+        return $default(_that);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// Callbacks receives the raw object, upcasted.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case final Subclass2 value:
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_RecipeStep value) $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _RecipeStep():
+        return $default(_that);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `map` that fallback to returning `null`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_RecipeStep value)? $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _RecipeStep() when $default != null:
+        return $default(_that);
+      case _:
+        return null;
+    }
+  }
+
+  /// A variant of `when` that fallback to an `orElse` callback.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(String id, String recipeId, String text, int position,
+            String? groupLabel)?
+        $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _RecipeStep() when $default != null:
+        return $default(_that.id, _that.recipeId, _that.text, _that.position,
+            _that.groupLabel);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// As opposed to `map`, this offers destructuring.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case Subclass2(:final field2):
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(String id, String recipeId, String text, int position,
+            String? groupLabel)
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _RecipeStep():
+        return $default(_that.id, _that.recipeId, _that.text, _that.position,
+            _that.groupLabel);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `when` that fallback to returning `null`
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(String id, String recipeId, String text, int position,
+            String? groupLabel)?
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _RecipeStep() when $default != null:
+        return $default(_that.id, _that.recipeId, _that.text, _that.position,
+            _that.groupLabel);
+      case _:
+        return null;
+    }
+  }
+}
+
 /// @nodoc
 
-class _$RecipeStepImpl implements _RecipeStep {
-  const _$RecipeStepImpl(
+class _RecipeStep implements RecipeStep {
+  const _RecipeStep(
       {required this.id,
       required this.recipeId,
       required this.text,
@@ -170,16 +302,19 @@ class _$RecipeStepImpl implements _RecipeStep {
   @override
   final String? groupLabel;
 
+  /// Create a copy of RecipeStep
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  String toString() {
-    return 'RecipeStep(id: $id, recipeId: $recipeId, text: $text, position: $position, groupLabel: $groupLabel)';
-  }
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$RecipeStepCopyWith<_RecipeStep> get copyWith =>
+      __$RecipeStepCopyWithImpl<_RecipeStep>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$RecipeStepImpl &&
+            other is _RecipeStep &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.recipeId, recipeId) ||
                 other.recipeId == recipeId) &&
@@ -191,41 +326,73 @@ class _$RecipeStepImpl implements _RecipeStep {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, recipeId, text, position, groupLabel);
+  int get hashCode {
+    return Object.hash(runtimeType, id, recipeId, text, position, groupLabel);
+  }
+
+  @override
+  String toString() {
+    return 'RecipeStep(id: $id, recipeId: $recipeId, text: $text, position: $position, groupLabel: $groupLabel)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$RecipeStepCopyWith<$Res>
+    implements $RecipeStepCopyWith<$Res> {
+  factory _$RecipeStepCopyWith(
+          _RecipeStep value, $Res Function(_RecipeStep) _then) =
+      __$RecipeStepCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {String id,
+      String recipeId,
+      String text,
+      int position,
+      String? groupLabel});
+}
+
+/// @nodoc
+class __$RecipeStepCopyWithImpl<$Res> implements _$RecipeStepCopyWith<$Res> {
+  __$RecipeStepCopyWithImpl(this._self, this._then);
+
+  final _RecipeStep _self;
+  final $Res Function(_RecipeStep) _then;
 
   /// Create a copy of RecipeStep
   /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$RecipeStepImplCopyWith<_$RecipeStepImpl> get copyWith =>
-      __$$RecipeStepImplCopyWithImpl<_$RecipeStepImpl>(this, _$identity);
+  $Res call({
+    Object? id = null,
+    Object? recipeId = null,
+    Object? text = null,
+    Object? position = null,
+    Object? groupLabel = freezed,
+  }) {
+    return _then(_RecipeStep(
+      id: null == id
+          ? _self.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      recipeId: null == recipeId
+          ? _self.recipeId
+          : recipeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      text: null == text
+          ? _self.text
+          : text // ignore: cast_nullable_to_non_nullable
+              as String,
+      position: null == position
+          ? _self.position
+          : position // ignore: cast_nullable_to_non_nullable
+              as int,
+      groupLabel: freezed == groupLabel
+          ? _self.groupLabel
+          : groupLabel // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
 }
 
-abstract class _RecipeStep implements RecipeStep {
-  const factory _RecipeStep(
-      {required final String id,
-      required final String recipeId,
-      required final String text,
-      required final int position,
-      final String? groupLabel}) = _$RecipeStepImpl;
-
-  @override
-  String get id;
-  @override
-  String get recipeId;
-  @override
-  String get text;
-  @override
-  int get position;
-  @override
-  String? get groupLabel;
-
-  /// Create a copy of RecipeStep
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$RecipeStepImplCopyWith<_$RecipeStepImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
+// dart format on

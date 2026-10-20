@@ -5,7 +5,7 @@ part 'shopping_list_item.freezed.dart';
 /// De qual receita um item veio, com a quantidade ORIGINAL dela (não
 /// convertida) — RF-05.8, "mostrar de quais receitas veio cada item".
 @freezed
-class ShoppingItemSource with _$ShoppingItemSource {
+abstract class ShoppingItemSource with _$ShoppingItemSource {
   const factory ShoppingItemSource({
     required String recipeId,
     required String recipeName,
@@ -18,7 +18,7 @@ class ShoppingItemSource with _$ShoppingItemSource {
 /// preenchido = item avulso (RF-05.6) ou ingrediente sem catálogo (a
 /// `aggregateIngredients` chave sintética a partir do `rawText`).
 @freezed
-class ShoppingListItem with _$ShoppingListItem {
+abstract class ShoppingListItem with _$ShoppingListItem {
   const factory ShoppingListItem({
     required String id,
     required String listId,

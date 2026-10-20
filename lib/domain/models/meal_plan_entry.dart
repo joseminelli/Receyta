@@ -29,7 +29,7 @@ enum MealType {
 /// calendário (ver `core/day.dart`). Carrega a [recipe] inteira: o card da
 /// semana usa a cor/textura dela e abrir o detalhe já sai com ela pronta.
 @freezed
-class MealPlanEntry with _$MealPlanEntry {
+abstract class MealPlanEntry with _$MealPlanEntry {
   const MealPlanEntry._();
 
   const factory MealPlanEntry({

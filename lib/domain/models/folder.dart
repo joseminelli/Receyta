@@ -7,7 +7,7 @@ part 'folder.freezed.dart';
 /// Uma pasta (RF-02). `parentId` nulo = pasta de raiz; senão, subpasta. As
 /// receitas apontam pra pasta por `folderId` — sem pasta = raiz também.
 @freezed
-class Folder with _$Folder {
+abstract class Folder with _$Folder {
   const factory Folder({
     required String id,
     required String name,

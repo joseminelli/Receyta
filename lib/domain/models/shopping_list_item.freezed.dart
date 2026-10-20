@@ -1,6 +1,6 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
-// ignore_for_file: type=lint
+// coverage:ignore-file
+// ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
 part of 'shopping_list_item.dart';
@@ -9,95 +9,72 @@ part of 'shopping_list_item.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
 /// @nodoc
 mixin _$ShoppingItemSource {
-  String get recipeId => throw _privateConstructorUsedError;
-  String get recipeName => throw _privateConstructorUsedError;
-  double? get quantity => throw _privateConstructorUsedError;
-  String? get unitId => throw _privateConstructorUsedError;
+  String get recipeId;
+  String get recipeName;
+  double? get quantity;
+  String? get unitId;
 
   /// Create a copy of ShoppingItemSource
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  $ShoppingItemSourceCopyWith<ShoppingItemSource> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $ShoppingItemSourceCopyWith<$Res> {
-  factory $ShoppingItemSourceCopyWith(
-          ShoppingItemSource value, $Res Function(ShoppingItemSource) then) =
-      _$ShoppingItemSourceCopyWithImpl<$Res, ShoppingItemSource>;
-  @useResult
-  $Res call(
-      {String recipeId, String recipeName, double? quantity, String? unitId});
-}
-
-/// @nodoc
-class _$ShoppingItemSourceCopyWithImpl<$Res, $Val extends ShoppingItemSource>
-    implements $ShoppingItemSourceCopyWith<$Res> {
-  _$ShoppingItemSourceCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of ShoppingItemSource
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  $ShoppingItemSourceCopyWith<ShoppingItemSource> get copyWith =>
+      _$ShoppingItemSourceCopyWithImpl<ShoppingItemSource>(
+          this as ShoppingItemSource, _$identity);
+
   @override
-  $Res call({
-    Object? recipeId = null,
-    Object? recipeName = null,
-    Object? quantity = freezed,
-    Object? unitId = freezed,
-  }) {
-    return _then(_value.copyWith(
-      recipeId: null == recipeId
-          ? _value.recipeId
-          : recipeId // ignore: cast_nullable_to_non_nullable
-              as String,
-      recipeName: null == recipeName
-          ? _value.recipeName
-          : recipeName // ignore: cast_nullable_to_non_nullable
-              as String,
-      quantity: freezed == quantity
-          ? _value.quantity
-          : quantity // ignore: cast_nullable_to_non_nullable
-              as double?,
-      unitId: freezed == unitId
-          ? _value.unitId
-          : unitId // ignore: cast_nullable_to_non_nullable
-              as String?,
-    ) as $Val);
+  bool operator ==(Object other) {
+    final _this = this as ShoppingItemSource;
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is ShoppingItemSource &&
+            (identical(other.recipeId, _this.recipeId) ||
+                other.recipeId == _this.recipeId) &&
+            (identical(other.recipeName, _this.recipeName) ||
+                other.recipeName == _this.recipeName) &&
+            (identical(other.quantity, _this.quantity) ||
+                other.quantity == _this.quantity) &&
+            (identical(other.unitId, _this.unitId) ||
+                other.unitId == _this.unitId));
+  }
+
+  @override
+  int get hashCode {
+    final _this = this as ShoppingItemSource;
+    return Object.hash(runtimeType, _this.recipeId, _this.recipeName,
+        _this.quantity, _this.unitId);
+  }
+
+  @override
+  String toString() {
+    final _this = this as ShoppingItemSource;
+    return 'ShoppingItemSource(recipeId: ${_this.recipeId}, recipeName: ${_this.recipeName}, quantity: ${_this.quantity}, unitId: ${_this.unitId})';
   }
 }
 
 /// @nodoc
-abstract class _$$ShoppingItemSourceImplCopyWith<$Res>
-    implements $ShoppingItemSourceCopyWith<$Res> {
-  factory _$$ShoppingItemSourceImplCopyWith(_$ShoppingItemSourceImpl value,
-          $Res Function(_$ShoppingItemSourceImpl) then) =
-      __$$ShoppingItemSourceImplCopyWithImpl<$Res>;
-  @override
+abstract mixin class $ShoppingItemSourceCopyWith<$Res> {
+  factory $ShoppingItemSourceCopyWith(
+          ShoppingItemSource value, $Res Function(ShoppingItemSource) _then) =
+      _$ShoppingItemSourceCopyWithImpl;
   @useResult
   $Res call(
       {String recipeId, String recipeName, double? quantity, String? unitId});
 }
 
 /// @nodoc
-class __$$ShoppingItemSourceImplCopyWithImpl<$Res>
-    extends _$ShoppingItemSourceCopyWithImpl<$Res, _$ShoppingItemSourceImpl>
-    implements _$$ShoppingItemSourceImplCopyWith<$Res> {
-  __$$ShoppingItemSourceImplCopyWithImpl(_$ShoppingItemSourceImpl _value,
-      $Res Function(_$ShoppingItemSourceImpl) _then)
-      : super(_value, _then);
+class _$ShoppingItemSourceCopyWithImpl<$Res>
+    implements $ShoppingItemSourceCopyWith<$Res> {
+  _$ShoppingItemSourceCopyWithImpl(this._self, this._then);
+
+  final ShoppingItemSource _self;
+  final $Res Function(ShoppingItemSource) _then;
 
   /// Create a copy of ShoppingItemSource
   /// with the given fields replaced by the non-null parameter values.
@@ -109,31 +86,197 @@ class __$$ShoppingItemSourceImplCopyWithImpl<$Res>
     Object? quantity = freezed,
     Object? unitId = freezed,
   }) {
-    return _then(_$ShoppingItemSourceImpl(
+    return _then(ShoppingItemSource(
       recipeId: null == recipeId
-          ? _value.recipeId
+          ? _self.recipeId
           : recipeId // ignore: cast_nullable_to_non_nullable
               as String,
       recipeName: null == recipeName
-          ? _value.recipeName
+          ? _self.recipeName
           : recipeName // ignore: cast_nullable_to_non_nullable
               as String,
       quantity: freezed == quantity
-          ? _value.quantity
+          ? _self.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
               as double?,
       unitId: freezed == unitId
-          ? _value.unitId
+          ? _self.unitId
           : unitId // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }
 }
 
+/// Adds pattern-matching-related methods to [ShoppingItemSource].
+extension ShoppingItemSourcePatterns on ShoppingItemSource {
+  /// A variant of `map` that fallback to returning `orElse`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_ShoppingItemSource value)? $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingItemSource() when $default != null:
+        return $default(_that);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// Callbacks receives the raw object, upcasted.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case final Subclass2 value:
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_ShoppingItemSource value) $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingItemSource():
+        return $default(_that);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `map` that fallback to returning `null`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_ShoppingItemSource value)? $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingItemSource() when $default != null:
+        return $default(_that);
+      case _:
+        return null;
+    }
+  }
+
+  /// A variant of `when` that fallback to an `orElse` callback.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(String recipeId, String recipeName, double? quantity,
+            String? unitId)?
+        $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingItemSource() when $default != null:
+        return $default(
+            _that.recipeId, _that.recipeName, _that.quantity, _that.unitId);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// As opposed to `map`, this offers destructuring.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case Subclass2(:final field2):
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(String recipeId, String recipeName, double? quantity,
+            String? unitId)
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingItemSource():
+        return $default(
+            _that.recipeId, _that.recipeName, _that.quantity, _that.unitId);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `when` that fallback to returning `null`
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(String recipeId, String recipeName, double? quantity,
+            String? unitId)?
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingItemSource() when $default != null:
+        return $default(
+            _that.recipeId, _that.recipeName, _that.quantity, _that.unitId);
+      case _:
+        return null;
+    }
+  }
+}
+
 /// @nodoc
 
-class _$ShoppingItemSourceImpl implements _ShoppingItemSource {
-  const _$ShoppingItemSourceImpl(
+class _ShoppingItemSource implements ShoppingItemSource {
+  const _ShoppingItemSource(
       {required this.recipeId,
       required this.recipeName,
       this.quantity,
@@ -148,16 +291,19 @@ class _$ShoppingItemSourceImpl implements _ShoppingItemSource {
   @override
   final String? unitId;
 
+  /// Create a copy of ShoppingItemSource
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  String toString() {
-    return 'ShoppingItemSource(recipeId: $recipeId, recipeName: $recipeName, quantity: $quantity, unitId: $unitId)';
-  }
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$ShoppingItemSourceCopyWith<_ShoppingItemSource> get copyWith =>
+      __$ShoppingItemSourceCopyWithImpl<_ShoppingItemSource>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ShoppingItemSourceImpl &&
+            other is _ShoppingItemSource &&
             (identical(other.recipeId, recipeId) ||
                 other.recipeId == recipeId) &&
             (identical(other.recipeName, recipeName) ||
@@ -168,196 +314,167 @@ class _$ShoppingItemSourceImpl implements _ShoppingItemSource {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, recipeId, recipeName, quantity, unitId);
-
-  /// Create a copy of ShoppingItemSource
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$ShoppingItemSourceImplCopyWith<_$ShoppingItemSourceImpl> get copyWith =>
-      __$$ShoppingItemSourceImplCopyWithImpl<_$ShoppingItemSourceImpl>(
-          this, _$identity);
-}
-
-abstract class _ShoppingItemSource implements ShoppingItemSource {
-  const factory _ShoppingItemSource(
-      {required final String recipeId,
-      required final String recipeName,
-      final double? quantity,
-      final String? unitId}) = _$ShoppingItemSourceImpl;
+  int get hashCode {
+    return Object.hash(runtimeType, recipeId, recipeName, quantity, unitId);
+  }
 
   @override
-  String get recipeId;
-  @override
-  String get recipeName;
-  @override
-  double? get quantity;
-  @override
-  String? get unitId;
-
-  /// Create a copy of ShoppingItemSource
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ShoppingItemSourceImplCopyWith<_$ShoppingItemSourceImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-mixin _$ShoppingListItem {
-  String get id => throw _privateConstructorUsedError;
-  String get listId => throw _privateConstructorUsedError;
-  String? get ingredientId => throw _privateConstructorUsedError;
-  String get displayName => throw _privateConstructorUsedError;
-  String? get manualName => throw _privateConstructorUsedError;
-
-  /// Nulo quando nenhuma origem tinha quantidade numérica reconhecida —
-  /// a tela mostra a unidade/nome sem número, não inventa um.
-  double? get quantity => throw _privateConstructorUsedError;
-  String? get unitId => throw _privateConstructorUsedError;
-  bool get checked => throw _privateConstructorUsedError;
-  String? get note => throw _privateConstructorUsedError;
-  int get position => throw _privateConstructorUsedError;
-
-  /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
-  /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
-  String get categorySlug => throw _privateConstructorUsedError;
-
-  /// Quem adicionou e quem marcou o item (id da conta); só em listas da casa.
-  String? get addedBy => throw _privateConstructorUsedError;
-  String? get checkedBy => throw _privateConstructorUsedError;
-  List<ShoppingItemSource> get sources => throw _privateConstructorUsedError;
-
-  /// Create a copy of ShoppingListItem
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  $ShoppingListItemCopyWith<ShoppingListItem> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $ShoppingListItemCopyWith<$Res> {
-  factory $ShoppingListItemCopyWith(
-          ShoppingListItem value, $Res Function(ShoppingListItem) then) =
-      _$ShoppingListItemCopyWithImpl<$Res, ShoppingListItem>;
-  @useResult
-  $Res call(
-      {String id,
-      String listId,
-      String? ingredientId,
-      String displayName,
-      String? manualName,
-      double? quantity,
-      String? unitId,
-      bool checked,
-      String? note,
-      int position,
-      String categorySlug,
-      String? addedBy,
-      String? checkedBy,
-      List<ShoppingItemSource> sources});
-}
-
-/// @nodoc
-class _$ShoppingListItemCopyWithImpl<$Res, $Val extends ShoppingListItem>
-    implements $ShoppingListItemCopyWith<$Res> {
-  _$ShoppingListItemCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of ShoppingListItem
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? id = null,
-    Object? listId = null,
-    Object? ingredientId = freezed,
-    Object? displayName = null,
-    Object? manualName = freezed,
-    Object? quantity = freezed,
-    Object? unitId = freezed,
-    Object? checked = null,
-    Object? note = freezed,
-    Object? position = null,
-    Object? categorySlug = null,
-    Object? addedBy = freezed,
-    Object? checkedBy = freezed,
-    Object? sources = null,
-  }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      listId: null == listId
-          ? _value.listId
-          : listId // ignore: cast_nullable_to_non_nullable
-              as String,
-      ingredientId: freezed == ingredientId
-          ? _value.ingredientId
-          : ingredientId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      displayName: null == displayName
-          ? _value.displayName
-          : displayName // ignore: cast_nullable_to_non_nullable
-              as String,
-      manualName: freezed == manualName
-          ? _value.manualName
-          : manualName // ignore: cast_nullable_to_non_nullable
-              as String?,
-      quantity: freezed == quantity
-          ? _value.quantity
-          : quantity // ignore: cast_nullable_to_non_nullable
-              as double?,
-      unitId: freezed == unitId
-          ? _value.unitId
-          : unitId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      checked: null == checked
-          ? _value.checked
-          : checked // ignore: cast_nullable_to_non_nullable
-              as bool,
-      note: freezed == note
-          ? _value.note
-          : note // ignore: cast_nullable_to_non_nullable
-              as String?,
-      position: null == position
-          ? _value.position
-          : position // ignore: cast_nullable_to_non_nullable
-              as int,
-      categorySlug: null == categorySlug
-          ? _value.categorySlug
-          : categorySlug // ignore: cast_nullable_to_non_nullable
-              as String,
-      addedBy: freezed == addedBy
-          ? _value.addedBy
-          : addedBy // ignore: cast_nullable_to_non_nullable
-              as String?,
-      checkedBy: freezed == checkedBy
-          ? _value.checkedBy
-          : checkedBy // ignore: cast_nullable_to_non_nullable
-              as String?,
-      sources: null == sources
-          ? _value.sources
-          : sources // ignore: cast_nullable_to_non_nullable
-              as List<ShoppingItemSource>,
-    ) as $Val);
+  String toString() {
+    return 'ShoppingItemSource(recipeId: $recipeId, recipeName: $recipeName, quantity: $quantity, unitId: $unitId)';
   }
 }
 
 /// @nodoc
-abstract class _$$ShoppingListItemImplCopyWith<$Res>
-    implements $ShoppingListItemCopyWith<$Res> {
-  factory _$$ShoppingListItemImplCopyWith(_$ShoppingListItemImpl value,
-          $Res Function(_$ShoppingListItemImpl) then) =
-      __$$ShoppingListItemImplCopyWithImpl<$Res>;
+abstract mixin class _$ShoppingItemSourceCopyWith<$Res>
+    implements $ShoppingItemSourceCopyWith<$Res> {
+  factory _$ShoppingItemSourceCopyWith(
+          _ShoppingItemSource value, $Res Function(_ShoppingItemSource) _then) =
+      __$ShoppingItemSourceCopyWithImpl;
   @override
+  @useResult
+  $Res call(
+      {String recipeId, String recipeName, double? quantity, String? unitId});
+}
+
+/// @nodoc
+class __$ShoppingItemSourceCopyWithImpl<$Res>
+    implements _$ShoppingItemSourceCopyWith<$Res> {
+  __$ShoppingItemSourceCopyWithImpl(this._self, this._then);
+
+  final _ShoppingItemSource _self;
+  final $Res Function(_ShoppingItemSource) _then;
+
+  /// Create a copy of ShoppingItemSource
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? recipeId = null,
+    Object? recipeName = null,
+    Object? quantity = freezed,
+    Object? unitId = freezed,
+  }) {
+    return _then(_ShoppingItemSource(
+      recipeId: null == recipeId
+          ? _self.recipeId
+          : recipeId // ignore: cast_nullable_to_non_nullable
+              as String,
+      recipeName: null == recipeName
+          ? _self.recipeName
+          : recipeName // ignore: cast_nullable_to_non_nullable
+              as String,
+      quantity: freezed == quantity
+          ? _self.quantity
+          : quantity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      unitId: freezed == unitId
+          ? _self.unitId
+          : unitId // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+mixin _$ShoppingListItem {
+  String get id;
+  String get listId;
+  String? get ingredientId;
+  String get displayName;
+  String? get manualName;
+
+  /// Nulo quando nenhuma origem tinha quantidade numérica reconhecida —
+  /// a tela mostra a unidade/nome sem número, não inventa um.
+  double? get quantity;
+  String? get unitId;
+  bool get checked;
+  String? get note;
+  int get position;
+
+  /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
+  /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
+  String get categorySlug;
+
+  /// Quem adicionou e quem marcou o item (id da conta); só em listas da casa.
+  String? get addedBy;
+  String? get checkedBy;
+  List<ShoppingItemSource> get sources;
+
+  /// Create a copy of ShoppingListItem
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  $ShoppingListItemCopyWith<ShoppingListItem> get copyWith =>
+      _$ShoppingListItemCopyWithImpl<ShoppingListItem>(
+          this as ShoppingListItem, _$identity);
+
+  @override
+  bool operator ==(Object other) {
+    final _this = this as ShoppingListItem;
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is ShoppingListItem &&
+            (identical(other.id, _this.id) || other.id == _this.id) &&
+            (identical(other.listId, _this.listId) ||
+                other.listId == _this.listId) &&
+            (identical(other.ingredientId, _this.ingredientId) ||
+                other.ingredientId == _this.ingredientId) &&
+            (identical(other.displayName, _this.displayName) ||
+                other.displayName == _this.displayName) &&
+            (identical(other.manualName, _this.manualName) ||
+                other.manualName == _this.manualName) &&
+            (identical(other.quantity, _this.quantity) ||
+                other.quantity == _this.quantity) &&
+            (identical(other.unitId, _this.unitId) ||
+                other.unitId == _this.unitId) &&
+            (identical(other.checked, _this.checked) ||
+                other.checked == _this.checked) &&
+            (identical(other.note, _this.note) || other.note == _this.note) &&
+            (identical(other.position, _this.position) ||
+                other.position == _this.position) &&
+            (identical(other.categorySlug, _this.categorySlug) ||
+                other.categorySlug == _this.categorySlug) &&
+            (identical(other.addedBy, _this.addedBy) ||
+                other.addedBy == _this.addedBy) &&
+            (identical(other.checkedBy, _this.checkedBy) ||
+                other.checkedBy == _this.checkedBy) &&
+            const DeepCollectionEquality()
+                .equals(other.sources, _this.sources));
+  }
+
+  @override
+  int get hashCode {
+    final _this = this as ShoppingListItem;
+    return Object.hash(
+        runtimeType,
+        _this.id,
+        _this.listId,
+        _this.ingredientId,
+        _this.displayName,
+        _this.manualName,
+        _this.quantity,
+        _this.unitId,
+        _this.checked,
+        _this.note,
+        _this.position,
+        _this.categorySlug,
+        _this.addedBy,
+        _this.checkedBy,
+        const DeepCollectionEquality().hash(_this.sources));
+  }
+
+  @override
+  String toString() {
+    final _this = this as ShoppingListItem;
+    return 'ShoppingListItem(id: ${_this.id}, listId: ${_this.listId}, ingredientId: ${_this.ingredientId}, displayName: ${_this.displayName}, manualName: ${_this.manualName}, quantity: ${_this.quantity}, unitId: ${_this.unitId}, checked: ${_this.checked}, note: ${_this.note}, position: ${_this.position}, categorySlug: ${_this.categorySlug}, addedBy: ${_this.addedBy}, checkedBy: ${_this.checkedBy}, sources: ${_this.sources})';
+  }
+}
+
+/// @nodoc
+abstract mixin class $ShoppingListItemCopyWith<$Res> {
+  factory $ShoppingListItemCopyWith(
+          ShoppingListItem value, $Res Function(ShoppingListItem) _then) =
+      _$ShoppingListItemCopyWithImpl;
   @useResult
   $Res call(
       {String id,
@@ -377,12 +494,12 @@ abstract class _$$ShoppingListItemImplCopyWith<$Res>
 }
 
 /// @nodoc
-class __$$ShoppingListItemImplCopyWithImpl<$Res>
-    extends _$ShoppingListItemCopyWithImpl<$Res, _$ShoppingListItemImpl>
-    implements _$$ShoppingListItemImplCopyWith<$Res> {
-  __$$ShoppingListItemImplCopyWithImpl(_$ShoppingListItemImpl _value,
-      $Res Function(_$ShoppingListItemImpl) _then)
-      : super(_value, _then);
+class _$ShoppingListItemCopyWithImpl<$Res>
+    implements $ShoppingListItemCopyWith<$Res> {
+  _$ShoppingListItemCopyWithImpl(this._self, this._then);
+
+  final ShoppingListItem _self;
+  final $Res Function(ShoppingListItem) _then;
 
   /// Create a copy of ShoppingListItem
   /// with the given fields replaced by the non-null parameter values.
@@ -404,71 +521,315 @@ class __$$ShoppingListItemImplCopyWithImpl<$Res>
     Object? checkedBy = freezed,
     Object? sources = null,
   }) {
-    return _then(_$ShoppingListItemImpl(
+    return _then(ShoppingListItem(
       id: null == id
-          ? _value.id
+          ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
       listId: null == listId
-          ? _value.listId
+          ? _self.listId
           : listId // ignore: cast_nullable_to_non_nullable
               as String,
       ingredientId: freezed == ingredientId
-          ? _value.ingredientId
+          ? _self.ingredientId
           : ingredientId // ignore: cast_nullable_to_non_nullable
               as String?,
       displayName: null == displayName
-          ? _value.displayName
+          ? _self.displayName
           : displayName // ignore: cast_nullable_to_non_nullable
               as String,
       manualName: freezed == manualName
-          ? _value.manualName
+          ? _self.manualName
           : manualName // ignore: cast_nullable_to_non_nullable
               as String?,
       quantity: freezed == quantity
-          ? _value.quantity
+          ? _self.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
               as double?,
       unitId: freezed == unitId
-          ? _value.unitId
+          ? _self.unitId
           : unitId // ignore: cast_nullable_to_non_nullable
               as String?,
       checked: null == checked
-          ? _value.checked
+          ? _self.checked
           : checked // ignore: cast_nullable_to_non_nullable
               as bool,
       note: freezed == note
-          ? _value.note
+          ? _self.note
           : note // ignore: cast_nullable_to_non_nullable
               as String?,
       position: null == position
-          ? _value.position
+          ? _self.position
           : position // ignore: cast_nullable_to_non_nullable
               as int,
       categorySlug: null == categorySlug
-          ? _value.categorySlug
+          ? _self.categorySlug
           : categorySlug // ignore: cast_nullable_to_non_nullable
               as String,
       addedBy: freezed == addedBy
-          ? _value.addedBy
+          ? _self.addedBy
           : addedBy // ignore: cast_nullable_to_non_nullable
               as String?,
       checkedBy: freezed == checkedBy
-          ? _value.checkedBy
+          ? _self.checkedBy
           : checkedBy // ignore: cast_nullable_to_non_nullable
               as String?,
       sources: null == sources
-          ? _value._sources
+          ? _self.sources
           : sources // ignore: cast_nullable_to_non_nullable
               as List<ShoppingItemSource>,
     ));
   }
 }
 
+/// Adds pattern-matching-related methods to [ShoppingListItem].
+extension ShoppingListItemPatterns on ShoppingListItem {
+  /// A variant of `map` that fallback to returning `orElse`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_ShoppingListItem value)? $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingListItem() when $default != null:
+        return $default(_that);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// Callbacks receives the raw object, upcasted.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case final Subclass2 value:
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_ShoppingListItem value) $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingListItem():
+        return $default(_that);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `map` that fallback to returning `null`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_ShoppingListItem value)? $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingListItem() when $default != null:
+        return $default(_that);
+      case _:
+        return null;
+    }
+  }
+
+  /// A variant of `when` that fallback to an `orElse` callback.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(
+            String id,
+            String listId,
+            String? ingredientId,
+            String displayName,
+            String? manualName,
+            double? quantity,
+            String? unitId,
+            bool checked,
+            String? note,
+            int position,
+            String categorySlug,
+            String? addedBy,
+            String? checkedBy,
+            List<ShoppingItemSource> sources)?
+        $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingListItem() when $default != null:
+        return $default(
+            _that.id,
+            _that.listId,
+            _that.ingredientId,
+            _that.displayName,
+            _that.manualName,
+            _that.quantity,
+            _that.unitId,
+            _that.checked,
+            _that.note,
+            _that.position,
+            _that.categorySlug,
+            _that.addedBy,
+            _that.checkedBy,
+            _that.sources);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// As opposed to `map`, this offers destructuring.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case Subclass2(:final field2):
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(
+            String id,
+            String listId,
+            String? ingredientId,
+            String displayName,
+            String? manualName,
+            double? quantity,
+            String? unitId,
+            bool checked,
+            String? note,
+            int position,
+            String categorySlug,
+            String? addedBy,
+            String? checkedBy,
+            List<ShoppingItemSource> sources)
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingListItem():
+        return $default(
+            _that.id,
+            _that.listId,
+            _that.ingredientId,
+            _that.displayName,
+            _that.manualName,
+            _that.quantity,
+            _that.unitId,
+            _that.checked,
+            _that.note,
+            _that.position,
+            _that.categorySlug,
+            _that.addedBy,
+            _that.checkedBy,
+            _that.sources);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `when` that fallback to returning `null`
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(
+            String id,
+            String listId,
+            String? ingredientId,
+            String displayName,
+            String? manualName,
+            double? quantity,
+            String? unitId,
+            bool checked,
+            String? note,
+            int position,
+            String categorySlug,
+            String? addedBy,
+            String? checkedBy,
+            List<ShoppingItemSource> sources)?
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _ShoppingListItem() when $default != null:
+        return $default(
+            _that.id,
+            _that.listId,
+            _that.ingredientId,
+            _that.displayName,
+            _that.manualName,
+            _that.quantity,
+            _that.unitId,
+            _that.checked,
+            _that.note,
+            _that.position,
+            _that.categorySlug,
+            _that.addedBy,
+            _that.checkedBy,
+            _that.sources);
+      case _:
+        return null;
+    }
+  }
+}
+
 /// @nodoc
 
-class _$ShoppingListItemImpl implements _ShoppingListItem {
-  const _$ShoppingListItemImpl(
+class _ShoppingListItem implements ShoppingListItem {
+  const _ShoppingListItem(
       {required this.id,
       required this.listId,
       this.ingredientId,
@@ -482,7 +843,7 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
       this.categorySlug = 'outros',
       this.addedBy,
       this.checkedBy,
-      final List<ShoppingItemSource> sources = const <ShoppingItemSource>[]})
+      List<ShoppingItemSource> sources = const <ShoppingItemSource>[]})
       : _sources = sources;
 
   @override
@@ -531,16 +892,19 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
     return EqualUnmodifiableListView(_sources);
   }
 
+  /// Create a copy of ShoppingListItem
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  String toString() {
-    return 'ShoppingListItem(id: $id, listId: $listId, ingredientId: $ingredientId, displayName: $displayName, manualName: $manualName, quantity: $quantity, unitId: $unitId, checked: $checked, note: $note, position: $position, categorySlug: $categorySlug, addedBy: $addedBy, checkedBy: $checkedBy, sources: $sources)';
-  }
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$ShoppingListItemCopyWith<_ShoppingListItem> get copyWith =>
+      __$ShoppingListItemCopyWithImpl<_ShoppingListItem>(this, _$identity);
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$ShoppingListItemImpl &&
+            other is _ShoppingListItem &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.listId, listId) || other.listId == listId) &&
             (identical(other.ingredientId, ingredientId) ||
@@ -561,95 +925,147 @@ class _$ShoppingListItemImpl implements _ShoppingListItem {
             (identical(other.addedBy, addedBy) || other.addedBy == addedBy) &&
             (identical(other.checkedBy, checkedBy) ||
                 other.checkedBy == checkedBy) &&
-            const DeepCollectionEquality().equals(other._sources, _sources));
+            const DeepCollectionEquality().equals(other.sources, _sources));
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      listId,
-      ingredientId,
-      displayName,
-      manualName,
-      quantity,
-      unitId,
-      checked,
-      note,
-      position,
-      categorySlug,
-      addedBy,
-      checkedBy,
-      const DeepCollectionEquality().hash(_sources));
+  int get hashCode {
+    return Object.hash(
+        runtimeType,
+        id,
+        listId,
+        ingredientId,
+        displayName,
+        manualName,
+        quantity,
+        unitId,
+        checked,
+        note,
+        position,
+        categorySlug,
+        addedBy,
+        checkedBy,
+        const DeepCollectionEquality().hash(_sources));
+  }
+
+  @override
+  String toString() {
+    return 'ShoppingListItem(id: $id, listId: $listId, ingredientId: $ingredientId, displayName: $displayName, manualName: $manualName, quantity: $quantity, unitId: $unitId, checked: $checked, note: $note, position: $position, categorySlug: $categorySlug, addedBy: $addedBy, checkedBy: $checkedBy, sources: $sources)';
+  }
+}
+
+/// @nodoc
+abstract mixin class _$ShoppingListItemCopyWith<$Res>
+    implements $ShoppingListItemCopyWith<$Res> {
+  factory _$ShoppingListItemCopyWith(
+          _ShoppingListItem value, $Res Function(_ShoppingListItem) _then) =
+      __$ShoppingListItemCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {String id,
+      String listId,
+      String? ingredientId,
+      String displayName,
+      String? manualName,
+      double? quantity,
+      String? unitId,
+      bool checked,
+      String? note,
+      int position,
+      String categorySlug,
+      String? addedBy,
+      String? checkedBy,
+      List<ShoppingItemSource> sources});
+}
+
+/// @nodoc
+class __$ShoppingListItemCopyWithImpl<$Res>
+    implements _$ShoppingListItemCopyWith<$Res> {
+  __$ShoppingListItemCopyWithImpl(this._self, this._then);
+
+  final _ShoppingListItem _self;
+  final $Res Function(_ShoppingListItem) _then;
 
   /// Create a copy of ShoppingListItem
   /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$ShoppingListItemImplCopyWith<_$ShoppingListItemImpl> get copyWith =>
-      __$$ShoppingListItemImplCopyWithImpl<_$ShoppingListItemImpl>(
-          this, _$identity);
+  $Res call({
+    Object? id = null,
+    Object? listId = null,
+    Object? ingredientId = freezed,
+    Object? displayName = null,
+    Object? manualName = freezed,
+    Object? quantity = freezed,
+    Object? unitId = freezed,
+    Object? checked = null,
+    Object? note = freezed,
+    Object? position = null,
+    Object? categorySlug = null,
+    Object? addedBy = freezed,
+    Object? checkedBy = freezed,
+    Object? sources = null,
+  }) {
+    return _then(_ShoppingListItem(
+      id: null == id
+          ? _self.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      listId: null == listId
+          ? _self.listId
+          : listId // ignore: cast_nullable_to_non_nullable
+              as String,
+      ingredientId: freezed == ingredientId
+          ? _self.ingredientId
+          : ingredientId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      displayName: null == displayName
+          ? _self.displayName
+          : displayName // ignore: cast_nullable_to_non_nullable
+              as String,
+      manualName: freezed == manualName
+          ? _self.manualName
+          : manualName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      quantity: freezed == quantity
+          ? _self.quantity
+          : quantity // ignore: cast_nullable_to_non_nullable
+              as double?,
+      unitId: freezed == unitId
+          ? _self.unitId
+          : unitId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      checked: null == checked
+          ? _self.checked
+          : checked // ignore: cast_nullable_to_non_nullable
+              as bool,
+      note: freezed == note
+          ? _self.note
+          : note // ignore: cast_nullable_to_non_nullable
+              as String?,
+      position: null == position
+          ? _self.position
+          : position // ignore: cast_nullable_to_non_nullable
+              as int,
+      categorySlug: null == categorySlug
+          ? _self.categorySlug
+          : categorySlug // ignore: cast_nullable_to_non_nullable
+              as String,
+      addedBy: freezed == addedBy
+          ? _self.addedBy
+          : addedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      checkedBy: freezed == checkedBy
+          ? _self.checkedBy
+          : checkedBy // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sources: null == sources
+          ? _self._sources
+          : sources // ignore: cast_nullable_to_non_nullable
+              as List<ShoppingItemSource>,
+    ));
+  }
 }
 
-abstract class _ShoppingListItem implements ShoppingListItem {
-  const factory _ShoppingListItem(
-      {required final String id,
-      required final String listId,
-      final String? ingredientId,
-      required final String displayName,
-      final String? manualName,
-      final double? quantity,
-      final String? unitId,
-      final bool checked,
-      final String? note,
-      final int position,
-      final String categorySlug,
-      final String? addedBy,
-      final String? checkedBy,
-      final List<ShoppingItemSource> sources}) = _$ShoppingListItemImpl;
-
-  @override
-  String get id;
-  @override
-  String get listId;
-  @override
-  String? get ingredientId;
-  @override
-  String get displayName;
-  @override
-  String? get manualName;
-
-  /// Nulo quando nenhuma origem tinha quantidade numérica reconhecida —
-  /// a tela mostra a unidade/nome sem número, não inventa um.
-  @override
-  double? get quantity;
-  @override
-  String? get unitId;
-  @override
-  bool get checked;
-  @override
-  String? get note;
-  @override
-  int get position;
-
-  /// Corredor do mercado (slug de `kSeedCategories`, RF-05.7) — do
-  /// catálogo quando o ingrediente tem categoria, senão inferido do nome.
-  @override
-  String get categorySlug;
-
-  /// Quem adicionou e quem marcou o item (id da conta); só em listas da casa.
-  @override
-  String? get addedBy;
-  @override
-  String? get checkedBy;
-  @override
-  List<ShoppingItemSource> get sources;
-
-  /// Create a copy of ShoppingListItem
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$ShoppingListItemImplCopyWith<_$ShoppingListItemImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
+// dart format on

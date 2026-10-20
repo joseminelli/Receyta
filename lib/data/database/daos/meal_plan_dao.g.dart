@@ -9,4 +9,21 @@ mixin _$MealPlanDaoMixin on DatabaseAccessor<AppDatabase> {
   $MealPlanEntriesTable get mealPlanEntries => attachedDatabase.mealPlanEntries;
   $SharedMealsTable get sharedMeals => attachedDatabase.sharedMeals;
   $CookLogsTable get cookLogs => attachedDatabase.cookLogs;
+  MealPlanDaoManager get managers => MealPlanDaoManager(this);
+}
+
+class MealPlanDaoManager {
+  final _$MealPlanDaoMixin _db;
+  MealPlanDaoManager(this._db);
+  $$FoldersTableTableManager get folders =>
+      $$FoldersTableTableManager(_db.attachedDatabase, _db.folders);
+  $$RecipesTableTableManager get recipes =>
+      $$RecipesTableTableManager(_db.attachedDatabase, _db.recipes);
+  $$MealPlanEntriesTableTableManager get mealPlanEntries =>
+      $$MealPlanEntriesTableTableManager(
+          _db.attachedDatabase, _db.mealPlanEntries);
+  $$SharedMealsTableTableManager get sharedMeals =>
+      $$SharedMealsTableTableManager(_db.attachedDatabase, _db.sharedMeals);
+  $$CookLogsTableTableManager get cookLogs =>
+      $$CookLogsTableTableManager(_db.attachedDatabase, _db.cookLogs);
 }
