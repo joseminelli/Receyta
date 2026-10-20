@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
-import 'package:drift_dev/api/migrations.dart';
+import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:receyta/data/database/app_database.dart';
 
@@ -22,7 +22,7 @@ void main() {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
     await db.ensureReady();
-    await db.validateDatabaseSchema(validateDropped: false);
+    await db.validateDatabaseSchema();
   });
 
   test('schema do código bate com o snapshot v15 versionado', () async {

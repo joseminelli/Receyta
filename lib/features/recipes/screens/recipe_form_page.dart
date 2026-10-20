@@ -413,7 +413,6 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
 
   void _reorder(List<_Line> list, int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) newIndex -= 1;
       list.insert(newIndex, list.removeAt(oldIndex));
     });
   }
@@ -1128,7 +1127,7 @@ class _LineList extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
             itemCount: lines.length,
-            onReorder: onReorder,
+            onReorderItem: onReorder,
             itemBuilder: (context, i) => _buildLineTile(context, i),
           ),
         Align(

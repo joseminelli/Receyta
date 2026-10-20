@@ -17,10 +17,22 @@ class _FakeRepo implements CookLogRepository {
     String recipeId, {
     DateTime? cookedAt,
     String? note,
+    int? rating,
   }) async {
     added.add((recipeId: recipeId, note: note, cookedAt: cookedAt));
     return Ok('log-${added.length}');
   }
+
+  @override
+  Future<Result<void>> setFeedback(
+    String id, {
+    int? rating,
+    String? note,
+  }) async =>
+      const Ok(null);
+
+  @override
+  Future<String?> idForMealEntry(String mealPlanEntryId) async => null;
 
   @override
   Future<Result<void>> remove(String id) async {

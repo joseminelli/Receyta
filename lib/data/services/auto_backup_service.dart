@@ -77,7 +77,7 @@ class AutoBackupService {
       if (last != null && _clock().difference(last) < minGap) {
         return const Ok(null);
       }
-      return backupNow();
+      return await backupNow();
     } catch (e) {
       debugPrint('AutoBackupService.runIfDue: $e');
       return Err(ProcessingFailure('Falha no backup automático', cause: e));
