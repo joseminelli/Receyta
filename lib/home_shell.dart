@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:receyta/features/achievements/widgets/achievement_watcher.dart';
 import 'package:receyta/data/services/auto_backup_service.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/home_widget_service.dart';
@@ -345,6 +346,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
           ),
           if (ref.watch(tutorialStepProvider) != null)
             const Positioned.fill(child: TutorialOverlay()),
+          const AchievementWatcher(),
         ],
       ),
     );

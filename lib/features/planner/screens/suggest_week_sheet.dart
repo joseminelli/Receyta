@@ -11,8 +11,6 @@ import 'package:receyta/domain/models/meal_plan_entry.dart';
 import 'package:receyta/features/planner/screens/meal_slot_picker.dart'
     show ChoicePill;
 import 'package:receyta/features/mascot/milestones.dart';
-import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
-import 'package:receyta/features/mascot/widgets/mascot_moment.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -83,17 +81,7 @@ class _SuggestWeekSheetState extends ConsumerState<_SuggestWeekSheet> {
     if (!mounted) return;
     Navigator.of(context).pop();
     final count = picks.length;
-    if (count > 1 && await claimMilestone(Milestone.firstWeekPlanned)) {
-      showMascotMoment(kind: MascotKind.pote);
-      showAppSnackBar(
-        title: 'Primeira semana planejada',
-        message: '$count refeições na agenda. Agora é só cozinhar e '
-            'mandar os ingredientes pra lista de compras.',
-        actionLabel: 'Ver conquistas',
-        onAction: openAchievements,
-      );
-      return;
-    }
+    if (count > 1) await claimMilestone(Milestone.firstWeekPlanned);
     showAppSnackBar(
       title: count == 1 ? 'Refeição agendada' : 'Semana planejada',
       message: count == 1

@@ -1,23 +1,33 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/achievements.dart';
 import 'package:receyta/features/achievements/controllers/achievements_view_model.dart';
+import 'package:receyta/features/achievements/widgets/achievement_emblem.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/widgets/skeleton.dart';
 
-/// Conquistas: uma grade de medalhões, coloridos quando já ganhos e apagados
-/// (com a barra de progresso) enquanto faltam. Tudo deriva das contagens do
-/// app — não há nada a "resgatar".
-class AchievementsPage extends ConsumerWidget {
+/// Conquistas: um painel de progresso, "Suas conquistas" (medalhas ganhas, em
+/// prateleira que expande numa grade com detalhes) e "A liberar" (o que falta,
+/// da mais próxima pra mais distante). Tudo deriva das contagens do app.
+class AchievementsPage extends ConsumerStatefulWidget {
   const AchievementsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AchievementsPage> createState() => _AchievementsPageState();
+}
+
+class _AchievementsPageState extends ConsumerState<AchievementsPage> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
     final achievements = ref.watch(achievementsProvider);
     final list = achievements.valueOrNull;
     final done = list?.where((a) => a.unlocked).length;
@@ -27,9 +37,9 @@ class AchievementsPage extends ConsumerWidget {
       subtitle: list == null ? null : '$done de ${list.length}',
       color: TileColor.lime,
       body: achievements.when(
-        loading: () => const _GridSkeleton(),
+        loading: () => const _PageSkeleton(),
         error: (_, __) => _buildError(context),
-        data: (items) => _buildGrid(items),
+        data: _buildContent,
       ),
     );
   }
@@ -59,126 +69,247 @@ class AchievementsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildGrid(List<Achievement> items) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(AppSpacing.screen),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 220,
-        crossAxisSpacing: AppSpacing.sm,
-        mainAxisSpacing: AppSpacing.sm,
-        mainAxisExtent: 214,
+  Widget _buildContent(List<Achievement> items) {
+    final unlocked = [
+      for (final a in items)
+        if (a.unlocked) a
+    ];
+    final locked = [
+      for (final a in items)
+        if (!a.unlocked) a
+    ]..sort((a, b) => b.progress.compareTo(a.progress));
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screen,
+        AppSpacing.md,
+        AppSpacing.screen,
+        AppSpacing.xl,
       ),
-      itemCount: items.length,
-      itemBuilder: (context, i) => _AchievementCard(achievement: items[i]),
-    );
-  }
-}
-
-IconData _iconFor(AchievementId id) => switch (id) {
-      AchievementId.firstRecipe => Icons.menu_book_rounded,
-      AchievementId.tenRecipes => Icons.collections_bookmark_rounded,
-      AchievementId.twentyFiveRecipes => Icons.local_library_rounded,
-      AchievementId.firstFavorite => Icons.favorite_rounded,
-      AchievementId.firstCooked => Icons.soup_kitchen_rounded,
-      AchievementId.tenCooked => Icons.restaurant_rounded,
-      AchievementId.fiftyCooked => Icons.workspace_premium_rounded,
-      AchievementId.firstMeal => Icons.event_available_rounded,
-      AchievementId.plannedWeek => Icons.calendar_month_rounded,
-      AchievementId.firstShoppingList => Icons.shopping_basket_rounded,
-      AchievementId.house => Icons.home_rounded,
-    };
-
-class _AchievementCard extends StatelessWidget {
-  const _AchievementCard({required this.achievement});
-
-  final Achievement achievement;
-
-  Color _accent(AppColors colors) => switch (achievement.tone) {
-        AchievementTone.lime => colors.lime,
-        AchievementTone.coral => colors.coral,
-        AchievementTone.violet => colors.violet,
-      };
-
-  Color _onAccent(AppColors colors) => switch (achievement.tone) {
-        AchievementTone.lime => colors.ink,
-        AchievementTone.coral || AchievementTone.violet => colors.onSaturated,
-      };
-
-  Widget _medallion(AppColors colors) {
-    final unlocked = achievement.unlocked;
-    return Container(
-      width: 68,
-      height: 68,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: unlocked ? _accent(colors) : colors.paper,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        unlocked ? _iconFor(achievement.id) : Icons.lock_outline_rounded,
-        size: 30,
-        color: unlocked ? _onAccent(colors) : colors.textMuted,
-      ),
-    );
-  }
-
-  Widget _status(BuildContext context, AppColors colors) {
-    final texts = context.texts;
-    if (achievement.unlocked) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check_circle_rounded, size: 16, color: colors.onPaper),
-          const SizedBox(width: 4),
-          Text(
-            'Conquistada',
-            style: texts.labelMedium?.copyWith(
-              color: colors.onPaper,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      );
-    }
-    if (achievement.target == 1) {
-      return Text(
-        'Ainda não',
-        style: texts.labelMedium?.copyWith(color: colors.textMuted),
-      );
-    }
-    return Row(
       children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-            child: LinearProgressIndicator(
-              value: achievement.progress,
-              minHeight: 8,
-              backgroundColor: colors.paper,
-              color: _accent(colors),
-            ),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        Text(
-          '${achievement.current}/${achievement.target}',
-          style: texts.labelMedium?.copyWith(color: colors.textMuted),
-        ),
+        _buildHero(unlocked.length, items.length, locked),
+        const SizedBox(height: AppSpacing.lg),
+        _buildUnlockedSection(unlocked),
+        if (locked.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _buildLockedSection(locked),
+        ],
       ],
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHero(int done, int total, List<Achievement> locked) {
     final colors = context.colors;
     final texts = context.texts;
-    final unlocked = achievement.unlocked;
+    final next = locked.isEmpty ? null : locked.first;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.ink,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 84,
+            height: 84,
+            child: CustomPaint(
+              painter: _RingPainter(
+                progress: total == 0 ? 0 : done / total,
+                color: colors.lime,
+                track: colors.inkSoft,
+              ),
+              child: Center(
+                child: Text(
+                  '$done/$total',
+                  style: texts.titleMedium?.copyWith(
+                    color: colors.onInk,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  next == null ? 'Tudo conquistado!' : 'Próxima conquista',
+                  style: texts.labelMedium?.copyWith(
+                    color: colors.onInk.withValues(alpha: 0.65),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  next?.title ?? 'Você completou a coleção.',
+                  style: texts.titleLarge?.copyWith(
+                    color: colors.onInk,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (next != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    next.target == 1
+                        ? next.description
+                        : '${next.current} de ${next.target}',
+                    style: texts.bodyMedium?.copyWith(
+                      color: colors.lime,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return Semantics(
-      label: '${achievement.title}. ${achievement.description} '
-          '${unlocked ? 'Conquistada.' : '${achievement.current} de ${achievement.target}.'}',
-      child: ExcludeSemantics(
-        child: Container(
+  Widget _buildSectionHeader(
+    String title,
+    int count, {
+    Widget? action,
+  }) {
+    final colors = context.colors;
+    final texts = context.texts;
+    return Row(
+      children: [
+        Text(
+          title,
+          style: texts.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          '$count',
+          style: texts.titleMedium?.copyWith(color: colors.textMuted),
+        ),
+        const Spacer(),
+        if (action != null) action,
+      ],
+    );
+  }
+
+  Widget _buildExpandToggle() {
+    final colors = context.colors;
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.pill),
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.xs,
+          vertical: 6,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _expanded ? 'Recolher' : 'Ver detalhes',
+              style: context.texts.labelLarge?.copyWith(
+                color: colors.onPaper,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            AnimatedRotation(
+              turns: _expanded ? 0.5 : 0,
+              duration: const Duration(milliseconds: 250),
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: colors.onPaper,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnlockedSection(List<Achievement> unlocked) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          'Suas conquistas',
+          unlocked.length,
+          action: unlocked.length > 3 ? _buildExpandToggle() : null,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (unlocked.isEmpty)
+          Text(
+            'Nenhuma ainda. A primeira está logo abaixo.',
+            style: context.texts.bodyMedium?.copyWith(color: colors.textMuted),
+          )
+        else
+          AnimatedSize(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: _expanded
+                  ? _buildUnlockedGrid(unlocked)
+                  : _buildUnlockedShelf(unlocked),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildUnlockedShelf(List<Achievement> unlocked) {
+    final texts = context.texts;
+    return SizedBox(
+      key: const ValueKey('shelf'),
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: unlocked.length,
+        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        itemBuilder: (context, i) {
+          final a = unlocked[i];
+          return SizedBox(
+            width: 84,
+            child: Column(
+              children: [
+                AchievementEmblem(id: a.id, tone: a.tone, unlocked: true),
+                const SizedBox(height: 6),
+                Text(
+                  a.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: texts.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildUnlockedGrid(List<Achievement> unlocked) {
+    final colors = context.colors;
+    final texts = context.texts;
+    return GridView.builder(
+      key: const ValueKey('grid'),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 220,
+        crossAxisSpacing: AppSpacing.sm,
+        mainAxisSpacing: AppSpacing.sm,
+        mainAxisExtent: 206,
+      ),
+      itemCount: unlocked.length,
+      itemBuilder: (context, i) {
+        final a = unlocked[i];
+        return Container(
           padding: const EdgeInsets.all(AppSpacing.sm),
           decoration: BoxDecoration(
             color: colors.paperSoft,
@@ -186,54 +317,197 @@ class _AchievementCard extends StatelessWidget {
           ),
           child: Column(
             children: [
-              _medallion(colors),
+              AchievementEmblem(
+                id: a.id,
+                tone: a.tone,
+                unlocked: true,
+                size: 84,
+              ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                achievement.title,
+                a.title,
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: texts.titleSmall?.copyWith(
-                  color: unlocked ? colors.onPaper : colors.textBody,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: texts.titleSmall?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 2),
               Expanded(
                 child: Text(
-                  achievement.description,
+                  a.description,
                   textAlign: TextAlign.center,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: texts.bodySmall?.copyWith(color: colors.textMuted),
                 ),
               ),
-              _status(context, colors),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 16,
+                    color: colors.onPaper,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Conquistada',
+                    style: texts.labelMedium?.copyWith(
+                      color: colors.onPaper,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-        ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLockedSection(List<Achievement> locked) {
+    final colors = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader('A liberar', locked.length),
+        const SizedBox(height: AppSpacing.xs),
+        for (var i = 0; i < locked.length; i++) ...[
+          if (i > 0)
+            Divider(height: 1, thickness: 1.5, color: colors.paperSoft),
+          _buildLockedRow(locked[i]),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLockedRow(Achievement a) {
+    final colors = context.colors;
+    final texts = context.texts;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Row(
+        children: [
+          AchievementEmblem(
+            id: a.id,
+            tone: a.tone,
+            unlocked: false,
+            size: 60,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  a.title,
+                  style: texts.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  a.description,
+                  style: texts.bodySmall?.copyWith(color: colors.textMuted),
+                ),
+                if (a.target > 1) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppRadii.pill),
+                          child: LinearProgressIndicator(
+                            value: a.progress,
+                            minHeight: 6,
+                            backgroundColor: colors.paperSoft,
+                            color: colors.onPaper,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '${a.current}/${a.target}',
+                        style: texts.labelMedium?.copyWith(
+                          color: colors.textMuted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _GridSkeleton extends StatelessWidget {
-  const _GridSkeleton();
+class _RingPainter extends CustomPainter {
+  const _RingPainter({
+    required this.progress,
+    required this.color,
+    required this.track,
+  });
+
+  final double progress;
+  final Color color;
+  final Color track;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 8.0;
+    final rect = Rect.fromLTWH(
+      stroke / 2,
+      stroke / 2,
+      size.width - stroke,
+      size.height - stroke,
+    );
+    final base = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect, 0, math.pi * 2, false, base..color = track);
+    if (progress > 0) {
+      canvas.drawArc(
+        rect,
+        -math.pi / 2,
+        math.pi * 2 * progress,
+        false,
+        base..color = color,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.progress != progress || old.color != color || old.track != track;
+}
+
+class _PageSkeleton extends StatelessWidget {
+  const _PageSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    return Skeleton(
-      child: GridView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpacing.screen),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 220,
-          crossAxisSpacing: AppSpacing.sm,
-          mainAxisSpacing: AppSpacing.sm,
-          mainAxisExtent: 214,
+    return const Skeleton(
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.screen),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SkeletonBox(height: 116, radius: AppRadii.lg),
+            SizedBox(height: AppSpacing.lg),
+            SkeletonBox(width: 150, height: 24, radius: AppRadii.pill),
+            SizedBox(height: AppSpacing.sm),
+            SkeletonBox(height: 96, radius: AppRadii.md),
+            SizedBox(height: AppSpacing.lg),
+            SkeletonBox(width: 110, height: 24, radius: AppRadii.pill),
+            SizedBox(height: AppSpacing.sm),
+            SkeletonBox(height: 72, radius: AppRadii.md),
+          ],
         ),
-        itemCount: 6,
-        itemBuilder: (_, __) => const SkeletonBox(radius: AppRadii.md),
       ),
     );
   }
