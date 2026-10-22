@@ -37,6 +37,13 @@ abstract class AppSnackBar {
     );
   }
 
+  /// Toast com "Desfazer" e sem descrição ganha uma frase de apoio — é ela que
+  /// abre o corpo e dá a animação líquida; outras ações ficam inline na pílula.
+  static String? _undoHint(String? actionLabel) =>
+      actionLabel?.toLowerCase() == 'desfazer'
+          ? 'Foi sem querer? Você pode desfazer.'
+          : null;
+
   static (String, String?) _split(String message, String fallbackTitle) {
     final text = message.trim();
     final trimmed =

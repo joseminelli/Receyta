@@ -12,7 +12,6 @@ import 'package:receyta/features/recipes/screens/duplicate_import_check.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/widgets/app_dialog.dart';
-import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_button.dart';
 
 /// Pergunta a URL, busca e abre o formulário já preenchido pra revisão
@@ -51,7 +50,7 @@ Future<void> importRecipeFromUrlFlow(
   );
   if (url == null || url.isEmpty) return;
 
-  showAppSnackBar(message: 'Buscando a receita...');
+  final toast = showAppLoading('Buscando a receita');
 
   final result = await _recipeFromAppLink(ref, url) ??
       await ref.read(recipeImportServiceProvider).importFromUrl(url);
@@ -61,13 +60,15 @@ Future<void> importRecipeFromUrlFlow(
   if (recipe == null) {
     result.when(
       ok: (_) {},
-      err: (f) => showAppSnackBar(
-        message: f.message,
-        variant: AppSnackBarVariant.error,
-      ),
+      err: (f) => toast?.error('Não consegui importar', description: f.message),
     );
     return;
   }
+
+  toast?.success(
+    'Receita encontrada',
+    description: 'Revise os dados e toque em salvar para guardá-la.',
+  );
 
   if (!await confirmNotDuplicate(context, ref, recipe)) return;
   if (!context.mounted) return;
