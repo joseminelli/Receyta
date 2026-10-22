@@ -472,7 +472,7 @@ class SettingsPage extends ConsumerWidget {
                           _SwitchRow(
                             icon: Icons.straighten,
                             title: 'Equivalências de medidas',
-                            subtitle: 'Mostra g ↔ xícara e °C ↔ °F ao lado',
+                            subtitle: 'Mostra g/xícara e °C/°F ao lado',
                             value: settings.showEquivalents,
                             onChanged: settingsNotifier.setShowEquivalents,
                           ),
