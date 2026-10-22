@@ -7,6 +7,7 @@ import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/domain/engine/achievements.dart';
 import 'package:receyta/features/achievements/controllers/achievements_view_model.dart';
 import 'package:receyta/features/achievements/widgets/achievement_emblem.dart';
+import 'package:receyta/features/achievements/widgets/achievement_trophy.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -90,10 +91,10 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
         _buildHero(unlocked.length, items.length, locked),
         const SizedBox(height: AppSpacing.lg),
         _buildUnlockedSection(unlocked),
-        if (locked.isNotEmpty) ...[
-          const SizedBox(height: AppSpacing.lg),
-          _buildLockedSection(locked),
-        ],
+        const SizedBox(height: AppSpacing.lg),
+        locked.isEmpty
+            ? _buildTrophy(items.length)
+            : _buildLockedSection(locked),
       ],
     );
   }
@@ -363,6 +364,31 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTrophy(int total) {
+    final colors = context.colors;
+    final texts = context.texts;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Column(
+        children: [
+          AchievementTrophy(color: colors.lime, starColor: colors.ink),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Coleção completa',
+            textAlign: TextAlign.center,
+            style: texts.displaySmall,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Você conquistou as $total conquistas. Mestre da cozinha!',
+            textAlign: TextAlign.center,
+            style: texts.bodyMedium?.copyWith(color: colors.textMuted),
+          ),
+        ],
+      ),
     );
   }
 
