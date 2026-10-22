@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/app_toast.dart';
@@ -29,6 +30,13 @@ void showAppSnackBar({
     actionLabel: actionLabel,
     onAction: onAction,
   );
+}
+
+/// Abre a tela de conquistas a partir de um toast, sem `BuildContext` local.
+void openAchievements() {
+  final context = rootNavigatorKey.currentContext;
+  if (context == null) return;
+  GoRouter.of(context).push('/achievements');
 }
 
 /// Abre um toast em loading; use o handle pra virar sucesso/erro no lugar.

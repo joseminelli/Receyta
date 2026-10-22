@@ -8,6 +8,7 @@ import 'package:receyta/data/repositories/meal_plan_repository.dart';
 import 'package:receyta/domain/engine/cook_log_format.dart';
 import 'package:receyta/domain/models/cook_log.dart';
 import 'package:receyta/features/recipes/controllers/cook_log_view_model.dart';
+import 'package:receyta/features/mascot/milestones.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/features/mascot/widgets/mascot_moment.dart';
 import 'package:receyta/messenger.dart';
@@ -74,8 +75,13 @@ Future<String?> logCookedNow(
 }
 
 /// Frase do toast de "registrado": a primeira vez ou a Nª vez que a receita
-/// foi feita.
+/// foi feita — ou, uma única vez, o aviso de que chegou à 10ª receita
+/// cozinhada no app.
 Future<String> _cookedTimes(CookLogRepository repo, String recipeId) async {
+  if (await repo.countAll() == 10 &&
+      await claimMilestone(Milestone.tenthCooked)) {
+    return 'Já são 10 receitas cozinhadas no app. Parabéns!';
+  }
   final n = await repo.countForRecipe(recipeId);
   return n <= 1
       ? 'Primeira vez que você faz essa receita.'

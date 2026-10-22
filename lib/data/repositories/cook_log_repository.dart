@@ -83,6 +83,10 @@ class CookLogRepository {
             (rows) => [for (final r in rows) _toDomain(r)],
           );
 
+  /// Quantas vezes qualquer receita já foi registrada como feita.
+  Future<int> countAll() async =>
+      (await _dao.watchAllWithRecipe().first).length;
+
   /// Quantas vezes a receita já foi registrada como feita.
   Future<int> countForRecipe(String recipeId) async =>
       (await _dao.watchForRecipe(recipeId).first).length;

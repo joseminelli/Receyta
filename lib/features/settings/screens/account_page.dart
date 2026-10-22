@@ -352,6 +352,12 @@ class _Shortcuts extends StatelessWidget {
     ),
     (Icons.history, 'Histórico', 'Tudo o que você já cozinhou', '/history'),
     (
+      Icons.emoji_events_outlined,
+      'Conquistas',
+      'Seus marcos na cozinha',
+      '/achievements'
+    ),
+    (
       Icons.auto_graph,
       'Retrospectiva',
       'Seu mês e seu ano na cozinha',

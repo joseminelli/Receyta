@@ -17,7 +17,11 @@ import 'package:receyta/domain/models/recipe_step.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
+import 'package:receyta/features/mascot/milestones.dart';
+import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
+import 'package:receyta/features/mascot/widgets/mascot_moment.dart';
 import 'package:receyta/features/recipes/controllers/recipe_form_view_model.dart';
+import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/screens/recipe_photo_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
@@ -140,6 +144,28 @@ List<_Line> _linesWithHeadings(
     out.add(_Line(it.text, ingredientId: it.ingredientId));
   }
   return out;
+}
+
+/// Aviso de "salvou" depois que o formulário fechou. A primeira receita da
+/// biblioteca troca o aviso comum por uma comemoração com o mascote.
+Future<void> _reportSaved(RecipeRepository recipes, bool isNew) async {
+  if (isNew && (await recipes.watchAll().first).length == 1) {
+    if (await claimMilestone(Milestone.firstRecipe)) {
+      showMascotMoment(kind: MascotKind.cloche);
+      showAppSnackBar(
+        title: 'Primeira receita salva',
+        message: 'Sua biblioteca começou. Que tal agendar essa receita '
+            'pra esta semana?',
+        actionLabel: 'Ver conquistas',
+        onAction: openAchievements,
+      );
+      return;
+    }
+  }
+  showAppSnackBar(
+    title: isNew ? 'Receita salva' : 'Alterações salvas',
+    message: isNew ? 'Já está na sua biblioteca.' : 'A receita foi atualizada.',
+  );
 }
 
 class _RecipeForm extends ConsumerStatefulWidget {
@@ -365,7 +391,12 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
 
     if (!mounted) return;
     result.when(
-      ok: (_) => context.pop(),
+      ok: (_) {
+        final isNew = _recipe == null;
+        final recipes = ref.read(recipeRepositoryProvider);
+        context.pop();
+        unawaited(_reportSaved(recipes, isNew));
+      },
       err: (f) {
         setState(() => _saving = false);
         AppSnackBar.show(
@@ -941,7 +972,8 @@ class _RemovableChip extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: context.texts.labelLarge?.copyWith(color: colors.onPaper),
+                style:
+                    context.texts.labelLarge?.copyWith(color: colors.onPaper),
               ),
               const SizedBox(width: AppSpacing.xs / 2),
               Icon(Icons.close, size: 16, color: colors.textMuted),

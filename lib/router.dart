@@ -6,6 +6,7 @@ import 'package:receyta/bootstrap.dart';
 import 'package:receyta/domain/engine/recipe_import.dart';
 import 'package:receyta/domain/engine/smart_collections.dart';
 import 'package:receyta/domain/models/recipe.dart';
+import 'package:receyta/features/achievements/screens/achievements_page.dart';
 import 'package:receyta/features/folders/screens/all_folders_page.dart';
 import 'package:receyta/features/folders/screens/folder_page.dart';
 import 'package:receyta/features/onboarding/controllers/onboarding_seen.dart';
@@ -163,6 +164,11 @@ final router = GoRouter(
       path: '/history',
       name: 'history',
       builder: (context, state) => const HistoryPage(),
+    ),
+    GoRoute(
+      path: '/achievements',
+      name: 'achievements',
+      builder: (context, state) => const AchievementsPage(),
     ),
     GoRoute(
       path: '/trash',
