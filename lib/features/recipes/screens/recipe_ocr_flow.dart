@@ -41,6 +41,7 @@ Future<void> importRecipeFromPhotoFlow(
   result.when(
     ok: (recipes) => _reviewRecipesOneByOne(context, ref, recipes),
     err: (f) => showAppSnackBar(
+      title: 'Não consegui ler a foto',
       message: f.message,
       variant: AppSnackBarVariant.error,
     ),
@@ -67,8 +68,10 @@ Future<void> _reviewRecipesOneByOne(
     if (!context.mounted) return;
     if (recipe.ingredientLines.isEmpty && recipe.stepLines.isEmpty) {
       showAppSnackBar(
-        message: 'Li muito pouco desta foto. Se a receita é escrita à mão, '
-            'o app não consegue ler letra de mão.',
+        title: 'Li pouco desta foto',
+        message: 'Se a receita é escrita à mão, o app não consegue ler '
+            'letra de mão. Complete os campos na revisão.',
+        variant: AppSnackBarVariant.info,
       );
     }
     await context.push('/recipe/new', extra: recipe);

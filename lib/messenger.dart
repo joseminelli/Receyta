@@ -14,6 +14,7 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 /// à mão.
 void showAppSnackBar({
   required String message,
+  String? title,
   AppSnackBarVariant variant = AppSnackBarVariant.success,
   String? actionLabel,
   VoidCallback? onAction,
@@ -23,6 +24,7 @@ void showAppSnackBar({
   AppSnackBar.show(
     context,
     message: message,
+    title: title,
     variant: variant,
     actionLabel: actionLabel,
     onAction: onAction,

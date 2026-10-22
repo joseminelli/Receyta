@@ -81,8 +81,8 @@ Future<void> syncPhotosAndWarn(WidgetRef ref) async {
   await sync.syncPending();
   if (sync.takeQuotaNotice()) {
     showAppSnackBar(
-      message: 'Limite de fotos da conta atingido. '
-          'A foto ficou só neste aparelho.',
+      title: 'Limite de fotos atingido',
+      message: 'A foto ficou só neste aparelho e não vai pra conta.',
       variant: AppSnackBarVariant.error,
     );
   }

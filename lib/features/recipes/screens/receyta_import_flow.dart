@@ -155,18 +155,26 @@ void _reportResult(Result<ImportSummary> result) {
   result.when(
     ok: (summary) {
       if (summary.recipes == 0 && summary.skipped > 0) {
-        showAppSnackBar(message: 'Nada importado — tudo pulado');
+        showAppSnackBar(
+          title: 'Nada importado',
+          message: 'Todas as receitas do arquivo foram puladas.',
+          variant: AppSnackBarVariant.info,
+        );
         return;
       }
-      final imported = summary.recipes == 1
-          ? '1 receita importada'
-          : '${summary.recipes} receitas importadas';
-      final skippedSuffix = summary.skipped > 0
-          ? ' (${summary.skipped} pulada${summary.skipped == 1 ? '' : 's'})'
-          : '';
-      showAppSnackBar(message: '$imported$skippedSuffix');
+      final skipped = summary.skipped;
+      showAppSnackBar(
+        title: summary.recipes == 1
+            ? '1 receita importada'
+            : '${summary.recipes} receitas importadas',
+        message: skipped > 0
+            ? '$skipped ${skipped == 1 ? 'foi pulada' : 'foram puladas'}. '
+                'As demais já estão na sua biblioteca.'
+            : 'Já estão na sua biblioteca.',
+      );
     },
     err: (f) => showAppSnackBar(
+      title: 'Não consegui importar',
       message: f.message,
       variant: AppSnackBarVariant.error,
     ),

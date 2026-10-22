@@ -51,22 +51,25 @@ class _AutoBackupSheet extends ConsumerWidget {
   const _AutoBackupSheet();
 
   Future<void> _backupNow(WidgetRef ref) async {
+    final toast = showAppLoading('Salvando a cópia');
     final result = await ref.read(autoBackupProvider.notifier).backupNow();
     result.when(
       ok: (file) {
-        showAppSnackBar(
-          message: file == null
-              ? 'Nada pra guardar ainda: crie uma receita primeiro'
-              : 'Cópia feita',
-        );
-        if (file != null) {
-          showMascotMoment(kind: MascotKind.pote, mood: MascotMood.waving);
+        if (file == null) {
+          toast?.info(
+            'Nada pra guardar ainda',
+            description: 'Crie uma receita primeiro e tente de novo.',
+          );
+          return;
         }
+        toast?.success(
+          'Cópia salva',
+          description: 'Guardada no aparelho. Você pode enviá-la ou '
+              'restaurá-la por esta tela.',
+        );
+        showMascotMoment(kind: MascotKind.pote, mood: MascotMood.waving);
       },
-      err: (f) => showAppSnackBar(
-        message: f.message,
-        variant: AppSnackBarVariant.error,
-      ),
+      err: (f) => toast?.error('Não consegui salvar', description: f.message),
     );
   }
 
@@ -84,7 +87,8 @@ class _AutoBackupSheet extends ConsumerWidget {
       await Share.shareXFiles([XFile(file.path)], text: 'Backup do Receyta');
     } catch (_) {
       showAppSnackBar(
-        message: 'Não consegui abrir o compartilhamento',
+        title: 'Compartilhamento indisponível',
+        message: 'Não consegui abrir o compartilhamento. Tente de novo.',
         variant: AppSnackBarVariant.error,
       );
     }

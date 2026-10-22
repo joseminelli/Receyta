@@ -314,7 +314,8 @@ class _DayPageState extends ConsumerState<DayPage> {
     final result = await _repo.remove(entry.id);
     result.when(
       ok: (_) => showAppSnackBar(
-        message: 'Removido: ${entry.recipeName}',
+        title: 'Removido da agenda',
+        message: entry.recipeName,
         actionLabel: 'Desfazer',
         onAction: () => _repo.restore(entry),
       ),
@@ -404,8 +405,9 @@ class _DayPageState extends ConsumerState<DayPage> {
     final result = await _repo.duplicate(entry.id, slot.day, slot.meal);
     result.when(
       ok: (_) => showAppSnackBar(
-        message: 'Duplicado para ${weekdayShort(slot.day)} ${slot.day.day} '
-            '(${slot.meal.label})',
+        title: 'Receita duplicada',
+        message: 'Agendada para ${weekdayShort(slot.day)} ${slot.day.day} '
+            '(${slot.meal.label}).',
       ),
       err: (f) => _reportError(f.message),
     );
@@ -439,7 +441,8 @@ class _SuggestionsSection extends ConsumerWidget {
     final result = await repo.add(s.recipe.id, day, meal);
     result.when(
       ok: (id) => showAppSnackBar(
-        message: '${s.recipe.name} agendado em ${meal.label}',
+        title: 'Receita agendada',
+        message: '${s.recipe.name} em ${meal.label}.',
         actionLabel: 'Desfazer',
         onAction: () => repo.remove(id),
       ),

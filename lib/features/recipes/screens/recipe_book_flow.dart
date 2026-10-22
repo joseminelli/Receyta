@@ -35,22 +35,26 @@ Future<void> _generate(
   required List<String> recipeIds,
 }) async {
   if (recipeIds.isEmpty) {
-    showAppSnackBar(message: 'Não há receitas para o livro.');
+    showAppSnackBar(
+      title: 'Livro vazio',
+      message: 'Escolha uma pasta ou tag que tenha receitas.',
+      variant: AppSnackBarVariant.info,
+    );
     return;
   }
-  showAppSnackBar(
-    message: 'Montando o livro com ${recipeIds.length} '
-        '${recipeIds.length == 1 ? 'receita' : 'receitas'}…',
-  );
+  final toast = showAppLoading('Montando o livro');
   final result = await ref
       .read(recipeExportServiceProvider)
       .shareBookPdf(title: title, recipeIds: recipeIds);
+  final count = recipeIds.length;
   result.when(
-    ok: (_) {},
-    err: (f) => showAppSnackBar(
-      message: f.message,
-      variant: AppSnackBarVariant.error,
+    ok: (_) => toast?.success(
+      'Livro pronto',
+      description: 'PDF com $count ${count == 1 ? 'receita' : 'receitas'}, '
+          'pronto para compartilhar.',
     ),
+    err: (f) =>
+        toast?.error('Não consegui montar o livro', description: f.message),
   );
 }
 

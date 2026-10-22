@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'package:receyta/widgets/app_toast.dart';
 
-/// Papel visual do snackbar: success vira toast `lime`, error vira `danger`.
-enum AppSnackBarVariant { success, error }
+/// Papel visual do snackbar: success vira toast `lime`, error vira `danger`,
+/// info vira `violet` (aviso neutro, ex.: nada a fazer).
+enum AppSnackBarVariant { success, error, info }
 
 /// Fachada antiga: delega pro [AppToast] pra não tocar nos call sites. A
 /// `message` é partida em título curto + descrição pra caber na pílula:
@@ -30,7 +31,11 @@ abstract class AppSnackBar {
       context,
       title: resolvedTitle,
       description: description ?? _undoHint(actionLabel),
-      kind: isError ? AppToastKind.error : AppToastKind.success,
+      kind: switch (variant) {
+        AppSnackBarVariant.success => AppToastKind.success,
+        AppSnackBarVariant.error => AppToastKind.error,
+        AppSnackBarVariant.info => AppToastKind.info,
+      },
       actionLabel: actionLabel,
       onAction: onAction,
       duration: duration,
