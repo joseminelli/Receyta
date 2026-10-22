@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
+import 'package:receyta/data/sync/pull_window.dart';
 import 'package:receyta/data/sync/shared_remote.dart';
 import 'package:receyta/data/sync/sync_engine.dart' show SyncReport;
 import 'package:receyta/data/sync/sync_error.dart';
@@ -40,7 +41,26 @@ class SharedSyncEngine {
   static const cursorPrefix = 'shared_cursor_';
   static const _batchSize = 50;
 
-  String get _cursorKey => '$cursorPrefix$spaceId';
+  /// O ponto de leitura é por casa E por conjunto de tipos tratados: ligar ou
+  /// desligar o calendário ou a despensa troca os tratadores (e o motor), e
+  /// um ponto novo faz a primeira puxada ser completa — sem a corrida de apagar
+  /// o ponto enquanto uma rodada antiga ainda ia gravar o dela.
+  String get _cursorKey {
+    final kinds = [for (final h in handlers) h.kind]..sort();
+    return '$cursorPrefix${spaceId}_${kinds.join('+')}';
+  }
+
+  /// Esquece os pontos de leitura de [spaceId] (de todos os conjuntos de
+  /// tipos): a próxima rodada relê a casa inteira.
+  static Future<void> resetCursors(
+    SharedPreferences prefs,
+    String spaceId,
+  ) async {
+    final prefix = '$cursorPrefix$spaceId';
+    for (final key in prefs.getKeys().toList()) {
+      if (key.startsWith(prefix)) await prefs.remove(key);
+    }
+  }
 
   /// Sobrou algo pendente de envio pra esta casa?
   Future<bool> hasPending() async {
@@ -53,13 +73,14 @@ class SharedSyncEngine {
     return false;
   }
 
-  Future<Result<SyncReport>> sync() async {
+  /// Com [full], ignora o ponto de leitura e relê tudo (ver `SyncEngine.sync`).
+  Future<Result<SyncReport>> sync({bool full = false}) async {
     if (remote.userId == null) {
       return const Err(
           ValidationFailure('Entre na sua conta para sincronizar.'));
     }
     try {
-      final pull = await _pull();
+      final pull = await _pull(full);
       final pushed = await _push();
       return Ok((
         pulled: pull.pulled,
@@ -74,11 +95,14 @@ class SharedSyncEngine {
     }
   }
 
-  Future<({int pulled, int applied, int removed})> _pull() async {
+  Future<({int pulled, int applied, int removed})> _pull(bool full) async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = DateTime.tryParse(prefs.getString(_cursorKey) ?? '');
-    final docs = await remote.pullSince(spaceId, saved?.subtract(overlap));
-    if (docs.isEmpty) return (pulled: 0, applied: 0, removed: 0);
+    final window = await pullWindow(prefs, _cursorKey, overlap, force: full);
+    final docs = await remote.pullSince(spaceId, window.since);
+    if (docs.isEmpty) {
+      if (window.full) await markFullPull(prefs, _cursorKey);
+      return (pulled: 0, applied: 0, removed: 0);
+    }
 
     var applied = 0;
     var removed = 0;
@@ -104,6 +128,7 @@ class SharedSyncEngine {
     if (newest != null) {
       await prefs.setString(_cursorKey, newest.toUtc().toIso8601String());
     }
+    if (window.full) await markFullPull(prefs, _cursorKey);
     return (pulled: docs.length, applied: applied, removed: removed);
   }
 

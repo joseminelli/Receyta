@@ -25,6 +25,9 @@ class CalendarShareController extends ShareFlagController {
   String get failureMessage => 'Falha ao mudar o calendário da casa';
 
   @override
+  bool get ownerControlled => true;
+
+  @override
   bool? serverValue(SharePrefs prefs) => prefs.calendar;
 
   @override
@@ -33,7 +36,7 @@ class CalendarShareController extends ShareFlagController {
     if (on) {
       await dao.shareFrom(spaceId, today());
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('${SharedSyncEngine.cursorPrefix}$spaceId');
+      await SharedSyncEngine.resetCursors(prefs, spaceId);
     } else {
       await dao.unshare(spaceId);
     }

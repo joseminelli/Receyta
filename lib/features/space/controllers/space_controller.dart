@@ -229,7 +229,7 @@ class SpaceController extends AsyncNotifier<SpaceInfo?> {
   Future<void> _detach(String userId, String spaceId) async {
     await ref.read(databaseProvider).detachSpace(spaceId);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('${SharedSyncEngine.cursorPrefix}$spaceId');
+    await SharedSyncEngine.resetCursors(prefs, spaceId);
     await prefs.remove('$cachePrefix$userId');
     await prefs.remove('space_calendar_$userId');
     await prefs.remove('space_pantry_$userId');
@@ -260,6 +260,24 @@ final mySharePrefsProvider = Provider<SharePrefs?>((ref) {
   if (user == null || members == null) return null;
   for (final m in members) {
     if (m.userId == user.id) {
+      return (
+        calendar: m.shareCalendar,
+        pantry: m.sharePantry,
+        newLists: m.shareNewLists,
+      );
+    }
+  }
+  return null;
+});
+
+/// O que o dono da casa escolheu dividir (calendário e despensa): vale pra
+/// casa toda — só o dono muda, os membros seguem. Nulo = a casa ou os membros
+/// ainda não chegaram.
+final houseSharePrefsProvider = Provider<SharePrefs?>((ref) {
+  final space = ref.watch(spaceControllerProvider).valueOrNull;
+  if (space == null || space.ownerId.isEmpty) return null;
+  for (final m in space.members) {
+    if (m.userId == space.ownerId) {
       return (
         calendar: m.shareCalendar,
         pantry: m.sharePantry,

@@ -15,6 +15,10 @@ import 'package:receyta/features/space/controllers/space_controller.dart';
 /// pra funcionar sem internet. Escolhas feitas antes de existir o servidor
 /// (servidor sem valor, cópia local ligada) sobem na primeira leitura. A
 /// escolha vale por conta e some quando a pessoa sai da casa.
+///
+/// Com [ownerControlled] (calendário e despensa), a escolha é da casa: só o
+/// dono muda, e os membros seguem o que ele escolheu — o valor deles vem do
+/// dono e o aparelho aplica a mudança sozinho.
 abstract class ShareFlagController extends AsyncNotifier<bool> {
   String get prefsPrefix;
 
@@ -24,6 +28,9 @@ abstract class ShareFlagController extends AsyncNotifier<bool> {
   String get noSpaceMessage;
   String get failureMessage;
 
+  /// A escolha é do dono da casa e vale pra todos (membros só seguem).
+  bool get ownerControlled => false;
+
   bool? serverValue(SharePrefs prefs);
 
   /// O que mais muda ao ligar ou desligar (ex.: subir o calendário).
@@ -32,11 +39,18 @@ abstract class ShareFlagController extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {
     final user = ref.watch(authUserProvider).valueOrNull;
-    final space = ref.watch(currentSpaceIdProvider);
+    final spaceInfo = ref.watch(spaceControllerProvider).valueOrNull;
+    final space = spaceInfo?.id;
     if (user == null || space == null) return false;
     final server = ref.watch(mySharePrefsProvider);
+    final house = ref.watch(houseSharePrefsProvider);
     final prefs = await SharedPreferences.getInstance();
     final key = '$prefsPrefix${user.id}';
+    if (ownerControlled &&
+        spaceInfo!.ownerId.isNotEmpty &&
+        spaceInfo.ownerId != user.id) {
+      return _followOwner(prefs, key, space, house);
+    }
     final fromServer = server == null ? null : serverValue(server);
     if (fromServer != null) {
       await prefs.setBool(key, fromServer);
@@ -45,6 +59,25 @@ abstract class ShareFlagController extends AsyncNotifier<bool> {
     final local = prefs.getBool(key) ?? false;
     if (server != null && local) unawaited(_publish(true));
     return local;
+  }
+
+  /// Membro: o valor é o que o dono escolheu. Se mudou em relação ao que este
+  /// aparelho já aplicou, aplica agora (ex.: subir as refeições de hoje em
+  /// diante). Sem escolha do dono ainda (ou sem internet), fica o que havia.
+  Future<bool> _followOwner(
+    SharedPreferences prefs,
+    String key,
+    String spaceId,
+    SharePrefs? house,
+  ) async {
+    final stored = prefs.getBool(key) ?? false;
+    final value = house == null ? null : serverValue(house);
+    if (value == null) return stored;
+    if (value != stored) {
+      await apply(value, spaceId);
+      await prefs.setBool(key, value);
+    }
+    return value;
   }
 
   Future<void> _publish(bool on) async {
@@ -57,9 +90,15 @@ abstract class ShareFlagController extends AsyncNotifier<bool> {
 
   Future<Result<void>> set(bool on) async {
     final user = ref.read(authUserProvider).valueOrNull;
-    final space = ref.read(currentSpaceIdProvider);
+    final spaceInfo = ref.read(spaceControllerProvider).valueOrNull;
+    final space = spaceInfo?.id;
     if (user == null || space == null) {
       return Err(ValidationFailure(noSpaceMessage));
+    }
+    if (ownerControlled &&
+        spaceInfo!.ownerId.isNotEmpty &&
+        spaceInfo.ownerId != user.id) {
+      return const Err(ValidationFailure('Só o dono da casa muda isso.'));
     }
     try {
       await ref.read(spaceRemoteProvider).setSharePref(field, on);

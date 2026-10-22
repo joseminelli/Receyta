@@ -18,10 +18,14 @@ class PantryShareController extends ShareFlagController {
   String get field => 'pantry';
 
   @override
-  String get noSpaceMessage => 'Crie ou entre numa casa para dividir a despensa.';
+  String get noSpaceMessage =>
+      'Crie ou entre numa casa para dividir a despensa.';
 
   @override
   String get failureMessage => 'Falha ao mudar a despensa da casa';
+
+  @override
+  bool get ownerControlled => true;
 
   @override
   bool? serverValue(SharePrefs prefs) => prefs.pantry;
@@ -31,7 +35,7 @@ class PantryShareController extends ShareFlagController {
     await ref.read(databaseProvider).ingredientDao.resetPantrySync();
     if (on) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('${SharedSyncEngine.cursorPrefix}$spaceId');
+      await SharedSyncEngine.resetCursors(prefs, spaceId);
     }
   }
 }

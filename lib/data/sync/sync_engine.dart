@@ -12,6 +12,7 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/data/services/data_reset_service.dart';
 import 'package:receyta/data/services/recipe_image_service.dart';
 import 'package:receyta/data/services/recipe_image_sync.dart';
+import 'package:receyta/data/sync/pull_window.dart';
 import 'package:receyta/data/sync/sync_dedupe.dart';
 import 'package:receyta/data/sync/sync_error.dart';
 import 'package:receyta/data/sync/sync_handler.dart';
@@ -82,7 +83,10 @@ class SyncEngine {
     return false;
   }
 
-  Future<Result<SyncReport>> sync() async {
+  /// Com [full], ignora o ponto de leitura e relê tudo da nuvem (o botão
+  /// "Sincronizar"); além disso o motor faz isso sozinho de tempos em tempos
+  /// (ver [kFullPullEvery]).
+  Future<Result<SyncReport>> sync({bool full = false}) async {
     final uid = remote.userId;
     if (uid == null) {
       return const Err(
@@ -93,7 +97,7 @@ class SyncEngine {
       // já está no Storage.
       await imageSync?.syncPending();
 
-      final pull = await _pull(uid);
+      final pull = await _pull(uid, full);
       final pushed = await _push();
       return Ok((
         pulled: pull.pulled,
@@ -114,12 +118,16 @@ class SyncEngine {
 
   Future<({int pulled, int applied, int removed, int merged})> _pull(
     String uid,
+    bool full,
   ) async {
     final prefs = await SharedPreferences.getInstance();
     final key = '${DataResetService.syncCursorPrefix}$uid';
-    final saved = DateTime.tryParse(prefs.getString(key) ?? '');
-    final docs = await remote.pullSince(saved?.subtract(overlap));
-    if (docs.isEmpty) return (pulled: 0, applied: 0, removed: 0, merged: 0);
+    final window = await pullWindow(prefs, key, overlap, force: full);
+    final docs = await remote.pullSince(window.since);
+    if (docs.isEmpty) {
+      if (window.full) await markFullPull(prefs, key);
+      return (pulled: 0, applied: 0, removed: 0, merged: 0);
+    }
 
     final result = await _apply(docs);
 
@@ -132,6 +140,7 @@ class SyncEngine {
     if (newest != null) {
       await prefs.setString(key, newest.toUtc().toIso8601String());
     }
+    if (window.full) await markFullPull(prefs, key);
     return (
       pulled: docs.length,
       applied: result.applied,

@@ -101,6 +101,7 @@ class SyncCoordinator extends Notifier<SyncState> {
   bool _ownSync = false;
   bool _running = false;
   bool _again = false;
+  bool _forceFull = false;
   int _failures = 0;
 
   static const lastSyncKey = 'sync_last_at';
@@ -173,6 +174,13 @@ class SyncCoordinator extends Notifier<SyncState> {
         () => unawaited(_run()),
       );
     }
+  }
+
+  /// Como [requestSync] imediato, mas relendo TUDO da nuvem (ignora o ponto de
+  /// leitura) — o botão "Sincronizar", pra quando algo ficou pra trás.
+  void requestFullSync() {
+    _forceFull = true;
+    requestSync(immediate: true);
   }
 
   /// O app voltou ao primeiro plano: só sincroniza se já faz um tempo.
@@ -284,10 +292,10 @@ class SyncCoordinator extends Notifier<SyncState> {
   }
 
   /// A rodada da casa, depois da da conta. `null` = não há casa.
-  Future<Result<SyncReport>?> _syncShared() async {
+  Future<Result<SyncReport>?> _syncShared(bool full) async {
     final space = ref.read(currentSpaceIdProvider);
     if (space == null || !ref.read(hasHouseAccessProvider)) return null;
-    return ref.read(sharedSyncEngineProvider(space)).sync();
+    return ref.read(sharedSyncEngineProvider(space)).sync(full: full);
   }
 
   Future<void> _run() async {
@@ -298,15 +306,17 @@ class SyncCoordinator extends Notifier<SyncState> {
     }
     _running = true;
     _retry?.cancel();
+    final full = _forceFull;
+    _forceFull = false;
     state = state.copyWith(phase: SyncPhase.syncing, clearFailure: true);
 
     Result<SyncReport> result;
     try {
       result = ref.read(hasCloudAccessProvider)
-          ? await ref.read(syncEngineProvider).sync()
+          ? await ref.read(syncEngineProvider).sync(full: full)
           : const Ok((pulled: 0, applied: 0, removed: 0, pushed: 0, merged: 0));
       if (result is Ok<SyncReport>) {
-        final shared = await _syncShared();
+        final shared = await _syncShared(full);
         if (shared is Err<SyncReport>) result = shared;
       }
     } catch (e) {

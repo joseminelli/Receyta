@@ -800,6 +800,9 @@ class _InSpace extends ConsumerWidget {
     final calendarOn = ref.watch(calendarSharedProvider).valueOrNull ?? false;
     final pantryOn = ref.watch(pantrySharedProvider).valueOrNull ?? false;
     final paused = !ref.watch(hasHouseAccessProvider);
+    final locked = !_iAmOwner && space.ownerId.isNotEmpty;
+    String ownerOnly(String text) =>
+        locked ? '$text Só o dono da casa muda isso.' : text;
 
     Future<void> setPantry(bool value) async {
       final result = await ref.read(pantrySharedProvider.notifier).set(value);
@@ -886,13 +889,18 @@ class _InSpace extends ConsumerWidget {
                 title: 'Calendário',
                 text: paused
                     ? 'Pausado: o plano do dono não está ativo.'
-                    : calendarOn
-                        ? 'Suas refeições de hoje em diante aparecem para todos, '
-                            'e as deles no seu calendário.'
-                        : 'Desligado. Ligue para ver o que a casa vai cozinhar.',
+                    : ownerOnly(
+                        calendarOn
+                            ? 'Suas refeições de hoje em diante aparecem para '
+                                'todos, e as deles no seu calendário.'
+                            : locked
+                                ? 'Desligado.'
+                                : 'Desligado. Ligue para ver o que a casa vai '
+                                    'cozinhar.',
+                      ),
                 trailing: Switch(
                   value: calendarOn,
-                  onChanged: paused ? null : setCalendar,
+                  onChanged: paused || locked ? null : setCalendar,
                 ),
               ),
               _InfoRow(
@@ -900,14 +908,18 @@ class _InSpace extends ConsumerWidget {
                 title: 'Despensa',
                 text: paused
                     ? 'Pausado: o plano do dono não está ativo.'
-                    : pantryOn
-                        ? 'O que vocês sempre têm vale para todos, e não entra '
-                            'nas listas de ninguém.'
-                        : 'Desligada. Ligue para dividir o que vocês sempre têm '
-                            'em casa.',
+                    : ownerOnly(
+                        pantryOn
+                            ? 'O que vocês sempre têm vale para todos, e não '
+                                'entra nas listas de ninguém.'
+                            : locked
+                                ? 'Desligada.'
+                                : 'Desligada. Ligue para dividir o que vocês '
+                                    'sempre têm em casa.',
+                      ),
                 trailing: Switch(
                   value: pantryOn,
-                  onChanged: paused ? null : setPantry,
+                  onChanged: paused || locked ? null : setPantry,
                 ),
               ),
             ],

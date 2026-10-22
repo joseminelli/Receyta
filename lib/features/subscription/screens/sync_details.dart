@@ -157,7 +157,7 @@ class _SyncStatusRowState extends ConsumerState<_SyncStatusRow> {
                             ref.read(authControllerProvider.notifier).signIn()
                         : () => ref
                             .read(syncCoordinatorProvider.notifier)
-                            .requestSync(immediate: true),
+                            .requestFullSync(),
                 child: Text(needsSignIn ? 'Entrar de novo' : 'Sincronizar'),
               ),
           ],
