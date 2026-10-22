@@ -1,10 +1,13 @@
+import 'dart:math' as math;
+import 'dart:ui' show lerpDouble;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
-import 'package:receyta/widgets/stretch_indicator.dart';
 
 /// Um destino da [PillNavBar]. `color` é a cor da seção (§9.2) — o `motif` fica
 /// só de referência pra quem consome via [TileMotif], a navbar em si não
@@ -25,13 +28,17 @@ class PillNavItem {
 
 /// Ilha de navegação flutuante em pílula `ink` (§9.8) — compacta, centrada, não
 /// uma barra de ponta a ponta. Inativos mostram só o ícone; o ativo ganha a
-/// cor da seção e o ícone entra num medalhão, com ícone + label. A seleção em
-/// si é uma pílula única que desliza do retângulo do item antigo pro do item
-/// novo (em vez de sumir num e aparecer no outro): cada `_NavSlot` assenta no
-/// tamanho final na hora (sem animação própria de largura) pra dar dois
-/// pontos fixos — origem e destino — que o indicador interpola com
-/// `Rect.lerp`. Se o próprio item também animasse a largura, o alvo ficaria
-/// se mexendo durante o desliza e as duas animações brigariam.
+/// cor da seção e o ícone entra num medalhão, com ícone + label.
+///
+/// A troca é uma animação física, toda calculada num lugar só: cada aba tem um
+/// progresso `p` (0 = recolhida, 1 = aberta) que vai pra 1 na aba nova e pra 0
+/// na antiga, movido por uma mola; a largura de cada aba e a pílula de
+/// seleção saem dessas mesmas contas, então os dois sempre combinam — nada de
+/// o indicador correr num ritmo e os itens pularem em outro. As duas bordas da
+/// pílula seguem molas diferentes: a da frente é firme e passa um tiquinho do
+/// ponto, a de trás é mais macia e alcança depois, o que dá o efeito líquido,
+/// com o alongamento limitado por [_maxStretch]. A cor da pílula também
+/// escorre da seção antiga pra nova.
 ///
 /// Além do toque, dá pra **arrastar o dedo pela barra**: a aba é a da zona onde
 /// o dedo está (a largura da barra dividida em partes iguais, uma por aba) e
@@ -57,50 +64,151 @@ class PillNavBar extends StatefulWidget {
 
 class _PillNavBarState extends State<PillNavBar>
     with SingleTickerProviderStateMixin {
+  static const double _slotHeight = AppSpacing.minTapTarget;
+  static const double _gap = AppSpacing.xs / 2;
+  static const double _iconBox = 30;
+  static const double _labelGap = AppSpacing.xs;
+  static const double _padClosed = 10;
+  static const double _padOpen = AppSpacing.md;
+
+  /// O quanto a pílula pode passar da maior aba no meio da troca.
+  static const double _maxStretch = 24;
+
+  static const Duration _duration = Duration(milliseconds: 620);
+  static final double _seconds = _duration.inMilliseconds / 1000;
+
+  static final SpringSimulation _firm = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 620, ratio: 0.78),
+    0,
+    1,
+    0,
+  );
+  static final SpringSimulation _soft = SpringSimulation(
+    SpringDescription.withDampingRatio(mass: 1, stiffness: 340, ratio: 0.92),
+    0,
+    1,
+    0,
+  );
+
   final _stackKey = GlobalKey();
-  late List<GlobalKey> _slotKeys;
-  late final AnimationController _slide;
-  Rect? _previousRect;
-  Rect? _targetRect;
-  Rect? _indicatorRect;
+  late final AnimationController _anim = AnimationController(
+    vsync: this,
+    duration: _duration,
+    value: 1,
+  );
+
+  late List<double> _p0;
+  late List<double> _leftW0;
+  late List<double> _rightW0;
+  late Color _fromColor;
+  bool _forward = true;
+  int _target = 0;
+
+  List<double> _textWidths = const [];
+  TextStyle? _measuredStyle;
+  TextScaler? _measuredScaler;
 
   @override
   void initState() {
     super.initState();
-    _slotKeys = List.generate(widget.items.length, (_) => GlobalKey());
-    _slide = AnimationController(
-      vsync: this,
-      duration: kStretchDuration,
-    )..addListener(_onSlideTick);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _snapToCurrent());
+    _resetTo(widget.currentIndex);
   }
+
+  void _resetTo(int index) {
+    final n = widget.items.length;
+    _target = index;
+    _p0 = _oneHot(n, index);
+    _leftW0 = _oneHot(n, index);
+    _rightW0 = _oneHot(n, index);
+    _fromColor = widget.items[index].color;
+    _anim.value = 1;
+  }
+
+  List<double> _oneHot(int n, int index) =>
+      [for (var i = 0; i < n; i++) i == index ? 1.0 : 0.0];
 
   @override
   void didUpdateWidget(covariant PillNavBar old) {
     super.didUpdateWidget(old);
-    if (widget.items.length != _slotKeys.length) {
-      _slotKeys = List.generate(widget.items.length, (_) => GlobalKey());
-      WidgetsBinding.instance.addPostFrameCallback((_) => _snapToCurrent());
-    } else if (widget.currentIndex != old.currentIndex) {
-      // O `_NavSlot` já assentou no tamanho final neste mesmo frame (sem
-      // animação própria) — espera só o layout aplicar antes de medir o
-      // destino, senão pega o retângulo antigo.
-      _previousRect = _indicatorRect;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final r = _rectFor(widget.currentIndex);
-        if (r == null) return;
-        _targetRect = r;
-        _previousRect ??= r;
-        _slide.forward(from: 0);
-      });
+    if (widget.items.length != old.items.length) {
+      _resetTo(widget.currentIndex.clamp(0, widget.items.length - 1));
+      return;
     }
+    if (widget.currentIndex == _target) return;
+    final now = _current();
+    _p0 = now.p;
+    _leftW0 = now.leftWeights;
+    _rightW0 = now.rightWeights;
+    _fromColor = now.color;
+    _forward = widget.currentIndex > _target;
+    _target = widget.currentIndex;
+    _anim.forward(from: 0);
   }
 
   @override
   void dispose() {
-    _slide.dispose();
+    _anim.dispose();
     super.dispose();
   }
+
+  double _spring(SpringSimulation sim) {
+    final v = _anim.value;
+    return v >= 1 ? 1.0 : sim.x(v * _seconds);
+  }
+
+  List<double> _toward(List<double> from, double s) => [
+        for (var i = 0; i < from.length; i++)
+          lerpDouble(from[i], i == _target ? 1 : 0, s)!,
+      ];
+
+  ({
+    List<double> p,
+    List<double> leftWeights,
+    List<double> rightWeights,
+    Color color,
+  }) _current() {
+    final firm = _spring(_firm);
+    final soft = _spring(_soft);
+    final p = [for (final v in _toward(_p0, firm)) math.max(0.0, v)];
+    return (
+      p: p,
+      leftWeights: _toward(_leftW0, _forward ? soft : firm),
+      rightWeights: _toward(_rightW0, _forward ? firm : soft),
+      color: Color.lerp(
+        _fromColor,
+        widget.items[_target].color,
+        firm.clamp(0.0, 1.0),
+      )!,
+    );
+  }
+
+  void _measure(BuildContext context) {
+    final style = context.texts.labelLarge;
+    final scaler = MediaQuery.textScalerOf(context);
+    if (_textWidths.length == widget.items.length &&
+        _measuredStyle == style &&
+        _measuredScaler == scaler) {
+      return;
+    }
+    _measuredStyle = style;
+    _measuredScaler = scaler;
+    _textWidths = [
+      for (final item in widget.items)
+        (TextPainter(
+          text: TextSpan(text: item.label, style: style),
+          textDirection: TextDirection.ltr,
+          textScaler: scaler,
+          maxLines: 1,
+        )..layout())
+            .width
+            .ceilToDouble(),
+    ];
+  }
+
+  double _slotWidth(int i, double p) =>
+      _iconBox +
+      2 * lerpDouble(_padClosed, _padOpen, p.clamp(0.0, 1.0))! +
+      p * (_labelGap + _textWidths[i]);
 
   /// Aba da zona onde o dedo está; seleciona e vibra só se for outra.
   void _scrubTo(Offset globalPosition) {
@@ -114,36 +222,76 @@ class _PillNavBarState extends State<PillNavBar>
     widget.onSelected(index);
   }
 
-  Rect? _rectFor(int index) {
-    final stackBox = _stackKey.currentContext?.findRenderObject() as RenderBox?;
-    final slotBox =
-        _slotKeys[index].currentContext?.findRenderObject() as RenderBox?;
-    if (stackBox == null || slotBox == null || !slotBox.attached) return null;
-    final topLeft = slotBox.localToGlobal(Offset.zero, ancestor: stackBox);
-    return topLeft & slotBox.size;
-  }
-
-  void _snapToCurrent() {
-    final r = _rectFor(widget.currentIndex);
-    if (r != null) {
-      setState(() {
-        _indicatorRect = r;
-        _previousRect = r;
-        _targetRect = r;
-      });
+  Widget _buildBody(BuildContext context) {
+    final state = _current();
+    final n = widget.items.length;
+    final widths = [for (var i = 0; i < n; i++) _slotWidth(i, state.p[i])];
+    final lefts = <double>[];
+    var x = 0.0;
+    for (var i = 0; i < n; i++) {
+      lefts.add(x);
+      x += widths[i] + _gap;
     }
-  }
 
-  void _onSlideTick() {
-    final from = _previousRect;
-    final to = _targetRect;
-    if (from == null || to == null) return;
-    setState(() => _indicatorRect = stretchRect(from, to, _slide.value));
+    var left = 0.0;
+    var right = 0.0;
+    for (var i = 0; i < n; i++) {
+      left += state.leftWeights[i] * lefts[i];
+      right += state.rightWeights[i] * (lefts[i] + widths[i]);
+    }
+    final widest = widths.reduce(math.max);
+    if (right - left > widest + _maxStretch) {
+      if (_forward) {
+        left = right - (widest + _maxStretch);
+      } else {
+        right = left + (widest + _maxStretch);
+      }
+    }
+
+    final total = x - _gap;
+    left = left.clamp(0.0, total);
+    right = right.clamp(left, total);
+
+    return Stack(
+      key: _stackKey,
+      alignment: Alignment.centerLeft,
+      children: [
+        Positioned(
+          left: left,
+          top: 0,
+          width: math.max(0, right - left),
+          height: _slotHeight,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: state.color,
+              borderRadius: BorderRadius.circular(AppRadii.pill),
+            ),
+          ),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < n; i++) ...[
+              if (i > 0) const SizedBox(width: _gap),
+              _NavSlot(
+                item: widget.items[i],
+                p: state.p[i],
+                width: widths[i],
+                textWidth: _textWidths[i],
+                selected: i == widget.currentIndex,
+                onTap: () => widget.onSelected(i),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    _measure(context);
 
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.screen),
@@ -168,38 +316,9 @@ class _PillNavBarState extends State<PillNavBar>
             onHorizontalDragUpdate: (d) => _scrubTo(d.globalPosition),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xs / 2),
-              child: Stack(
-                key: _stackKey,
-                alignment: Alignment.centerLeft,
-                children: [
-                  if (_indicatorRect != null)
-                    Positioned(
-                      left: _indicatorRect!.left,
-                      top: _indicatorRect!.top,
-                      width: _indicatorRect!.width,
-                      height: _indicatorRect!.height,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: widget.items[widget.currentIndex].color,
-                          borderRadius: BorderRadius.circular(AppRadii.pill),
-                        ),
-                      ),
-                    ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (var i = 0; i < widget.items.length; i++) ...[
-                        if (i > 0) const SizedBox(width: AppSpacing.xs / 2),
-                        _NavSlot(
-                          key: _slotKeys[i],
-                          item: widget.items[i],
-                          selected: i == widget.currentIndex,
-                          onTap: () => widget.onSelected(i),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
+              child: AnimatedBuilder(
+                animation: _anim,
+                builder: (context, _) => _buildBody(context),
               ),
             ),
           ),
@@ -209,126 +328,97 @@ class _PillNavBarState extends State<PillNavBar>
   }
 }
 
-class _NavSlot extends StatefulWidget {
+/// Uma aba: largura e conteúdo vêm do progresso [p] (0 recolhida, 1 aberta),
+/// dado de fora — a aba não anima nada sozinha. O rótulo é revelado pela
+/// própria largura da aba (com um fade) e o medalhão do ícone ganha cor e
+/// tamanho junto. [p] passando um pouco de 1 (a mola) dá o estouro do ícone.
+class _NavSlot extends StatelessWidget {
   const _NavSlot({
-    super.key,
     required this.item,
+    required this.p,
+    required this.width,
+    required this.textWidth,
     required this.selected,
     required this.onTap,
   });
 
   final PillNavItem item;
+  final double p;
+  final double width;
+  final double textWidth;
   final bool selected;
   final VoidCallback onTap;
 
   @override
-  State<_NavSlot> createState() => _NavSlotState();
-}
-
-class _NavSlotState extends State<_NavSlot>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pop;
-
-  @override
-  void initState() {
-    super.initState();
-    _pop = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    );
-    if (widget.selected) _pop.value = 1;
-  }
-
-  @override
-  void didUpdateWidget(covariant _NavSlot old) {
-    super.didUpdateWidget(old);
-    // Só estoura ao ENTRAR selecionado — sair não anima o ícone, a pílula só
-    // encolhe (o `AnimatedContainer` já cuida disso).
-    if (widget.selected && !old.selected) {
-      _pop.forward(from: 0);
-    } else if (!widget.selected) {
-      _pop.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _pop.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final item = widget.item;
-    final selected = widget.selected;
+    final open = p.clamp(0.0, 1.0);
     final onSection =
         item.color.computeLuminance() > 0.5 ? colors.ink : colors.onSaturated;
-    final foreground =
-        selected ? onSection : colors.onSaturated.withValues(alpha: 0.5);
-    // Medalhão atrás do ícone quando ativo — mesmo par "ícone dentro de
-    // círculo de tom" do chip do AppSnackBar e dos estados vazios: um tom do
-    // próprio `onSection` misturado na cor da seção, sutil o bastante pra não
-    // brigar com o ícone por cima.
+    final inactive = colors.onSaturated.withValues(alpha: 0.5);
+    final foreground = Color.lerp(inactive, onSection, open)!;
     final medallion = Color.lerp(item.color, onSection, 0.18)!;
-    // Estouro do ícone ao selecionar — mesmo easeOutBack do chip do
-    // AppSnackBar e dos pills do menu `+`.
-    final iconPop = Tween<double>(begin: 0.7, end: 1).animate(
-      CurvedAnimation(parent: _pop, curve: Curves.easeOutBack),
-    );
+    final label = const Interval(0.35, 1).transform(open);
 
     return Semantics(
       button: true,
       selected: selected,
       label: item.label,
-      child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        child: Container(
-          // Sem animação de tamanho própria: assenta no formato final na
-          // hora, pra dar ao `_PillNavBarState` um retângulo fixo de destino.
-          // Quem desliza é só o indicador (cor), atrás disto.
-          height: AppSpacing.minTapTarget,
-          clipBehavior: Clip.antiAlias,
-          padding: EdgeInsets.symmetric(
-            horizontal: selected ? AppSpacing.md : AppSpacing.sm + 2,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.pill),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ScaleTransition(
-                scale: iconPop,
-                child: selected
-                    ? Container(
-                        width: 30,
-                        height: 30,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: medallion,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(item.icon, size: 17, color: foreground),
-                      )
-                    : Icon(item.icon, size: 21, color: foreground),
-              ),
-              if (selected)
-                Padding(
-                  padding: const EdgeInsets.only(left: AppSpacing.xs),
-                  child: FadeTransition(
-                    // Some/aparece junto do estouro do ícone — o layout já
-                    // está no tamanho final, só o texto ganha opacidade.
-                    opacity: _pop,
-                    child: Text(
-                      item.label,
-                      style:
-                          context.texts.labelLarge?.copyWith(color: foreground),
-                    ),
-                  ),
+      child: SizedBox(
+        width: width,
+        height: _PillNavBarState._slotHeight,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.centerLeft,
+              minWidth: 0,
+              maxWidth: double.infinity,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: lerpDouble(
+                    _PillNavBarState._padClosed,
+                    _PillNavBarState._padOpen,
+                    open,
+                  )!,
                 ),
-            ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: _PillNavBarState._iconBox,
+                      height: _PillNavBarState._iconBox,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: medallion.withValues(alpha: open),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        item.icon,
+                        size: lerpDouble(21, 17, p.clamp(0.0, 1.15))!,
+                        color: foreground,
+                      ),
+                    ),
+                    const SizedBox(width: _PillNavBarState._labelGap),
+                    SizedBox(
+                      width: textWidth,
+                      child: Opacity(
+                        opacity: label,
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.clip,
+                          style: context.texts.labelLarge
+                              ?.copyWith(color: foreground),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
