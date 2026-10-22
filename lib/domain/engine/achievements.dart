@@ -3,17 +3,20 @@ enum AchievementTone { lime, coral, violet }
 
 enum AchievementId {
   firstRecipe,
-  tenRecipes,
-  twentyFiveRecipes,
-  firstFavorite,
+  library,
+  favorites,
   firstCooked,
-  tenCooked,
-  fiftyCooked,
+  chef,
   firstMeal,
   plannedWeek,
   firstShoppingList,
   house,
 }
+
+/// O aro da medalha: [none] enquanto bloqueada; bronze, prata e ouro nas
+/// conquistas com níveis; [single] nas de um passo só (aro na cor da
+/// categoria).
+enum MedalTier { none, bronze, silver, gold, single }
 
 /// Contagens do app que alimentam as conquistas.
 class AchievementStats {
@@ -38,144 +41,174 @@ class AchievementStats {
   final bool weekPlanned;
 }
 
+/// Uma conquista com um ou mais níveis. [tiers] são as metas (crescentes) e
+/// [titles]/[descriptions] dizem o nome e o que pede cada nível; [current] é a
+/// contagem de agora.
 class Achievement {
   const Achievement({
     required this.id,
-    required this.title,
-    required this.description,
     required this.tone,
+    required this.tiers,
+    required this.titles,
+    required this.descriptions,
     required this.current,
-    required this.target,
   });
 
   final AchievementId id;
-  final String title;
-  final String description;
   final AchievementTone tone;
-
-  /// Progresso já limitado ao [target].
+  final List<int> tiers;
+  final List<String> titles;
+  final List<String> descriptions;
   final int current;
-  final int target;
 
-  bool get unlocked => current >= target;
+  /// Quantos níveis já foram alcançados (0 = bloqueada).
+  int get level => tiers.where((t) => current >= t).length;
 
-  double get progress => target == 0 ? 1 : current / target;
+  bool get unlocked => level >= 1;
+
+  /// Todos os níveis conquistados.
+  bool get maxed => level == tiers.length;
+
+  bool get hasTiers => tiers.length > 1;
+
+  /// Meta do próximo nível; nula quando já está no máximo.
+  int? get nextTarget => maxed ? null : tiers[level];
+
+  /// Nome e descrição do nível atual (ou do primeiro, se ainda bloqueada).
+  String get title => titles[unlocked ? level - 1 : 0];
+  String get description => descriptions[unlocked ? level - 1 : 0];
+
+  /// Nome e descrição do próximo nível; nulos no máximo.
+  String? get nextTitle => maxed ? null : titles[level];
+  String? get nextDescription => maxed ? null : descriptions[level];
+
+  /// Contagem a mostrar: a de agora, ou a última meta quando já está no
+  /// máximo.
+  int get shownCurrent => maxed ? tiers.last : current;
+
+  /// Quanto falta andar (0 a 1) entre o nível atual e o próximo.
+  double get progress {
+    final target = nextTarget;
+    if (target == null) return 1;
+    final base = level == 0 ? 0 : tiers[level - 1];
+    return ((current - base) / (target - base)).clamp(0.0, 1.0);
+  }
+
+  MedalTier get medal {
+    if (!unlocked) return MedalTier.none;
+    if (!hasTiers) return MedalTier.single;
+    return switch (level) {
+      1 => MedalTier.bronze,
+      2 => MedalTier.silver,
+      _ => MedalTier.gold,
+    };
+  }
 }
 
 /// As conquistas do app, na ordem em que aparecem na tela: cada uma deriva
 /// das contagens reais, então nunca fica fora de sincronia com os dados.
 List<Achievement> buildAchievements(AchievementStats s) {
-  Achievement count(
+  Achievement single(
     AchievementId id,
+    AchievementTone tone,
     String title,
     String description,
-    AchievementTone tone,
-    int current,
-    int target,
+    bool done,
   ) =>
       Achievement(
         id: id,
-        title: title,
-        description: description,
         tone: tone,
-        current: current > target ? target : current,
-        target: target,
+        tiers: const [1],
+        titles: [title],
+        descriptions: [description],
+        current: done ? 1 : 0,
       );
 
-  Achievement flag(
-    AchievementId id,
-    String title,
-    String description,
-    AchievementTone tone,
-    bool done,
-  ) =>
-      count(id, title, description, tone, done ? 1 : 0, 1);
-
   return [
-    count(
-      AchievementId.firstRecipe,
-      'Primeira receita',
-      'Guarde a sua primeira receita.',
-      AchievementTone.coral,
-      s.recipes,
-      1,
+    Achievement(
+      id: AchievementId.firstRecipe,
+      tone: AchievementTone.coral,
+      tiers: const [1],
+      titles: const ['Primeira receita'],
+      descriptions: const ['Guarde a sua primeira receita.'],
+      current: s.recipes,
     ),
-    count(
-      AchievementId.tenRecipes,
-      'Caderno cheio',
-      'Tenha 10 receitas guardadas.',
-      AchievementTone.coral,
-      s.recipes,
-      10,
+    Achievement(
+      id: AchievementId.library,
+      tone: AchievementTone.coral,
+      tiers: const [10, 25, 50],
+      titles: const [
+        'Caderno cheio',
+        'Biblioteca de verdade',
+        'Acervo de mestre'
+      ],
+      descriptions: const [
+        'Tenha 10 receitas guardadas.',
+        'Chegue a 25 receitas.',
+        'Alcance 50 receitas.',
+      ],
+      current: s.recipes,
     ),
-    count(
-      AchievementId.twentyFiveRecipes,
-      'Biblioteca de verdade',
-      'Chegue a 25 receitas.',
-      AchievementTone.coral,
-      s.recipes,
-      25,
+    Achievement(
+      id: AchievementId.favorites,
+      tone: AchievementTone.violet,
+      tiers: const [1, 5, 10],
+      titles: const ['Favorita', 'Coração de cozinha', 'Só as melhores'],
+      descriptions: const [
+        'Marque uma receita como favorita.',
+        'Tenha 5 receitas favoritas.',
+        'Tenha 10 receitas favoritas.',
+      ],
+      current: s.favorites,
     ),
-    count(
-      AchievementId.firstFavorite,
-      'Favorita',
-      'Marque uma receita como favorita.',
-      AchievementTone.violet,
-      s.favorites,
-      1,
+    Achievement(
+      id: AchievementId.firstCooked,
+      tone: AchievementTone.lime,
+      tiers: const [1],
+      titles: const ['Mão na massa'],
+      descriptions: const ['Registre a primeira receita que você cozinhou.'],
+      current: s.cooked,
     ),
-    count(
-      AchievementId.firstCooked,
-      'Mão na massa',
-      'Registre a primeira receita que você cozinhou.',
-      AchievementTone.lime,
-      s.cooked,
-      1,
+    Achievement(
+      id: AchievementId.chef,
+      tone: AchievementTone.lime,
+      tiers: const [10, 25, 50],
+      titles: const ['Cozinheiro de casa', 'Chef da família', 'Mestre-cuca'],
+      descriptions: const [
+        'Cozinhe 10 vezes.',
+        'Cozinhe 25 vezes.',
+        'Cozinhe 50 vezes.',
+      ],
+      current: s.cooked,
     ),
-    count(
-      AchievementId.tenCooked,
-      'Cozinheiro de casa',
-      'Cozinhe 10 vezes.',
-      AchievementTone.lime,
-      s.cooked,
-      10,
+    Achievement(
+      id: AchievementId.firstMeal,
+      tone: AchievementTone.violet,
+      tiers: const [1],
+      titles: const ['Primeira refeição na agenda'],
+      descriptions: const ['Agende uma refeição.'],
+      current: s.plannedMeals,
     ),
-    count(
-      AchievementId.fiftyCooked,
-      'Chef da família',
-      'Cozinhe 50 vezes.',
-      AchievementTone.lime,
-      s.cooked,
-      50,
-    ),
-    count(
-      AchievementId.firstMeal,
-      'Primeira refeição na agenda',
-      'Agende uma refeição.',
-      AchievementTone.violet,
-      s.plannedMeals,
-      1,
-    ),
-    flag(
+    single(
       AchievementId.plannedWeek,
+      AchievementTone.violet,
       'Semana planejada',
       'Monte uma semana com o "Sugerir semana".',
-      AchievementTone.violet,
       s.weekPlanned,
     ),
-    count(
-      AchievementId.firstShoppingList,
-      'Lista de compras',
-      'Crie a sua primeira lista de compras.',
-      AchievementTone.lime,
-      s.shoppingLists,
-      1,
+    Achievement(
+      id: AchievementId.firstShoppingList,
+      tone: AchievementTone.lime,
+      tiers: const [1],
+      titles: const ['Lista de compras'],
+      descriptions: const ['Crie a sua primeira lista de compras.'],
+      current: s.shoppingLists,
     ),
-    flag(
+    single(
       AchievementId.house,
+      AchievementTone.coral,
       'Casa montada',
       'Crie ou entre numa casa pra dividir as listas.',
-      AchievementTone.coral,
       s.hasHouse,
     ),
   ];

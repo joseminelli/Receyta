@@ -101,7 +101,7 @@ class _UnlockedMomentState extends State<_UnlockedMoment>
 
   Widget _buildEmblem(AppColors colors) {
     final a = widget.achievement;
-    final accent = achievementAccent(colors, a.tone);
+    final accent = medalRim(a.medal, achievementAccent(colors, a.tone));
     return SizedBox(
       width: 168,
       height: 168,
@@ -130,7 +130,7 @@ class _UnlockedMomentState extends State<_UnlockedMoment>
               child: AchievementEmblem(
                 id: a.id,
                 tone: a.tone,
-                unlocked: true,
+                medal: a.medal,
                 size: 120,
               ),
             ),
@@ -163,7 +163,9 @@ class _UnlockedMomentState extends State<_UnlockedMoment>
         children: [
           Center(child: _buildEmblem(colors)),
           Text(
-            'CONQUISTA DESBLOQUEADA',
+            a.hasTiers
+                ? 'MEDALHA DE ${medalName(a.medal).toUpperCase()}'
+                : 'CONQUISTA DESBLOQUEADA',
             textAlign: TextAlign.center,
             style: texts.labelSmall?.copyWith(
               color: colors.lime,

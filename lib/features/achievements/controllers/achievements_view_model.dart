@@ -9,7 +9,7 @@ import 'package:receyta/domain/engine/achievements.dart';
 import 'package:receyta/features/mascot/milestones.dart';
 import 'package:receyta/features/space/controllers/space_controller.dart';
 
-const _seenKey = 'achievements_seen';
+const _seenKey = 'achievements_seen_levels';
 
 /// Lê as contagens do app e monta as conquistas. Recebe o `read` do Riverpod
 /// pra servir tanto ao provider quanto ao observador de novas conquistas.
@@ -75,37 +75,41 @@ final achievementSignalProvider = Provider<String>((ref) {
   return '$recipes|$cooked|$lists|$meals|$house';
 });
 
-/// As conquistas que acabaram de ser ganhas, ainda não mostradas. Na primeira
-/// vez só registra o que já estava ganho (quem atualiza o app não leva uma
-/// enxurrada de comemorações); depois, cada conquista nova é devolvida uma vez
-/// e anotada como vista, mesmo que depois volte a ficar incompleta.
+/// As conquistas que acabaram de subir de nível (ou de ser ganhas), ainda não
+/// mostradas — uma por conquista, no nível mais alto atingido. Na primeira vez
+/// só registra os níveis que já estavam ganhos (quem atualiza o app não leva
+/// uma enxurrada de comemorações); depois, cada nível novo é devolvido uma vez
+/// e anotado como visto, mesmo que depois a contagem volte a cair.
 Future<List<Achievement>> takeNewAchievements(List<Achievement> all) async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getStringList(_seenKey);
-    final unlocked = [
-      for (final a in all)
-        if (a.unlocked) a
-    ];
-    if (seen == null) {
-      await prefs.setStringList(
-        _seenKey,
-        [for (final a in unlocked) a.id.name],
-      );
+    final stored = prefs.getStringList(_seenKey);
+    final levels = {for (final a in all) a.id.name: a.level};
+    if (stored == null) {
+      await prefs.setStringList(_seenKey, _encode(levels));
       return const [];
     }
+    final seen = <String, int>{};
+    for (final entry in stored) {
+      final parts = entry.split(':');
+      if (parts.length == 2) seen[parts[0]] = int.tryParse(parts[1]) ?? 0;
+    }
     final fresh = [
-      for (final a in unlocked)
-        if (!seen.contains(a.id.name)) a,
+      for (final a in all)
+        if (a.level > (seen[a.id.name] ?? 0)) a,
     ];
     if (fresh.isNotEmpty) {
-      await prefs.setStringList(
-        _seenKey,
-        {...seen, for (final a in fresh) a.id.name}.toList(),
-      );
+      final merged = {...seen};
+      for (final a in fresh) {
+        merged[a.id.name] = a.level;
+      }
+      await prefs.setStringList(_seenKey, _encode(merged));
     }
     return fresh;
   } catch (_) {
     return const [];
   }
 }
+
+List<String> _encode(Map<String, int> levels) =>
+    [for (final e in levels.entries) '${e.key}:${e.value}'];

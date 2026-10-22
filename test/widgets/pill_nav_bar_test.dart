@@ -72,7 +72,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('arrastar o dedo da esquerda pra direita passa por todas as abas',
+  testWidgets(
+      'arrastar da esquerda pra direita e soltar na última seleciona só ela',
       (tester) async {
     await pump(tester);
     final bar = tester.getRect(find.byType(PillNavBar));
@@ -86,10 +87,11 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(picked, [1, 2, 3]);
+    expect(picked, [3]);
   });
 
-  testWidgets('arrastar de volta pra esquerda desce as abas e para onde soltar',
+  testWidgets(
+      'arrastar pra esquerda e voltar um pouco assenta na aba onde soltou',
       (tester) async {
     await pump(tester);
     final bar = tester.getRect(find.byType(PillNavBar));
@@ -132,7 +134,7 @@ void main() {
     expect(haptics, hasLength(1));
   });
 
-  testWidgets('arrastar além das pontas não passa do primeiro nem do último',
+  testWidgets('arrastar além das pontas e soltar na mesma aba não troca nada',
       (tester) async {
     await pump(tester);
     final bar = tester.getRect(find.byType(PillNavBar));
@@ -146,8 +148,7 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(picked, everyElement(inInclusiveRange(0, 3)));
-    expect(picked.last, 0);
+    expect(picked, isEmpty);
   });
 
   testWidgets('tocar numa aba continua funcionando', (tester) async {

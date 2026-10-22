@@ -15,8 +15,10 @@ import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/widgets/skeleton.dart';
 
 /// Conquistas: um painel de progresso, "Suas conquistas" (medalhas ganhas, em
-/// prateleira que expande numa grade com detalhes) e "A liberar" (o que falta,
-/// da mais próxima pra mais distante). Tudo deriva das contagens do app.
+/// prateleira que expande numa grade com detalhes e o caminho até o próximo
+/// nível) e "A liberar" (as que ainda não começaram). As conquistas com níveis
+/// trocam o aro da medalha — bronze, prata e ouro. Tudo deriva das contagens
+/// do app.
 class AchievementsPage extends ConsumerStatefulWidget {
   const AchievementsPage({super.key});
 
@@ -75,10 +77,11 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
       for (final a in items)
         if (a.unlocked) a
     ];
-    final locked = [
+    final notStarted = [
       for (final a in items)
         if (!a.unlocked) a
     ]..sort((a, b) => b.progress.compareTo(a.progress));
+    final allMaxed = items.every((a) => a.maxed);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -88,21 +91,30 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
         AppSpacing.xl,
       ),
       children: [
-        _buildHero(unlocked.length, items.length, locked),
+        _buildHero(items),
         const SizedBox(height: AppSpacing.lg),
         _buildUnlockedSection(unlocked),
-        const SizedBox(height: AppSpacing.lg),
-        locked.isEmpty
-            ? _buildTrophy(items.length)
-            : _buildLockedSection(locked),
+        if (allMaxed) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _buildTrophy(items.length),
+        ] else if (notStarted.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          _buildLockedSection(notStarted),
+        ],
       ],
     );
   }
 
-  Widget _buildHero(int done, int total, List<Achievement> locked) {
+  Widget _buildHero(List<Achievement> items) {
     final colors = context.colors;
     final texts = context.texts;
-    final next = locked.isEmpty ? null : locked.first;
+    final earned = items.fold<int>(0, (sum, a) => sum + a.level);
+    final total = items.fold<int>(0, (sum, a) => sum + a.tiers.length);
+    final pending = [
+      for (final a in items)
+        if (!a.maxed) a
+    ]..sort((a, b) => b.progress.compareTo(a.progress));
+    final next = pending.isEmpty ? null : pending.first;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -116,13 +128,13 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
             height: 84,
             child: CustomPaint(
               painter: _RingPainter(
-                progress: total == 0 ? 0 : done / total,
+                progress: total == 0 ? 0 : earned / total,
                 color: colors.lime,
                 track: colors.inkSoft,
               ),
               child: Center(
                 child: Text(
-                  '$done/$total',
+                  '$earned/$total',
                   style: texts.titleMedium?.copyWith(
                     color: colors.onInk,
                     fontWeight: FontWeight.w800,
@@ -144,7 +156,9 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  next?.title ?? 'Você completou a coleção.',
+                  next == null
+                      ? 'Você completou a coleção.'
+                      : (next.nextTitle ?? next.title),
                   style: texts.titleLarge?.copyWith(
                     color: colors.onInk,
                     fontWeight: FontWeight.w800,
@@ -153,9 +167,9 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
                 if (next != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    next.target == 1
-                        ? next.description
-                        : '${next.current} de ${next.target}',
+                    next.nextTarget == 1
+                        ? (next.nextDescription ?? next.description)
+                        : '${next.shownCurrent} de ${next.nextTarget}',
                     style: texts.bodyMedium?.copyWith(
                       color: colors.lime,
                       fontWeight: FontWeight.w600,
@@ -170,11 +184,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
     );
   }
 
-  Widget _buildSectionHeader(
-    String title,
-    int count, {
-    Widget? action,
-  }) {
+  Widget _buildSectionHeader(String title, int count, {Widget? action}) {
     final colors = context.colors;
     final texts = context.texts;
     return Row(
@@ -261,10 +271,11 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
   }
 
   Widget _buildUnlockedShelf(List<Achievement> unlocked) {
+    final colors = context.colors;
     final texts = context.texts;
     return SizedBox(
       key: const ValueKey('shelf'),
-      height: 118,
+      height: 132,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: unlocked.length,
@@ -275,7 +286,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
             width: 84,
             child: Column(
               children: [
-                AchievementEmblem(id: a.id, tone: a.tone, unlocked: true),
+                AchievementEmblem(id: a.id, tone: a.tone, medal: a.medal),
                 const SizedBox(height: 6),
                 Text(
                   a.title,
@@ -286,6 +297,11 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+                if (a.hasTiers)
+                  Text(
+                    medalName(a.medal),
+                    style: texts.labelSmall?.copyWith(color: colors.textMuted),
+                  ),
               ],
             ),
           );
@@ -295,8 +311,6 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
   }
 
   Widget _buildUnlockedGrid(List<Achievement> unlocked) {
-    final colors = context.colors;
-    final texts = context.texts;
     return GridView.builder(
       key: const ValueKey('grid'),
       shrinkWrap: true,
@@ -305,65 +319,108 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
         maxCrossAxisExtent: 220,
         crossAxisSpacing: AppSpacing.sm,
         mainAxisSpacing: AppSpacing.sm,
-        mainAxisExtent: 206,
+        mainAxisExtent: 232,
       ),
       itemCount: unlocked.length,
-      itemBuilder: (context, i) {
-        final a = unlocked[i];
-        return Container(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: colors.paperSoft,
-            borderRadius: BorderRadius.circular(AppRadii.md),
+      itemBuilder: (context, i) => _buildUnlockedCard(unlocked[i]),
+    );
+  }
+
+  Widget _buildUnlockedCard(Achievement a) {
+    final colors = context.colors;
+    final texts = context.texts;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: colors.paperSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+      ),
+      child: Column(
+        children: [
+          AchievementEmblem(
+            id: a.id,
+            tone: a.tone,
+            medal: a.medal,
+            size: 84,
           ),
-          child: Column(
-            children: [
-              AchievementEmblem(
-                id: a.id,
-                tone: a.tone,
-                unlocked: true,
-                size: 84,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                a.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: texts.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 2),
-              Expanded(
-                child: Text(
-                  a.description,
-                  textAlign: TextAlign.center,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: texts.bodySmall?.copyWith(color: colors.textMuted),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            a.title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: texts.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Text(
+              a.description,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: texts.bodySmall?.copyWith(color: colors.textMuted),
+            ),
+          ),
+          a.maxed ? _buildDoneBadge(a) : _buildNextLevel(a),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoneBadge(Achievement a) {
+    final colors = context.colors;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.check_circle_rounded, size: 16, color: colors.onPaper),
+        const SizedBox(width: 4),
+        Text(
+          a.hasTiers ? 'Nível máximo' : 'Conquistada',
+          style: context.texts.labelMedium?.copyWith(
+            color: colors.onPaper,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Caminho até o próximo nível: barra e "12/25", com o nome do nível.
+  Widget _buildNextLevel(Achievement a) {
+    final colors = context.colors;
+    final texts = context.texts;
+    final nextMedal =
+        a.hasTiers ? MedalTier.values[a.level + 1] : MedalTier.single;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (a.hasTiers)
+          Text(
+            'Próximo: ${medalName(nextMedal)}',
+            style: texts.labelSmall?.copyWith(color: colors.textMuted),
+          ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadii.pill),
+                child: LinearProgressIndicator(
+                  value: a.progress,
+                  minHeight: 6,
+                  backgroundColor: colors.paper,
+                  color: colors.onPaper,
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.check_circle_rounded,
-                    size: 16,
-                    color: colors.onPaper,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Conquistada',
-                    style: texts.labelMedium?.copyWith(
-                      color: colors.onPaper,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              '${a.shownCurrent}/${a.nextTarget}',
+              style: texts.labelMedium?.copyWith(color: colors.textMuted),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -383,7 +440,8 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Você conquistou as $total conquistas. Mestre da cozinha!',
+            'Você levou as $total conquistas ao nível máximo. '
+            'Mestre da cozinha!',
             textAlign: TextAlign.center,
             style: texts.bodyMedium?.copyWith(color: colors.textMuted),
           ),
@@ -418,7 +476,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
           AchievementEmblem(
             id: a.id,
             tone: a.tone,
-            unlocked: false,
+            medal: MedalTier.none,
             size: 60,
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -437,7 +495,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
                   a.description,
                   style: texts.bodySmall?.copyWith(color: colors.textMuted),
                 ),
-                if (a.target > 1) ...[
+                if (a.nextTarget != null && a.nextTarget! > 1) ...[
                   const SizedBox(height: AppSpacing.xs),
                   Row(
                     children: [
@@ -454,7 +512,7 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Text(
-                        '${a.current}/${a.target}',
+                        '${a.shownCurrent}/${a.nextTarget}',
                         style: texts.labelMedium?.copyWith(
                           color: colors.textMuted,
                         ),

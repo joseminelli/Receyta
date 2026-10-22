@@ -31,6 +31,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
+import 'package:receyta/widgets/tab_motion.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
 /// Casca do app: as quatro seções (§9.2) sob a `PillNavBar` flutuante
@@ -43,31 +44,32 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   int _tab = 0;
 
-  /// Posição (fracionária) da faixa de páginas: vai de onde estava até a aba
-  /// nova. Trocar de aba durante o deslize (arrastar o dedo pela barra)
-  /// recomeça de onde a faixa está agora, então nunca dá salto.
-  late final AnimationController _slide = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 320),
-  );
-  double _from = 0;
-  double _to = 0;
-
-  double get _position =>
-      _from + (_to - _from) * Curves.easeOutCubic.transform(_slide.value);
+  /// Posição (fracionária) da seleção, compartilhada com a `PillNavBar`: a
+  /// faixa de páginas segue a mesma mola da pílula e, ao arrastar a barra, o
+  /// dedo. Trocar de aba durante o deslize recomeça de onde está, então nunca
+  /// dá salto.
+  late final TabMotion _motion = TabMotion(vsync: this, count: _pages.length);
 
   void _select(int i) {
     if (i == _tab) return;
     setState(() {
-      _from = _position;
       _tab = i;
-      _to = i.toDouble();
       _visited.add(i);
     });
-    _slide.forward(from: 0);
+  }
+
+  /// Enquanto o dedo arrasta a barra, monta as abas que a faixa vai mostrando
+  /// (nas trocas por toque só a de destino é montada).
+  void _mountNearDrag() {
+    if (!_motion.dragging) return;
+    final p = _motion.trail;
+    final near = {p.floor(), p.ceil()}
+        .where((i) => i >= 0 && i < _pages.length && !_visited.contains(i));
+    if (near.isEmpty) return;
+    setState(() => _visited.addAll(near));
   }
 
   /// Abas já visitadas: só elas são montadas. O `IndexedStack` mantém vivo
@@ -87,6 +89,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
     // importamos e avisamos por snackbar). Best-effort: qualquer falha do
     // plugin (inclusive em teste de widget, sem o canal nativo) não pode
     // travar a home.
+    _motion.listenable.addListener(_mountNearDrag);
     _checkInitialShare();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) {
@@ -206,7 +209,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _mediaSub?.cancel();
-    _slide.dispose();
+    _motion.listenable.removeListener(_mountNearDrag);
+    _motion.dispose();
     super.dispose();
   }
 
@@ -225,9 +229,9 @@ class _HomeShellState extends ConsumerState<HomeShell>
   /// podem voar (ver nota antiga do `IndexedStack`).
   Widget _buildPages() {
     return AnimatedBuilder(
-      animation: _slide,
+      animation: _motion.listenable,
       builder: (context, _) {
-        final position = _position;
+        final position = _motion.trail.clamp(0.0, _pages.length - 1.0);
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -303,6 +307,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
                       items: items,
                       currentIndex: _tab,
                       onSelected: _select,
+                      motion: _motion,
                     ),
                   ),
                 ),

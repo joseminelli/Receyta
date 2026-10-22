@@ -14,26 +14,45 @@ Color achievementAccent(AppColors colors, AchievementTone tone) =>
       AchievementTone.violet => colors.violetMuted,
     };
 
-/// Medalha desenhada à mão: aro metálico em degradê na cor da categoria, face
-/// `ink` com um brilho suave e um traço próprio de cada conquista no centro.
-/// Bloqueada, vira um aro apagado sobre o papel, com um cadeado miúdo.
+/// Cor do aro de cada nível: metais fixos pra bronze, prata e ouro; nas de um
+/// passo só ([MedalTier.single]) o aro leva a cor da categoria.
+Color medalRim(MedalTier medal, Color accent) => switch (medal) {
+      MedalTier.bronze => const Color(0xFFC98445),
+      MedalTier.silver => const Color(0xFFC3CAD3),
+      MedalTier.gold => const Color(0xFFE8B83A),
+      MedalTier.single || MedalTier.none => accent,
+    };
+
+/// Nome do nível, pro texto.
+String medalName(MedalTier medal) => switch (medal) {
+      MedalTier.bronze => 'Bronze',
+      MedalTier.silver => 'Prata',
+      MedalTier.gold => 'Ouro',
+      MedalTier.single || MedalTier.none => '',
+    };
+
+/// Medalha desenhada à mão: aro metálico em degradê (na cor do nível), face
+/// `ink` com um brilho suave e um traço próprio de cada conquista, na cor da
+/// categoria, no centro. Bloqueada ([MedalTier.none]), vira um aro apagado
+/// sobre o papel, com um cadeado miúdo.
 class AchievementEmblem extends StatelessWidget {
   const AchievementEmblem({
     super.key,
     required this.id,
     required this.tone,
-    required this.unlocked,
+    required this.medal,
     this.size = 72,
   });
 
   final AchievementId id;
   final AchievementTone tone;
-  final bool unlocked;
+  final MedalTier medal;
   final double size;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final unlocked = medal != MedalTier.none;
     final accent = achievementAccent(colors, tone);
     final lockSize = size * 0.3;
     return SizedBox(
@@ -46,8 +65,10 @@ class AchievementEmblem extends StatelessWidget {
             size: Size.square(size),
             painter: _EmblemPainter(
               id: id,
+              medal: medal,
               unlocked: unlocked,
               accent: accent,
+              rim: medalRim(medal, accent),
               face: unlocked ? colors.ink : colors.paper,
               muted: colors.textMuted,
             ),
@@ -80,15 +101,19 @@ class AchievementEmblem extends StatelessWidget {
 class _EmblemPainter extends CustomPainter {
   const _EmblemPainter({
     required this.id,
+    required this.medal,
     required this.unlocked,
     required this.accent,
+    required this.rim,
     required this.face,
     required this.muted,
   });
 
   final AchievementId id;
+  final MedalTier medal;
   final bool unlocked;
   final Color accent;
+  final Color rim;
   final Color face;
   final Color muted;
 
@@ -101,35 +126,35 @@ class _EmblemPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final s = size.shortestSide;
     final center = Offset(s / 2, s / 2);
-    final rim = s * 0.085;
+    final rimWidth = s * 0.085;
 
     if (unlocked) {
-      final hsl = HSLColor.fromColor(accent);
-      final light = _shade(accent, hsl.lightness + 0.18);
-      final dark = _shade(accent, hsl.lightness - 0.18);
+      final hsl = HSLColor.fromColor(rim);
+      final light = _shade(rim, hsl.lightness + 0.18);
+      final dark = _shade(rim, hsl.lightness - 0.18);
       canvas.drawCircle(
         center,
-        s / 2 - rim / 2,
+        s / 2 - rimWidth / 2,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = rim
+          ..strokeWidth = rimWidth
           ..shader = SweepGradient(
-            colors: [light, accent, dark, accent, light],
+            colors: [light, rim, dark, rim, light],
             transform: const GradientRotation(-math.pi / 4),
           ).createShader(Offset.zero & size),
       );
     } else {
       canvas.drawCircle(
         center,
-        s / 2 - rim / 2,
+        s / 2 - rimWidth / 2,
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = rim * 0.6
+          ..strokeWidth = rimWidth * 0.6
           ..color = muted.withValues(alpha: 0.4),
       );
     }
 
-    final faceRadius = s / 2 - rim - s * 0.02;
+    final faceRadius = s / 2 - rimWidth - s * 0.02;
     canvas.drawCircle(center, faceRadius, Paint()..color = face);
     if (unlocked) {
       canvas.drawCircle(
@@ -160,7 +185,7 @@ class _EmblemPainter extends CustomPainter {
     canvas.translate(center.dx - box / 2, center.dy - box / 2);
     canvas.scale(box / 24);
     canvas.drawPath(
-      _glyph(id),
+      _glyph(id, medal),
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.7
@@ -174,25 +199,30 @@ class _EmblemPainter extends CustomPainter {
   @override
   bool shouldRepaint(_EmblemPainter old) =>
       old.id != id ||
+      old.medal != medal ||
       old.unlocked != unlocked ||
       old.accent != accent ||
+      old.rim != rim ||
       old.face != face ||
       old.muted != muted;
 }
 
-Path _glyph(AchievementId id) => switch (id) {
-      AchievementId.firstRecipe => _book(),
-      AchievementId.tenRecipes => _books(),
-      AchievementId.twentyFiveRecipes => _bookWithStar(),
-      AchievementId.firstFavorite => _heart(),
-      AchievementId.firstCooked => _pot(),
-      AchievementId.tenCooked => _cutlery(),
-      AchievementId.fiftyCooked => _chefHat(),
-      AchievementId.firstMeal => _calendarCheck(),
-      AchievementId.plannedWeek => _calendarWeek(),
-      AchievementId.firstShoppingList => _basket(),
-      AchievementId.house => _house(),
-    };
+/// O traço central de cada conquista; no nível ouro, a biblioteca ganha uma
+/// estrela e o chef, o chapéu.
+Path _glyph(AchievementId id, MedalTier medal) {
+  final gold = medal == MedalTier.gold;
+  return switch (id) {
+    AchievementId.firstRecipe => _book(),
+    AchievementId.library => gold ? _bookWithStar() : _books(),
+    AchievementId.favorites => _heart(),
+    AchievementId.firstCooked => _pot(),
+    AchievementId.chef => gold ? _chefHat() : _cutlery(),
+    AchievementId.firstMeal => _calendarCheck(),
+    AchievementId.plannedWeek => _calendarWeek(),
+    AchievementId.firstShoppingList => _basket(),
+    AchievementId.house => _house(),
+  };
+}
 
 Path _book() => Path()
   ..moveTo(12, 7)

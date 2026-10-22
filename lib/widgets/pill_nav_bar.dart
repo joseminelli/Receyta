@@ -2,12 +2,12 @@ import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/tab_motion.dart';
 
 /// Um destino da [PillNavBar]. `color` é a cor da seção (§9.2) — o `motif` fica
 /// só de referência pra quem consome via [TileMotif], a navbar em si não
@@ -30,40 +30,42 @@ class PillNavItem {
 /// uma barra de ponta a ponta. Inativos mostram só o ícone; o ativo ganha a
 /// cor da seção e o ícone entra num medalhão, com ícone + label.
 ///
-/// A troca é uma animação física, toda calculada num lugar só: cada aba tem um
-/// progresso `p` (0 = recolhida, 1 = aberta) que vai pra 1 na aba nova e pra 0
-/// na antiga, movido por uma mola; a largura de cada aba e a pílula de
-/// seleção saem dessas mesmas contas, então os dois sempre combinam — nada de
-/// o indicador correr num ritmo e os itens pularem em outro. As duas bordas da
-/// pílula seguem molas diferentes: a da frente é firme e passa um tiquinho do
-/// ponto, a de trás é mais macia e alcança depois, o que dá o efeito líquido,
-/// com o alongamento limitado por [_maxStretch]. A cor da pílula também
-/// escorre da seção antiga pra nova.
+/// Tudo nasce de uma posição fracionária única, a do [TabMotion]: a "abertura"
+/// de cada aba (0 recolhida, 1 aberta) é um triângulo em volta dessa posição,
+/// então entre duas abas uma fecha enquanto a outra abre, e a largura das
+/// abas, a pílula de seleção e a cor saem das mesmas contas — sempre combinam.
+/// As duas bordas da pílula usam as duas posições do [TabMotion] (a da frente
+/// é firme, a de trás é macia): daí o efeito líquido, com o alongamento
+/// limitado por [_maxStretch]. A posição vem de uma mola nas trocas por toque
+/// e **segue o dedo** quando se arrasta a barra: a pílula acompanha antes de
+/// soltar e, ao soltar, assenta na aba mais próxima.
 ///
-/// Além do toque, dá pra **arrastar o dedo pela barra**: a aba é a da zona onde
-/// o dedo está (a largura da barra dividida em partes iguais, uma por aba) e
-/// soltar deixa na última escolhida. Zonas iguais, e não os retângulos reais,
-/// de propósito: a aba ativa é mais larga que as outras e muda de lugar a cada
-/// troca, o que faria a seleção tremer na divisa entre duas abas. Cada troca
-/// dá um toque de vibração leve.
+/// O arrasto mapeia o dedo em zonas iguais (a largura da barra dividida por
+/// aba) em vez dos retângulos reais: a aba ativa é mais larga que as outras e
+/// muda de lugar a cada troca, o que faria a seleção tremer na divisa. Cada
+/// vez que o dedo passa a estar sobre outra aba, um toque leve de vibração.
+///
+/// Passando um [motion], quem chama pode ler a mesma posição (a faixa de
+/// páginas, por exemplo); sem ele, a barra cria o seu.
 class PillNavBar extends StatefulWidget {
   const PillNavBar({
     super.key,
     required this.items,
     required this.currentIndex,
     required this.onSelected,
+    this.motion,
   });
 
   final List<PillNavItem> items;
   final int currentIndex;
   final ValueChanged<int> onSelected;
+  final TabMotion? motion;
 
   @override
   State<PillNavBar> createState() => _PillNavBarState();
 }
 
-class _PillNavBarState extends State<PillNavBar>
-    with SingleTickerProviderStateMixin {
+class _PillNavBarState extends State<PillNavBar> with TickerProviderStateMixin {
   static const double _slotHeight = AppSpacing.minTapTarget;
   static const double _gap = AppSpacing.xs / 2;
   static const double _iconBox = 30;
@@ -74,112 +76,42 @@ class _PillNavBarState extends State<PillNavBar>
   /// O quanto a pílula pode passar da maior aba no meio da troca.
   static const double _maxStretch = 24;
 
-  static const Duration _duration = Duration(milliseconds: 620);
-  static final double _seconds = _duration.inMilliseconds / 1000;
-
-  static final SpringSimulation _firm = SpringSimulation(
-    SpringDescription.withDampingRatio(mass: 1, stiffness: 620, ratio: 0.78),
-    0,
-    1,
-    0,
-  );
-  static final SpringSimulation _soft = SpringSimulation(
-    SpringDescription.withDampingRatio(mass: 1, stiffness: 340, ratio: 0.92),
-    0,
-    1,
-    0,
-  );
-
   final _stackKey = GlobalKey();
-  late final AnimationController _anim = AnimationController(
-    vsync: this,
-    duration: _duration,
-    value: 1,
-  );
-
-  late List<double> _p0;
-  late List<double> _leftW0;
-  late List<double> _rightW0;
-  late Color _fromColor;
-  bool _forward = true;
-  int _target = 0;
+  TabMotion? _ownMotion;
+  int _dragIndex = 0;
 
   List<double> _textWidths = const [];
   TextStyle? _measuredStyle;
   TextScaler? _measuredScaler;
 
+  TabMotion get _motion => widget.motion ?? _ownMotion!;
+
   @override
   void initState() {
     super.initState();
-    _resetTo(widget.currentIndex);
+    if (widget.motion == null) {
+      _ownMotion = TabMotion(
+        vsync: this,
+        count: widget.items.length,
+        initial: widget.currentIndex,
+      );
+    }
   }
-
-  void _resetTo(int index) {
-    final n = widget.items.length;
-    _target = index;
-    _p0 = _oneHot(n, index);
-    _leftW0 = _oneHot(n, index);
-    _rightW0 = _oneHot(n, index);
-    _fromColor = widget.items[index].color;
-    _anim.value = 1;
-  }
-
-  List<double> _oneHot(int n, int index) =>
-      [for (var i = 0; i < n; i++) i == index ? 1.0 : 0.0];
 
   @override
   void didUpdateWidget(covariant PillNavBar old) {
     super.didUpdateWidget(old);
-    if (widget.items.length != old.items.length) {
-      _resetTo(widget.currentIndex.clamp(0, widget.items.length - 1));
-      return;
+    if (widget.currentIndex != old.currentIndex &&
+        !_motion.dragging &&
+        _motion.target != widget.currentIndex) {
+      _motion.animateTo(widget.currentIndex);
     }
-    if (widget.currentIndex == _target) return;
-    final now = _current();
-    _p0 = now.p;
-    _leftW0 = now.leftWeights;
-    _rightW0 = now.rightWeights;
-    _fromColor = now.color;
-    _forward = widget.currentIndex > _target;
-    _target = widget.currentIndex;
-    _anim.forward(from: 0);
   }
 
   @override
   void dispose() {
-    _anim.dispose();
+    _ownMotion?.dispose();
     super.dispose();
-  }
-
-  double _spring(SpringSimulation sim) {
-    final v = _anim.value;
-    return v >= 1 ? 1.0 : sim.x(v * _seconds);
-  }
-
-  List<double> _toward(List<double> from, double s) => [
-        for (var i = 0; i < from.length; i++)
-          lerpDouble(from[i], i == _target ? 1 : 0, s)!,
-      ];
-
-  ({
-    List<double> p,
-    List<double> leftWeights,
-    List<double> rightWeights,
-    Color color,
-  }) _current() {
-    final firm = _spring(_firm);
-    final soft = _spring(_soft);
-    final p = [for (final v in _toward(_p0, firm)) math.max(0.0, v)];
-    return (
-      p: p,
-      leftWeights: _toward(_leftW0, _forward ? soft : firm),
-      rightWeights: _toward(_rightW0, _forward ? firm : soft),
-      color: Color.lerp(
-        _fromColor,
-        widget.items[_target].color,
-        firm.clamp(0.0, 1.0),
-      )!,
-    );
   }
 
   void _measure(BuildContext context) {
@@ -205,52 +137,91 @@ class _PillNavBarState extends State<PillNavBar>
     ];
   }
 
-  double _slotWidth(int i, double p) =>
-      _iconBox +
-      2 * lerpDouble(_padClosed, _padOpen, p.clamp(0.0, 1.0))! +
-      p * (_labelGap + _textWidths[i]);
+  /// Abertura (0 a 1) da aba [i] com a seleção na posição [pos].
+  double _open(double pos, int i) => (1 - (pos - i).abs()).clamp(0.0, 1.0);
 
-  /// Aba da zona onde o dedo está; seleciona e vibra só se for outra.
-  void _scrubTo(Offset globalPosition) {
+  double _slotWidth(int i, double open) =>
+      _iconBox +
+      2 * lerpDouble(_padClosed, _padOpen, open)! +
+      open * (_labelGap + _textWidths[i]);
+
+  /// Posição (em abas) do dedo, mapeando a largura da barra em zonas iguais.
+  double? _positionAt(Offset globalPosition) {
     final box = _stackKey.currentContext?.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize || box.size.width <= 0) return;
+    if (box == null || !box.hasSize || box.size.width <= 0) return null;
     final dx = box.globalToLocal(globalPosition).dx;
     final count = widget.items.length;
-    final index = (dx / box.size.width * count).floor().clamp(0, count - 1);
-    if (index == widget.currentIndex) return;
-    HapticFeedback.selectionClick();
-    widget.onSelected(index);
+    return dx / box.size.width * count - 0.5;
+  }
+
+  void _dragStart(DragStartDetails d) {
+    _dragIndex = widget.currentIndex;
+    _dragMove(d.globalPosition);
+  }
+
+  void _dragMove(Offset globalPosition) {
+    final pos = _positionAt(globalPosition);
+    if (pos == null) return;
+    _motion.dragTo(pos);
+    final index = _motion.lead.round().clamp(0, widget.items.length - 1);
+    if (index != _dragIndex) {
+      _dragIndex = index;
+      HapticFeedback.selectionClick();
+    }
+  }
+
+  void _dragEnd(DragEndDetails d) {
+    final box = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+    final perTab = box == null ? 0.0 : box.size.width / widget.items.length;
+    final velocity = perTab <= 0
+        ? 0.0
+        : (d.velocity.pixelsPerSecond.dx / perTab).clamp(-6.0, 6.0);
+    final index = _motion.lead.round().clamp(0, widget.items.length - 1);
+    _motion.animateTo(index, velocity: velocity);
+    if (index != widget.currentIndex) widget.onSelected(index);
   }
 
   Widget _buildBody(BuildContext context) {
-    final state = _current();
     final n = widget.items.length;
-    final widths = [for (var i = 0; i < n; i++) _slotWidth(i, state.p[i])];
+    final lead = _motion.lead.clamp(0.0, n - 1.0);
+    final trail = _motion.trail.clamp(0.0, n - 1.0);
+    final front = math.max(lead, trail);
+    final back = math.min(lead, trail);
+
+    final opens = [for (var i = 0; i < n; i++) _open(lead, i)];
+    final widths = [for (var i = 0; i < n; i++) _slotWidth(i, opens[i])];
     final lefts = <double>[];
     var x = 0.0;
     for (var i = 0; i < n; i++) {
       lefts.add(x);
       x += widths[i] + _gap;
     }
+    final total = x - _gap;
 
     var left = 0.0;
     var right = 0.0;
     for (var i = 0; i < n; i++) {
-      left += state.leftWeights[i] * lefts[i];
-      right += state.rightWeights[i] * (lefts[i] + widths[i]);
+      left += _open(back, i) * lefts[i];
+      right += _open(front, i) * (lefts[i] + widths[i]);
     }
-    final widest = widths.reduce(math.max);
-    if (right - left > widest + _maxStretch) {
-      if (_forward) {
-        left = right - (widest + _maxStretch);
+    final cap = widths.reduce(math.max) + _maxStretch;
+    if (right - left > cap) {
+      if (lead >= trail) {
+        left = right - cap;
       } else {
-        right = left + (widest + _maxStretch);
+        right = left + cap;
       }
     }
-
-    final total = x - _gap;
     left = left.clamp(0.0, total);
     right = right.clamp(left, total);
+
+    final base = lead.floor().clamp(0, n - 1);
+    final next = math.min(base + 1, n - 1);
+    final color = Color.lerp(
+      widget.items[base].color,
+      widget.items[next].color,
+      lead - base,
+    )!;
 
     return Stack(
       key: _stackKey,
@@ -259,11 +230,11 @@ class _PillNavBarState extends State<PillNavBar>
         Positioned(
           left: left,
           top: 0,
-          width: math.max(0, right - left),
+          width: right - left,
           height: _slotHeight,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: state.color,
+              color: color,
               borderRadius: BorderRadius.circular(AppRadii.pill),
             ),
           ),
@@ -275,7 +246,7 @@ class _PillNavBarState extends State<PillNavBar>
               if (i > 0) const SizedBox(width: _gap),
               _NavSlot(
                 item: widget.items[i],
-                p: state.p[i],
+                open: opens[i],
                 width: widths[i],
                 textWidth: _textWidths[i],
                 selected: i == widget.currentIndex,
@@ -312,12 +283,15 @@ class _PillNavBarState extends State<PillNavBar>
           clipBehavior: Clip.antiAlias,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onHorizontalDragStart: (d) => _scrubTo(d.globalPosition),
-            onHorizontalDragUpdate: (d) => _scrubTo(d.globalPosition),
+            onHorizontalDragStart: _dragStart,
+            onHorizontalDragUpdate: (d) => _dragMove(d.globalPosition),
+            onHorizontalDragEnd: _dragEnd,
+            onHorizontalDragCancel: () =>
+                _motion.animateTo(widget.currentIndex),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xs / 2),
               child: AnimatedBuilder(
-                animation: _anim,
+                animation: _motion.listenable,
                 builder: (context, _) => _buildBody(context),
               ),
             ),
@@ -328,14 +302,14 @@ class _PillNavBarState extends State<PillNavBar>
   }
 }
 
-/// Uma aba: largura e conteúdo vêm do progresso [p] (0 recolhida, 1 aberta),
-/// dado de fora — a aba não anima nada sozinha. O rótulo é revelado pela
+/// Uma aba: largura e conteúdo vêm da abertura [open] (0 recolhida, 1 aberta),
+/// dada de fora — a aba não anima nada sozinha. O rótulo é revelado pela
 /// própria largura da aba (com um fade) e o medalhão do ícone ganha cor e
-/// tamanho junto. [p] passando um pouco de 1 (a mola) dá o estouro do ícone.
+/// tamanho junto.
 class _NavSlot extends StatelessWidget {
   const _NavSlot({
     required this.item,
-    required this.p,
+    required this.open,
     required this.width,
     required this.textWidth,
     required this.selected,
@@ -343,7 +317,7 @@ class _NavSlot extends StatelessWidget {
   });
 
   final PillNavItem item;
-  final double p;
+  final double open;
   final double width;
   final double textWidth;
   final bool selected;
@@ -352,7 +326,6 @@ class _NavSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final open = p.clamp(0.0, 1.0);
     final onSection =
         item.color.computeLuminance() > 0.5 ? colors.ink : colors.onSaturated;
     final inactive = colors.onSaturated.withValues(alpha: 0.5);
@@ -396,7 +369,7 @@ class _NavSlot extends StatelessWidget {
                       ),
                       child: Icon(
                         item.icon,
-                        size: lerpDouble(21, 17, p.clamp(0.0, 1.15))!,
+                        size: lerpDouble(21, 17, open)!,
                         color: foreground,
                       ),
                     ),
