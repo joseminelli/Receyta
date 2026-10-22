@@ -26,8 +26,8 @@ import 'package:receyta/widgets/tile_pattern.dart';
 /// perfil é local (apelido e cor, só neste aparelho); com ele, o nome e a foto
 /// do Google preenchem o bloco. Um bloco grande no topo, com a cor e a textura
 /// escolhidas, leva o nome e os números do seu livro; abaixo, os atalhos de
-/// manutenção (histórico, tags, ingredientes, lixeira) em lista aberta, sem
-/// cartões.
+/// manutenção (casa, histórico, conquistas, tags, ingredientes, lixeira) em
+/// azulejos compactos agrupados.
 class AccountPage extends ConsumerWidget {
   const AccountPage({super.key});
 
@@ -338,119 +338,143 @@ class _TopRecipePill extends StatelessWidget {
   }
 }
 
-/// Atalhos de manutenção do livro numa lista aberta: títulos grandes na
-/// fonte de display, separados por um fio, sem cartões.
+enum _Tone { coral, violet, lime, ink }
+
+typedef _Shortcut = (
+  IconData icon,
+  String label,
+  String hint,
+  String route,
+  _Tone tone,
+);
+
+/// Atalhos do livro em azulejos `paperSoft`: a Casa em largura toda e os
+/// outros oito numa grade de duas colunas, sem seções. Cada azulejo leva um
+/// ícone numa cor da paleta, o título e uma dica de uma linha embaixo.
 class _Shortcuts extends StatelessWidget {
   const _Shortcuts();
 
-  static const _rows = [
-    (
-      Icons.home_outlined,
-      'Casa',
-      'Divida listas de compras com quem mora com você',
-      '/space'
-    ),
-    (Icons.history, 'Histórico', 'Tudo o que você já cozinhou', '/history'),
+  static const _house = (
+    Icons.home_outlined,
+    'Casa',
+    'Divida listas de compras com quem mora com você',
+    '/space',
+    _Tone.ink,
+  );
+
+  static const _others = <_Shortcut>[
+    (Icons.history, 'Histórico', 'O que já cozinhou', '/history', _Tone.coral),
     (
       Icons.emoji_events_outlined,
       'Conquistas',
-      'Seus marcos na cozinha',
-      '/achievements'
+      'Seus marcos',
+      '/achievements',
+      _Tone.lime
     ),
     (
       Icons.auto_graph,
       'Retrospectiva',
-      'Seu mês e seu ano na cozinha',
-      '/retrospective'
+      'Mês e ano',
+      '/retrospective',
+      _Tone.violet
     ),
-    (
-      Icons.payments_outlined,
-      'Custos',
-      'Quanto custa a semana e o que pesou',
-      '/costs'
-    ),
-    (
-      Icons.sell_outlined,
-      'Tags',
-      'Veja o uso e apague as que não usa',
-      '/tags'
-    ),
+    (Icons.payments_outlined, 'Custos', 'Semana e preços', '/costs', _Tone.ink),
+    (Icons.sell_outlined, 'Tags', 'Uso e limpeza', '/tags', _Tone.coral),
     (
       Icons.kitchen_outlined,
       'Despensa',
-      'O que você sempre tem fica fora das compras',
-      '/ingredients?despensa=1'
+      'Sempre em casa',
+      '/ingredients?despensa=1',
+      _Tone.lime
     ),
     (
       Icons.egg_alt_outlined,
       'Ingredientes',
-      'Preços, despensa, mesclar duplicados',
-      '/ingredients'
+      'Preços e duplicados',
+      '/ingredients',
+      _Tone.violet
     ),
-    (
-      Icons.delete_outline,
-      'Lixeira',
-      'Receitas apagadas, por tempo limitado',
-      '/trash'
-    ),
+    (Icons.delete_outline, 'Lixeira', 'Guardadas 30 dias', '/trash', _Tone.ink),
   ];
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildIcon(BuildContext context, IconData icon, _Tone tone) {
     final colors = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'SEU LIVRO',
-            style: context.texts.labelSmall?.copyWith(color: colors.textMuted),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          for (var i = 0; i < _rows.length; i++) ...[
-            if (i > 0)
-              Divider(height: 1, thickness: 1.5, color: colors.paperSoft),
-            InkWell(
-              onTap: () => context.push(_rows[i].$4),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 84),
-                child: Row(
+    final (background, foreground) = switch (tone) {
+      _Tone.coral => (colors.coral, colors.onSaturated),
+      _Tone.violet => (colors.violet, colors.onSaturated),
+      _Tone.lime => (colors.lime, colors.ink),
+      _Tone.ink => (colors.ink, colors.lime),
+    };
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+      child: Icon(icon, size: 20, color: foreground),
+    );
+  }
+
+  Widget _buildTile(BuildContext context, _Shortcut shortcut) {
+    final colors = context.colors;
+    final (icon, label, hint, route, tone) = shortcut;
+    return Material(
+      color: colors.paperSoft,
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        onTap: () => context.push(route),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+          child: Row(
+            children: [
+              _buildIcon(context, icon, tone),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: colors.ink,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(_rows[i].$1, size: 22, color: colors.lime),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(label, style: AppTextStyles.display(20)),
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _rows[i].$2,
-                            style: AppTextStyles.display(25),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _rows[i].$3,
-                            style: context.texts.bodyMedium
-                                ?.copyWith(color: colors.textMuted),
-                          ),
-                        ],
-                      ),
+                    Text(
+                      hint,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.bodySmall
+                          ?.copyWith(color: colors.textMuted),
                     ),
-                    Icon(Icons.arrow_forward_rounded, color: colors.textMuted),
                   ],
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+      child: Column(
+        children: [
+          SizedBox(height: 72, child: _buildTile(context, _house)),
+          const SizedBox(height: AppSpacing.xs),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: AppSpacing.xs,
+              mainAxisSpacing: AppSpacing.xs,
+              mainAxisExtent: 72,
             ),
-          ],
+            itemCount: _others.length,
+            itemBuilder: (context, i) => _buildTile(context, _others[i]),
+          ),
         ],
       ),
     );
