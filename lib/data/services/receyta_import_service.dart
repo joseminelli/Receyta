@@ -137,9 +137,10 @@ class ReceytaImportService {
   Future<Result<ImportSummary>> importParsedFile(
     ParsedReceytaFile file, {
     ConflictResolution resolution = ConflictResolution.duplicate,
+    void Function(int done, int total)? onProgress,
   }) async {
     try {
-      return Ok(await _import(file, resolution));
+      return Ok(await _import(file, resolution, onProgress));
     } catch (e) {
       return Err(DatabaseFailure('Falha ao importar', cause: e));
     }
@@ -148,6 +149,7 @@ class ReceytaImportService {
   Future<ImportSummary> _import(
     ParsedReceytaFile file,
     ConflictResolution resolution,
+    void Function(int done, int total)? onProgress,
   ) async {
     final folderIds = await _importFolders(file.folders);
     var imported = 0;
@@ -158,6 +160,7 @@ class ReceytaImportService {
       } else {
         skipped++;
       }
+      onProgress?.call(imported + skipped, file.recipes.length);
     }
     return (recipes: imported, folders: folderIds.length, skipped: skipped);
   }

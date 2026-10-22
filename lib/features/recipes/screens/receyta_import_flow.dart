@@ -11,6 +11,7 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
+import 'package:receyta/widgets/app_toast.dart';
 import 'package:receyta/widgets/pill_button.dart';
 
 /// Escolhe um `.receyta` no seletor do sistema e importa — sem revisão de
@@ -59,8 +60,15 @@ Future<void> _resolveAndImport(
     resolution = chosen;
   }
 
-  final result = await service.importParsedFile(file, resolution: resolution);
-  _reportResult(result);
+  final toast = showAppLoading('Importando receitas');
+  final result = await service.importParsedFile(
+    file,
+    resolution: resolution,
+    onProgress: file.recipes.length > 1
+        ? (done, total) => toast?.progress('Importando $done de $total')
+        : null,
+  );
+  _reportResult(result, toast);
   // Fotos restauradas: confere o que já está na nuvem (sem reenviar) e marca.
   if (result.isOk) unawaited(ref.read(recipeImageSyncProvider).syncPending());
 }
@@ -151,32 +159,48 @@ class _ConflictSheet extends StatelessWidget {
   }
 }
 
-void _reportResult(Result<ImportSummary> result) {
+void _reportResult(Result<ImportSummary> result, [AppToastHandle? toast]) {
   result.when(
     ok: (summary) {
       if (summary.recipes == 0 && summary.skipped > 0) {
-        showAppSnackBar(
-          title: 'Nada importado',
-          message: 'Todas as receitas do arquivo foram puladas.',
-          variant: AppSnackBarVariant.info,
-        );
+        const title = 'Nada importado';
+        const message = 'Todas as receitas do arquivo foram puladas.';
+        if (toast != null) {
+          toast.info(title, description: message);
+        } else {
+          showAppSnackBar(
+            title: title,
+            message: message,
+            variant: AppSnackBarVariant.info,
+          );
+        }
         return;
       }
       final skipped = summary.skipped;
-      showAppSnackBar(
-        title: summary.recipes == 1
-            ? '1 receita importada'
-            : '${summary.recipes} receitas importadas',
-        message: skipped > 0
-            ? '$skipped ${skipped == 1 ? 'foi pulada' : 'foram puladas'}. '
-                'As demais já estão na sua biblioteca.'
-            : 'Já estão na sua biblioteca.',
-      );
+      final title = summary.recipes == 1
+          ? '1 receita importada'
+          : '${summary.recipes} receitas importadas';
+      final message = skipped > 0
+          ? '$skipped ${skipped == 1 ? 'foi pulada' : 'foram puladas'}. '
+              'As demais já estão na sua biblioteca.'
+          : 'Já estão na sua biblioteca.';
+      if (toast != null) {
+        toast.success(title, description: message);
+      } else {
+        showAppSnackBar(title: title, message: message);
+      }
     },
-    err: (f) => showAppSnackBar(
-      title: 'Não consegui importar',
-      message: f.message,
-      variant: AppSnackBarVariant.error,
-    ),
+    err: (f) {
+      const title = 'Não consegui importar';
+      if (toast != null) {
+        toast.error(title, description: f.message);
+      } else {
+        showAppSnackBar(
+          title: title,
+          message: f.message,
+          variant: AppSnackBarVariant.error,
+        );
+      }
+    },
   );
 }

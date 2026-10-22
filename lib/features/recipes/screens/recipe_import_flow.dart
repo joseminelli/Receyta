@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -20,19 +21,39 @@ import 'package:receyta/widgets/pill_button.dart';
 Future<void> importRecipeFromUrlFlow(
     BuildContext context, WidgetRef ref) async {
   final controller = TextEditingController();
+  final error = ValueNotifier<String?>(null);
+
+  void submit(BuildContext dialogContext) {
+    final text = controller.text.trim();
+    if (!_looksLikeLink(text)) {
+      error.value = 'Cole o endereço completo, começando com http ou https.';
+      HapticFeedback.mediumImpact();
+      return;
+    }
+    Navigator.of(dialogContext).pop(text);
+  }
+
   final url = await AppDialog.show<String>(
     context,
     icon: Icons.link,
     accent: context.colors.violet,
     title: 'Importar de um link',
-    content: TextField(
-      controller: controller,
-      autofocus: true,
-      keyboardType: TextInputType.url,
-      textInputAction: TextInputAction.go,
-      decoration: const InputDecoration(
-          hintText: 'Link de site ou de receita do Receyta'),
-      onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+    content: ValueListenableBuilder<String?>(
+      valueListenable: error,
+      builder: (dialogContext, message, _) => TextField(
+        controller: controller,
+        autofocus: true,
+        keyboardType: TextInputType.url,
+        textInputAction: TextInputAction.go,
+        decoration: InputDecoration(
+          hintText: 'Link de site ou de receita do Receyta',
+          errorText: message,
+        ),
+        onChanged: (_) {
+          if (error.value != null) error.value = null;
+        },
+        onSubmitted: (_) => submit(dialogContext),
+      ),
     ),
     actions: [
       PillButton(
@@ -44,10 +65,11 @@ Future<void> importRecipeFromUrlFlow(
       PillButton(
         label: 'Importar',
         dense: true,
-        onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+        onPressed: () => submit(context),
       ),
     ],
   );
+  error.dispose();
   if (url == null || url.isEmpty) return;
 
   final toast = showAppLoading('Buscando a receita');
@@ -76,6 +98,13 @@ Future<void> importRecipeFromUrlFlow(
   final draft = await _withPhoto(ref, recipe);
   if (!context.mounted) return;
   context.push('/recipe/new', extra: draft);
+}
+
+bool _looksLikeLink(String text) {
+  final uri = Uri.tryParse(text);
+  return uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      uri.host.contains('.');
 }
 
 /// A receita de um link de compartilhamento do app (curto ou longo), ou nulo

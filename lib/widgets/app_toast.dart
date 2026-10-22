@@ -48,6 +48,10 @@ class AppToastHandle {
   void info(String title, {String? description}) =>
       AppToast._morph(_id, AppToastKind.info, title, description);
 
+  /// Troca o título do loading em andamento (ex.: "Importando 3 de 12").
+  void progress(String title) =>
+      AppToast._morph(_id, AppToastKind.loading, title, null);
+
   void dismiss() => AppToast.dismiss(_id);
 }
 

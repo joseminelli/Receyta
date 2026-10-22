@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +9,7 @@ import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_dialog.dart';
@@ -47,6 +49,13 @@ class TrashPage extends ConsumerWidget {
     for (final r in items) {
       await repo.deleteForever(r.id);
     }
+    HapticFeedback.heavyImpact();
+    showAppSnackBar(
+      title: 'Lixeira esvaziada',
+      message: items.length == 1
+          ? '1 receita apagada de vez.'
+          : '${items.length} receitas apagadas de vez.',
+    );
   }
 
   Future<void> _deleteForever(
@@ -64,6 +73,11 @@ class TrashPage extends ConsumerWidget {
     );
     if (!ok) return;
     await ref.read(recipeRepositoryProvider).deleteForever(recipe.id);
+    HapticFeedback.heavyImpact();
+    showAppSnackBar(
+      title: 'Receita excluída',
+      message: '"${recipe.name}" foi apagada de vez.',
+    );
   }
 
   @override
@@ -153,7 +167,14 @@ class TrashPage extends ConsumerWidget {
         return _TrashRow(
           recipe: r,
           daysLeft: _daysLeft(r, now),
-          onRestore: () => repo.restore(r.id),
+          onRestore: () async {
+            await repo.restore(r.id);
+            HapticFeedback.lightImpact();
+            showAppSnackBar(
+              title: 'Receita restaurada',
+              message: '"${r.name}" voltou para a sua biblioteca.',
+            );
+          },
           onDeleteForever: () => _deleteForever(context, ref, r),
         );
       },

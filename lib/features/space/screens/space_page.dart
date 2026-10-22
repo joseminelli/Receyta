@@ -864,53 +864,53 @@ class _InSpace extends ConsumerWidget {
             pantry: pantryOn,
           ),
           child: _Card(
-          children: [
-            _InfoRow(
-              icon: Icons.shopping_basket_outlined,
-              title: 'Listas de compras',
-              text: paused
-                  ? (sharedLists == 0
-                      ? 'Pausado: o plano do dono não está ativo.'
-                      : 'Pausado: o plano do dono não está ativo. As '
-                          '$sharedLists listas compartilhadas ficam salvas '
-                          'neste aparelho.')
-                  : sharedLists == 0
-                      ? 'Nenhuma ainda. No menu ⋯ de uma lista, escolha '
-                          '"Compartilhar com a casa".'
-                      : sharedLists == 1
-                          ? '1 lista compartilhada'
-                          : '$sharedLists listas compartilhadas',
-            ),
-            _InfoRow(
-              icon: Icons.calendar_month_outlined,
-              title: 'Calendário',
-              text: paused
-                  ? 'Pausado: o plano do dono não está ativo.'
-                  : calendarOn
-                      ? 'Suas refeições de hoje em diante aparecem para todos, '
-                          'e as deles no seu calendário.'
-                      : 'Desligado. Ligue para ver o que a casa vai cozinhar.',
-              trailing: Switch(
-                value: calendarOn,
-                onChanged: paused ? null : setCalendar,
+            children: [
+              _InfoRow(
+                icon: Icons.shopping_basket_outlined,
+                title: 'Listas de compras',
+                text: paused
+                    ? (sharedLists == 0
+                        ? 'Pausado: o plano do dono não está ativo.'
+                        : 'Pausado: o plano do dono não está ativo. As '
+                            '$sharedLists listas compartilhadas ficam salvas '
+                            'neste aparelho.')
+                    : sharedLists == 0
+                        ? 'Nenhuma ainda. No menu ⋯ de uma lista, escolha '
+                            '"Compartilhar com a casa".'
+                        : sharedLists == 1
+                            ? '1 lista compartilhada'
+                            : '$sharedLists listas compartilhadas',
               ),
-            ),
-            _InfoRow(
-              icon: Icons.kitchen_outlined,
-              title: 'Despensa',
-              text: paused
-                  ? 'Pausado: o plano do dono não está ativo.'
-                  : pantryOn
-                      ? 'O que vocês sempre têm vale para todos, e não entra '
-                          'nas listas de ninguém.'
-                      : 'Desligada. Ligue para dividir o que vocês sempre têm '
-                          'em casa.',
-              trailing: Switch(
-                value: pantryOn,
-                onChanged: paused ? null : setPantry,
+              _InfoRow(
+                icon: Icons.calendar_month_outlined,
+                title: 'Calendário',
+                text: paused
+                    ? 'Pausado: o plano do dono não está ativo.'
+                    : calendarOn
+                        ? 'Suas refeições de hoje em diante aparecem para todos, '
+                            'e as deles no seu calendário.'
+                        : 'Desligado. Ligue para ver o que a casa vai cozinhar.',
+                trailing: Switch(
+                  value: calendarOn,
+                  onChanged: paused ? null : setCalendar,
+                ),
               ),
-            ),
-          ],
+              _InfoRow(
+                icon: Icons.kitchen_outlined,
+                title: 'Despensa',
+                text: paused
+                    ? 'Pausado: o plano do dono não está ativo.'
+                    : pantryOn
+                        ? 'O que vocês sempre têm vale para todos, e não entra '
+                            'nas listas de ninguém.'
+                        : 'Desligada. Ligue para dividir o que vocês sempre têm '
+                            'em casa.',
+                trailing: Switch(
+                  value: pantryOn,
+                  onChanged: paused ? null : setPantry,
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -1285,7 +1285,12 @@ class _InviteSheet extends StatelessWidget {
             variant: PillButtonVariant.secondary,
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: code));
-              showAppSnackBar(message: 'Código copiado.');
+              HapticFeedback.selectionClick();
+              showAppSnackBar(
+                title: 'Código copiado',
+                message: 'Cole na conversa com quem vai entrar na casa. '
+                    'Ele vale por 48 horas.',
+              );
             },
           ),
         ],
@@ -1338,7 +1343,11 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
     final code = inviteCodeFromLink(text) ?? normalizeInviteCode(text);
     if (!mounted) return;
     if (code.length < 4) {
-      showAppSnackBar(message: 'Não há um código de convite copiado.');
+      showAppSnackBar(
+        title: 'Nenhum código copiado',
+        message: 'Copie o código ou a mensagem do convite e tente de novo.',
+        variant: AppSnackBarVariant.info,
+      );
       return;
     }
     _fill(code);
@@ -1360,7 +1369,11 @@ class _JoinSheetState extends ConsumerState<_JoinSheet> {
     result.when(
       ok: (_) {
         Navigator.of(context).pop();
-        showAppSnackBar(message: 'Você entrou na casa.');
+        HapticFeedback.mediumImpact();
+        showAppSnackBar(
+          title: 'Você entrou na casa',
+          message: 'As listas compartilhadas já aparecem pra você.',
+        );
       },
       err: _report,
     );

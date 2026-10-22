@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:receyta/core/result.dart';
@@ -35,8 +36,10 @@ Future<String?> logCookedNow(
   if (marked is Ok<String?> && marked.value != null) {
     final entryId = marked.value!;
     if (!quiet) {
+      HapticFeedback.mediumImpact();
       showAppSnackBar(
-        message: 'Registrado e marcado na agenda de hoje',
+        title: 'Registrado na agenda',
+        message: await _cookedTimes(repo, recipeId),
         actionLabel: 'Desfazer',
         onAction: () => plan.setDone(entryId, false),
       );
@@ -47,10 +50,12 @@ Future<String?> logCookedNow(
 
   final result = await repo.add(recipeId);
   return result.when(
-    ok: (id) {
+    ok: (id) async {
       if (!quiet) {
+        HapticFeedback.mediumImpact();
         showAppSnackBar(
-          message: 'Registrado: você cozinhou hoje',
+          title: 'Registrado',
+          message: await _cookedTimes(repo, recipeId),
           actionLabel: 'Desfazer',
           onAction: () => repo.remove(id),
         );
@@ -66,6 +71,15 @@ Future<String?> logCookedNow(
       return null;
     },
   );
+}
+
+/// Frase do toast de "registrado": a primeira vez ou a Nª vez que a receita
+/// foi feita.
+Future<String> _cookedTimes(CookLogRepository repo, String recipeId) async {
+  final n = await repo.countForRecipe(recipeId);
+  return n <= 1
+      ? 'Primeira vez que você faz essa receita.'
+      : '$nª vez que você cozinha essa receita.';
 }
 
 /// Folha do histórico: registrar uma vez (data e nota) e ver/apagar as

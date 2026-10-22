@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -104,13 +105,17 @@ Future<void> addRecipesToShoppingListFlow(
   }
 
   result.when(
-    ok: (_) => showAppSnackBar(
-      message: choice.listId == null
-          ? 'Lista criada: $listName'
-          : 'Adicionado a "$listName"',
-      actionLabel: 'Ver lista',
-      onAction: () => router.push('/shopping/$listId'),
-    ),
+    ok: (_) {
+      HapticFeedback.lightImpact();
+      showAppSnackBar(
+        title: choice.listId == null ? 'Lista criada' : 'Itens adicionados',
+        message: choice.listId == null
+            ? '"$listName" já tem os ingredientes da receita.'
+            : 'Os ingredientes entraram em "$listName".',
+        actionLabel: 'Ver lista',
+        onAction: () => router.push('/shopping/$listId'),
+      );
+    },
     err: (f) => showAppSnackBar(
       message: f.message,
       variant: AppSnackBarVariant.error,

@@ -5,7 +5,8 @@ import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/daos/cook_log_dao.dart';
 import 'package:receyta/data/database/database_provider.dart';
-import 'package:receyta/data/repositories/recipe_repository.dart' show recipeFromRow;
+import 'package:receyta/data/repositories/recipe_repository.dart'
+    show recipeFromRow;
 import 'package:receyta/domain/models/cook_log.dart';
 
 /// Histórico "cozinhei" (G7): registrar, listar e desfazer. Sem lógica de
@@ -81,6 +82,10 @@ class CookLogRepository {
       _dao.watchForRecipe(recipeId).map(
             (rows) => [for (final r in rows) _toDomain(r)],
           );
+
+  /// Quantas vezes a receita já foi registrada como feita.
+  Future<int> countForRecipe(String recipeId) async =>
+      (await _dao.watchForRecipe(recipeId).first).length;
 
   /// Todo o histórico, com o nome da receita, do mais recente ao mais antigo.
   Stream<List<CookLog>> watchAll() => _dao.watchAllWithRecipe().map(

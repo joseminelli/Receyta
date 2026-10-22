@@ -456,7 +456,13 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
       }
       final result = await controller.setListShared(list.id, true);
       result.when(
-        ok: (_) => showAppSnackBar(message: 'Lista compartilhada com a casa.'),
+        ok: (_) {
+          HapticFeedback.lightImpact();
+          showAppSnackBar(
+            title: 'Lista compartilhada',
+            message: 'Quem está na casa já vê e edita essa lista.',
+          );
+        },
         err: (f) => showAppSnackBar(
           message: f.message,
           variant: AppSnackBarVariant.error,
