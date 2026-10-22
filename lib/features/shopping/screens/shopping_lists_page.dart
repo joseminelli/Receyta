@@ -24,7 +24,7 @@ import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
-import 'package:receyta/widgets/brand_loader.dart';
+import 'package:receyta/widgets/skeleton.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
@@ -79,7 +79,7 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
         onTap: () => _openCreateSheet(context),
       ),
       body: listsAsync.when(
-        loading: () => const Center(child: BrandLoader()),
+        loading: () => SkeletonCardList(base: colors.inkSoft),
         error: (_, __) => _buildMessage(context, 'Não deu para carregar.'),
         data: (_) => lists.isEmpty ? _buildEmpty(context) : _buildLists(lists),
       ),

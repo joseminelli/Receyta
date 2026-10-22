@@ -22,7 +22,7 @@ import 'package:receyta/features/recipes/screens/tags_page.dart';
 import 'package:receyta/features/recipes/screens/trash_page.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
-import 'package:receyta/widgets/brand_loader.dart';
+import 'package:receyta/widgets/skeleton.dart';
 import 'package:receyta/widgets/featured_recipe_card.dart';
 import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/pill_button.dart';
@@ -138,10 +138,7 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
         count: totalCount,
         onCreate: openNew,
         onRefresh: refresh,
-        body: const SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(child: BrandLoader()),
-        ),
+        body: const SliverToBoxAdapter(child: _RecipesSkeleton()),
       ),
       error: (_, __) => _Scaffold(
         controller: _controller,
@@ -201,6 +198,58 @@ List<Recipe> shelfRecipes(List<Recipe>? recent, List<Recipe> all) =>
 
 List<Recipe> _shelf(List<Recipe>? recent, List<Recipe> all) =>
     shelfRecipes(recent, all);
+
+/// Esqueleto da home enquanto as receitas carregam: destaque largo e uma
+/// grade de azulejos, na mesma proporção dos cartões reais.
+class _RecipesSkeleton extends StatelessWidget {
+  const _RecipesSkeleton();
+
+  Widget _tileRow() {
+    return const Row(
+      children: [
+        Expanded(
+          child: AspectRatio(
+            aspectRatio: 0.78,
+            child: SkeletonBox(radius: AppRadii.lg),
+          ),
+        ),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: AspectRatio(
+            aspectRatio: 0.78,
+            child: SkeletonBox(radius: AppRadii.lg),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Skeleton(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.screen,
+          AppSpacing.lg,
+          AppSpacing.screen,
+          AppSpacing.lg,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SkeletonBox(width: 120, height: 24, radius: AppRadii.pill),
+            const SizedBox(height: AppSpacing.md),
+            const SkeletonBox(height: 190, radius: AppRadii.lg),
+            const SizedBox(height: AppSpacing.md),
+            _tileRow(),
+            const SizedBox(height: AppSpacing.sm),
+            _tileRow(),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _Scaffold extends StatelessWidget {
   const _Scaffold({
