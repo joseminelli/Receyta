@@ -96,6 +96,7 @@ class PillButton extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (loading) ...[
                   BrandLoader(size: 18, color: effectiveForeground),
