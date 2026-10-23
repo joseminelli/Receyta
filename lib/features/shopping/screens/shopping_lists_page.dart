@@ -163,8 +163,8 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     final children = <Widget>[
       const SwipeHint(
         hintId: 'shopping_lists',
-        message:
-            'Deslize uma lista: para a direita duplica, para a esquerda exclui.',
+        message: 'Para a direita duplica a lista, para a esquerda exclui.',
+        startIcon: Icons.copy_all_outlined,
       ),
       if (active.isNotEmpty) ...[
         _SectionLabel('Em andamento', count: active.length),

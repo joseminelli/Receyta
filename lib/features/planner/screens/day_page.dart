@@ -268,8 +268,7 @@ class _DayPageState extends ConsumerState<DayPage> {
         if (entries.isNotEmpty)
           const SwipeHint(
             hintId: 'planner_meals',
-            message:
-                'Deslize uma refeição: para a direita marca como feita, para a esquerda remove.',
+            message: 'Para a direita marca como feita, para a esquerda remove.',
           ),
         for (final meal in MealType.values)
           _MealSection(

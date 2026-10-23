@@ -484,7 +484,7 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
         const SwipeHint(
           hintId: 'shopping_items',
           message:
-              'Deslize um item: para a direita marca, para a esquerda tira da lista.',
+              'Para a direita marca o item, para a esquerda tira da lista.',
         ),
         ...children,
       ],
