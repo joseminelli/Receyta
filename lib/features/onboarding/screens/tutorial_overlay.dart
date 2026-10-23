@@ -26,9 +26,12 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
   static const _retryEvery = Duration(milliseconds: 90);
   static const _retries = 10;
 
-  /// Quanto o mascote sobe acima do cartão. Com o cartão abaixo do alvo, esse
-  /// espaço entra na distância pra ele não cobrir o destaque.
+  /// Faixa entre o alvo e o cartão onde o mascote fica de pé, ao lado do
+  /// alvo e com o braço (que aponta pra esquerda quando não está espelhado)
+  /// virado pra ele.
   static const _mascotRise = 62.0;
+  static const _mascotWidth = 68.0;
+  static const _mascotBesideTarget = 20.0;
 
   late final AnimationController _pulse = AnimationController(
     vsync: this,
@@ -117,6 +120,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
         : target.inflate(8);
 
     final below = target != null && target.center.dy < size.height / 2;
+    final targetOnLeft = target != null && target.center.dx < size.width / 2;
     final card = AnimatedSwitcher(
       duration: const Duration(milliseconds: 320),
       switchInCurve: Curves.easeOutCubic,
@@ -139,6 +143,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
           data: data,
           step: step,
           isLast: isLast,
+          withMascot: target == null,
           onNext: controller.next,
           onSkip: controller.finish,
         ),
@@ -172,21 +177,49 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
         if (ready)
           if (target == null)
             Center(child: _padded(card))
-          else if (below)
+          else ...[
+            if (below)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: target.bottom + 28 + _mascotRise,
+                child: _padded(card),
+              )
+            else
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: size.height - target.top + 28 + _mascotRise,
+                child: _padded(card),
+              ),
             Positioned(
-              left: 0,
-              right: 0,
-              top: target.bottom + 28 + _mascotRise,
-              child: _padded(card),
-            )
-          else
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: size.height - target.top + 28,
-              child: _padded(card),
+              left: _mascotLeft(target, size, targetOnLeft),
+              bottom: below
+                  ? size.height - (target.bottom + 28 + _mascotRise)
+                  : size.height - target.top + 28,
+              child: KeyedSubtree(
+                key: ValueKey('mascot-$step'),
+                child: Transform.flip(
+                  flipX: !targetOnLeft,
+                  child: _TutorialMascot(step: step, isLast: isLast),
+                ),
+              ),
             ),
+          ],
       ],
+    );
+  }
+
+  /// Mascote ao lado do alvo: à direita dele quando o alvo está na metade
+  /// esquerda (braço normal, apontando pra esquerda) e à esquerda dele, ao
+  /// contrário, quando está na direita.
+  double _mascotLeft(Rect target, Size size, bool targetOnLeft) {
+    final x = targetOnLeft
+        ? target.center.dx + _mascotBesideTarget
+        : target.center.dx - _mascotBesideTarget - _mascotWidth;
+    return x.clamp(
+      AppSpacing.screen,
+      size.width - AppSpacing.screen - _mascotWidth,
     );
   }
 
@@ -258,6 +291,7 @@ class _Card extends StatelessWidget {
     required this.data,
     required this.step,
     required this.isLast,
+    required this.withMascot,
     required this.onNext,
     required this.onSkip,
   });
@@ -265,6 +299,10 @@ class _Card extends StatelessWidget {
   final TutorialStep data;
   final int step;
   final bool isLast;
+
+  /// Sem destaque na tela, o mascote fica pendurado no cartão; com destaque,
+  /// ele fica ao lado do alvo (ver `TutorialOverlay`).
+  final bool withMascot;
   final VoidCallback onNext;
   final VoidCallback onSkip;
 
@@ -326,11 +364,12 @@ class _Card extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         card,
-        Positioned(
-          top: -60,
-          right: AppSpacing.md,
-          child: _TutorialMascot(step: step, isLast: isLast),
-        ),
+        if (withMascot)
+          Positioned(
+            top: -60,
+            right: AppSpacing.md,
+            child: _TutorialMascot(step: step, isLast: isLast),
+          ),
       ],
     );
   }
