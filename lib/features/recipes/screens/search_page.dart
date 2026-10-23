@@ -11,6 +11,7 @@ import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_sheet.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -56,6 +57,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       term,
       ..._recent.where((r) => r.toLowerCase() != term.toLowerCase()),
     ].take(_recentLimit).toList();
+    setState(() => _recent = next);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_recentKey, next);
+  }
+
+  Future<void> _removeRecent(String term) async {
+    final next = [
+      for (final r in _recent)
+        if (r != term) r,
+    ];
     setState(() => _recent = next);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_recentKey, next);
@@ -120,19 +131,21 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             onClear: () => _setQuery(''),
             onBack: () => context.pop(),
             onSubmitted: _remember,
-          ),
-          _QuickFilters(
-            onlyFavorites: _onlyFavorites,
-            onlyQuick: _onlyQuick,
-            onFavorites: (v) => setState(() => _onlyFavorites = v),
-            onQuick: (v) => setState(() => _onlyQuick = v),
+            filters: _HeaderFilters(
+              query: query,
+              onlyFavorites: _onlyFavorites,
+              onlyQuick: _onlyQuick,
+              onFavorites: (v) => setState(() => _onlyFavorites = v),
+              onQuick: (v) => setState(() => _onlyQuick = v),
+              onPickTag: _setQuery,
+            ),
           ),
           Expanded(
             child: query.isEmpty
                 ? _Browse(
-                    onPickTag: _setQuery,
                     recent: _recent,
                     onPickRecent: _setQuery,
+                    onRemoveRecent: _removeRecent,
                     onClearRecent: _clearRecent,
                     filter: _applyFilters,
                   )
@@ -171,8 +184,10 @@ class _SearchHeader extends StatelessWidget {
     required this.onClear,
     required this.onBack,
     required this.onSubmitted,
+    required this.filters,
   });
 
+  final Widget filters;
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
@@ -221,23 +236,30 @@ class _SearchHeader extends StatelessWidget {
     final colors = context.colors;
     return SafeArea(
       bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.xs,
-          AppSpacing.xs,
-          AppSpacing.screen,
-          AppSpacing.md,
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: onBack,
-              icon: const Icon(Icons.arrow_back),
-              color: colors.onSaturated,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xs,
+              AppSpacing.xs,
+              AppSpacing.screen,
+              AppSpacing.sm,
             ),
-            Expanded(child: _buildSearchField(context)),
-          ],
-        ),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: onBack,
+                  icon: const Icon(Icons.arrow_back),
+                  color: colors.onSaturated,
+                ),
+                Expanded(child: _buildSearchField(context)),
+              ],
+            ),
+          ),
+          filters,
+          const SizedBox(height: AppSpacing.md),
+        ],
       ),
     );
   }
@@ -290,61 +312,190 @@ class _SearchHeader extends StatelessWidget {
   }
 }
 
-/// Filtros rápidos (favoritas, até 30 min) que valem pra busca e pra grade
-/// de "todas as receitas".
-class _QuickFilters extends StatelessWidget {
-  const _QuickFilters({
+/// Filtros no próprio bloco escuro do cabeçalho: favoritas, até 30 min e um
+/// seletor de tag. Desligado é só contorno; ligado inverte pra `paper`.
+class _HeaderFilters extends ConsumerWidget {
+  const _HeaderFilters({
+    required this.query,
     required this.onlyFavorites,
     required this.onlyQuick,
     required this.onFavorites,
     required this.onQuick,
+    required this.onPickTag,
   });
 
+  final String query;
   final bool onlyFavorites;
   final bool onlyQuick;
   final ValueChanged<bool> onFavorites;
   final ValueChanged<bool> onQuick;
+  final ValueChanged<String> onPickTag;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tags = ref.watch(inUseTagsProvider).valueOrNull ?? const <Tag>[];
+    final activeTag = tags
+        .map((t) => t.name)
+        .where((n) => n.toLowerCase() == query.toLowerCase())
+        .firstOrNull;
+
+    return SizedBox(
+      height: 36,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
+        children: [
+          _OnInkPill(
+            label: 'Favoritas',
+            icon: onlyFavorites ? Icons.favorite : Icons.favorite_border,
+            selected: onlyFavorites,
+            onTap: () => onFavorites(!onlyFavorites),
+          ),
+          _OnInkPill(
+            label: 'Até 30 min',
+            icon: Icons.timer_outlined,
+            selected: onlyQuick,
+            onTap: () => onQuick(!onlyQuick),
+          ),
+          if (tags.isNotEmpty)
+            _OnInkPill(
+              label: activeTag ?? 'Tags',
+              icon: Icons.sell_outlined,
+              trailing: activeTag != null ? Icons.close : Icons.expand_more,
+              selected: activeTag != null,
+              onTap: () async {
+                if (activeTag != null) return onPickTag('');
+                final picked = await _pickTag(context, tags);
+                if (picked != null) onPickTag(picked);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _pickTag(BuildContext context, List<Tag> tags) {
+    return showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheet) {
+        final colors = sheet.colors;
+        return AppSheetFrame(
+          title: 'Buscar por tag',
+          subtitle: '${tags.length} em uso nas suas receitas',
+          scrollable: true,
+          child: Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: [
+                for (final t in tags)
+                  Material(
+                    color: colors.paperSoft,
+                    borderRadius: BorderRadius.circular(AppRadii.pill),
+                    child: InkWell(
+                      onTap: () => Navigator.of(sheet).pop(t.name),
+                      borderRadius: BorderRadius.circular(AppRadii.pill),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Text(t.name, style: sheet.texts.labelLarge),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _OnInkPill extends StatelessWidget {
+  const _OnInkPill({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    this.trailing,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData? trailing;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final fg = selected ? colors.onPaper : colors.onSaturated;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.screen,
-        AppSpacing.md,
-        AppSpacing.screen,
-        0,
-      ),
-      child: Wrap(
-        spacing: AppSpacing.xs,
-        children: [
-          FilterChip(
-            label: const Text('Favoritas'),
-            avatar: const Icon(Icons.favorite_border, size: 16),
-            selected: onlyFavorites,
-            onSelected: onFavorites,
+      padding: const EdgeInsets.only(right: AppSpacing.xs),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          color: selected ? colors.paper : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadii.pill),
+          border: Border.all(
+            color: selected
+                ? colors.paper
+                : colors.onSaturated.withValues(alpha: 0.35),
           ),
-          FilterChip(
-            label: const Text('Até 30 min'),
-            avatar: const Icon(Icons.timer_outlined, size: 16),
-            selected: onlyQuick,
-            onSelected: onQuick,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppRadii.pill),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: fg),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    label,
+                    style: context.texts.labelLarge?.copyWith(
+                      color: fg,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: AppSpacing.xs),
+                    Icon(trailing, size: 16, color: fg),
+                  ],
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _RecentRow extends StatelessWidget {
-  const _RecentRow({
+/// Buscas recentes como lista: toque refaz a busca, o X tira só aquela.
+class _RecentList extends StatelessWidget {
+  const _RecentList({
     required this.terms,
     required this.onPick,
+    required this.onRemove,
     required this.onClear,
   });
 
   final List<String> terms;
   final ValueChanged<String> onPick;
+  final ValueChanged<String> onRemove;
   final VoidCallback onClear;
+
+  static const _visible = 4;
 
   @override
   Widget build(BuildContext context) {
@@ -357,68 +508,65 @@ class _RecentRow extends StatelessWidget {
             Expanded(
               child: Text('BUSCAS RECENTES', style: context.texts.labelSmall),
             ),
-            InkWell(
-              onTap: onClear,
-              child: Text(
-                'Limpar',
-                style: context.texts.labelLarge?.copyWith(
-                  color: colors.textMuted,
-                  fontWeight: FontWeight.w600,
-                ),
+            TextButton(
+              onPressed: onClear,
+              style: TextButton.styleFrom(
+                foregroundColor: colors.textMuted,
+                visualDensity: VisualDensity.compact,
               ),
+              child: const Text('Limpar'),
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Wrap(
-          spacing: AppSpacing.xs,
-          runSpacing: AppSpacing.xs,
-          children: [
-            for (final t in terms)
-              Material(
-                color: colors.paperSoft,
-                borderRadius: BorderRadius.circular(AppRadii.pill),
-                child: InkWell(
-                  onTap: () => onPick(t),
-                  borderRadius: BorderRadius.circular(AppRadii.pill),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.history, size: 16, color: colors.textMuted),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(t, style: context.texts.labelLarge),
-                      ],
+        for (final t in terms.take(_visible))
+          InkWell(
+            onTap: () => onPick(t),
+            borderRadius: BorderRadius.circular(AppRadii.md),
+            child: Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(Icons.history, size: 18, color: colors.textMuted),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      t,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.texts.bodyLarge,
                     ),
                   ),
-                ),
+                  IconButton(
+                    onPressed: () => onRemove(t),
+                    icon: const Icon(Icons.close, size: 18),
+                    color: colors.textMuted,
+                    tooltip: 'Remover',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
               ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
+            ),
+          ),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
 }
 
-/// Campo vazio: atalhos de tag no topo e a grade de todas as receitas embaixo —
-/// a tela não fica em branco esperando você digitar.
+/// Campo vazio: buscas recentes e a grade de todas as receitas — a tela não
+/// fica em branco esperando você digitar.
 class _Browse extends ConsumerWidget {
   const _Browse({
-    required this.onPickTag,
     required this.recent,
     required this.onPickRecent,
+    required this.onRemoveRecent,
     required this.onClearRecent,
     required this.filter,
   });
 
-  final ValueChanged<String> onPickTag;
   final List<String> recent;
   final ValueChanged<String> onPickRecent;
+  final ValueChanged<String> onRemoveRecent;
   final VoidCallback onClearRecent;
   final List<Recipe> Function(List<Recipe>) filter;
 
@@ -439,106 +587,14 @@ class _Browse extends ConsumerWidget {
     return _GridBody(
       recipes: all,
       label: 'TODAS AS RECEITAS · ${all.length}',
-      leading: (tags.isEmpty && recent.isEmpty)
+      leading: recent.isEmpty
           ? null
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (recent.isNotEmpty)
-                  _RecentRow(
-                    terms: recent,
-                    onPick: onPickRecent,
-                    onClear: onClearRecent,
-                  ),
-                if (tags.isNotEmpty) _TagRow(tags: tags, onPick: onPickTag),
-              ],
+          : _RecentList(
+              terms: recent,
+              onPick: onPickRecent,
+              onRemove: onRemoveRecent,
+              onClear: onClearRecent,
             ),
-    );
-  }
-}
-
-class _TagRow extends StatefulWidget {
-  const _TagRow({required this.tags, required this.onPick});
-
-  final List<Tag> tags;
-  final ValueChanged<String> onPick;
-
-  @override
-  State<_TagRow> createState() => _TagRowState();
-}
-
-class _TagRowState extends State<_TagRow> {
-  /// ~2 linhas de chip (padding 12 + texto ~17 por linha, + o `runSpacing`
-  /// entre elas). Acima disso a lista de tags corria sem limite algum.
-  static const _collapsedHeight = 90.0;
-
-  /// Só compensa mostrar o botão quando dá pra imaginar que vai passar de
-  /// 2 linhas — não dá pra medir o `Wrap` sem montar, então é estimativa.
-  static const _toggleThreshold = 8;
-
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final showToggle = widget.tags.length > _toggleThreshold;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('BUSCAR POR TAG', style: context.texts.labelSmall),
-        const SizedBox(height: AppSpacing.sm),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topLeft,
-          child: ClipRect(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: !showToggle || _expanded
-                    ? double.infinity
-                    : _collapsedHeight,
-              ),
-              child: Wrap(
-                spacing: AppSpacing.xs,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  for (final t in widget.tags)
-                    Material(
-                      color: colors.paperSoft,
-                      borderRadius: BorderRadius.circular(AppRadii.pill),
-                      child: InkWell(
-                        onTap: () => widget.onPick(t.name),
-                        borderRadius: BorderRadius.circular(AppRadii.pill),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                            vertical: AppSpacing.sm,
-                          ),
-                          child: Text(t.name, style: context.texts.labelLarge),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (showToggle) ...[
-          const SizedBox(height: AppSpacing.xs),
-          InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Text(
-              _expanded ? 'Esconder' : 'Mostrar todas',
-              style: context.texts.labelLarge?.copyWith(
-                color: colors.textMuted,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: AppSpacing.lg),
-      ],
     );
   }
 }
