@@ -25,7 +25,7 @@ import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/period_stepper.dart';
 import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
-import 'package:receyta/widgets/swipe_hint.dart';
+import 'package:receyta/widgets/gesture_hint.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/app_sheet.dart';
@@ -265,10 +265,28 @@ class _DayPageState extends ConsumerState<DayPage> {
         AppSpacing.xxl,
       ),
       children: [
+        const GestureHint(
+          hintId: 'planner_days',
+          kind: GestureHintKind.swipePages,
+          title: 'Deslize entre os dias',
+          message: 'Passe o dedo na tela para ver o dia anterior ou o próximo.',
+        ),
         if (entries.isNotEmpty)
-          const SwipeHint(
+          const GestureHint(
             hintId: 'planner_meals',
+            after: ['planner_days'],
+            kind: GestureHintKind.swipeRow,
+            title: 'Deslize para os lados',
             message: 'Para a direita marca como feita, para a esquerda remove.',
+          ),
+        if (entries.isNotEmpty)
+          const GestureHint(
+            hintId: 'planner_reorder',
+            after: ['planner_days', 'planner_meals'],
+            kind: GestureHintKind.reorder,
+            title: 'Segure para reordenar',
+            message:
+                'Segure uma refeição e arraste para outro horário ou outro dia.',
           ),
         for (final meal in MealType.values)
           _MealSection(

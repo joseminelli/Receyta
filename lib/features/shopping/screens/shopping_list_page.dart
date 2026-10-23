@@ -36,7 +36,7 @@ import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/category_icon.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
-import 'package:receyta/widgets/swipe_hint.dart';
+import 'package:receyta/widgets/gesture_hint.dart';
 import 'package:receyta/widgets/sweep_strike_text.dart';
 
 /// Largura fixa da coluna de quantidade — alinha os números em coluna.
@@ -481,8 +481,10 @@ class _ShoppingItemsState extends State<_ShoppingItems> {
         AppSpacing.md,
       ),
       children: [
-        const SwipeHint(
+        const GestureHint(
           hintId: 'shopping_items',
+          kind: GestureHintKind.swipeRow,
+          title: 'Deslize para os lados',
           message:
               'Para a direita marca o item, para a esquerda tira da lista.',
         ),

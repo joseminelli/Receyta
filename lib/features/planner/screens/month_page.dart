@@ -22,6 +22,7 @@ import 'package:receyta/widgets/metric_stat.dart';
 import 'package:receyta/widgets/period_stepper.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
+import 'package:receyta/widgets/gesture_hint.dart';
 import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
@@ -150,6 +151,12 @@ class MonthPage extends ConsumerWidget {
           _navBarClearance,
         ),
         children: [
+          const GestureHint(
+            hintId: 'planner_months',
+            kind: GestureHintKind.swipePages,
+            title: 'Deslize entre os meses',
+            message: 'Passe o dedo sobre o calendário para mudar de mês.',
+          ),
           _MonthStats(month: month, entries: entries),
           const SizedBox(height: AppSpacing.md),
           Divider(

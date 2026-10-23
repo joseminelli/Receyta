@@ -14,6 +14,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/folder_shape.dart';
+import 'package:receyta/widgets/gesture_hint.dart';
 import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/recipe_card.dart';
 import 'package:receyta/widgets/section_header.dart';
@@ -133,6 +134,26 @@ class _FolderPageState extends ConsumerState<FolderPage> {
           ),
           if (subfolders.isNotEmpty)
             SliverToBoxAdapter(child: _Subfolders(items: subfolders)),
+          if (recipes.isNotEmpty)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.screen,
+                AppSpacing.md,
+                AppSpacing.screen,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: GestureHint(
+                  hintId: 'recipe_drag',
+                  kind: GestureHintKind.dragToTarget,
+                  title: 'Segure e arraste',
+                  message:
+                      'Segure uma receita e solte numa pasta ou na lixeira.',
+                  startIcon: Icons.folder_outlined,
+                  endIcon: Icons.delete_outline,
+                ),
+              ),
+            ),
           if (recipes.isNotEmpty)
             _buildRecipesHeaderSliver(context, recipes.length),
           if (recipes.isEmpty && subfolders.isEmpty)

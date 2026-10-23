@@ -24,6 +24,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/skeleton.dart';
 import 'package:receyta/widgets/featured_recipe_card.dart';
+import 'package:receyta/widgets/gesture_hint.dart';
 import 'package:receyta/widgets/pull_to_refresh.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/expanding_create_menu.dart';
@@ -170,9 +171,23 @@ class _RecipesPageState extends ConsumerState<RecipesPage> {
                       ),
                     ],
                   ))
-            : _RecipeList(
-                recipes: filtering ? list : _shelf(recent?.valueOrNull, list),
-                showViewAll: !filtering,
+            : SliverMainAxisGroup(
+                slivers: [
+                  const SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpacing.screen,
+                      AppSpacing.md,
+                      AppSpacing.screen,
+                      0,
+                    ),
+                    sliver: SliverToBoxAdapter(child: _DragHint()),
+                  ),
+                  _RecipeList(
+                    recipes:
+                        filtering ? list : _shelf(recent?.valueOrNull, list),
+                    showViewAll: !filtering,
+                  ),
+                ],
               ),
       ),
     );
@@ -1148,6 +1163,23 @@ class _EmptyState extends ConsumerWidget {
           const _HomeFooter(),
         ],
       ),
+    );
+  }
+}
+
+/// Dica do gesto de segurar e arrastar uma receita (pra pasta ou lixeira).
+class _DragHint extends StatelessWidget {
+  const _DragHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return const GestureHint(
+      hintId: 'recipe_drag',
+      kind: GestureHintKind.dragToTarget,
+      title: 'Segure e arraste',
+      message: 'Segure uma receita e solte numa pasta ou na lixeira.',
+      startIcon: Icons.folder_outlined,
+      endIcon: Icons.delete_outline,
     );
   }
 }
