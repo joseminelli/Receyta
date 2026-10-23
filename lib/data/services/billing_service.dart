@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import 'package:receyta/core/network_error.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/core/revenuecat_config.dart';
 
@@ -145,6 +146,7 @@ class RevenueCatBillingService implements BillingService {
       return Err(_failure(code));
     } catch (e) {
       debugPrint('Billing.purchase: $e');
+      if (isOfflineError(e)) return const Err(NetworkFailure(offlineMessage));
       return const Err(
         ProcessingFailure('Não foi possível concluir a compra agora.'),
       );
@@ -171,6 +173,7 @@ class RevenueCatBillingService implements BillingService {
       return Err(_failure(PurchasesErrorHelper.getErrorCode(e)));
     } catch (e) {
       debugPrint('Billing.restore: $e');
+      if (isOfflineError(e)) return const Err(NetworkFailure(offlineMessage));
       return const Err(
         ProcessingFailure('Não foi possível restaurar agora.'),
       );

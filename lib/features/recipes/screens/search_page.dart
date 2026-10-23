@@ -361,7 +361,7 @@ class _HeaderFilters extends ConsumerWidget {
         .firstOrNull;
 
     return SizedBox(
-      height: 36,
+      height: AppSpacing.minTapTarget,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screen),
@@ -456,43 +456,53 @@ class _OnInkPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final fg = selected ? colors.onPaper : colors.onSaturated;
-    return Padding(
-      padding: const EdgeInsets.only(right: AppSpacing.xs),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        decoration: BoxDecoration(
-          color: selected ? colors.paper : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadii.pill),
-          border: Border.all(
-            color: selected
-                ? colors.paper
-                : colors.onSaturated.withValues(alpha: 0.35),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: AppSpacing.minTapTarget,
           ),
-        ),
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(AppRadii.pill),
+          child: Center(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 16, color: fg),
-                  const SizedBox(width: AppSpacing.xs),
-                  Text(
-                    label,
-                    style: context.texts.labelLarge?.copyWith(
-                      color: fg,
-                      fontWeight: FontWeight.w600,
-                    ),
+              padding: const EdgeInsets.only(right: AppSpacing.xs),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                height: 36,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: selected ? colors.paper : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                  border: Border.all(
+                    color: selected
+                        ? colors.paper
+                        : colors.onSaturated.withValues(alpha: 0.55),
                   ),
-                  if (trailing != null) ...[
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 16, color: fg),
                     const SizedBox(width: AppSpacing.xs),
-                    Icon(trailing, size: 16, color: fg),
+                    Text(
+                      label,
+                      style: context.texts.labelLarge?.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (trailing != null) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(trailing, size: 16, color: fg),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),

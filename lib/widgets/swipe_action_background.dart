@@ -25,10 +25,12 @@ class SwipeActionBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final leading = alignment == Alignment.centerLeft;
+    final tint =
+        color == context.colors.danger ? context.colors.dangerOnDark : color;
     final children = [
-      Icon(icon, color: color),
+      Icon(icon, color: tint),
       const SizedBox(width: AppSpacing.xs),
-      Text(label, style: context.texts.labelLarge?.copyWith(color: color)),
+      Text(label, style: context.texts.labelLarge?.copyWith(color: tint)),
     ];
     return Container(
       decoration: BoxDecoration(

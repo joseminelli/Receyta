@@ -1,9 +1,6 @@
-import 'dart:async';
-import 'dart:io';
-
-import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
+import 'package:receyta/core/network_error.dart';
 import 'package:receyta/core/result.dart';
 
 /// Transforma o que quebrou numa rodada de sincronização em algo que a pessoa
@@ -106,21 +103,5 @@ SyncFailure classifySyncError(Object error) {
 bool _isServerStatus(String code) =>
     code.length == 3 && code.startsWith('5') && int.tryParse(code) != null;
 
-bool _isOffline(Object error) {
-  if (error is SocketException ||
-      error is HandshakeException ||
-      error is TimeoutException ||
-      error is http.ClientException ||
-      error is sb.AuthRetryableFetchException) {
-    return true;
-  }
-  // O Supabase às vezes embrulha a falha de rede noutro tipo; o texto entrega.
-  final text = error.toString().toLowerCase();
-  return text.contains('socketexception') ||
-      text.contains('failed host lookup') ||
-      text.contains('network is unreachable') ||
-      text.contains('connection refused') ||
-      text.contains('connection reset') ||
-      text.contains('connection closed') ||
-      text.contains('connection abort');
-}
+bool _isOffline(Object error) =>
+    isOfflineError(error) || error is sb.AuthRetryableFetchException;

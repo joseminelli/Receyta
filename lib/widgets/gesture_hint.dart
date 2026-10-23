@@ -135,7 +135,9 @@ class _GestureHintState extends State<GestureHint>
       child: SizedBox(
         width: _demoSize.width,
         height: _demoSize.height,
-        child: ColoredBox(color: colors.inkSoft, child: body),
+        child: ExcludeSemantics(
+          child: ColoredBox(color: colors.inkSoft, child: body),
+        ),
       ),
     );
   }
@@ -175,7 +177,7 @@ class _GestureHintState extends State<GestureHint>
           alignment: Alignment.centerRight,
           child: Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: Icon(widget.endIcon, size: 16, color: colors.danger),
+            child: Icon(widget.endIcon, size: 16, color: colors.dangerOnDark),
           ),
         ),
         AnimatedBuilder(
@@ -226,7 +228,7 @@ class _GestureHintState extends State<GestureHint>
             .transform(((local - 0.2) / 0.45).clamp(0.0, 1.0));
         final land = ((local - 0.65) / 0.1).clamp(0.0, 1.0);
         final fade = 1 - ((local - 0.88) / 0.12).clamp(0.0, 1.0);
-        final accent = first ? colors.lime : colors.danger;
+        final accent = first ? colors.lime : colors.dangerOnDark;
         final icon = first ? widget.startIcon : widget.endIcon;
 
         return Stack(
@@ -367,7 +369,10 @@ class _GestureHintState extends State<GestureHint>
                             onTap: _dismiss,
                             borderRadius: BorderRadius.circular(AppRadii.pill),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 4,
+                              ),
                               child: Text(
                                 'Entendi',
                                 style: texts.labelLarge?.copyWith(

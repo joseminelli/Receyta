@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:receyta/core/network_error.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/domain/engine/recipe_import.dart';
 
@@ -46,7 +47,12 @@ class RecipeImportService {
     } on TimeoutException {
       return const Err(NetworkFailure('O site demorou demais para responder.'));
     } catch (e) {
-      return Err(NetworkFailure('Falha ao acessar o link', cause: e));
+      return Err(NetworkFailure(
+        isOfflineError(e)
+            ? offlineMessage
+            : 'Não consegui abrir esse link. Confira o endereço e tente de novo.',
+        cause: e,
+      ));
     }
   }
 

@@ -199,6 +199,7 @@ class _SyncPill extends StatelessWidget {
     final colors = context.colors;
     return Semantics(
       button: true,
+      liveRegion: true,
       label: status.label,
       child: DecoratedBox(
         decoration: BoxDecoration(

@@ -88,7 +88,7 @@ class AppColors extends ThemeExtension<AppColors> {
     coralLight: Color(0xFFFF7A5E),
     violetDeep: Color(0xFF6558E0),
     violet: Color(0xFF7B6CF6),
-    textMuted: Color(0xFF8A8674),
+    textMuted: Color(0xFF686555),
     textBody: Color(0xFF3D3B30),
     danger: Color(0xFFC0203F),
     onSaturated: Color(0xFFFFFFFF),
@@ -260,4 +260,10 @@ class AppRadii {
   static const double md = 20;
   static const double lg = 26;
   static const double pill = 99;
+}
+
+extension AppColorsContrast on AppColors {
+  /// Vermelho de perigo para texto e ícone sobre blocos escuros (`ink`,
+  /// `inkSoft`): `danger` sozinho não chega a 3:1 ali no tema claro.
+  Color get dangerOnDark => const Color(0xFFFF7088);
 }

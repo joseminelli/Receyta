@@ -247,7 +247,7 @@ class SearchResults extends StatelessWidget {
             triggerBuilder: (context, open) => Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm,
-                vertical: AppSpacing.sm,
+                vertical: AppSpacing.md,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

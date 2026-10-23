@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
+import 'package:receyta/core/network_error.dart';
 import 'package:receyta/core/result.dart';
 import 'package:receyta/data/database/app_database.dart';
 import 'package:receyta/data/database/database_provider.dart';
@@ -171,8 +172,11 @@ class DataResetService {
       await _remote.deleteAccount();
     } catch (e) {
       return Err(NetworkFailure(
-        'Não foi possível excluir a conta agora. '
-        'Nada foi apagado; tente de novo.',
+        isOfflineError(e)
+            ? 'Sem internet. Conecte-se para excluir a conta; '
+                'nada foi apagado.'
+            : 'Não foi possível excluir a conta agora. '
+                'Nada foi apagado; tente de novo.',
         cause: e,
       ));
     }
