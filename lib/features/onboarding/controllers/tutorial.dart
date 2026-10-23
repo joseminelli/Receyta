@@ -135,6 +135,14 @@ class TutorialController {
 
   final Ref _ref;
 
+  /// Pede à casca do app a aba [tab]; passa por nulo antes pra repetir o
+  /// mesmo pedido ainda mexer (a pessoa pode ter trocado de aba sozinha).
+  void _requestTab(int tab) {
+    final notifier = _ref.read(tutorialTabRequestProvider.notifier);
+    notifier.state = null;
+    notifier.state = tab;
+  }
+
   Future<void> startIfNeeded() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -151,7 +159,7 @@ class TutorialController {
       await prefs.remove(_pendingKey);
       final id = await _createExample();
       if (id != null) await prefs.setString(_exampleKey, id);
-      _ref.read(tutorialTabRequestProvider.notifier).state = 0;
+      _requestTab(0);
       _ref.read(tutorialStepProvider.notifier).state = 0;
     } catch (e) {
       debugPrint('Tutorial.startIfNeeded: $e');
@@ -165,8 +173,7 @@ class TutorialController {
       finish();
     } else {
       final nextStep = step + 1;
-      _ref.read(tutorialTabRequestProvider.notifier).state =
-          kTutorialSteps[nextStep].tab;
+      _requestTab(kTutorialSteps[nextStep].tab);
       _ref.read(tutorialStepProvider.notifier).state = nextStep;
     }
   }
@@ -174,7 +181,7 @@ class TutorialController {
   /// Pular e concluir fazem a mesma coisa: fecha o tour e some com o exemplo.
   Future<void> finish() async {
     _ref.read(tutorialStepProvider.notifier).state = null;
-    _ref.read(tutorialTabRequestProvider.notifier).state = 0;
+    _requestTab(0);
     try {
       final prefs = await SharedPreferences.getInstance();
       final id = prefs.getString(_exampleKey);

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -199,6 +201,10 @@ class _Slide extends StatelessWidget {
   /// Esta é a tela à vista: os exemplos animam quando ela fica ativa.
   final bool active;
 
+  /// Espaço livre embaixo do exemplo pro mascote ficar ao lado dele, e não
+  /// por cima.
+  static const _mascotReserve = 112.0;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -227,22 +233,25 @@ class _Slide extends StatelessWidget {
                   patternColorAlt: tile.patternColorAlt,
                   tile: 72,
                 ),
-                Center(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.xl,
-                      AppSpacing.xxl,
-                      AppSpacing.xl,
-                      AppSpacing.lg,
-                    ),
-                    child: Material(
-                      color: colors.paperSoft,
-                      elevation: 6,
-                      shadowColor: Colors.black54,
-                      borderRadius: BorderRadius.circular(AppRadii.md),
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: data.mock(active),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpacing.xl,
+                    AppSpacing.xxl,
+                    AppSpacing.xl,
+                    data.mascot != null ? _mascotReserve : AppSpacing.lg,
+                  ),
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Material(
+                        color: colors.paperSoft,
+                        elevation: 6,
+                        shadowColor: Colors.black54,
+                        borderRadius: BorderRadius.circular(AppRadii.md),
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: data.mock(active),
+                        ),
                       ),
                     ),
                   ),
@@ -356,7 +365,7 @@ class _Reveal extends StatefulWidget {
 
 class _RevealState extends State<_Reveal> {
   bool _shown = false;
-  int _token = 0;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -371,16 +380,22 @@ class _RevealState extends State<_Reveal> {
     if (widget.active) {
       _schedule();
     } else {
-      _token++;
+      _timer?.cancel();
       _shown = false;
     }
   }
 
   void _schedule() {
-    final token = ++_token;
-    Future.delayed(widget.delay + const Duration(milliseconds: 250), () {
-      if (mounted && token == _token) setState(() => _shown = true);
+    _timer?.cancel();
+    _timer = Timer(widget.delay + const Duration(milliseconds: 250), () {
+      if (mounted) setState(() => _shown = true);
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
 
   @override

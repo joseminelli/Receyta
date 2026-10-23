@@ -110,12 +110,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Um tour rápido'), findsOneWidget);
-    expect(find.text('1 DE ${kTutorialSteps.length}'), findsOneWidget);
+    expect(find.text('1/${kTutorialSteps.length}'), findsOneWidget);
 
     await tester.tap(find.text('Próximo'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
     expect(find.text('Adicionar receitas'), findsOneWidget);
     expect(c.read(tutorialStepProvider), 1);
+
+    await tester.pumpWidget(const SizedBox());
   });
 }

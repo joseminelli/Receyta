@@ -26,10 +26,14 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
   static const _retryEvery = Duration(milliseconds: 90);
   static const _retries = 10;
 
+  /// Quanto o mascote sobe acima do cartão. Com o cartão abaixo do alvo, esse
+  /// espaço entra na distância pra ele não cobrir o destaque.
+  static const _mascotRise = 62.0;
+
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1500),
-  )..repeat();
+  );
 
   Rect? _target;
   int? _resolvedFor;
@@ -86,6 +90,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
       }
     }
     if (!mounted || ref.read(tutorialStepProvider) != step) return;
+    rect == null ? _pulse.stop() : _pulse.repeat();
     setState(() {
       _target = rect;
       _resolvedFor = step;
@@ -171,7 +176,7 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
             Positioned(
               left: 0,
               right: 0,
-              top: target.bottom + 28,
+              top: target.bottom + 28 + _mascotRise,
               child: _padded(card),
             )
           else
