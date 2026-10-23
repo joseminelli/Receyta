@@ -73,7 +73,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         title: 'Suas receitas, num lugar só',
         body: 'Digite, importe de um link, de uma foto ou de um arquivo. '
             'Tudo fica guardado no seu aparelho.',
-        mock: const _RecipeMock(),
+        mock: (active) => _RecipeMock(active: active),
         mascot: MascotKind.cloche,
       ),
       _SlideData(
@@ -82,7 +82,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         title: 'Planeje a semana',
         body: 'Escolha o que cozinhar em cada dia e veja o mês de relance. '
             'Sem decidir tudo na hora da fome.',
-        mock: const _WeekMock(),
+        mock: (active) => _WeekMock(active: active),
       ),
       _SlideData(
         color: TileColor.ink,
@@ -90,7 +90,7 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
         title: 'Compras sem conta de cabeça',
         body: 'A lista sai das receitas, com as quantidades já somadas. No '
             'modo cozinha, os timers ficam à vista até com o app minimizado.',
-        mock: const _ShoppingMock(),
+        mock: (active) => _ShoppingMock(active: active),
         mascot: MascotKind.pote,
       ),
     ];
@@ -108,7 +108,12 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
               },
               children: [
                 for (var i = 0; i < slides.length; i++)
-                  _Slide(data: slides[i], index: i, controller: _controller),
+                  _Slide(
+                    data: slides[i],
+                    index: i,
+                    controller: _controller,
+                    active: i == _page,
+                  ),
               ],
             ),
           ),
@@ -132,7 +137,8 @@ class _WelcomePageState extends ConsumerState<WelcomePage> {
                           width: i == _page ? 26 : 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: i == _page ? colors.onPaper : colors.paperSoft,
+                            color:
+                                i == _page ? colors.onPaper : colors.paperSoft,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -174,7 +180,7 @@ class _SlideData {
   final TileMotif motif;
   final String title;
   final String body;
-  final Widget mock;
+  final Widget Function(bool active) mock;
   final MascotKind? mascot;
 }
 
@@ -183,11 +189,15 @@ class _Slide extends StatelessWidget {
     required this.data,
     required this.index,
     required this.controller,
+    required this.active,
   });
 
   final _SlideData data;
   final int index;
   final PageController controller;
+
+  /// Esta é a tela à vista: os exemplos animam quando ela fica ativa.
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +242,7 @@ class _Slide extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AppRadii.md),
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.md),
-                        child: data.mock,
+                        child: data.mock(active),
                       ),
                     ),
                   ),
@@ -326,109 +336,278 @@ class _SlideMascot extends StatelessWidget {
   }
 }
 
-/// Exemplo de card de receita.
+/// Mostra o conteúdo com `shown` falso e vira verdadeiro `delay` depois de
+/// [active] ficar verdadeiro; ao sair da tela volta a falso, então a animação
+/// toca de novo quando a pessoa volta.
+class _Reveal extends StatefulWidget {
+  const _Reveal({
+    required this.active,
+    required this.builder,
+    this.delay = Duration.zero,
+  });
+
+  final bool active;
+  final Duration delay;
+  final Widget Function(BuildContext context, bool shown) builder;
+
+  @override
+  State<_Reveal> createState() => _RevealState();
+}
+
+class _RevealState extends State<_Reveal> {
+  bool _shown = false;
+  int _token = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.active) _schedule();
+  }
+
+  @override
+  void didUpdateWidget(_Reveal old) {
+    super.didUpdateWidget(old);
+    if (widget.active == old.active) return;
+    if (widget.active) {
+      _schedule();
+    } else {
+      _token++;
+      _shown = false;
+    }
+  }
+
+  void _schedule() {
+    final token = ++_token;
+    Future.delayed(widget.delay + const Duration(milliseconds: 250), () {
+      if (mounted && token == _token) setState(() => _shown = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _shown);
+}
+
+/// Entra deslizando de baixo e aparecendo.
+class _Rise extends StatelessWidget {
+  const _Rise({
+    required this.active,
+    required this.index,
+    required this.child,
+  });
+
+  final bool active;
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Reveal(
+      active: active,
+      delay: Duration(milliseconds: 140 * index),
+      builder: (_, shown) => AnimatedSlide(
+        offset: shown ? Offset.zero : const Offset(0, 0.4),
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        child: AnimatedOpacity(
+          opacity: shown ? 1 : 0,
+          duration: const Duration(milliseconds: 320),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Número que sobe de zero até [to] quando a tela fica ativa.
+class _CountUp extends StatelessWidget {
+  const _CountUp({
+    required this.active,
+    required this.to,
+    required this.style,
+  });
+
+  final bool active;
+  final int to;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: active ? to.toDouble() : 0),
+      duration: Duration(milliseconds: active ? 1100 : 0),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, __) => Text('${v.round()}', style: style),
+    );
+  }
+}
+
+/// Exemplo de card de receita, com as quatro formas de adicionar uma.
 class _RecipeMock extends StatelessWidget {
-  const _RecipeMock();
+  const _RecipeMock({required this.active});
+
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    Widget method(IconData icon, String label) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: colors.ink,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 19, color: colors.lime),
+            ),
+            const SizedBox(height: 4),
+            Text(label, style: context.texts.labelSmall),
+          ],
+        );
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'FRANGO AO CURRY',
-          style: context.texts.labelSmall?.copyWith(color: colors.textMuted),
+        _Rise(
+          active: active,
+          index: 0,
+          child: Text(
+            'FRANGO AO CURRY',
+            style: context.texts.labelSmall?.copyWith(color: colors.textMuted),
+          ),
         ),
         const SizedBox(height: AppSpacing.xs),
-        Text('Frango ao curry', style: AppTextStyles.display(30)),
+        _Rise(
+          active: active,
+          index: 1,
+          child: Text('Frango ao curry', style: AppTextStyles.display(30)),
+        ),
         const SizedBox(height: AppSpacing.sm),
         Row(
           children: [
-            Text('15', style: AppTextStyles.display(34)),
+            _CountUp(active: active, to: 15, style: AppTextStyles.display(34)),
             Text(' m preparo', style: context.texts.bodyMedium),
             const SizedBox(width: AppSpacing.md),
-            Text('25', style: AppTextStyles.display(34)),
+            _CountUp(active: active, to: 25, style: AppTextStyles.display(34)),
             Text(' m fogão', style: context.texts.bodyMedium),
           ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Divider(height: 1, color: colors.paper),
+        const SizedBox(height: AppSpacing.sm),
+        _Rise(
+          active: active,
+          index: 3,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              method(Icons.link, 'Link'),
+              method(Icons.photo_camera_outlined, 'Foto'),
+              method(Icons.description_outlined, 'Arquivo'),
+              method(Icons.edit_outlined, 'Digitar'),
+            ],
+          ),
         ),
       ],
     );
   }
 }
 
-/// Exemplo da semana: dia + prato.
+/// Exemplo da semana: dia + prato, entrando um por vez.
 class _WeekMock extends StatelessWidget {
-  const _WeekMock();
+  const _WeekMock({required this.active});
+
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    Widget row(String day, String dish) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 44,
-                child: Text(
-                  day,
-                  style: context.texts.labelSmall
-                      ?.copyWith(color: colors.textMuted),
+    Widget row(int i, String day, String dish) => _Rise(
+          active: active,
+          index: i,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 44,
+                  child: Text(
+                    day,
+                    style: context.texts.labelSmall
+                        ?.copyWith(color: colors.textMuted),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Text(dish, style: AppTextStyles.display(20)),
-              ),
-            ],
+                Expanded(
+                  child: Text(dish, style: AppTextStyles.display(20)),
+                ),
+              ],
+            ),
           ),
         );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        row('SEG', 'Homus com pão sírio'),
+        row(0, 'SEG', 'Homus com pão sírio'),
         Divider(height: 1, color: colors.paper),
-        row('QUA', 'Frango ao curry'),
+        row(1, 'QUA', 'Frango ao curry'),
         Divider(height: 1, color: colors.paper),
-        row('SEX', 'Sopa de abóbora'),
+        row(2, 'SEX', 'Sopa de abóbora'),
       ],
     );
   }
 }
 
-/// Exemplo de lista de compras com itens marcados.
+/// Exemplo de lista de compras: os itens vão sendo marcados em sequência.
 class _ShoppingMock extends StatelessWidget {
-  const _ShoppingMock();
+  const _ShoppingMock({required this.active});
+
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    Widget row(String text, {bool done = false}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            children: [
-              Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: done ? colors.onPaper : Colors.transparent,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: colors.onPaper, width: 1.6),
-                ),
-                child: done
-                    ? Icon(Icons.check, size: 14, color: colors.lime)
-                    : null,
+    Widget row(int i, String text) => _Rise(
+          active: active,
+          index: i,
+          child: _Reveal(
+            active: active,
+            delay: Duration(milliseconds: 600 + 450 * i),
+            builder: (_, done) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: done ? colors.onPaper : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colors.onPaper, width: 1.6),
+                    ),
+                    child: AnimatedScale(
+                      scale: done ? 1 : 0,
+                      duration: const Duration(milliseconds: 260),
+                      curve: Curves.easeOutBack,
+                      child: Icon(Icons.check, size: 14, color: colors.lime),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 220),
+                    style: AppTextStyles.display(20).copyWith(
+                      decoration: done ? TextDecoration.lineThrough : null,
+                      color: done ? colors.textMuted : colors.onPaper,
+                    ),
+                    child: Text(text),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                text,
-                style: AppTextStyles.display(20).copyWith(
-                  decoration: done ? TextDecoration.lineThrough : null,
-                  color: done ? colors.textMuted : colors.onPaper,
-                ),
-              ),
-            ],
+            ),
           ),
         );
 
@@ -436,9 +615,9 @@ class _ShoppingMock extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        row('1,3 kg de farinha', done: true),
-        row('3 ovos'),
-        row('400 g de tomate'),
+        row(0, '1,3 kg de farinha'),
+        row(1, '3 ovos'),
+        row(2, '400 g de tomate'),
       ],
     );
   }

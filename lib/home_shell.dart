@@ -288,6 +288,10 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
     final selecting = ref.watch(recipeSelectionProvider) != null;
 
+    ref.listen<int?>(tutorialTabRequestProvider, (_, tab) {
+      if (tab != null) _select(tab);
+    });
+
     return Scaffold(
       extendBody: true,
       body: Stack(

@@ -9,8 +9,10 @@ import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/pill_button.dart';
 
 /// Camada do tour: escurece a tela, deixa um buraco redondo em volta do
-/// elemento real que o passo explica e põe um cartão curto perto dele.
-/// Fica por cima de tudo na casca do app; toques fora do cartão não passam.
+/// elemento real que o passo explica, com um anel que pulsa, e põe um cartão
+/// curto perto dele. Quando o passo é de outra aba, a casca do app troca de
+/// aba antes e o destaque aparece no elemento de lá. Fica por cima de tudo na
+/// casca; toques fora do cartão não passam.
 class TutorialOverlay extends ConsumerStatefulWidget {
   const TutorialOverlay({super.key});
 
@@ -18,9 +20,21 @@ class TutorialOverlay extends ConsumerStatefulWidget {
   ConsumerState<TutorialOverlay> createState() => _TutorialOverlayState();
 }
 
-class _TutorialOverlayState extends ConsumerState<TutorialOverlay> {
+class _TutorialOverlayState extends ConsumerState<TutorialOverlay>
+    with SingleTickerProviderStateMixin {
+  static const _tabSettle = Duration(milliseconds: 520);
+  static const _retryEvery = Duration(milliseconds: 90);
+  static const _retries = 10;
+
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat();
+
   Rect? _target;
   int? _resolvedFor;
+  int? _resolving;
+  int _shownTab = 0;
 
   @override
   void initState() {
@@ -28,31 +42,50 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _resolve());
   }
 
-  /// Acha onde o alvo do passo está agora (e rola a lista até ele, se for o
-  /// caso), em coordenadas deste overlay.
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  /// Acha onde o alvo do passo está agora (esperando a aba abrir e rolando a
+  /// lista até ele, se for o caso), em coordenadas deste overlay.
   Future<void> _resolve() async {
     if (!mounted) return;
     final step = ref.read(tutorialStepProvider);
-    if (step == null) return;
-    final target = kTutorialSteps[step].target;
+    if (step == null || _resolving == step) return;
+    _resolving = step;
+
+    final data = kTutorialSteps[step];
+    if (data.tab != _shownTab) {
+      await Future<void>.delayed(_tabSettle);
+      _shownTab = data.tab;
+    }
+
     Rect? rect;
+    final target = data.target;
     if (target != null) {
-      final targetContext =
-          ref.read(tutorialTargetsProvider)[target]?.currentContext;
-      if (targetContext != null && targetContext.mounted) {
-        final own = context.findRenderObject() as RenderBox?;
-        await Scrollable.ensureVisible(
-          targetContext,
-          duration: const Duration(milliseconds: 200),
-          alignment: 0.3,
-        );
-        if (!mounted || !targetContext.mounted) return;
-        final box = targetContext.findRenderObject() as RenderBox?;
-        if (box != null && box.attached && own != null && own.attached) {
-          rect = own.globalToLocal(box.localToGlobal(Offset.zero)) & box.size;
+      for (var i = 0; i < _retries && mounted; i++) {
+        final targetContext =
+            ref.read(tutorialTargetsProvider)[target]?.currentContext;
+        if (targetContext != null && targetContext.mounted) {
+          await Scrollable.ensureVisible(
+            targetContext,
+            duration: const Duration(milliseconds: 200),
+            alignment: 0.3,
+          );
+          if (!mounted || !targetContext.mounted) return;
+          final own = context.findRenderObject() as RenderBox?;
+          final box = targetContext.findRenderObject() as RenderBox?;
+          if (box != null && box.attached && own != null && own.attached) {
+            rect = own.globalToLocal(box.localToGlobal(Offset.zero)) & box.size;
+          }
+          break;
         }
+        await Future<void>.delayed(_retryEvery);
       }
     }
+    if (!mounted || ref.read(tutorialStepProvider) != step) return;
     setState(() {
       _target = rect;
       _resolvedFor = step;
@@ -63,13 +96,14 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay> {
   Widget build(BuildContext context) {
     final step = ref.watch(tutorialStepProvider);
     if (step == null) return const SizedBox.shrink();
-    if (_resolvedFor != step) {
+    if (_resolvedFor != step && _resolving != step) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _resolve());
     }
     final data = kTutorialSteps[step];
     final colors = context.colors;
     final size = MediaQuery.sizeOf(context);
-    final target = _resolvedFor == step ? _target : null;
+    final ready = _resolvedFor == step;
+    final target = ready ? _target : null;
     final controller = ref.read(tutorialControllerProvider);
     final isLast = step == kTutorialSteps.length - 1;
 
@@ -116,31 +150,37 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay> {
               tween: RectTween(end: hole),
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutCubic,
-              builder: (context, rect, _) => CustomPaint(
-                painter: _ScrimPainter(
-                  hole: rect ?? hole,
-                  color: colors.ink.withValues(alpha: 0.78),
+              builder: (context, rect, _) => AnimatedBuilder(
+                animation: _pulse,
+                builder: (context, _) => CustomPaint(
+                  painter: _ScrimPainter(
+                    hole: rect ?? hole,
+                    color: colors.ink.withValues(alpha: 0.78),
+                    ring: colors.lime,
+                    pulse: target == null ? null : _pulse.value,
+                  ),
                 ),
               ),
             ),
           ),
         ),
-        if (target == null)
-          Center(child: _padded(card))
-        else if (below)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: target.bottom + 24,
-            child: _padded(card),
-          )
-        else
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: size.height - target.top + 24,
-            child: _padded(card),
-          ),
+        if (ready)
+          if (target == null)
+            Center(child: _padded(card))
+          else if (below)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: target.bottom + 28,
+              child: _padded(card),
+            )
+          else
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: size.height - target.top + 28,
+              child: _padded(card),
+            ),
       ],
     );
   }
@@ -152,25 +192,60 @@ class _TutorialOverlayState extends ConsumerState<TutorialOverlay> {
 }
 
 class _ScrimPainter extends CustomPainter {
-  const _ScrimPainter({required this.hole, required this.color});
+  const _ScrimPainter({
+    required this.hole,
+    required this.color,
+    required this.ring,
+    required this.pulse,
+  });
 
   final Rect hole;
   final Color color;
+  final Color ring;
+
+  /// 0..1 em loop; nulo = sem anel (passo sem destaque).
+  final double? pulse;
+
+  static const _radius = 22.0;
 
   @override
   void paint(Canvas canvas, Size size) {
     final full = Path()..addRect(Offset.zero & size);
     final cut = Path()
-      ..addRRect(RRect.fromRectAndRadius(hole, const Radius.circular(22)));
+      ..addRRect(RRect.fromRectAndRadius(hole, const Radius.circular(_radius)));
     canvas.drawPath(
       Path.combine(PathOperation.difference, full, cut),
       Paint()..color = color,
+    );
+
+    final t = pulse;
+    if (t == null || hole.isEmpty) return;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(hole, const Radius.circular(_radius)),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = ring.withValues(alpha: 0.9),
+    );
+    final wave = Curves.easeOut.transform(t);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        hole.inflate(4 + 14 * wave),
+        Radius.circular(_radius + 14 * wave),
+      ),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = ring.withValues(alpha: 0.55 * (1 - wave)),
     );
   }
 
   @override
   bool shouldRepaint(_ScrimPainter old) =>
-      old.hole != hole || old.color != color;
+      old.hole != hole ||
+      old.color != color ||
+      old.ring != ring ||
+      old.pulse != pulse;
 }
 
 class _Card extends StatelessWidget {
@@ -191,6 +266,7 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final total = kTutorialSteps.length;
     final card = Material(
       color: colors.paper,
       elevation: 8,
@@ -201,14 +277,26 @@ class _Card extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${step + 1} DE ${kTutorialSteps.length}',
-              style:
-                  context.texts.labelSmall?.copyWith(color: colors.textMuted),
+            _ProgressBar(step: step, total: total),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colors.ink,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(data.icon, size: 20, color: colors.lime),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(data.title, style: AppTextStyles.display(26)),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(data.title, style: AppTextStyles.display(26)),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: AppSpacing.sm),
             Text(data.body, style: context.texts.bodyMedium),
             const SizedBox(height: AppSpacing.md),
             Row(
@@ -217,6 +305,9 @@ class _Card extends StatelessWidget {
                 const Spacer(),
                 PillButton(
                   label: isLast ? 'Concluir' : 'Próximo',
+                  icon: isLast
+                      ? Icons.check_rounded
+                      : Icons.arrow_forward_rounded,
                   dense: true,
                   onPressed: onNext,
                 ),
@@ -236,6 +327,49 @@ class _Card extends StatelessWidget {
           child: _TutorialMascot(step: step, isLast: isLast),
         ),
       ],
+    );
+  }
+}
+
+/// Barra segmentada: um trecho por passo, os já vistos e o atual cheios.
+class _ProgressBar extends StatelessWidget {
+  const _ProgressBar({required this.step, required this.total});
+
+  final int step;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Semantics(
+      label: 'Passo ${step + 1} de $total',
+      child: ExcludeSemantics(
+        child: Row(
+          children: [
+            for (var i = 0; i < total; i++) ...[
+              if (i > 0) const SizedBox(width: 4),
+              Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: i <= step ? colors.onPaper : colors.paperSoft,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              '${step + 1}/$total',
+              style: context.texts.labelSmall?.copyWith(
+                color: colors.textMuted,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

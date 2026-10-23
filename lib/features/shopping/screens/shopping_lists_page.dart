@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/core/tile_style.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
@@ -74,10 +75,13 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
       color: TileColor.lime,
       showBack: false,
       backgroundColor: colors.ink,
-      trailing: CircleIconButton(
-        icon: Icons.add,
-        tooltip: 'Nova lista',
-        onTap: () => _openCreateSheet(context),
+      trailing: KeyedSubtree(
+        key: ref.read(tutorialTargetsProvider)[TutorialTarget.shoppingCreate],
+        child: CircleIconButton(
+          icon: Icons.add,
+          tooltip: 'Nova lista',
+          onTap: () => _openCreateSheet(context),
+        ),
       ),
       body: listsAsync.when(
         loading: () => SkeletonCardList(base: colors.inkSoft),

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:receyta/features/onboarding/controllers/tutorial.dart';
 import 'package:receyta/data/sync/sync_coordinator.dart';
 import 'package:receyta/features/account/controllers/auth_controller.dart';
 import 'package:receyta/features/settings/controllers/app_settings.dart';
@@ -126,10 +127,15 @@ class _Hero extends ConsumerWidget {
                               ?.copyWith(color: onColor),
                         ),
                         const Spacer(),
-                        CircleIconButton(
-                          icon: Icons.settings_outlined,
-                          tooltip: 'Configurações',
-                          onTap: () => context.push('/settings'),
+                        KeyedSubtree(
+                          key: ref.read(
+                            tutorialTargetsProvider,
+                          )[TutorialTarget.accountSettings],
+                          child: CircleIconButton(
+                            icon: Icons.settings_outlined,
+                            tooltip: 'Configurações',
+                            onTap: () => context.push('/settings'),
+                          ),
                         ),
                       ],
                     ),

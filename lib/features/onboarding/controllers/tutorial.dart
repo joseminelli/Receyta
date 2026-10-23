@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,55 +9,92 @@ import 'package:receyta/data/repositories/recipe_repository.dart';
 import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/recipe_detail.dart';
 
-/// Onde o tour aponta na home. Cada um vira uma `GlobalKey` que o widget
-/// real carrega; o overlay lê a posição dela pra recortar o destaque.
-enum TutorialTarget { create, search, firstRecipe, navBar }
+/// Onde o tour aponta. Cada um vira uma `GlobalKey` que o widget real
+/// carrega; o overlay lê a posição dela pra recortar o destaque. Os três
+/// últimos ficam nas outras abas (Agenda, Compras, Conta).
+enum TutorialTarget {
+  create,
+  search,
+  firstRecipe,
+  navBar,
+  agenda,
+  shoppingCreate,
+  accountSettings,
+}
 
 class TutorialStep {
-  const TutorialStep({this.target, required this.title, required this.body});
+  const TutorialStep({
+    this.target,
+    this.tab = 0,
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
 
   /// Nulo = cartão no meio da tela, sem destaque.
   final TutorialTarget? target;
+
+  /// Aba da casca que precisa estar aberta no passo (0 Receitas, 1 Agenda,
+  /// 2 Compras, 3 Conta).
+  final int tab;
+  final IconData icon;
   final String title;
   final String body;
 }
 
-/// O tour é curto de propósito: seis cartões, pulável em qualquer um.
+/// O tour é curto de propósito: um recado por cartão, pulável em qualquer
+/// um. Os últimos passos levam a pessoa às outras abas em vez de só falar
+/// delas.
 const kTutorialSteps = [
   TutorialStep(
+    icon: Icons.explore_outlined,
     title: 'Um tour rápido',
     body: 'Criei uma receita de exemplo pra você explorar. Ela some sozinha '
-        'quando o tour acabar — ou se você pular.',
+        'quando o tour acabar, ou se você pular.',
   ),
   TutorialStep(
     target: TutorialTarget.create,
+    icon: Icons.add,
     title: 'Adicionar receitas',
-    body: 'Toque no + pra digitar uma receita, importar de um link, de uma '
-        'foto ou de um arquivo .receyta, ou criar uma pasta.',
+    body: 'Digite, importe de um link, de uma foto ou de um arquivo, ou crie '
+        'uma pasta.',
   ),
   TutorialStep(
     target: TutorialTarget.search,
+    icon: Icons.search,
     title: 'Buscar',
-    body: 'Procure por nome, notas ou tag.',
+    body: 'Procure por nome, notas ou tag, e filtre por favoritas ou tempo.',
   ),
   TutorialStep(
     target: TutorialTarget.firstRecipe,
+    icon: Icons.restaurant_menu_outlined,
     title: 'Sua receita',
-    body: 'Toque pra ver ingredientes e passos. No ⋯ você muda a cor, move '
-        'de pasta e compartilha; o coração favorita e o "Modo cozinha" tem '
-        'timers e ajusta as porções.',
+    body: 'Toque pra ver ingredientes e passos. O "Modo cozinha" tem timers e '
+        'ajusta as porções.',
   ),
   TutorialStep(
-    target: TutorialTarget.navBar,
-    title: 'Agenda, Compras e Conta',
-    body: 'A Agenda planeja o que cozinhar, Compras gera a lista a partir das '
-        'receitas e Conta guarda os ajustes.',
+    target: TutorialTarget.agenda,
+    tab: 1,
+    icon: Icons.calendar_month_outlined,
+    title: 'Agenda',
+    body: 'Planeje o que cozinhar em cada dia. Deslize para trocar de mês e '
+        'toque num dia para escolher as refeições.',
   ),
   TutorialStep(
-    target: TutorialTarget.navBar,
+    target: TutorialTarget.shoppingCreate,
+    tab: 2,
+    icon: Icons.shopping_cart_outlined,
+    title: 'Compras',
+    body: 'Crie uma lista a partir das receitas: as quantidades já saem '
+        'somadas.',
+  ),
+  TutorialStep(
+    target: TutorialTarget.accountSettings,
+    tab: 3,
+    icon: Icons.backup_outlined,
     title: 'Guarde uma cópia',
-    body: 'O app já faz uma cópia por dia. Em Conta, toque na engrenagem e '
-        'abra Suas cópias para enviar uma para fora do aparelho.',
+    body: 'O app já faz uma cópia por dia. Nas configurações, em Suas '
+        'cópias, você envia uma para fora do aparelho.',
   ),
 ];
 
@@ -82,6 +120,9 @@ final tutorialTargetsProvider = Provider<Map<TutorialTarget, GlobalKey>>(
 
 /// Passo atual do tour; `null` = tour desligado.
 final tutorialStepProvider = StateProvider<int?>((ref) => null);
+
+/// Aba que o tour pede à casca do app. A casca troca de aba quando muda.
+final tutorialTabRequestProvider = StateProvider<int?>((ref) => null);
 
 final tutorialControllerProvider =
     Provider<TutorialController>(TutorialController.new);
@@ -110,6 +151,7 @@ class TutorialController {
       await prefs.remove(_pendingKey);
       final id = await _createExample();
       if (id != null) await prefs.setString(_exampleKey, id);
+      _ref.read(tutorialTabRequestProvider.notifier).state = 0;
       _ref.read(tutorialStepProvider.notifier).state = 0;
     } catch (e) {
       debugPrint('Tutorial.startIfNeeded: $e');
@@ -122,13 +164,17 @@ class TutorialController {
     if (step >= kTutorialSteps.length - 1) {
       finish();
     } else {
-      _ref.read(tutorialStepProvider.notifier).state = step + 1;
+      final nextStep = step + 1;
+      _ref.read(tutorialTabRequestProvider.notifier).state =
+          kTutorialSteps[nextStep].tab;
+      _ref.read(tutorialStepProvider.notifier).state = nextStep;
     }
   }
 
   /// Pular e concluir fazem a mesma coisa: fecha o tour e some com o exemplo.
   Future<void> finish() async {
     _ref.read(tutorialStepProvider.notifier).state = null;
+    _ref.read(tutorialTabRequestProvider.notifier).state = 0;
     try {
       final prefs = await SharedPreferences.getInstance();
       final id = prefs.getString(_exampleKey);
