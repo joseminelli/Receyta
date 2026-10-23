@@ -22,6 +22,7 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/screens/recipe_photo_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/section_header.dart';
@@ -207,6 +208,10 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
 
   bool _saving = false;
 
+  /// Retrato dos campos logo depois do primeiro frame; "tem alteração" é o
+  /// retrato atual diferir dele.
+  String? _initialSnapshot;
+
   /// Foto escolhida no formulário. Só vai pro banco no "Salvar"; um arquivo
   /// novo que ficar sem receita é apagado na manutenção do próximo boot.
   late String? _photo = _recipe?.imagePath ?? _draft?.imagePath;
@@ -230,6 +235,42 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
     _name.addListener(() => setState(() {}));
     WidgetsBinding.instance.addObserver(this);
     FocusManager.instance.addListener(_onFocusChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _initialSnapshot = _snapshot();
+    });
+  }
+
+  String _snapshot() => [
+        _name.text,
+        _about.text,
+        _prep.text,
+        _cook.text,
+        _servings.text,
+        _notes.text,
+        _tagInput.text,
+        _photo,
+        ..._tags,
+        '|',
+        for (final l in _ingredients) '${l.heading}:${l.controller.text}',
+        '|',
+        for (final l in _steps) '${l.heading}:${l.controller.text}',
+      ].join('');
+
+  bool get _hasChanges =>
+      _initialSnapshot != null && _snapshot() != _initialSnapshot;
+
+  Future<void> _confirmDiscard() async {
+    final discard = await AppDialog.confirm(
+      context,
+      icon: Icons.edit_off_outlined,
+      accent: context.colors.danger,
+      title: 'Descartar alterações?',
+      message: _isEditing
+          ? 'O que você mudou nesta receita não será salvo.'
+          : 'Esta receita ainda não foi salva e será perdida.',
+      confirmLabel: 'Descartar',
+    );
+    if (discard && mounted) context.pop();
   }
 
   @override
@@ -437,98 +478,105 @@ class _RecipeFormState extends ConsumerState<_RecipeForm>
     final ingredientSuggestions =
         ref.watch(allIngredientsProvider).valueOrNull ?? const <Ingredient>[];
 
-    return _Frame(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _TopBar(
-            title: _isEditing ? 'Editar receita' : 'Nova receita',
-            onSave: hasName ? _save : null,
-            saving: _saving,
-          ),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.screen,
-                AppSpacing.md,
-                AppSpacing.screen,
-                // Com o teclado aberto sobra espaço rolável embaixo pros
-                // últimos campos poderem subir até a posição de destaque.
-                _keyboardInset > 0
-                    ? MediaQuery.sizeOf(context).height * 0.5
-                    : AppSpacing.xxl,
-              ),
-              children: [
-                _PhotoField(photo: _photo, onTap: _pickPhoto),
-                _Field(
-                  label: 'Nome',
-                  controller: _name,
-                  autofocus: !_isEditing && !blocked,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _aboutFocus.requestFocus(),
-                ),
-                _Field(
-                  label: 'Sobre',
-                  controller: _about,
-                  maxLines: 3,
-                  focusNode: _aboutFocus,
-                ),
-                _buildTimeFields(),
-                _Field(
-                  label: 'Rende (porções)',
-                  controller: _servings,
-                  numeric: true,
-                  focusNode: _servingsFocus,
-                  textInputAction: TextInputAction.next,
-                  onSubmitted: (_) => _tagFocus.requestFocus(),
-                ),
-                _TagsField(
-                  tags: _tags,
-                  controller: _tagInput,
-                  focusNode: _tagFocus,
-                  onAdd: _addTag,
-                  onRemove: _removeTag,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _LineList(
-                  title: 'Ingredientes',
-                  accentColor: context.colors.coral,
-                  addLabel: 'Adicionar ingrediente',
-                  hintFor: (i) => 'ex.: 2 xícaras de farinha',
-                  lines: _ingredients,
-                  suggestions: ingredientSuggestions,
-                  onAdd: () => setState(() => _ingredients.add(_Line(''))),
-                  onAddHeading: () => setState(
-                    () => _ingredients.add(_Line('', heading: true)),
-                  ),
-                  onRemove: (i) => setState(() {
-                    _ingredients.removeAt(i).controller.dispose();
-                  }),
-                  onReorder: (o, n) => _reorder(_ingredients, o, n),
-                  onSubmitLine: (i) => _focusNextLine(_ingredients, i),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _LineList(
-                  title: 'Passos',
-                  accentColor: context.colors.violet,
-                  addLabel: 'Adicionar passo',
-                  hintFor: (i) => 'Passo ${i + 1}',
-                  lines: _steps,
-                  onAdd: () => setState(() => _steps.add(_Line(''))),
-                  onAddHeading: () =>
-                      setState(() => _steps.add(_Line('', heading: true))),
-                  onRemove: (i) => setState(() {
-                    _steps.removeAt(i).controller.dispose();
-                  }),
-                  onReorder: (o, n) => _reorder(_steps, o, n),
-                  onSubmitLine: (i) => _focusNextLine(_steps, i),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                _Field(label: 'Notas', controller: _notes, maxLines: 4),
-              ],
+    return PopScope(
+      canPop: _saving,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _hasChanges ? _confirmDiscard() : context.pop();
+      },
+      child: _Frame(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _TopBar(
+              title: _isEditing ? 'Editar receita' : 'Nova receita',
+              onSave: hasName ? _save : null,
+              saving: _saving,
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  AppSpacing.screen,
+                  AppSpacing.md,
+                  AppSpacing.screen,
+                  // Com o teclado aberto sobra espaço rolável embaixo pros
+                  // últimos campos poderem subir até a posição de destaque.
+                  _keyboardInset > 0
+                      ? MediaQuery.sizeOf(context).height * 0.5
+                      : AppSpacing.xxl,
+                ),
+                children: [
+                  _PhotoField(photo: _photo, onTap: _pickPhoto),
+                  _Field(
+                    label: 'Nome',
+                    controller: _name,
+                    autofocus: !_isEditing && !blocked,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _aboutFocus.requestFocus(),
+                  ),
+                  _Field(
+                    label: 'Sobre',
+                    controller: _about,
+                    maxLines: 3,
+                    focusNode: _aboutFocus,
+                  ),
+                  _buildTimeFields(),
+                  _Field(
+                    label: 'Rende (porções)',
+                    controller: _servings,
+                    numeric: true,
+                    focusNode: _servingsFocus,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _tagFocus.requestFocus(),
+                  ),
+                  _TagsField(
+                    tags: _tags,
+                    controller: _tagInput,
+                    focusNode: _tagFocus,
+                    onAdd: _addTag,
+                    onRemove: _removeTag,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _LineList(
+                    title: 'Ingredientes',
+                    accentColor: context.colors.coral,
+                    addLabel: 'Adicionar ingrediente',
+                    hintFor: (i) => 'ex.: 2 xícaras de farinha',
+                    lines: _ingredients,
+                    suggestions: ingredientSuggestions,
+                    onAdd: () => setState(() => _ingredients.add(_Line(''))),
+                    onAddHeading: () => setState(
+                      () => _ingredients.add(_Line('', heading: true)),
+                    ),
+                    onRemove: (i) => setState(() {
+                      _ingredients.removeAt(i).controller.dispose();
+                    }),
+                    onReorder: (o, n) => _reorder(_ingredients, o, n),
+                    onSubmitLine: (i) => _focusNextLine(_ingredients, i),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _LineList(
+                    title: 'Passos',
+                    accentColor: context.colors.violet,
+                    addLabel: 'Adicionar passo',
+                    hintFor: (i) => 'Passo ${i + 1}',
+                    lines: _steps,
+                    onAdd: () => setState(() => _steps.add(_Line(''))),
+                    onAddHeading: () =>
+                        setState(() => _steps.add(_Line('', heading: true))),
+                    onRemove: (i) => setState(() {
+                      _steps.removeAt(i).controller.dispose();
+                    }),
+                    onReorder: (o, n) => _reorder(_steps, o, n),
+                    onSubmitLine: (i) => _focusNextLine(_steps, i),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  _Field(label: 'Notas', controller: _notes, maxLines: 4),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -784,7 +832,7 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => context.pop(),
+            onPressed: () => Navigator.of(context).maybePop(),
             icon: const Icon(Icons.arrow_back),
             color: context.colors.onPaper,
           ),

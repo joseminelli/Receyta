@@ -31,6 +31,7 @@ import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
 import 'package:receyta/widgets/pill_nav_bar.dart';
+import 'package:receyta/widgets/sync_status_chip.dart';
 import 'package:receyta/widgets/tab_motion.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 
@@ -346,6 +347,15 @@ class _HomeShellState extends ConsumerState<HomeShell>
                 // Clareia a `PillNavBar` (78 de altura visível) + folga.
                 padding: const EdgeInsets.only(bottom: 96, right: 16),
                 child: const RecipeDeleteDropTarget(),
+              ),
+            ),
+          ),
+          const Align(
+            alignment: Alignment.bottomCenter,
+            child: SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 96),
+                child: SyncStatusChip(),
               ),
             ),
           ),

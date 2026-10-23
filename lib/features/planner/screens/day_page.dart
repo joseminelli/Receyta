@@ -25,6 +25,7 @@ import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/period_stepper.dart';
 import 'package:receyta/widgets/slide_pager.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
+import 'package:receyta/widgets/swipe_hint.dart';
 import 'package:receyta/widgets/tile_appearance.dart';
 import 'package:receyta/widgets/tile_pattern.dart';
 import 'package:receyta/widgets/app_sheet.dart';
@@ -264,6 +265,12 @@ class _DayPageState extends ConsumerState<DayPage> {
         AppSpacing.xxl,
       ),
       children: [
+        if (entries.isNotEmpty)
+          const SwipeHint(
+            hintId: 'planner_meals',
+            message:
+                'Deslize uma refeição: para a direita marca como feita, para a esquerda remove.',
+          ),
         for (final meal in MealType.values)
           _MealSection(
             meal: meal,

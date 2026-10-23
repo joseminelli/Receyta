@@ -28,6 +28,7 @@ import 'package:receyta/widgets/skeleton.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
 import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/swipe_action_background.dart';
+import 'package:receyta/widgets/swipe_hint.dart';
 import 'package:receyta/widgets/app_sheet.dart';
 
 /// Folga pra `PillNavBar` flutuante (78 de altura visível) + respiro — a
@@ -160,6 +161,11 @@ class _ShoppingListsPageState extends ConsumerState<ShoppingListsPage> {
     ];
     final showDone = _doneOpen || active.isEmpty;
     final children = <Widget>[
+      const SwipeHint(
+        hintId: 'shopping_lists',
+        message:
+            'Deslize uma lista: para a direita duplica, para a esquerda exclui.',
+      ),
       if (active.isNotEmpty) ...[
         _SectionLabel('Em andamento', count: active.length),
         _buildCard(active.first, featured: true),

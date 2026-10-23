@@ -11,6 +11,7 @@ import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/features/recipes/screens/recipe_book_flow.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/theme/typography.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/brand_loader.dart';
@@ -57,7 +58,8 @@ class TagsPage extends ConsumerWidget {
       color: TileColor.coral,
       body: tags.when(
         loading: () => const Center(child: BrandLoader()),
-        error: (_, __) => _buildError(context),
+        error: (_, __) =>
+            _buildError(context, () => ref.invalidate(tagsWithCountsProvider)),
         data: (items) => items.isEmpty
             ? _buildEmpty(context)
             : _buildList(context, ref, items),
@@ -65,7 +67,7 @@ class TagsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildError(BuildContext context) {
+  Widget _buildError(BuildContext context, VoidCallback onRetry) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -84,6 +86,8 @@ class TagsPage extends ConsumerWidget {
               style: context.texts.displaySmall,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            PillButton(label: 'Tentar de novo', onPressed: onRetry),
           ],
         ),
       ),

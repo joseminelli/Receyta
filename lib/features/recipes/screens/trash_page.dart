@@ -12,6 +12,7 @@ import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
 import 'package:receyta/messenger.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/circle_icon_button.dart';
@@ -98,7 +99,8 @@ class TrashPage extends ConsumerWidget {
           : null,
       body: trashed.when(
         loading: () => const Center(child: BrandLoader()),
-        error: (_, __) => _buildError(context),
+        error: (_, __) =>
+            _buildError(context, () => ref.invalidate(trashedRecipesProvider)),
         data: (items) => items.isEmpty
             ? _buildEmpty(context)
             : _buildList(context, ref, items),
@@ -106,7 +108,7 @@ class TrashPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildError(BuildContext context) {
+  Widget _buildError(BuildContext context, VoidCallback onRetry) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -125,6 +127,8 @@ class TrashPage extends ConsumerWidget {
               style: context.texts.displaySmall,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            PillButton(label: 'Tentar de novo', onPressed: onRetry),
           ],
         ),
       ),

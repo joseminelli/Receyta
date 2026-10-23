@@ -11,6 +11,7 @@ import 'package:receyta/features/achievements/widgets/achievement_trophy.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/header_scaffold.dart';
 import 'package:receyta/widgets/skeleton.dart';
 
@@ -41,13 +42,14 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
       color: TileColor.lime,
       body: achievements.when(
         loading: () => const _PageSkeleton(),
-        error: (_, __) => _buildError(context),
+        error: (_, __) =>
+            _buildError(context, () => ref.invalidate(achievementsProvider)),
         data: _buildContent,
       ),
     );
   }
 
-  Widget _buildError(BuildContext context) {
+  Widget _buildError(BuildContext context, VoidCallback onRetry) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -66,6 +68,8 @@ class _AchievementsPageState extends ConsumerState<AchievementsPage> {
               style: context.texts.displaySmall,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            PillButton(label: 'Tentar de novo', onPressed: onRetry),
           ],
         ),
       ),

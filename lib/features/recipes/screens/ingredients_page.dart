@@ -19,6 +19,7 @@ import 'package:receyta/messenger.dart';
 import 'package:receyta/features/recipes/controllers/ingredients_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/action_menu_button.dart';
 import 'package:receyta/widgets/app_dialog.dart';
 import 'package:receyta/widgets/app_snackbar.dart';
@@ -210,14 +211,15 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
       ),
       body: items.when(
         loading: () => const Center(child: BrandLoader()),
-        error: (_, __) => _buildError(context),
+        error: (_, __) => _buildError(
+            context, () => ref.invalidate(ingredientsWithCountsProvider)),
         data: (rows) =>
             rows.isEmpty ? _buildEmpty(context) : _buildContent(context, rows),
       ),
     );
   }
 
-  Widget _buildError(BuildContext context) {
+  Widget _buildError(BuildContext context, VoidCallback onRetry) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
@@ -236,6 +238,8 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
               style: context.texts.displaySmall,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            PillButton(label: 'Tentar de novo', onPressed: onRetry),
           ],
         ),
       ),
@@ -292,8 +296,9 @@ class _IngredientsPageState extends ConsumerState<IngredientsPage> {
       counts[slug] = (counts[slug] ?? 0) + 1;
     }
     final categories = [
-      for (final slug in counts.keys.toList()
-        ..sort((a, b) => categoryOrder(a).compareTo(categoryOrder(b))))
+      for (final slug
+          in counts.keys.toList()
+            ..sort((a, b) => categoryOrder(a).compareTo(categoryOrder(b))))
         (slug: slug, label: categoryLabel(slug), count: counts[slug]!),
     ];
     final category = counts.containsKey(_category) ? _category : null;

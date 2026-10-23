@@ -10,6 +10,7 @@ import 'package:receyta/domain/models/folder.dart';
 import 'package:receyta/features/folders/controllers/folders_view_model.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
+import 'package:receyta/widgets/pill_button.dart';
 import 'package:receyta/widgets/brand_loader.dart';
 import 'package:receyta/widgets/folder_grid_tile.dart';
 import 'package:receyta/widgets/folder_shape.dart';
@@ -42,7 +43,8 @@ class AllFoldersPage extends ConsumerWidget {
           slivers: [
             folders.when(
               loading: () => _buildLoading(),
-              error: (_, __) => _buildError(context),
+              error: (_, __) => _buildError(
+                  context, () => ref.invalidate(rootFoldersProvider)),
               data: (items) => items.isEmpty
                   ? _buildEmpty(context)
                   : _buildGrid(context, items),
@@ -60,7 +62,7 @@ class AllFoldersPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildError(BuildContext context) {
+  Widget _buildError(BuildContext context, VoidCallback onRetry) {
     return SliverFillRemaining(
       hasScrollBody: false,
       child: Padding(
@@ -80,6 +82,8 @@ class AllFoldersPage extends ConsumerWidget {
               style: context.texts.displaySmall,
               textAlign: TextAlign.center,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            PillButton(label: 'Tentar de novo', onPressed: onRetry),
           ],
         ),
       ),
