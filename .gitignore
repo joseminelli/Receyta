@@ -62,3 +62,8 @@ android/key.properties
 # Environment
 .env
 .env.local
+
+package-lock.json
+node_modules/
+__pycache__/
+out/

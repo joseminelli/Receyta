@@ -1,0 +1,516 @@
+{
+ "comprar": {
+  "texto": "A lista de compras se monta sozinha.",
+  "duracao": 2.56,
+  "palavras": [
+   {
+    "w": "A",
+    "start": 0.0,
+    "end": 0.08
+   },
+   {
+    "w": "lista",
+    "start": 0.133,
+    "end": 0.4
+   },
+   {
+    "w": "de",
+    "start": 0.427,
+    "end": 0.48
+   },
+   {
+    "w": "compras",
+    "start": 0.547,
+    "end": 1.12
+   },
+   {
+    "w": "se",
+    "start": 1.253,
+    "end": 1.52
+   },
+   {
+    "w": "monta",
+    "start": 1.584,
+    "end": 2.0
+   },
+   {
+    "w": "sozinha.",
+    "start": 2.053,
+    "end": 2.56
+   }
+  ]
+ },
+ "cozinhar": {
+  "texto": "E na hora de cozinhar, a tela fica acesa, com timers em cada passo.",
+  "duracao": 4.0,
+  "palavras": [
+   {
+    "w": "E",
+    "start": 0.0,
+    "end": 0.08
+   },
+   {
+    "w": "na",
+    "start": 0.107,
+    "end": 0.16
+   },
+   {
+    "w": "hora",
+    "start": 0.192,
+    "end": 0.32
+   },
+   {
+    "w": "de",
+    "start": 0.373,
+    "end": 0.48
+   },
+   {
+    "w": "cozinhar,",
+    "start": 0.507,
+    "end": 1.12
+   },
+   {
+    "w": "a",
+    "start": 1.16,
+    "end": 1.2
+   },
+   {
+    "w": "tela",
+    "start": 1.264,
+    "end": 1.52
+   },
+   {
+    "w": "fica",
+    "start": 1.552,
+    "end": 1.68
+   },
+   {
+    "w": "acesa,",
+    "start": 1.76,
+    "end": 2.24
+   },
+   {
+    "w": "com",
+    "start": 2.3,
+    "end": 2.48
+   },
+   {
+    "w": "timers",
+    "start": 2.56,
+    "end": 3.04
+   },
+   {
+    "w": "em",
+    "start": 3.067,
+    "end": 3.12
+   },
+   {
+    "w": "cada",
+    "start": 3.184,
+    "end": 3.44
+   },
+   {
+    "w": "passo.",
+    "start": 3.52,
+    "end": 4.0
+   }
+  ]
+ },
+ "cta": {
+  "texto": "Receyta. Suas receitas, num lugar só. Baixe agora.",
+  "duracao": 4.0,
+  "palavras": [
+   {
+    "w": "Receyta.",
+    "start": 0.0,
+    "end": 0.64
+   },
+   {
+    "w": "Suas",
+    "start": 0.8,
+    "end": 1.2
+   },
+   {
+    "w": "receitas,",
+    "start": 1.28,
+    "end": 2.08
+   },
+   {
+    "w": "num",
+    "start": 2.12,
+    "end": 2.24
+   },
+   {
+    "w": "lugar",
+    "start": 2.293,
+    "end": 2.56
+   },
+   {
+    "w": "só.",
+    "start": 2.667,
+    "end": 2.88
+   },
+   {
+    "w": "Baixe",
+    "start": 3.04,
+    "end": 3.52
+   },
+   {
+    "w": "agora.",
+    "start": 3.587,
+    "end": 4.0
+   }
+  ]
+ },
+ "importar": {
+  "texto": "Cole o link, e a receita já vem pronta.",
+  "duracao": 2.48,
+  "palavras": [
+   {
+    "w": "Cole",
+    "start": 0.0,
+    "end": 0.32
+   },
+   {
+    "w": "o",
+    "start": 0.36,
+    "end": 0.4
+   },
+   {
+    "w": "link,",
+    "start": 0.464,
+    "end": 0.8
+   },
+   {
+    "w": "e",
+    "start": 1.0,
+    "end": 1.2
+   },
+   {
+    "w": "a",
+    "start": 1.28,
+    "end": 1.36
+   },
+   {
+    "w": "receita",
+    "start": 1.392,
+    "end": 1.68
+   },
+   {
+    "w": "já",
+    "start": 1.733,
+    "end": 1.84
+   },
+   {
+    "w": "vem",
+    "start": 1.88,
+    "end": 2.0
+   },
+   {
+    "w": "pronta.",
+    "start": 2.053,
+    "end": 2.48
+   }
+  ]
+ },
+ "intro": {
+  "texto": "Conheça o Receyta. O caderno de receitas que cabe no seu bolso.",
+  "duracao": 4.24,
+  "palavras": [
+   {
+    "w": "Conheça",
+    "start": 0.0,
+    "end": 0.48
+   },
+   {
+    "w": "o",
+    "start": 0.52,
+    "end": 0.56
+   },
+   {
+    "w": "Receyta.",
+    "start": 0.624,
+    "end": 1.12
+   },
+   {
+    "w": "O",
+    "start": 1.32,
+    "end": 1.52
+   },
+   {
+    "w": "caderno",
+    "start": 1.58,
+    "end": 2.0
+   },
+   {
+    "w": "de",
+    "start": 2.027,
+    "end": 2.08
+   },
+   {
+    "w": "receitas",
+    "start": 2.144,
+    "end": 2.72
+   },
+   {
+    "w": "que",
+    "start": 2.74,
+    "end": 2.8
+   },
+   {
+    "w": "cabe",
+    "start": 2.88,
+    "end": 3.2
+   },
+   {
+    "w": "no",
+    "start": 3.253,
+    "end": 3.36
+   },
+   {
+    "w": "seu",
+    "start": 3.44,
+    "end": 3.68
+   },
+   {
+    "w": "bolso.",
+    "start": 3.74,
+    "end": 4.24
+   }
+  ]
+ },
+ "organizar": {
+  "texto": "Guarde em pastas do seu jeito.",
+  "duracao": 1.84,
+  "palavras": [
+   {
+    "w": "Guarde",
+    "start": 0.0,
+    "end": 0.32
+   },
+   {
+    "w": "em",
+    "start": 0.373,
+    "end": 0.48
+   },
+   {
+    "w": "pastas",
+    "start": 0.544,
+    "end": 0.96
+   },
+   {
+    "w": "do",
+    "start": 1.013,
+    "end": 1.12
+   },
+   {
+    "w": "seu",
+    "start": 1.18,
+    "end": 1.36
+   },
+   {
+    "w": "jeito.",
+    "start": 1.413,
+    "end": 1.84
+   }
+  ]
+ },
+ "planejar": {
+  "texto": "Escolha o dia e a refeição, e a semana se organiza.",
+  "duracao": 3.52,
+  "palavras": [
+   {
+    "w": "Escolha",
+    "start": 0.0,
+    "end": 0.48
+   },
+   {
+    "w": "o",
+    "start": 0.52,
+    "end": 0.56
+   },
+   {
+    "w": "dia",
+    "start": 0.66,
+    "end": 0.96
+   },
+   {
+    "w": "e",
+    "start": 1.04,
+    "end": 1.12
+   },
+   {
+    "w": "a",
+    "start": 1.16,
+    "end": 1.2
+   },
+   {
+    "w": "refeição,",
+    "start": 1.253,
+    "end": 2.08
+   },
+   {
+    "w": "e",
+    "start": 2.2,
+    "end": 2.32
+   },
+   {
+    "w": "a",
+    "start": 2.36,
+    "end": 2.4
+   },
+   {
+    "w": "semana",
+    "start": 2.457,
+    "end": 2.8
+   },
+   {
+    "w": "se",
+    "start": 2.827,
+    "end": 2.88
+   },
+   {
+    "w": "organiza.",
+    "start": 2.92,
+    "end": 3.52
+   }
+  ]
+ },
+ "problema": {
+  "texto": "Toda semana, a mesma pergunta: o que vamos comer? A receita tá num print, num caderno, num link que sumiu.",
+  "duracao": 8.8,
+  "palavras": [
+   {
+    "w": "Toda",
+    "start": 0.0,
+    "end": 0.24
+   },
+   {
+    "w": "semana,",
+    "start": 0.32,
+    "end": 0.88
+   },
+   {
+    "w": "a",
+    "start": 0.92,
+    "end": 0.96
+   },
+   {
+    "w": "mesma",
+    "start": 1.053,
+    "end": 1.52
+   },
+   {
+    "w": "pergunta:",
+    "start": 1.58,
+    "end": 2.8
+   },
+   {
+    "w": "o",
+    "start": 2.84,
+    "end": 2.88
+   },
+   {
+    "w": "que",
+    "start": 2.92,
+    "end": 3.04
+   },
+   {
+    "w": "vamos",
+    "start": 3.093,
+    "end": 3.36
+   },
+   {
+    "w": "comer?",
+    "start": 3.427,
+    "end": 3.84
+   },
+   {
+    "w": "A",
+    "start": 4.4,
+    "end": 4.96
+   },
+   {
+    "w": "receita",
+    "start": 5.008,
+    "end": 5.36
+   },
+   {
+    "w": "tá",
+    "start": 5.413,
+    "end": 5.52
+   },
+   {
+    "w": "num",
+    "start": 5.58,
+    "end": 5.76
+   },
+   {
+    "w": "print,",
+    "start": 5.827,
+    "end": 6.24
+   },
+   {
+    "w": "num",
+    "start": 6.26,
+    "end": 6.32
+   },
+   {
+    "w": "caderno,",
+    "start": 6.38,
+    "end": 7.04
+   },
+   {
+    "w": "num",
+    "start": 7.08,
+    "end": 7.2
+   },
+   {
+    "w": "link",
+    "start": 7.264,
+    "end": 7.52
+   },
+   {
+    "w": "que",
+    "start": 7.58,
+    "end": 7.76
+   },
+   {
+    "w": "sumiu.",
+    "start": 7.82,
+    "end": 8.8
+   }
+  ]
+ },
+ "virada": {
+  "texto": "Mas cozinhar pode ser simples.",
+  "duracao": 2.0,
+  "palavras": [
+   {
+    "w": "Mas",
+    "start": 0.0,
+    "end": 0.16
+   },
+   {
+    "w": "cozinhar",
+    "start": 0.213,
+    "end": 0.64
+   },
+   {
+    "w": "pode",
+    "start": 0.704,
+    "end": 0.96
+   },
+   {
+    "w": "ser",
+    "start": 1.0,
+    "end": 1.12
+   },
+   {
+    "w": "simples.",
+    "start": 1.21,
+    "end": 2.0
+   }
+  ]
+ }
+}

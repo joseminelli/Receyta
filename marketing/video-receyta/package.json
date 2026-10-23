@@ -1,0 +1,23 @@
+{
+  "name": "receyta-video",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render:v": "remotion render src/index.ts Vertical out/receyta-9x16.mp4 --timeout=180000 --concurrency=3",
+    "banner:v": "remotion still src/index.ts BannerVertical out/banner-vertical.png",
+    "banner:h": "remotion still src/index.ts BannerHorizontal out/banner-horizontal.png",
+    "render:h": "remotion render src/index.ts Horizontal out/receyta-16x9.mp4 --timeout=180000 --concurrency=3"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.250",
+    "@remotion/google-fonts": "^4.0.250",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.250"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.31",
+    "typescript": "^5.6.3"
+  }
+}
