@@ -11,12 +11,16 @@ class ActionMenuItem {
     required this.label,
     required this.onTap,
     this.hint,
+    this.selected = false,
   });
 
   final IconData icon;
   final String label;
   final String? hint;
   final VoidCallback onTap;
+
+  /// Opção escolhida de uma lista (ex.: ordenação): ganha um check no fim.
+  final bool selected;
 }
 
 /// Botão circular que abre um cartão de ações ancorado nele: o ícone vira "x",
@@ -27,10 +31,15 @@ class ActionMenuButton extends StatefulWidget {
     super.key,
     required this.items,
     this.tooltip = 'Mais ações',
+    this.triggerBuilder,
   });
 
   final List<ActionMenuItem> items;
   final String tooltip;
+
+  /// Troca o botão circular por outro gatilho (ex.: um rótulo). Recebe se o
+  /// menu está aberto.
+  final Widget Function(BuildContext context, bool open)? triggerBuilder;
 
   @override
   State<ActionMenuButton> createState() => _ActionMenuButtonState();
@@ -123,27 +132,29 @@ class _ActionMenuButtonState extends State<ActionMenuButton> {
             scale: _pressed ? 0.88 : 1,
             duration: const Duration(milliseconds: 110),
             curve: Curves.easeOut,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: _open ? colors.lime : colors.ink,
-                shape: BoxShape.circle,
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                transitionBuilder: (child, anim) => RotationTransition(
-                  turns: Tween(begin: 0.75, end: 1.0).animate(anim),
-                  child: FadeTransition(opacity: anim, child: child),
-                ),
-                child: Icon(
-                  _open ? Icons.close : Icons.more_horiz,
-                  key: ValueKey(_open),
-                  size: 20,
-                  color: _open ? colors.ink : colors.onSaturated,
-                ),
-              ),
-            ),
+            child: widget.triggerBuilder != null
+                ? widget.triggerBuilder!(context, _open)
+                : AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    decoration: BoxDecoration(
+                      color: _open ? colors.lime : colors.ink,
+                      shape: BoxShape.circle,
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      transitionBuilder: (child, anim) => RotationTransition(
+                        turns: Tween(begin: 0.75, end: 1.0).animate(anim),
+                        child: FadeTransition(opacity: anim, child: child),
+                      ),
+                      child: Icon(
+                        _open ? Icons.close : Icons.more_horiz,
+                        key: ValueKey(_open),
+                        size: 20,
+                        color: _open ? colors.ink : colors.onSaturated,
+                      ),
+                    ),
+                  ),
           ),
         ),
       ),
@@ -322,6 +333,10 @@ class _MenuRowState extends State<_MenuRow> {
                     ],
                   ),
                 ),
+                if (widget.item.selected) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  Icon(Icons.check_rounded, size: 20, color: colors.onPaper),
+                ],
               ],
             ),
           ),

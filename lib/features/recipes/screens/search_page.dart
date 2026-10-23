@@ -9,6 +9,7 @@ import 'package:receyta/domain/models/recipe.dart';
 import 'package:receyta/domain/models/tag.dart';
 import 'package:receyta/features/mascot/widgets/animated_mascot.dart';
 import 'package:receyta/features/recipes/controllers/recipes_view_model.dart';
+import 'package:receyta/features/recipes/screens/search_results.dart';
 import 'package:receyta/theme/app_theme.dart';
 import 'package:receyta/theme/tokens.dart';
 import 'package:receyta/widgets/app_sheet.dart';
@@ -35,6 +36,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Timer? _debounce;
   bool _onlyFavorites = false;
   bool _onlyQuick = false;
+  bool _asList = true;
+  SearchSort _sort = SearchSort.relevance;
   List<String> _recent = const [];
 
   @override
@@ -42,6 +45,21 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     super.initState();
     _controller.addListener(() => setState(() {}));
     _loadRecent();
+    _loadView();
+  }
+
+  static const _viewKey = 'search_results_as_list';
+
+  Future<void> _loadView() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getBool(_viewKey);
+    if (mounted && stored != null) setState(() => _asList = stored);
+  }
+
+  Future<void> _toggleView() async {
+    setState(() => _asList = !_asList);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_viewKey, _asList);
   }
 
   Future<void> _loadRecent() async {
@@ -155,10 +173,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     data: (raw) {
                       final list = _applyFilters(raw);
                       if (list.isNotEmpty) {
-                        return _GridBody(
+                        return SearchResults(
                           recipes: list,
-                          label:
-                              '${list.length} ${list.length == 1 ? 'RESULTADO' : 'RESULTADOS'}',
+                          query: query,
+                          asList: _asList,
+                          sort: _sort,
+                          onToggleView: _toggleView,
+                          onSort: (v) => setState(() => _sort = v),
                           onOpen: () => _remember(query),
                         );
                       }
@@ -605,13 +626,11 @@ class _GridBody extends StatelessWidget {
     required this.recipes,
     required this.label,
     this.leading,
-    this.onOpen,
   });
 
   final List<Recipe> recipes;
   final String label;
   final Widget? leading;
-  final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -654,10 +673,8 @@ class _GridBody extends StatelessWidget {
               delegate: SliverChildBuilderDelegate(
                 (context, i) => RecipeCard(
                   recipe: recipes[i],
-                  onTap: () {
-                    onOpen?.call();
-                    context.push('/recipe/${recipes[i].id}', extra: recipes[i]);
-                  },
+                  onTap: () => context.push('/recipe/${recipes[i].id}',
+                      extra: recipes[i]),
                 ),
                 childCount: recipes.length,
               ),
