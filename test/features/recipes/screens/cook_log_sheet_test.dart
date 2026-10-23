@@ -32,6 +32,12 @@ class _FakeRepo implements CookLogRepository {
       const Ok(null);
 
   @override
+  Future<int> countAll() async => 0;
+
+  @override
+  Future<int> countForRecipe(String recipeId) async => 0;
+
+  @override
   Future<String?> idForMealEntry(String mealPlanEntryId) async => null;
 
   @override
